@@ -1,0 +1,733 @@
+================================================================================
+PLAN DE REORGANIZACIÓN DE UI - WHATSAPP ORDERS MANAGER
+Sistema tipo ERP con interfaz estilo Odoo
+================================================================================
+Fecha de inicio: 10 de octubre de 2025
+Estado: FASE DE PLANIFICACIÓN
+================================================================================
+
+OBJETIVO PRINCIPAL:
+------------------
+Transformar la aplicación en un sistema ERP modular con:
+1. Dashboard principal con iconos de módulos (estilo Odoo)
+2. Barra superior con información de usuario y menú desplegable
+3. Navegación intuitiva entre módulos
+4. Diseño profesional y moderno
+
+================================================================================
+FASE 1: DISEÑO DE LA ESTRUCTURA DE NAVEGACIÓN
+================================================================================
+
+1.1 BARRA SUPERIOR (Header/Navbar)
+----------------------------------
+Ubicación: Fija en la parte superior de todas las páginas
+
+ELEMENTOS:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [LOGO] WhatsApp Orders Manager    [🏠 Dashboard]    [👤 Usuario ▼]     │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Componentes:
+- Logo/Nombre de la aplicación (izquierda)
+- Botón de regreso al Dashboard (centro-izquierda)
+- Nombre del usuario logueado (derecha)
+- Icono de perfil + dropdown (extremo derecho)
+
+MENÚ DESPLEGABLE DEL USUARIO:
+├─ 👤 Ver mi perfil
+├─ ⚙️ Configuración
+├─ 📊 Mi actividad
+├─ ─────────────
+└─ 🚪 Cerrar sesión
+
+1.2 DASHBOARD PRINCIPAL (Después del login)
+-------------------------------------------
+Ruta: /dashboard o / (página principal post-login)
+
+DISEÑO EN GRID DE TARJETAS CON ICONOS:
+
+┌──────────────────────────────────────────────────────────────────────┐
+│                    DASHBOARD - MENÚ PRINCIPAL                         │
+│                                                                       │
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐        │
+│  │  👥    │  │  📦    │  │  💰    │  │  📋    │  │  📊    │        │
+│  │Clientes│  │Product.│  │Facturas│  │ Pedidos│  │Reportes│        │
+│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘        │
+│                                                                       │
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐        │
+│  │  📦    │  │  👤    │  │  🔧    │  │  📄    │  │  💳    │        │
+│  │Inventar│  │Usuarios│  │ Config │  │Document│  │ Pagos  │        │
+│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘        │
+│                                                                       │
+│  ┌────────┐  ┌────────┐  ┌────────┐                                 │
+│  │  📈    │  │  🔔    │  │  ❓    │                                 │
+│  │Estadís │  │ Notif. │  │ Ayuda  │                                 │
+│  └────────┘  └────────┘  └────────┘                                 │
+└──────────────────────────────────────────────────────────────────────┘
+
+MÓDULOS PROPUESTOS (ORDEN DE PRIORIDAD):
+
+FILA 1 - MÓDULOS PRINCIPALES (YA IMPLEMENTADOS):
+================================================
+1. 👥 CLIENTES
+   - Icono: Usuario con grupo
+   - Color: Azul (#2196F3)
+   - Ruta: /clientes
+   - Descripción: "Gestión de clientes"
+
+2. 📦 PRODUCTOS
+   - Icono: Caja/Paquete
+   - Color: Naranja (#FF9800)
+   - Ruta: /productos
+   - Descripción: "Catálogo de productos"
+
+3. 💰 FACTURAS
+   - Icono: Documento con dinero
+   - Color: Verde (#4CAF50)
+   - Ruta: /facturas
+   - Descripción: "Facturación y ventas"
+
+4. 📋 PEDIDOS (Nuevo - basado en Facturas)
+   - Icono: Lista con check
+   - Color: Púrpura (#9C27B0)
+   - Ruta: /pedidos
+   - Descripción: "Gestión de pedidos"
+   - Estado: A DESARROLLAR
+
+5. 📊 REPORTES (Nuevo)
+   - Icono: Gráfica
+   - Color: Teal (#009688)
+   - Ruta: /reportes
+   - Descripción: "Informes y estadísticas"
+   - Estado: A DESARROLLAR
+
+FILA 2 - MÓDULOS SECUNDARIOS:
+=============================
+6. 📦 INVENTARIO (Mejorar)
+   - Icono: Almacén
+   - Color: Índigo (#3F51B5)
+   - Ruta: /inventario
+   - Descripción: "Control de stock"
+   - Estado: MEJORAR (actualmente solo productos)
+
+7. 👤 USUARIOS
+   - Icono: Usuario simple
+   - Color: Gris oscuro (#607D8B)
+   - Ruta: /usuarios
+   - Descripción: "Administración de usuarios"
+   - Estado: A DESARROLLAR
+
+8. 🔧 CONFIGURACIÓN
+   - Icono: Engranaje
+   - Color: Gris (#9E9E9E)
+   - Ruta: /configuracion
+   - Descripción: "Ajustes del sistema"
+   - Estado: A DESARROLLAR
+
+9. 📄 DOCUMENTOS
+   - Icono: Archivo
+   - Color: Azul gris (#546E7A)
+   - Ruta: /documentos
+   - Descripción: "Gestión documental"
+   - Estado: A DESARROLLAR
+
+10. 💳 PAGOS (Nuevo - Alta prioridad)
+    - Icono: Tarjeta/Dinero
+    - Color: Verde lima (#8BC34A)
+    - Ruta: /pagos
+    - Descripción: "Control de pagos"
+    - Estado: A DESARROLLAR
+
+FILA 3 - UTILIDADES:
+===================
+11. 📈 ESTADÍSTICAS
+    - Icono: Gráfica de líneas
+    - Color: Cyan (#00BCD4)
+    - Ruta: /estadisticas
+    - Descripción: "Análisis de datos"
+    - Estado: A DESARROLLAR
+
+12. 🔔 NOTIFICACIONES
+    - Icono: Campana
+    - Color: Rojo (#F44336)
+    - Ruta: /notificaciones
+    - Descripción: "Centro de notificaciones"
+    - Estado: A DESARROLLAR
+
+13. ❓ AYUDA
+    - Icono: Signo de interrogación
+    - Color: Amarillo (#FFC107)
+    - Ruta: /ayuda
+    - Descripción: "Centro de ayuda"
+    - Estado: A DESARROLLAR
+
+================================================================================
+FASE 2: ESTRUCTURA DE ARCHIVOS A CREAR/MODIFICAR
+================================================================================
+
+2.1 NUEVOS CONTROLADORES
+-------------------------
+□ DashboardController.java
+  - Método: mostrarDashboard() -> dashboard.html
+  - Lógica: Cargar estadísticas rápidas para tarjetas
+
+□ PerfilController.java
+  - Método: verPerfil() -> perfil/ver.html
+  - Método: editarPerfil() -> perfil/editar.html
+  - Método: actualizarPerfil()
+
+□ PedidoController.java (separar de FacturaController)
+  - CRUD de pedidos
+  - Conversión pedido -> factura
+
+□ PagoController.java
+  - Registro de pagos
+  - Asociación pago-factura
+  - Estado de pagos
+
+□ ReporteController.java
+  - Reportes de ventas
+  - Reportes de clientes
+  - Reportes de inventario
+
+2.2 NUEVAS VISTAS HTML
+----------------------
+LAYOUT Y COMPONENTES:
+□ templates/components/navbar.html
+  - Barra superior reutilizable
+  - Menú de usuario
+
+□ templates/components/module-card.html
+  - Tarjeta de módulo reutilizable
+
+□ templates/dashboard.html
+  - Grid de módulos
+  - Widgets de estadísticas rápidas
+
+PERFIL DE USUARIO:
+□ templates/perfil/ver.html
+  - Información del usuario
+  - Actividad reciente
+
+□ templates/perfil/editar.html
+  - Formulario de edición de perfil
+  - Cambio de contraseña
+
+NUEVOS MÓDULOS:
+□ templates/pedidos/lista.html
+□ templates/pedidos/detalle.html
+□ templates/pagos/lista.html
+□ templates/pagos/form.html
+□ templates/reportes/ventas.html
+□ templates/reportes/clientes.html
+□ templates/inventario/stock.html
+
+2.3 ARCHIVOS CSS
+----------------
+□ static/css/dashboard.css
+  - Estilos para grid de módulos
+  - Animaciones de tarjetas
+  - Responsive design
+
+□ static/css/navbar.css
+  - Estilos de barra superior
+  - Dropdown de usuario
+  - Efectos hover
+
+□ static/css/module-cards.css
+  - Diseño de tarjetas de módulos
+  - Iconos y colores
+  - Estados (hover, active, disabled)
+
+2.4 ARCHIVOS JAVASCRIPT
+-----------------------
+□ static/js/dashboard.js
+  - Carga de estadísticas
+  - Animaciones de tarjetas
+  - Navegación
+
+□ static/js/navbar.js
+  - Toggle dropdown usuario
+  - Cerrar sesión
+  - Notificaciones
+
+□ static/js/common.js
+  - Funciones reutilizables
+  - Validaciones globales
+  - Ajax helpers
+
+================================================================================
+FASE 3: MODELO DE DATOS - NUEVAS ENTIDADES
+================================================================================
+
+3.1 ENTIDAD: Pedido
+-------------------
+@Entity
+@Table(name = "pedido")
+Campos:
+- idPedido (PK)
+- cliente (FK)
+- fecha
+- fechaEntrega
+- estado (ENUM: PENDIENTE, EN_PROCESO, ENTREGADO, CANCELADO)
+- total
+- observaciones
+- lineasPedido (OneToMany)
+- createDate, updateDate, createBy, updateBy
+
+3.2 ENTIDAD: Pago
+-----------------
+@Entity
+@Table(name = "pago")
+Campos:
+- idPago (PK)
+- factura (FK)
+- monto
+- fechaPago
+- metodoPago (ENUM: EFECTIVO, TRANSFERENCIA, TARJETA, OTRO)
+- referencia
+- observaciones
+- createDate, updateDate, createBy, updateBy
+
+3.3 ENTIDAD: Stock (Mejorar Inventario)
+----------------------------------------
+@Entity
+@Table(name = "stock")
+Campos:
+- idStock (PK)
+- producto (FK)
+- almacen (FK - futuro)
+- cantidad
+- stockMinimo
+- stockMaximo
+- fechaUltimaActualizacion
+- createDate, updateDate, createBy, updateBy
+
+3.4 ENTIDAD: MovimientoInventario
+----------------------------------
+@Entity
+@Table(name = "movimiento_inventario")
+Campos:
+- idMovimiento (PK)
+- producto (FK)
+- tipoMovimiento (ENUM: ENTRADA, SALIDA, AJUSTE)
+- cantidad
+- motivo
+- documento (referencia a factura, pedido, etc.)
+- createDate, createBy
+
+3.5 MEJORAR: Usuario (para perfil)
+-----------------------------------
+Agregar campos:
+- email
+- avatar (URL o path)
+- cargo
+- departamento
+- activo (boolean)
+- ultimoAcceso
+
+================================================================================
+FASE 4: CONFIGURACIÓN DE SEGURIDAD
+================================================================================
+
+4.1 RUTAS PROTEGIDAS
+--------------------
+Actualizar SecurityConfig.java:
+
+PÚBLICAS (sin login):
+- /auth/login
+- /auth/register
+- /static/**
+- /css/**
+- /js/**
+- /images/**
+
+PROTEGIDAS (requieren login):
+- /dashboard (o /)
+- /clientes/**
+- /productos/**
+- /facturas/**
+- /pedidos/**
+- /pagos/**
+- /reportes/**
+- /perfil/**
+
+SOLO ADMIN:
+- /usuarios/**
+- /configuracion/**
+
+4.2 ROLES Y PERMISOS
+--------------------
+Roles existentes:
+- ADMIN: Acceso total
+- USER: Acceso a módulos operativos
+- CLIENTE: Solo ver sus pedidos/facturas
+
+Permisos por módulo:
+┌──────────────┬───────┬──────┬─────────┐
+│ Módulo       │ ADMIN │ USER │ CLIENTE │
+├──────────────┼───────┼──────┼─────────┤
+│ Clientes     │  ✓    │  ✓   │    -    │
+│ Productos    │  ✓    │  ✓   │    -    │
+│ Facturas     │  ✓    │  ✓   │    ✓    │
+│ Pedidos      │  ✓    │  ✓   │    ✓    │
+│ Pagos        │  ✓    │  ✓   │    -    │
+│ Inventario   │  ✓    │  ✓   │    -    │
+│ Reportes     │  ✓    │  ✓   │    -    │
+│ Usuarios     │  ✓    │  -   │    -    │
+│ Config       │  ✓    │  -   │    -    │
+└──────────────┴───────┴──────┴─────────┘
+
+================================================================================
+FASE 5: FLUJO DE NAVEGACIÓN
+================================================================================
+
+5.1 FLUJO POST-LOGIN
+--------------------
+1. Usuario ingresa credenciales en /auth/login
+2. AuthController valida
+3. Si éxito -> Redirect a /dashboard
+4. Dashboard carga:
+   - Tarjetas de módulos disponibles (según rol)
+   - Widget de estadísticas rápidas
+   - Actividad reciente
+5. Usuario hace click en módulo -> Navega a ruta específica
+
+5.2 NAVEGACIÓN ENTRE MÓDULOS
+-----------------------------
+Opción A - Con breadcrumbs:
+[Dashboard] > [Clientes] > [Nuevo Cliente]
+
+Opción B - Con botón "Volver al Dashboard":
+Siempre visible en navbar
+
+Opción C - Menú lateral (estilo Odoo):
+Módulos en sidebar, contenido en área principal
+
+DECISIÓN: Opción B + Breadcrumbs (más simple para empezar)
+
+================================================================================
+FASE 6: DISEÑO VISUAL
+================================================================================
+
+6.1 PALETA DE COLORES
+---------------------
+Colores principales:
+- Primary: #1976D2 (Azul)
+- Secondary: #424242 (Gris oscuro)
+- Success: #4CAF50 (Verde)
+- Warning: #FF9800 (Naranja)
+- Danger: #F44336 (Rojo)
+- Info: #00BCD4 (Cyan)
+
+Fondo:
+- Body: #F5F5F5 (Gris muy claro)
+- Cards: #FFFFFF
+- Navbar: #1976D2
+
+Texto:
+- Principal: #212121
+- Secundario: #757575
+- Sobre primary: #FFFFFF
+
+6.2 TIPOGRAFÍA
+--------------
+Fuente principal: 'Roboto', sans-serif
+Tamaños:
+- H1: 2.5rem (40px)
+- H2: 2rem (32px)
+- H3: 1.75rem (28px)
+- Body: 1rem (16px)
+- Small: 0.875rem (14px)
+
+6.3 COMPONENTES REUTILIZABLES
+------------------------------
+□ Botones:
+  - btn-primary, btn-secondary, btn-success, etc.
+  - btn-sm, btn-md, btn-lg
+
+□ Tarjetas:
+  - card (sombra suave, bordes redondeados)
+  - card-header, card-body, card-footer
+
+□ Tablas:
+  - table-responsive
+  - table-hover
+  - table-striped
+
+□ Formularios:
+  - form-group
+  - form-control
+  - form-label
+
+6.4 ICONOS
+----------
+Librería recomendada: Font Awesome 6 o Material Icons
+
+Iconos por módulo (ya definidos arriba)
+
+================================================================================
+FASE 7: WIDGETS DEL DASHBOARD
+================================================================================
+
+7.1 ESTADÍSTICAS RÁPIDAS (4 tarjetas superiores)
+-------------------------------------------------
+┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+│ 👥 Clientes    │ │ 📦 Productos   │ │ 💰 Facturas    │ │ 💳 Pagos Pend. │
+│                │ │                │ │                │ │                │
+│     150        │ │      85        │ │   Hoy: 12      │ │   $45,000      │
+│   +5 esta sem  │ │   Stock: 340   │ │   Mes: 245     │ │   15 facturas  │
+└────────────────┘ └────────────────┘ └────────────────┘ └────────────────┘
+
+7.2 GRÁFICAS (Fila central)
+----------------------------
+□ Gráfica de ventas del mes (líneas)
+□ Top 5 productos vendidos (barras)
+□ Estado de pedidos (pie/donut)
+
+7.3 ACTIVIDAD RECIENTE (Tabla inferior)
+----------------------------------------
+Últimas 5-10 acciones:
+- "Juan Pérez creó factura #125" - hace 5 min
+- "María López actualizó cliente #45" - hace 15 min
+- etc.
+
+================================================================================
+FASE 8: PRIORIDADES DE IMPLEMENTACIÓN
+================================================================================
+
+SPRINT 1 - FUNDAMENTOS (ALTA PRIORIDAD):
+========================================
+□ 1. Crear DashboardController y vista dashboard.html
+□ 2. Crear navbar.html con menú de usuario
+□ 3. Diseñar grid de módulos con tarjetas
+□ 4. Implementar estilos CSS (dashboard.css, navbar.css)
+□ 5. Crear PerfilController y vistas de perfil
+□ 6. Implementar logout funcional
+□ 7. Proteger rutas con Spring Security
+□ 8. Redirección automática post-login a /dashboard
+
+SPRINT 2 - MÓDULO DE PAGOS (ALTA PRIORIDAD):
+============================================
+□ 1. Crear entidad Pago
+□ 2. Crear PagoRepository y PagoService
+□ 3. Crear PagoController
+□ 4. Vistas de gestión de pagos
+□ 5. Integrar pagos con facturas
+□ 6. Calcular saldo pendiente por factura
+
+SPRINT 3 - MÓDULO DE PEDIDOS:
+=============================
+□ 1. Crear entidad Pedido y LineaPedido
+□ 2. Separar lógica de pedidos de facturas
+□ 3. Crear PedidoController
+□ 4. Vistas de gestión de pedidos
+□ 5. Workflow: Pedido -> Factura
+□ 6. Estados de pedido
+
+SPRINT 4 - INVENTARIO MEJORADO:
+===============================
+□ 1. Crear entidad Stock
+□ 2. Crear entidad MovimientoInventario
+□ 3. Implementar control de stock
+□ 4. Alertas de stock mínimo
+□ 5. Kardex de productos
+□ 6. Entradas y salidas de inventario
+
+SPRINT 5 - REPORTES:
+====================
+□ 1. Crear ReporteController
+□ 2. Reporte de ventas por período
+□ 3. Reporte de ventas por cliente
+□ 4. Reporte de ventas por producto
+□ 5. Reporte de inventario valorizado
+□ 6. Exportar a PDF/Excel
+
+SPRINT 6 - MÓDULO DE USUARIOS:
+==============================
+□ 1. Ampliar modelo Usuario
+□ 2. CRUD de usuarios (solo ADMIN)
+□ 3. Asignación de roles
+□ 4. Activar/Desactivar usuarios
+□ 5. Log de actividades de usuario
+
+SPRINT 7 - MEJORAS Y PULIDO:
+============================
+□ 1. Breadcrumbs en todas las páginas
+□ 2. Búsquedas y filtros avanzados
+□ 3. Paginación en tablas grandes
+□ 4. Validaciones client-side (JavaScript)
+□ 5. Mensajes de confirmación (SweetAlert2)
+□ 6. Loading spinners
+□ 7. Responsive design completo
+
+================================================================================
+FASE 9: TECNOLOGÍAS Y LIBRERÍAS RECOMENDADAS
+================================================================================
+
+FRONTEND:
+---------
+✓ Thymeleaf (ya implementado)
+□ Bootstrap 5 o Tailwind CSS (framework CSS)
+□ Font Awesome 6 (iconos)
+□ Chart.js (gráficas)
+□ DataTables (tablas interactivas)
+□ SweetAlert2 (alertas bonitas)
+□ Select2 (selects mejorados)
+□ Flatpickr (date picker)
+
+BACKEND:
+--------
+✓ Spring Boot (ya implementado)
+✓ Spring Security (ya implementado)
+✓ Spring Data JPA (ya implementado)
+□ Apache POI (exportar Excel)
+□ iText o Flying Saucer (exportar PDF)
+□ ModelMapper (mapeo de DTOs)
+
+================================================================================
+FASE 10: WIREFRAMES ASCII
+================================================================================
+
+DASHBOARD COMPLETO:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [LOGO] WhatsApp Orders Manager        [🏠]        [👤 Usuario Admin ▼]     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   Dashboard > Inicio                                                         │
+│                                                                              │
+│   ESTADÍSTICAS RÁPIDAS                                                       │
+│   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐                     │
+│   │👥 150    │ │📦 85     │ │💰 12     │ │💳 $45K   │                     │
+│   │Clientes  │ │Productos │ │Fact. Hoy │ │Pend.     │                     │
+│   └──────────┘ └──────────┘ └──────────┘ └──────────┘                     │
+│                                                                              │
+│   MÓDULOS                                                                    │
+│   ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐                 │
+│   │  👥   │ │  📦   │ │  💰   │ │  📋   │ │  📊   │                 │
+│   │Cliente │ │Product│ │Factura│ │Pedidos│ │Report │                 │
+│   └────────┘ └────────┘ └────────┘ └────────┘ └────────┘                 │
+│   ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐                 │
+│   │  📦   │ │  👤   │ │  🔧   │ │  📄   │ │  💳   │                 │
+│   │Inventa │ │Usuario│ │Config │ │Documen│ │Pagos  │                 │
+│   └────────┘ └────────┘ └────────┘ └────────┘ └────────┘                 │
+│                                                                              │
+│   ACTIVIDAD RECIENTE                                                         │
+│   ┌──────────────────────────────────────────────────────────────────┐     │
+│   │ • Factura #125 creada por Juan Pérez          hace 5 min         │     │
+│   │ • Cliente #45 actualizado por María López     hace 15 min        │     │
+│   │ • Producto #23 modificado por Admin           hace 1 hora        │     │
+│   └──────────────────────────────────────────────────────────────────┘     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+DROPDOWN USUARIO:
+                                    ┌─────────────────────┐
+                                    │ 👤 Ver mi perfil    │
+                                    │ ⚙️ Configuración    │
+                                    │ 📊 Mi actividad     │
+                                    │ ─────────────────   │
+                                    │ 🚪 Cerrar sesión    │
+                                    └─────────────────────┘
+
+================================================================================
+NOTAS IMPORTANTES
+================================================================================
+
+1. MANTENER COMPATIBILIDAD:
+   - No romper funcionalidad existente
+   - Migración gradual módulo por módulo
+
+2. RESPONSIVE FIRST:
+   - Diseñar para móvil primero
+   - Grid adaptable (2 columnas en móvil, 5 en desktop)
+
+3. ACCESIBILIDAD:
+   - Alt text en iconos
+   - Labels en formularios
+   - Contraste de colores adecuado
+
+4. PERFORMANCE:
+   - Lazy loading de módulos
+   - Caché de estadísticas
+   - Optimizar consultas SQL
+
+5. SEGURIDAD:
+   - CSRF tokens
+   - Validación server-side
+   - Escapar output HTML
+   - Rate limiting en login
+
+================================================================================
+CHECKLIST DE ARCHIVOS A CREAR
+================================================================================
+
+CONTROLADORES:
+□ DashboardController.java
+□ PerfilController.java
+□ PedidoController.java
+□ PagoController.java
+□ ReporteController.java
+□ UsuarioAdminController.java
+
+MODELOS:
+□ Pedido.java
+□ LineaPedido.java
+□ Pago.java
+□ Stock.java
+□ MovimientoInventario.java
+
+REPOSITORIOS:
+□ PedidoRepository.java
+□ PagoRepository.java
+□ StockRepository.java
+□ MovimientoInventarioRepository.java
+
+SERVICIOS:
+□ PedidoService.java + PedidoServiceImpl.java
+□ PagoService.java + PagoServiceImpl.java
+□ StockService.java + StockServiceImpl.java
+□ ReporteService.java + ReporteServiceImpl.java
+
+VISTAS HTML:
+□ templates/dashboard.html
+□ templates/components/navbar.html
+□ templates/components/module-card.html
+□ templates/perfil/ver.html
+□ templates/perfil/editar.html
+□ templates/pedidos/lista.html
+□ templates/pedidos/detalle.html
+□ templates/pedidos/form.html
+□ templates/pagos/lista.html
+□ templates/pagos/form.html
+□ templates/reportes/ventas.html
+□ templates/reportes/dashboard.html
+□ templates/usuarios/admin-lista.html
+
+CSS:
+□ static/css/dashboard.css
+□ static/css/navbar.css
+□ static/css/module-cards.css
+□ static/css/common.css
+□ static/css/responsive.css
+
+JAVASCRIPT:
+□ static/js/dashboard.js
+□ static/js/navbar.js
+□ static/js/common.js
+□ static/js/charts.js
+
+ENUMS:
+□ EstadoPedido.java
+□ MetodoPago.java
+□ TipoMovimientoInventario.java
+
+================================================================================
+FIN DEL DOCUMENTO DE PLANIFICACIÓN
+================================================================================
+Última actualización: 10 de octubre de 2025
+Próxima revisión: Inicio de cada Sprint
+
+IMPORTANTE: Este documento debe actualizarse conforme se tomen decisiones
+durante el desarrollo. Usar como referencia para todas las fases del proyecto.
+================================================================================

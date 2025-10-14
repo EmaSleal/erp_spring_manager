@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Perfil - WhatsApp Orders Manager</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/navbar.css}">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <link rel="stylesheet" th:href="@{/css/forms.css}">
+    
+    <style>
+        .edit-profile-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+        }
+        
+        .edit-profile-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .card-header-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-bottom: none;
+        }
+        
+        .card-header-custom h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .card-header-custom p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .tabs-wrapper {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .nav-tabs {
+            border-bottom: none;
+            padding: 0 2rem;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 500;
+            padding: 1rem 1.5rem;
+            background: transparent;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            border-color: transparent;
+            color: #667eea;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #667eea;
+            background-color: transparent;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            padding: 2rem;
+        }
+        
+        .form-section {
+            margin-bottom: 2rem;
+        }
+        
+        .form-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-label i {
+            margin-right: 0.5rem;
+            color: #667eea;
+            width: 20px;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+        
+        .form-text {
+            color: #6c757d;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        .avatar-preview-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .avatar-preview {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+        
+        .avatar-image-preview {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #667eea;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .avatar-initials-preview {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: white;
+            border: 4px solid #667eea;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            text-transform: uppercase;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .btn-file-input {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-file-input:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .file-name-display {
+            margin-top: 0.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .password-strength {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .strength-weak { color: #dc3545; }
+        .strength-medium { color: #ffc107; }
+        .strength-strong { color: #28a745; }
+        
+        .btn-save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-delete-avatar {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+        
+        .alert-custom {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-start;
+            padding-top: 1rem;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        @media (max-width: 768px) {
+            .edit-profile-container {
+                margin: 1rem;
+            }
+            
+            .tab-content {
+                padding: 1.5rem 1rem;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .form-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+    
+    <div class="layout-wrapper">
+        <!-- Sidebar -->
+        <div th:replace="~{components/sidebar :: sidebar}"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="edit-profile-container">
+                
+                <!-- Breadcrumbs (3 niveles) -->
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a th:href="@{/dashboard}" class="text-decoration-none">
+                                <i class="fas fa-home me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a th:href="@{/perfil}" class="text-decoration-none">
+                                <i class="fas fa-user me-1"></i>Mi Perfil
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <i class="fas fa-edit me-1"></i>Editar Perfil
+                        </li>
+                    </ol>
+                </nav>
+                
+                <!-- Success/Error Messages -->
+                <div th:if="${success}" class="alert alert-success alert-custom alert-dismissible fade show mb-3" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <span th:text="${success}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <div th:if="${error}" class="alert alert-danger alert-custom alert-dismissible fade show mb-3" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <span th:text="${error}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <div th:if="${errorPassword}" class="alert alert-danger alert-custom alert-dismissible fade show mb-3" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <span th:text="${errorPassword}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <div th:if="${errorAvatar}" class="alert alert-danger alert-custom alert-dismissible fade show mb-3" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <span th:text="${errorAvatar}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <!-- Edit Profile Card -->
+                <div class="edit-profile-card">
+                    <!-- Card Header -->
+                    <div class="card-header-custom">
+                        <h2><i class="fas fa-user-edit me-2"></i>Editar Perfil</h2>
+                        <p>Actualiza tu información personal, contraseña y foto de perfil</p>
+                    </div>
+                    
+                    <!-- Tabs Navigation -->
+                    <div class="tabs-wrapper">
+                        <ul class="nav nav-tabs" id="editProfileTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab" aria-controls="info" aria-selected="true">
+                                    <i class="fas fa-user me-2"></i>Información Personal
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="false">
+                                    <i class="fas fa-lock me-2"></i>Cambiar Contraseña
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="avatar-tab" data-bs-toggle="tab" data-bs-target="#avatar" type="button" role="tab" aria-controls="avatar" aria-selected="false">
+                                    <i class="fas fa-image me-2"></i>Foto de Perfil
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Tabs Content -->
+                    <div class="tab-content" id="editProfileTabContent">
+                        
+                        <!-- Tab 1: Personal Information -->
+                        <div class="tab-pane fade show active" id="info" role="tabpanel" aria-labelledby="info-tab">
+                            <form th:action="@{/perfil/actualizar}" method="post" id="formInfoPersonal">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                
+                                <div class="form-section">
+                                    <h3 class="form-section-title">Datos Personales</h3>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="nombre" class="form-label">
+                                                    <i class="fas fa-user"></i>
+                                                    Nombre Completo
+                                                </label>
+                                                <input type="text" 
+                                                       class="form-control" 
+                                                       id="nombre" 
+                                                       name="nombre" 
+                                                       th:value="${usuario.nombre}"
+                                                       required
+                                                       minlength="3"
+                                                       maxlength="100"
+                                                       placeholder="Ingrese su nombre completo">
+                                                <div class="form-text">Mínimo 3 caracteres</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="telefono" class="form-label">
+                                                    <i class="fas fa-phone"></i>
+                                                    Teléfono
+                                                </label>
+                                                <input type="tel" 
+                                                       class="form-control" 
+                                                       id="telefono" 
+                                                       name="telefono" 
+                                                       th:value="${usuario.telefono}"
+                                                       required
+                                                       pattern="[0-9+\-\s()]+"
+                                                       maxlength="20"
+                                                       placeholder="+1234567890">
+                                                <div class="form-text">Debe ser único en el sistema</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="email" class="form-label">
+                                                    <i class="fas fa-envelope"></i>
+                                                    Correo Electrónico
+                                                </label>
+                                                <input type="email" 
+                                                       class="form-control" 
+                                                       id="email" 
+                                                       name="email" 
+                                                       th:value="${usuario.email}"
+                                                       maxlength="100"
+                                                       placeholder="correo@ejemplo.com">
+                                                <div class="form-text">Opcional. Debe ser único si se proporciona</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="rol" class="form-label">
+                                                    <i class="fas fa-user-tag"></i>
+                                                    Rol
+                                                </label>
+                                                <input type="text" 
+                                                       class="form-control" 
+                                                       id="rol" 
+                                                       th:value="${usuario.rol}"
+                                                       disabled
+                                                       readonly>
+                                                <div class="form-text">El rol no puede ser modificado por el usuario</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary btn-save">
+                                        <i class="fas fa-save me-2"></i>Guardar Cambios
+                                    </button>
+                                    <a th:href="@{/perfil}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancelar
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Tab 2: Change Password -->
+                        <div class="tab-pane fade" id="password" role="tabpanel" aria-labelledby="password-tab">
+                            <form th:action="@{/perfil/cambiar-password}" method="post" id="formCambiarPassword">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                
+                                <div class="form-section">
+                                    <h3 class="form-section-title">Cambiar Contraseña</h3>
+                                    
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Por seguridad, debes ingresar tu contraseña actual antes de establecer una nueva.
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label for="currentPassword" class="form-label">
+                                                    <i class="fas fa-lock"></i>
+                                                    Contraseña Actual
+                                                </label>
+                                                <input type="password" 
+                                                       class="form-control" 
+                                                       id="currentPassword" 
+                                                       name="currentPassword" 
+                                                       required
+                                                       placeholder="Ingrese su contraseña actual">
+                                                <div class="form-text">Para verificar su identidad</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="newPassword" class="form-label">
+                                                    <i class="fas fa-key"></i>
+                                                    Nueva Contraseña
+                                                </label>
+                                                <input type="password" 
+                                                       class="form-control" 
+                                                       id="newPassword" 
+                                                       name="newPassword" 
+                                                       required
+                                                       minlength="6"
+                                                       placeholder="Ingrese su nueva contraseña">
+                                                <div class="password-strength" id="passwordStrength"></div>
+                                                <div class="form-text">Mínimo 6 caracteres</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="confirmPassword" class="form-label">
+                                                    <i class="fas fa-key"></i>
+                                                    Confirmar Nueva Contraseña
+                                                </label>
+                                                <input type="password" 
+                                                       class="form-control" 
+                                                       id="confirmPassword" 
+                                                       name="confirmPassword" 
+                                                       required
+                                                       minlength="6"
+                                                       placeholder="Confirme su nueva contraseña">
+                                                <div class="form-text" id="passwordMatch"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary btn-save">
+                                        <i class="fas fa-key me-2"></i>Cambiar Contraseña
+                                    </button>
+                                    <a th:href="@{/perfil}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancelar
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Tab 3: Avatar -->
+                        <div class="tab-pane fade" id="avatar" role="tabpanel" aria-labelledby="avatar-tab">
+                            <div class="form-section">
+                                <h3 class="form-section-title">Foto de Perfil</h3>
+                                
+                                <div class="avatar-preview-container">
+                                    <div class="avatar-preview">
+                                        <!-- Current Avatar -->
+                                        <img th:if="${usuario.avatar != null and !usuario.avatar.isEmpty()}" 
+                                             th:src="@{${usuario.avatar}}" 
+                                             th:alt="${usuario.nombre}"
+                                             class="avatar-image-preview"
+                                             id="avatarPreviewImg">
+                                        
+                                        <!-- Initials if no avatar -->
+                                        <div th:unless="${usuario.avatar != null and !usuario.avatar.isEmpty()}" 
+                                             class="avatar-initials-preview"
+                                             id="avatarPreviewInitials">
+                                            <span th:text="${#strings.substring(usuario.nombre, 0, 1) + 
+                                                          (#strings.indexOf(usuario.nombre, ' ') > 0 ? 
+                                                           #strings.substring(usuario.nombre, #strings.indexOf(usuario.nombre, ' ') + 1, #strings.indexOf(usuario.nombre, ' ') + 2) : 
+                                                           #strings.substring(usuario.nombre, 1, 2))}">AB</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="text-muted">
+                                        <span th:if="${usuario.avatar != null and !usuario.avatar.isEmpty()}">
+                                            Foto actual. Puedes cambiarla subiendo una nueva imagen.
+                                        </span>
+                                        <span th:unless="${usuario.avatar != null and !usuario.avatar.isEmpty()}">
+                                            No tienes foto de perfil. Sube una imagen para personalizar tu cuenta.
+                                        </span>
+                                    </p>
+                                </div>
+                                
+                                <!-- Upload Avatar Form -->
+                                <form th:action="@{/perfil/subir-avatar}" method="post" enctype="multipart/form-data" id="formSubirAvatar">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                    
+                                    <div class="row justify-content-center">
+                                        <div class="col-md-8">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                <strong>Requisitos de la imagen:</strong>
+                                                <ul class="mb-0 mt-2">
+                                                    <li>Formato: JPG, JPEG, PNG o GIF</li>
+                                                    <li>Tamaño máximo: 2 MB</li>
+                                                    <li>Recomendado: imagen cuadrada (ej. 500x500 px)</li>
+                                                </ul>
+                                            </div>
+                                            
+                                            <div class="form-group text-center">
+                                                <div class="file-input-wrapper">
+                                                    <label for="avatarFile" class="btn-file-input">
+                                                        <i class="fas fa-upload me-2"></i>Seleccionar Imagen
+                                                    </label>
+                                                    <input type="file" 
+                                                           id="avatarFile" 
+                                                           name="avatar" 
+                                                           accept="image/*"
+                                                           required>
+                                                </div>
+                                                <div class="file-name-display" id="fileName">Ningún archivo seleccionado</div>
+                                            </div>
+                                            
+                                            <div class="form-actions justify-content-center">
+                                                <button type="submit" class="btn btn-primary btn-save">
+                                                    <i class="fas fa-cloud-upload-alt me-2"></i>Subir Foto
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                                
+                                <!-- Delete Avatar Form -->
+                                <div th:if="${usuario.avatar != null and !usuario.avatar.isEmpty()}" class="row justify-content-center mt-4">
+                                    <div class="col-md-8">
+                                        <hr>
+                                        <form th:action="@{/perfil/eliminar-avatar}" method="post" id="formEliminarAvatar">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                            
+                                            <div class="text-center">
+                                                <p class="text-muted mb-3">
+                                                    <i class="fas fa-trash-alt me-2"></i>
+                                                    Si eliminas tu foto de perfil, se mostrarán tus iniciales en su lugar.
+                                                </p>
+                                                <button type="submit" class="btn btn-danger btn-delete-avatar" onclick="return confirm('¿Estás seguro de que deseas eliminar tu foto de perfil?')">
+                                                    <i class="fas fa-trash-alt me-2"></i>Eliminar Foto Actual
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+            </div>
+        </main>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script th:src="@{/js/navbar.js}"></script>
+    <script th:src="@{/js/sidebar.js}"></script>
+    <script th:src="@{/js/common.js}"></script>
+    
+    <script>
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+            
+            // If there's a password error, switch to password tab
+            const errorPassword = document.querySelector('[th\\:if="${errorPassword}"]');
+            if (errorPassword && errorPassword.textContent.trim()) {
+                const passwordTab = new bootstrap.Tab(document.getElementById('password-tab'));
+                passwordTab.show();
+            }
+            
+            // If there's an avatar error, switch to avatar tab
+            const errorAvatar = document.querySelector('[th\\:if="${errorAvatar}"]');
+            if (errorAvatar && errorAvatar.textContent.trim()) {
+                const avatarTab = new bootstrap.Tab(document.getElementById('avatar-tab'));
+                avatarTab.show();
+            }
+        });
+        
+        // Password strength indicator
+        document.getElementById('newPassword')?.addEventListener('input', function(e) {
+            const password = e.target.value;
+            const strengthDiv = document.getElementById('passwordStrength');
+            
+            if (password.length === 0) {
+                strengthDiv.textContent = '';
+                return;
+            }
+            
+            let strength = 0;
+            if (password.length >= 6) strength++;
+            if (password.length >= 10) strength++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+            
+            if (strength <= 2) {
+                strengthDiv.textContent = '⚠️ Contraseña débil';
+                strengthDiv.className = 'password-strength strength-weak';
+            } else if (strength <= 3) {
+                strengthDiv.textContent = '✓ Contraseña media';
+                strengthDiv.className = 'password-strength strength-medium';
+            } else {
+                strengthDiv.textContent = '✓✓ Contraseña fuerte';
+                strengthDiv.className = 'password-strength strength-strong';
+            }
+        });
+        
+        // Password match validator
+        function checkPasswordMatch() {
+            const newPassword = document.getElementById('newPassword')?.value;
+            const confirmPassword = document.getElementById('confirmPassword')?.value;
+            const matchDiv = document.getElementById('passwordMatch');
+            
+            if (!confirmPassword) {
+                matchDiv.textContent = '';
+                return;
+            }
+            
+            if (newPassword === confirmPassword) {
+                matchDiv.textContent = '✓ Las contraseñas coinciden';
+                matchDiv.style.color = '#28a745';
+            } else {
+                matchDiv.textContent = '✗ Las contraseñas no coinciden';
+                matchDiv.style.color = '#dc3545';
+            }
+        }
+        
+        document.getElementById('newPassword')?.addEventListener('input', checkPasswordMatch);
+        document.getElementById('confirmPassword')?.addEventListener('input', checkPasswordMatch);
+        
+        // File input handler
+        document.getElementById('avatarFile')?.addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'Ningún archivo seleccionado';
+            document.getElementById('fileName').textContent = fileName;
+            
+            // Preview image
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const avatarImg = document.getElementById('avatarPreviewImg');
+                    const avatarInitials = document.getElementById('avatarPreviewInitials');
+                    
+                    if (avatarImg) {
+                        avatarImg.src = event.target.result;
+                    } else if (avatarInitials) {
+                        // Replace initials with image preview
+                        avatarInitials.outerHTML = `<img src="${event.target.result}" class="avatar-image-preview" id="avatarPreviewImg">`;
+                    }
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+        
+        // Form validation
+        document.getElementById('formCambiarPassword')?.addEventListener('submit', function(e) {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                e.preventDefault();
+                alert('Las contraseñas no coinciden. Por favor, verifica e intenta nuevamente.');
+                return false;
+            }
+            
+            if (newPassword.length < 6) {
+                e.preventDefault();
+                alert('La nueva contraseña debe tener al menos 6 caracteres.');
+                return false;
+            }
+        });
+        
+        // Validate file size before upload
+        document.getElementById('formSubirAvatar')?.addEventListener('submit', function(e) {
+            const fileInput = document.getElementById('avatarFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                e.preventDefault();
+                alert('Por favor, selecciona una imagen.');
+                return false;
+            }
+            
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+                e.preventDefault();
+                alert('La imagen es demasiado grande. El tamaño máximo es 2MB.');
+                return false;
+            }
+            
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!validTypes.includes(file.type)) {
+                e.preventDefault();
+                alert('Formato de imagen no válido. Solo se permiten JPG, JPEG, PNG y GIF.');
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>

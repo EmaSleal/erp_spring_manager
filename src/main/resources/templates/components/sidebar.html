@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- ============================================================================
+     SIDEBAR COMPONENT - Menú Lateral de Navegación
+     WhatsApp Orders Manager
+     ============================================================================ -->
+
+<aside th:fragment="sidebar" class="sidebar" id="sidebar">
+    
+    <!-- Header del Sidebar -->
+    <div class="sidebar-header">
+        <div class="sidebar-title">Menú Principal</div>
+    </div>
+
+    <!-- Menú de Módulos -->
+    <ul class="sidebar-menu">
+        
+        <!-- ====================================================================
+             MÓDULOS ACTIVOS (Funcionales)
+             ==================================================================== -->
+        
+        <!-- Clientes -->
+        <li class="menu-item">
+            <a th:href="@{/clientes}" 
+               class="menu-link" 
+               data-module="clientes"
+               data-tooltip="Clientes">
+                <div class="menu-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="menu-text">Clientes</span>
+                <span class="menu-badge bg-secondary" sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" 
+                      style="font-size: 0.65rem; padding: 2px 6px;">
+                    <i class="bi bi-eye-fill"></i>
+                </span>
+            </a>
+        </li>
+
+        <!-- Productos -->
+        <li class="menu-item">
+            <a th:href="@{/productos}" 
+               class="menu-link" 
+               data-module="productos"
+               data-tooltip="Productos">
+                <div class="menu-icon">
+                    <i class="fas fa-box"></i>
+                </div>
+                <span class="menu-text">Productos</span>
+                <span class="menu-badge bg-secondary" sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" 
+                      style="font-size: 0.65rem; padding: 2px 6px;">
+                    <i class="bi bi-eye-fill"></i>
+                </span>
+            </a>
+        </li>
+
+        <!-- Facturas -->
+        <li class="menu-item">
+            <a th:href="@{/facturas}" 
+               class="menu-link" 
+               data-module="facturas"
+               data-tooltip="Facturas">
+                <div class="menu-icon">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <span class="menu-text">Facturas</span>
+                <span class="menu-badge bg-success" sec:authorize="hasRole('VENDEDOR')" 
+                      style="font-size: 0.65rem; padding: 2px 6px;">
+                    <i class="bi bi-plus-circle-fill"></i>
+                </span>
+                <span class="menu-badge bg-secondary" sec:authorize="hasRole('VISUALIZADOR')" 
+                      style="font-size: 0.65rem; padding: 2px 6px;">
+                    <i class="bi bi-eye-fill"></i>
+                </span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <li><div class="menu-divider"></div></li>
+
+        <!-- Section Title -->
+        <li><div class="menu-section-title">Próximamente</div></li>
+
+        <!-- ====================================================================
+             MÓDULOS INACTIVOS (Próximamente)
+             ==================================================================== -->
+        
+        <!-- Pedidos -->
+        <li class="menu-item">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="pedidos"
+               data-tooltip="Pedidos">
+                <div class="menu-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <span class="menu-text">Pedidos</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Reportes -->
+        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="reportes"
+               data-tooltip="Reportes">
+                <div class="menu-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <span class="menu-text">Reportes</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Inventario -->
+        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="inventario"
+               data-tooltip="Inventario">
+                <div class="menu-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <span class="menu-text">Inventario</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Pagos -->
+        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="pagos"
+               data-tooltip="Pagos">
+                <div class="menu-icon">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <span class="menu-text">Pagos</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Documentos -->
+        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="documentos"
+               data-tooltip="Documentos">
+                <div class="menu-icon">
+                    <i class="fas fa-folder"></i>
+                </div>
+                <span class="menu-text">Documentos</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Divider (solo ADMIN) -->
+        <li sec:authorize="hasRole('ADMIN')">
+            <div class="menu-divider"></div>
+        </li>
+
+        <!-- Section Title (solo ADMIN) -->
+        <li sec:authorize="hasRole('ADMIN')">
+            <div class="menu-section-title">Administración</div>
+        </li>
+
+        <!-- Usuarios (solo ADMIN) -->
+        <li class="menu-item" sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/usuarios}" 
+               class="menu-link" 
+               data-module="usuarios"
+               data-tooltip="Usuarios">
+                <div class="menu-icon">
+                    <i class="fas fa-user-cog"></i>
+                </div>
+                <span class="menu-text">Usuarios</span>
+            </a>
+        </li>
+
+        <!-- Configuración (solo ADMIN) -->
+        <li class="menu-item" sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/configuracion}" 
+               class="menu-link" 
+               data-module="config"
+               data-tooltip="Configuración">
+                <div class="menu-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <span class="menu-text">Configuración</span>
+            </a>
+        </li>
+
+    </ul>
+
+    <!-- Botón de Collapse (Desktop) -->
+    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+
+</aside>
+
+</html>

@@ -1,0 +1,295 @@
+/*
+ * ============================================================================
+ * RESPONSIVE.CSS - Media Queries y Ajustes Responsive
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Ajustes globales para diferentes tamaños de pantalla
+ */
+
+/* ============================================================================
+   MÓVIL EXTRA PEQUEÑO (<576px)
+   ============================================================================ */
+@media (max-width: 575px) {
+    /* Tipografía */
+    html {
+        font-size: 14px;
+    }
+    
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
+    h4 { font-size: 1.125rem; }
+    
+    /* Layout principal */
+    .main-content {
+        margin-left: 0;
+        padding: var(--spacing-md);
+    }
+    
+    /* Cards */
+    .card {
+        border-radius: var(--border-radius-md);
+        padding: var(--spacing-md);
+    }
+    
+    /* Botones */
+    .btn {
+        /* width: 100%; */
+        justify-content: center;
+        padding: 0.5rem 1rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: var(--border-radius-md) !important;
+    }
+}
+
+/* ============================================================================
+   MÓVIL PEQUEÑO (576px - 767px)
+   ============================================================================ */
+@media (min-width: 576px) and (max-width: 767px) {
+    .main-content {
+        margin-left: 0;
+        padding: var(--spacing-lg);
+    }
+}
+
+/* ============================================================================
+   TABLET (768px - 991px)
+   ============================================================================ */
+@media (min-width: 768px) and (max-width: 991px) {
+    .main-content {
+        padding: var(--spacing-lg) var(--spacing-xl);
+    }
+    
+    /* Sidebar visible pero puede colapsar */
+    .sidebar {
+        width: 200px;
+    }
+    
+    .main-content {
+        margin-left: 200px;
+    }
+}
+
+/* ============================================================================
+   DESKTOP PEQUEÑO (992px - 1199px)
+   ============================================================================ */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .main-content {
+        padding: var(--spacing-xl);
+    }
+}
+
+/* ============================================================================
+   DESKTOP GRANDE (≥1200px)
+   ============================================================================ */
+@media (min-width: 1200px) {
+    .main-content {
+        padding: var(--spacing-xl) var(--spacing-2xl);
+    }
+    
+    /* Contenedores con max-width */
+    .container-limited {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+}
+
+/* ============================================================================
+   ULTRA WIDE (≥1920px)
+   ============================================================================ */
+@media (min-width: 1920px) {
+    .container-limited {
+        max-width: 1600px;
+    }
+}
+
+/* ============================================================================
+   ORIENTACIÓN - LANDSCAPE (Móvil horizontal)
+   ============================================================================ */
+@media (max-width: 767px) and (orientation: landscape) {
+    .navbar {
+        height: 56px;
+    }
+    
+    :root {
+        --navbar-height: 56px;
+    }
+    
+    .sidebar {
+        top: 56px;
+        height: calc(100vh - 56px);
+    }
+    
+    .main-content {
+        margin-top: 56px;
+    }
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+@media print {
+    /* Ocultar elementos no imprimibles */
+    .navbar,
+    .sidebar,
+    .sidebar-toggle,
+    .btn,
+    .action-buttons,
+    .table-toolbar,
+    .pagination,
+    .no-print {
+        display: none !important;
+    }
+    
+    /* Ajustar layout */
+    .main-content {
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* Forzar colores de impresión */
+    * {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+    }
+    
+    /* Tablas */
+    .data-table {
+        border-collapse: collapse;
+    }
+    
+    .data-table th,
+    .data-table td {
+        border: 1px solid #000;
+        padding: 8px;
+    }
+    
+    /* Saltos de página */
+    .card,
+    .table-container {
+        page-break-inside: avoid;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+    }
+}
+
+/* ============================================================================
+   PREFERENCIAS DE USUARIO
+   ============================================================================ */
+
+/* Reducción de movimiento (accesibilidad) */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Modo oscuro (futuro) */
+@media (prefers-color-scheme: dark) {
+    /* Preparado para implementación futura */
+    /* 
+    :root {
+        --background-color: #1a1a1a;
+        --card-background: #2a2a2a;
+        --text-primary: #ffffff;
+        --text-secondary: #b0b0b0;
+    }
+    */
+}
+
+/* ============================================================================
+   UTILIDADES RESPONSIVE
+   ============================================================================ */
+
+/* Mostrar/ocultar por breakpoint */
+.d-none { display: none !important; }
+.d-block { display: block !important; }
+.d-flex { display: flex !important; }
+
+/* Móvil */
+@media (max-width: 575px) {
+    .d-xs-none { display: none !important; }
+    .d-xs-block { display: block !important; }
+    .d-xs-flex { display: flex !important; }
+}
+
+/* Tablet */
+@media (min-width: 768px) {
+    .d-md-none { display: none !important; }
+    .d-md-block { display: block !important; }
+    .d-md-flex { display: flex !important; }
+}
+
+/* Desktop */
+@media (min-width: 992px) {
+    .d-lg-none { display: none !important; }
+    .d-lg-block { display: block !important; }
+    .d-lg-flex { display: flex !important; }
+}
+
+/* Desktop grande */
+@media (min-width: 1200px) {
+    .d-xl-none { display: none !important; }
+    .d-xl-block { display: block !important; }
+    .d-xl-flex { display: flex !important; }
+}
+
+/* ============================================================================
+   AJUSTES DE ESPACIADO RESPONSIVE
+   ============================================================================ */
+@media (max-width: 575px) {
+    :root {
+        --spacing-xl: 1.5rem;
+        --spacing-2xl: 2rem;
+    }
+}
+
+/* ============================================================================
+   GRID RESPONSIVE GENERAL
+   ============================================================================ */
+.grid-responsive {
+    display: grid;
+    gap: var(--spacing-md);
+}
+
+/* Móvil: 1 columna */
+@media (max-width: 575px) {
+    .grid-responsive {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Tablet: 2 columnas */
+@media (min-width: 576px) and (max-width: 991px) {
+    .grid-responsive {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Desktop: 3 columnas */
+@media (min-width: 992px) {
+    .grid-responsive {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Desktop grande: 4 columnas */
+@media (min-width: 1200px) {
+    .grid-responsive {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}

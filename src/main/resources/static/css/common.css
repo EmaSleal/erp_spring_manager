@@ -1,0 +1,585 @@
+/*
+ * ============================================================================
+ * COMMON.CSS - Estilos Globales
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Contiene variables CSS, reset básico y estilos compartidos por toda la app
+ */
+
+/* ============================================================================
+   VARIABLES CSS - Paleta Material Design
+   ============================================================================ */
+:root {
+    /* Colores Principales */
+    --primary-color: #1976D2;           /* Azul Material Design */
+    --primary-dark: #1565C0;
+    --primary-light: #42A5F5;
+    
+    --background-color: #F5F5F5;        /* Gris claro */
+    --card-background: #FFFFFF;         /* Blanco */
+    --text-primary: #212121;            /* Gris oscuro */
+    --text-secondary: #757575;          /* Gris medio */
+    --text-disabled: #BDBDBD;           /* Gris claro */
+    
+    /* Colores por Módulo */
+    --module-clientes: #2196F3;         /* Azul */
+    --module-productos: #FF9800;        /* Naranja */
+    --module-facturas: #4CAF50;         /* Verde */
+    --module-pedidos: #9C27B0;          /* Púrpura */
+    --module-reportes: #009688;         /* Teal */
+    --module-inventario: #3F51B5;       /* Índigo */
+    --module-usuarios: #607D8B;         /* Gris azulado */
+    --module-config: #9E9E9E;           /* Gris */
+    --module-documentos: #546E7A;       /* Azul grisáceo */
+    --module-pagos: #8BC34A;            /* Verde lima */
+    
+    /* Estados */
+    --success-color: #4CAF50;
+    --warning-color: #FF9800;
+    --error-color: #F44336;
+    --info-color: #2196F3;
+    
+    /* Sombras */
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 16px rgba(0,0,0,0.15);
+    --shadow-xl: 0 12px 24px rgba(0,0,0,0.2);
+    
+    /* Espaciado */
+    --spacing-xs: 0.25rem;  /* 4px */
+    --spacing-sm: 0.5rem;   /* 8px */
+    --spacing-md: 1rem;     /* 16px */
+    --spacing-lg: 1.5rem;   /* 24px */
+    --spacing-xl: 2rem;     /* 32px */
+    --spacing-2xl: 3rem;    /* 48px */
+    
+    /* Tamaños */
+    --navbar-height: 64px;
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 60px;
+    
+    /* Bordes */
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --border-radius-xl: 16px;
+    --border-radius-full: 50%;
+    
+    /* Transiciones */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* ============================================================================
+   RESET Y ESTILOS BASE
+   ============================================================================ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+                 "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* ============================================================================
+   TIPOGRAFÍA
+   ============================================================================ */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+h5 { font-size: 1.25rem; }
+h6 { font-size: 1rem; }
+
+p {
+    margin-bottom: var(--spacing-md);
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+/* ============================================================================
+   LAYOUT PRINCIPAL
+   ============================================================================ */
+.main-content {
+    margin-left: var(--sidebar-width);
+    margin-top: var(--navbar-height);
+    padding: var(--spacing-xl);
+    min-height: calc(100vh - var(--navbar-height));
+    transition: margin-left var(--transition-normal);
+}
+
+.main-content.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+/* ============================================================================
+   CARDS
+   ============================================================================ */
+.card {
+    background: var(--card-background);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    transition: all var(--transition-normal);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--background-color);
+}
+
+.card-body {
+    padding: var(--spacing-md) 0;
+}
+
+.card-footer {
+    padding-top: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    border-top: 1px solid var(--background-color);
+    text-align: right;
+}
+
+/* ============================================================================
+   BOTONES
+   ============================================================================ */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    text-decoration: none;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.btn-error, .btn-danger {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: var(--text-secondary);
+    color: white;
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* ============================================================================
+   BADGES
+   ============================================================================ */
+.badge {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-primary { background-color: var(--primary-color); color: white; }
+.badge-success { background-color: var(--success-color); color: white; }
+.badge-warning { background-color: var(--warning-color); color: white; }
+.badge-error { background-color: var(--error-color); color: white; }
+.badge-info { background-color: var(--info-color); color: white; }
+.badge-secondary { background-color: var(--text-secondary); color: white; }
+
+/* ============================================================================
+   LOADING STATES
+   ============================================================================ */
+.spinner {
+    border: 3px solid var(--background-color);
+    border-top: 3px solid var(--primary-color);
+    border-radius: var(--border-radius-full);
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* Skeleton Loading */
+.skeleton {
+    background: linear-gradient(90deg, 
+        var(--background-color) 25%, 
+        #e0e0e0 50%, 
+        var(--background-color) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--border-radius-md);
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+    height: 16px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.skeleton-title {
+    height: 24px;
+    width: 60%;
+    margin-bottom: var(--spacing-md);
+}
+
+/* ============================================================================
+   UTILIDADES
+   ============================================================================ */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-primary { color: var(--primary-color); }
+.text-success { color: var(--success-color); }
+.text-warning { color: var(--warning-color); }
+.text-error { color: var(--error-color); }
+.text-muted { color: var(--text-secondary); }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: var(--spacing-sm); }
+.mt-2 { margin-top: var(--spacing-md); }
+.mt-3 { margin-top: var(--spacing-lg); }
+.mt-4 { margin-top: var(--spacing-xl); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: var(--spacing-sm); }
+.mb-2 { margin-bottom: var(--spacing-md); }
+.mb-3 { margin-bottom: var(--spacing-lg); }
+.mb-4 { margin-bottom: var(--spacing-xl); }
+
+.p-0 { padding: 0; }
+.p-1 { padding: var(--spacing-sm); }
+.p-2 { padding: var(--spacing-md); }
+.p-3 { padding: var(--spacing-lg); }
+.p-4 { padding: var(--spacing-xl); }
+
+.d-none { display: none; }
+.d-block { display: block; }
+.d-flex { display: flex; }
+.d-inline { display: inline; }
+.d-inline-block { display: inline-block; }
+
+.flex-column { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.align-center { align-items: center; }
+.gap-1 { gap: var(--spacing-sm); }
+.gap-2 { gap: var(--spacing-md); }
+.gap-3 { gap: var(--spacing-lg); }
+
+/* ============================================================================
+   BREADCRUMBS - Navegación de migas de pan
+   ============================================================================ */
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    list-style: none;
+    background-color: #F8F9FA;
+    border: 1px solid #E9ECEF;
+    border-radius: var(--border-radius-md);
+    font-size: 0.9rem;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    color: #6C757D;
+}
+
+.breadcrumb-item a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    font-weight: 500;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+.breadcrumb-item + .breadcrumb-item {
+    padding-left: var(--spacing-sm);
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "/";
+    padding-right: var(--spacing-sm);
+    color: #ADB5BD;
+}
+
+.breadcrumb-item.active {
+    color: #495057;
+    font-weight: 600;
+}
+
+.breadcrumb-item i {
+    font-size: 0.85rem;
+}
+
+/* ============================================================================
+   RESPONSIVE TABLES - Optimización para móviles
+   ============================================================================ */
+
+/* Mejoras generales para tablas responsive */
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--border-radius-md);
+}
+
+/* Ajustes para tablets */
+@media (max-width: 991px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    /* Botones más compactos */
+    .table .btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    .table .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Ajustes para móviles */
+@media (max-width: 767px) {
+    .table-responsive {
+        font-size: 0.8rem;
+        margin: 0 -0.5rem;
+    }
+    
+    /* Reducir padding en celdas */
+    .table th,
+    .table td {
+        /* padding: 0.5rem 0.25rem !important; */
+        white-space: nowrap;
+    }
+    
+    /* Ocultar columnas menos importantes en móvil */
+    /* Productos: Ocultar columna Código */
+    .table thead th:nth-child(2),
+    .table tbody td:nth-child(2) {
+        display: none;
+    }
+    
+    /* Ajustar ancho de columnas ID */
+    .table th:first-child,
+    .table td:first-child {
+        width: 40px !important;
+        font-size: 0.75rem;
+    }
+    
+    /* Botones más pequeños */
+    .table .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.7rem;
+    }
+    
+    .table .btn i {
+        font-size: 0.75rem;
+    }
+    
+    .table .btn-group {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .table .btn-group .btn {
+        width: 100%;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.7rem;
+    }
+    
+    /* Badges más pequeños */
+    .table .badge {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    /* Avatar más pequeño */
+    .avatar-circle {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.7rem !important;
+        margin-right: 0.5rem !important;
+    }
+    
+    /* Texto en celdas */
+    .table .fw-semibold {
+        font-size: 0.75rem;
+    }
+    
+    .table small,
+    .table .text-muted {
+        font-size: 0.65rem;
+    }
+}
+
+/* Ajustes para móviles muy pequeños */
+@media (max-width: 575px) {
+    .table-responsive {
+        font-size: 0.75rem;
+    }
+    
+    /* Forzar scroll horizontal suave */
+    .table {
+        min-width: 600px;
+    }
+    
+    /* Columnas de acciones más compactas */
+    .table th:last-child,
+    .table td:last-child {
+        /* position: sticky; */
+        right: 0;
+        background-color: white;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        z-index: 1;
+    }
+    
+    .table thead th:last-child {
+        background-color: #f8f9fa;
+    }
+}
+
+/* ========================================
+   Paginación Responsive
+   ======================================== */
+#pagination {
+    display: flex;
+    flex-direction: row;
+    /* flex-wrap: wrap; */
+    gap: 0.25rem;
+    align-items: center;
+}
+
+#pagination span {
+    color: #6c757d;
+    font-weight: 500;
+    padding: 0 0.25rem;
+    user-select: none;
+}
+
+/* Botones de paginación más pequeños en mobile */
+@media (max-width: 575px) {
+    #pagination .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        min-width: 32px;
+    }
+    
+    #pagination span {
+        font-size: 0.8rem;
+    }
+}
+

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+
+<!-- Modal para agregar/editar producto -->
+<div th:fragment="producto-modal" class="modal fade" id="productoModal" tabindex="-1" aria-labelledby="productoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title" id="productoModalLabel">
+                    <i class="fas fa-box me-2"></i>
+                    <span id="modalTitle">Agregar Producto</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="productoForm" method="post" novalidate>
+                    <input type="hidden" id="idProducto" name="idProducto" />
+                    <input type="hidden" name="_csrf" th:value="${_csrf.token}" />
+
+                    <div class="row g-3">
+                        <!-- Código -->
+                        <div class="col-md-6">
+                            <label for="codigo" class="form-label">
+                                <i class="fas fa-barcode text-warning me-1"></i>
+                                Código
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="codigo" 
+                                   name="codigo" 
+                                   required 
+                                   maxlength="50">
+                            <div class="invalid-feedback">
+                                Por favor ingrese el código del producto.
+                            </div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="col-md-6">
+                            <label for="descripcion" class="form-label">
+                                <i class="fas fa-align-left text-warning me-1"></i>
+                                Descripción
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="descripcion" 
+                                   name="descripcion" 
+                                   required 
+                                   maxlength="200">
+                            <div class="invalid-feedback">
+                                Por favor ingrese la descripción.
+                            </div>
+                        </div>
+
+                        <!-- Presentación -->
+                        <div class="col-md-12">
+                            <label for="presentacion" class="form-label">
+                                <i class="fas fa-cube text-warning me-1"></i>
+                                Presentación
+                            </label>
+                            <select class="form-select" 
+                                    id="presentacion" 
+                                    name="presentacion.idPresentacion" 
+                                    required>
+                                <option value="">Seleccione una presentación</option>
+                                <option th:each="p : ${presentaciones}"
+                                        th:value="${p.idPresentacion}"
+                                        th:text="${p.nombre}">
+                                </option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una presentación.
+                            </div>
+                        </div>
+
+                        <!-- Precio Institucional -->
+                        <div class="col-md-6">
+                            <label for="precioInstitucional" class="form-label">
+                                <i class="fas fa-dollar-sign text-warning me-1"></i>
+                                Precio Institucional
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="precioInstitucional" 
+                                   name="precioInstitucional" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese el precio institucional.
+                            </div>
+                        </div>
+
+                        <!-- Precio Mayorista -->
+                        <div class="col-md-6">
+                            <label for="precioMayorista" class="form-label">
+                                <i class="fas fa-dollar-sign text-warning me-1"></i>
+                                Precio Mayorista
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="precioMayorista" 
+                                   name="precioMayorista" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese el precio mayorista.
+                            </div>
+                        </div>
+
+                        <!-- Estado Activo -->
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="active" 
+                                       name="active" 
+                                       checked>
+                                <label class="form-check-label" for="active">
+                                    Producto Activo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-warning" id="btnGuardarProducto">
+                    <i class="fas fa-save me-1"></i>
+                    Guardar Producto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

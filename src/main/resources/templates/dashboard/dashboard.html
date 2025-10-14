@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+
+<!-- ============================================================================
+     DASHBOARD - Página Principal
+     WhatsApp Orders Manager
+     ============================================================================
+     Vista principal del sistema con:
+     - Widgets de estadísticas (clientes, productos, facturas, pagos)
+     - Grid de módulos disponibles según rol
+     - Navegación rápida a las principales funcionalidades
+     ============================================================================ -->
+
+<head th:replace="~{layout :: head}"></head>
+
+<body>
+    <!-- NAVBAR -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- SIDEBAR -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="container-fluid mt-4 px-4">
+            
+            <!-- ============================================================
+                 HEADER SECTION
+                 ============================================================ -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h1 class="page-title">
+                        <i class="fas fa-tachometer-alt me-2"></i>
+                        Dashboard
+                    </h1>
+                    <p class="text-muted">Vista general del sistema</p>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 WIDGETS DE ESTADÍSTICAS
+                 ============================================================ -->
+            <div class="row mb-5">
+                <!-- Widget: Total Clientes -->
+                <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                    <div class="stat-card stat-clientes">
+                        <div class="stat-icon">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 class="stat-number" th:text="${totalClientes}">0</h3>
+                            <p class="stat-label">Total Clientes</p>
+                        </div>
+                        <div class="stat-footer">
+                            <a th:href="@{/clientes}" class="stat-link">
+                                Ver todos <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Widget: Total Productos -->
+                <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                    <div class="stat-card stat-productos">
+                        <div class="stat-icon">
+                            <i class="fas fa-box fa-2x"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 class="stat-number" th:text="${totalProductos}">0</h3>
+                            <p class="stat-label">Productos</p>
+                        </div>
+                        <div class="stat-footer">
+                            <a th:href="@{/productos}" class="stat-link">
+                                Ver catálogo <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Widget: Facturas Hoy -->
+                <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                    <div class="stat-card stat-facturas">
+                        <div class="stat-icon">
+                            <i class="fas fa-file-invoice-dollar fa-2x"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 class="stat-number" th:text="${facturasHoy}">0</h3>
+                            <p class="stat-label">Facturas Hoy</p>
+                        </div>
+                        <div class="stat-footer">
+                            <a th:href="@{/facturas}" class="stat-link">
+                                Ver facturas <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Widget: Total Por Cobrar -->
+                <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                    <div class="stat-card stat-pagos">
+                        <div class="stat-icon">
+                            <i class="fas fa-credit-card fa-2x"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 class="stat-number">
+                                $<span th:text="${#numbers.formatDecimal(totalPendiente, 0, 'COMMA', 0, 'POINT')}">0</span>
+                            </h3>
+                            <p class="stat-label">Por Cobrar</p>
+                        </div>
+                        <div class="stat-footer">
+                            <span class="stat-info">
+                                <i class="fas fa-clock me-1"></i> Facturas pendientes
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 TÍTULO DE MÓDULOS
+                 ============================================================ -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <h2 class="section-title">
+                        <i class="fas fa-th-large me-2"></i>
+                        Módulos del Sistema
+                    </h2>
+                    <p class="text-muted">Accede rápidamente a las funcionalidades disponibles</p>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 GRID DE MÓDULOS
+                 ============================================================ -->
+            <div class="row" id="modulosGrid">
+                <!-- Módulo Card (se repite por cada módulo visible) -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4" 
+                     th:each="modulo : ${modulos}"
+                     th:if="${modulo.visible}">
+                    
+                    <!-- Card del Módulo -->
+                    <div class="module-card" 
+                         th:classappend="${!modulo.activo} ? 'module-disabled' : ''"
+                         th:attr="data-activo=${modulo.activo}, data-ruta=${modulo.ruta}, data-nombre=${modulo.nombre}"
+                         onclick="handleModuleClick(this)">
+                        
+                        <!-- Icono del Módulo -->
+                        <div class="module-icon" th:style="'color: ' + ${modulo.color}">
+                            <i th:class="${modulo.icono} + ' fa-3x'"></i>
+                        </div>
+                        
+                        <!-- Nombre del Módulo -->
+                        <h5 class="module-name" th:text="${modulo.nombre}">Módulo</h5>
+                        
+                        <!-- Descripción del Módulo -->
+                        <p class="module-description" th:text="${modulo.descripcion}">Descripción del módulo</p>
+                        
+                        <!-- Badge "Próximamente" para módulos inactivos -->
+                        <span class="badge bg-secondary module-badge" th:if="${!modulo.activo}">
+                            <i class="fas fa-clock me-1"></i> Próximamente
+                        </span>
+                        
+                        <!-- Badge "Activo" para módulos implementados -->
+                        <span class="badge bg-success module-badge" th:if="${modulo.activo}">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECCIÓN DE INFORMACIÓN ADICIONAL (Opcional)
+                 ============================================================ -->
+            <div class="row mt-5">
+                <div class="col-12 col-lg-6 mb-4">
+                    <div class="info-card">
+                        <div class="info-header">
+                            <i class="fas fa-lightbulb fa-2x text-warning"></i>
+                            <h4>Consejos Rápidos</h4>
+                        </div>
+                        <div class="info-body">
+                            <ul class="tips-list">
+                                <li>
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    Usa el buscador en cada módulo para encontrar registros rápidamente
+                                </li>
+                                <li>
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    Las facturas pendientes aparecen en rojo en la lista
+                                </li>
+                                <li>
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    Puedes editar clientes y productos directamente desde la tabla
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6 mb-4">
+                    <div class="info-card">
+                        <div class="info-header">
+                            <i class="fas fa-info-circle fa-2x text-info"></i>
+                            <h4>Información del Sistema</h4>
+                        </div>
+                        <div class="info-body">
+                            <div class="info-item">
+                                <span class="info-label">Versión:</span>
+                                <span class="info-value">1.0.0-SNAPSHOT</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Usuario:</span>
+                                <span class="info-value" th:text="${userName}">Usuario</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Rol:</span>
+                                <span class="info-value">
+                                    <span class="badge bg-primary" th:text="${userRole}">USER</span>
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Última actualización:</span>
+                                <span class="info-value">12 de Octubre, 2025</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ============================================================
+         SCRIPTS
+         ============================================================ -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+    
+    <!-- Dashboard JS específico -->
+    <script th:src="@{/js/dashboard.js}"></script>
+
+</body>
+</html>

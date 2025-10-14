@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Fragment: Formulario de Empresa -->
+<div th:fragment="empresaForm">
+
+    <form th:action="@{/configuracion/empresa/guardar}" 
+          th:object="${empresa}" 
+          method="post" 
+          class="needs-validation" 
+          novalidate>
+
+        <!-- ID oculto (para updates) -->
+        <input type="hidden" th:field="*{idEmpresa}">
+
+        <!-- Información Básica -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="border-bottom pb-2 mb-3">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    Información Básica
+                </h5>
+            </div>
+
+            <!-- Nombre de la Empresa -->
+            <div class="col-md-6 mb-3">
+                <label for="nombreEmpresa" class="form-label">
+                    Nombre de la Empresa <span class="text-danger">*</span>
+                </label>
+                <input type="text" 
+                       class="form-control" 
+                       id="nombreEmpresa" 
+                       th:field="*{nombreEmpresa}"
+                       placeholder="Ej: Mi Empresa S.A.C."
+                       maxlength="200"
+                       required>
+                <div class="invalid-feedback">
+                    Por favor ingresa el nombre de la empresa.
+                </div>
+                <small class="form-text text-muted">Razón social o nombre legal</small>
+            </div>
+
+            <!-- Nombre Comercial -->
+            <div class="col-md-6 mb-3">
+                <label for="nombreComercial" class="form-label">
+                    Nombre Comercial
+                </label>
+                <input type="text" 
+                       class="form-control" 
+                       id="nombreComercial" 
+                       th:field="*{nombreComercial}"
+                       placeholder="Ej: Mi Empresa"
+                       maxlength="200">
+                <small class="form-text text-muted">Nombre con el que se conoce tu empresa (opcional)</small>
+            </div>
+
+            <!-- RUC -->
+            <div class="col-md-6 mb-3">
+                <label for="ruc" class="form-label">
+                    RUC / NIT / CUIT
+                </label>
+                <input type="text" 
+                       class="form-control" 
+                       id="ruc" 
+                       th:field="*{ruc}"
+                       placeholder="Ej: 20123456789"
+                       maxlength="20">
+                <small class="form-text text-muted">Número de identificación tributaria</small>
+            </div>
+
+            <!-- Teléfono -->
+            <div class="col-md-6 mb-3">
+                <label for="telefono" class="form-label">
+                    Teléfono
+                </label>
+                <input type="tel" 
+                       class="form-control" 
+                       id="telefono" 
+                       th:field="*{telefono}"
+                       placeholder="Ej: +51 999 999 999"
+                       maxlength="20">
+                <small class="form-text text-muted">Teléfono de contacto principal</small>
+            </div>
+
+            <!-- Email -->
+            <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">
+                    Email
+                </label>
+                <input type="email" 
+                       class="form-control" 
+                       id="email" 
+                       th:field="*{email}"
+                       placeholder="Ej: contacto@miempresa.com"
+                       maxlength="100">
+                <div class="invalid-feedback">
+                    Por favor ingresa un email válido.
+                </div>
+                <small class="form-text text-muted">Email de contacto principal</small>
+            </div>
+
+            <!-- Sitio Web -->
+            <div class="col-md-6 mb-3">
+                <label for="sitioWeb" class="form-label">
+                    Sitio Web
+                </label>
+                <input type="url" 
+                       class="form-control" 
+                       id="sitioWeb" 
+                       th:field="*{sitioWeb}"
+                       placeholder="Ej: https://www.miempresa.com"
+                       maxlength="200">
+                <small class="form-text text-muted">URL de tu sitio web (opcional)</small>
+            </div>
+
+            <!-- Dirección -->
+            <div class="col-12 mb-3">
+                <label for="direccion" class="form-label">
+                    Dirección Fiscal
+                </label>
+                <textarea class="form-control" 
+                          id="direccion" 
+                          th:field="*{direccion}"
+                          rows="2"
+                          placeholder="Ej: Av. Principal 123, Lima, Perú"
+                          maxlength="300"></textarea>
+                <small class="form-text text-muted">Dirección fiscal de la empresa</small>
+            </div>
+
+        </div>
+
+        <!-- Recursos Visuales -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="border-bottom pb-2 mb-3">
+                    <i class="fas fa-image text-primary me-2"></i>
+                    Recursos Visuales
+                </h5>
+            </div>
+
+            <!-- Logo -->
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Logo de la Empresa</label>
+                
+                <!-- Preview del Logo -->
+                <div class="logo-preview-container mb-3">
+                    <div th:if="${empresa.logo != null and empresa.logo != ''}" class="logo-preview">
+                        <img th:src="@{'/uploads/empresa/' + ${empresa.logo}}" 
+                             alt="Logo" 
+                             class="img-thumbnail"
+                             id="logoPreview">
+                        <div class="logo-actions mt-2">
+                            <button type="button" 
+                                    class="btn btn-sm btn-danger" 
+                                    onclick="confirmarEliminarLogo()">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                    <div th:unless="${empresa.logo != null and empresa.logo != ''}" 
+                         class="logo-preview-empty text-center p-4 border rounded bg-light">
+                        <i class="fas fa-image fa-3x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Sin logo</p>
+                        <img id="logoPreview" style="display: none;" class="img-thumbnail mt-3">
+                    </div>
+                </div>
+
+                <!-- Upload de Logo -->
+                <div class="input-group">
+                    <input type="file" 
+                           class="form-control" 
+                           id="logoInput" 
+                           accept=".png,.jpg,.jpeg,.svg"
+                           onchange="previewLogo(event)">
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            onclick="subirLogo()"
+                            th:disabled="${empresa.idEmpresa == null}">
+                        <i class="fas fa-upload"></i> Subir
+                    </button>
+                </div>
+                <small class="form-text text-muted">
+                    Formatos: PNG, JPG, SVG. Tamaño máximo: 2MB
+                </small>
+                <div th:if="${empresa.idEmpresa == null}" class="alert alert-info mt-2 small">
+                    <i class="fas fa-info-circle"></i> Guarda primero los datos de la empresa para poder subir el logo.
+                </div>
+            </div>
+
+            <!-- Favicon -->
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Favicon</label>
+                
+                <!-- Preview del Favicon -->
+                <div class="favicon-preview-container mb-3">
+                    <div th:if="${empresa.favicon != null and empresa.favicon != ''}" class="favicon-preview">
+                        <img th:src="@{'/uploads/empresa/' + ${empresa.favicon}}" 
+                             alt="Favicon" 
+                             class="favicon-img"
+                             id="faviconPreview">
+                        <div class="favicon-actions mt-2">
+                            <button type="button" 
+                                    class="btn btn-sm btn-danger" 
+                                    onclick="confirmarEliminarFavicon()">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                    <div th:unless="${empresa.favicon != null and empresa.favicon != ''}" 
+                         class="favicon-preview-empty text-center p-4 border rounded bg-light">
+                        <i class="fas fa-bookmark fa-3x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Sin favicon</p>
+                        <img id="faviconPreview" style="display: none;" class="favicon-img mt-3">
+                    </div>
+                </div>
+
+                <!-- Upload de Favicon -->
+                <div class="input-group">
+                    <input type="file" 
+                           class="form-control" 
+                           id="faviconInput" 
+                           accept=".png,.jpg,.jpeg,.ico"
+                           onchange="previewFavicon(event)">
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            onclick="subirFavicon()"
+                            th:disabled="${empresa.idEmpresa == null}">
+                        <i class="fas fa-upload"></i> Subir
+                    </button>
+                </div>
+                <small class="form-text text-muted">
+                    Formatos: PNG, ICO. Tamaño máximo: 2MB. Recomendado: 32x32 px
+                </small>
+                <div th:if="${empresa.idEmpresa == null}" class="alert alert-info mt-2 small">
+                    <i class="fas fa-info-circle"></i> Guarda primero los datos de la empresa para poder subir el favicon.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Estado -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           id="activo" 
+                           th:field="*{activo}"
+                           checked>
+                    <label class="form-check-label" for="activo">
+                        Empresa Activa
+                    </label>
+                </div>
+                <small class="form-text text-muted">
+                    Solo puede existir una empresa activa en el sistema
+                </small>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary" onclick="limpiarFormulario()">
+                        <i class="fas fa-eraser"></i> Limpiar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 
+                        <span th:text="${empresa.idEmpresa != null ? 'Actualizar' : 'Guardar'}">Guardar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </form>
+
+    <!-- Formularios ocultos para eliminar logo/favicon -->
+    <form th:action="@{/configuracion/empresa/eliminar-logo}" 
+          method="post" 
+          id="formEliminarLogo" 
+          style="display: none;">
+        <input type="hidden" name="empresaId" th:value="${empresa.idEmpresa}">
+    </form>
+
+    <form th:action="@{/configuracion/empresa/eliminar-favicon}" 
+          method="post" 
+          id="formEliminarFavicon" 
+          style="display: none;">
+        <input type="hidden" name="empresaId" th:value="${empresa.idEmpresa}">
+    </form>
+
+</div>
+
+</body>
+</html>

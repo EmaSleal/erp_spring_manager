@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}"></head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+<section>
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/dashboard}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Usuarios</li>
+        </ol>
+    </nav>
+
+    <!-- Header con título y botón -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-people-fill me-2"></i>Gestión de Usuarios
+            </h2>
+            <p class="text-muted mb-0">Administra los usuarios del sistema</p>
+        </div>
+        <div sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/usuarios/form}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Nuevo Usuario
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Total Usuarios</h6>
+                            <h3 class="card-title mb-0" th:text="${totalUsuarios}">0</h3>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="bi bi-people-fill fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Usuarios Activos</h6>
+                            <h3 class="card-title mb-0" th:text="${totalActivos}">0</h3>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="bi bi-check-circle-fill fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Administradores</h6>
+                            <h3 class="card-title mb-0" th:text="${totalAdmins}">0</h3>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="bi bi-shield-fill-check fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Usuarios Inactivos</h6>
+                            <h3 class="card-title mb-0" th:text="${totalInactivos}">0</h3>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="bi bi-x-circle-fill fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-funnel me-2"></i>Filtros de Búsqueda
+            </h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/usuarios}" method="get" id="filtrosForm">
+                <div class="row g-3">
+                    <!-- Búsqueda general -->
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Buscar</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="search" 
+                                   name="search" 
+                                   th:value="${search}"
+                                   placeholder="Nombre, teléfono o email...">
+                        </div>
+                    </div>
+
+                    <!-- Filtro por rol -->
+                    <div class="col-md-2">
+                        <label for="rol" class="form-label">Rol</label>
+                        <select class="form-select" id="rol" name="rol">
+                            <option value="" th:selected="${rol == null or rol == ''}">Todos</option>
+                            <option value="ADMIN" th:selected="${rol == 'ADMIN'}">Administrador</option>
+                            <option value="USER" th:selected="${rol == 'USER'}">Usuario</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro por estado -->
+                    <div class="col-md-2">
+                        <label for="activo" class="form-label">Estado</label>
+                        <select class="form-select" id="activo" name="activo">
+                            <option value="" th:selected="${activo == null or activo == ''}">Todos</option>
+                            <option value="true" th:selected="${activo == 'true'}">Activos</option>
+                            <option value="false" th:selected="${activo == 'false'}">Inactivos</option>
+                        </select>
+                    </div>
+
+                    <!-- Ordenamiento -->
+                    <div class="col-md-2">
+                        <label for="sortBy" class="form-label">Ordenar por</label>
+                        <select class="form-select" id="sortBy" name="sortBy">
+                            <option value="createDate" th:selected="${sortBy == 'createDate' or sortBy == null}">Fecha de creación</option>
+                            <option value="nombre" th:selected="${sortBy == 'nombre'}">Nombre</option>
+                            <option value="rol" th:selected="${sortBy == 'rol'}">Rol</option>
+                        </select>
+                    </div>
+
+                    <!-- Dirección -->
+                    <div class="col-md-2">
+                        <label for="sortDir" class="form-label">Dirección</label>
+                        <select class="form-select" id="sortDir" name="sortDir">
+                            <option value="desc" th:selected="${sortDir == 'desc' or sortDir == null}">Descendente</option>
+                            <option value="asc" th:selected="${sortDir == 'asc'}">Ascendente</option>
+                        </select>
+                    </div>
+
+                    <!-- Botones de acción -->
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search me-2"></i>Buscar
+                        </button>
+                        <a th:href="@{/usuarios}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Limpiar Filtros
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Mensaje de éxito/error -->
+    <div th:if="${mensaje}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <span th:text="${mensaje}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Tabla de usuarios -->
+    <div class="card">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-table me-2"></i>Lista de Usuarios
+            </h5>
+            <span class="badge bg-primary" th:text="${'Total: ' + totalUsuarios}">Total: 0</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0" id="usuariosTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 25%">Nombre</th>
+                            <th style="width: 15%">Teléfono</th>
+                            <th style="width: 20%">Email</th>
+                            <th style="width: 10%" class="text-center">Rol</th>
+                            <th style="width: 10%" class="text-center">Estado</th>
+                            <th style="width: 15%" class="text-center" sec:authorize="hasRole('ADMIN')">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${usuarios.isEmpty()}">
+                            <td colspan="7" class="text-center py-4">
+                                <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+                                <p class="text-muted mb-0">No se encontraron usuarios</p>
+                            </td>
+                        </tr>
+                        <tr th:each="usuario, iter : ${usuarios}" 
+                            th:classappend="${usuario.id == usuarioActualId ? 'table-info' : ''}">
+                            <td th:text="${(currentPage * pageSize) + iter.index + 1}">1</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle me-2" th:classappend="${usuario.activo ? 'bg-success' : 'bg-secondary'}">
+                                        <span th:text="${#strings.substring(usuario.nombre, 0, 1)}">A</span>
+                                    </div>
+                                    <div>
+                                        <strong th:text="${usuario.nombre}">Nombre</strong>
+                                        <span th:if="${usuario.id == usuarioActualId}" class="badge bg-info ms-2" style="font-size: 0.7rem;">
+                                            <i class="bi bi-person-check-fill"></i> Tú
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <i class="bi bi-phone me-1"></i>
+                                <span th:text="${usuario.telefono}">999999999</span>
+                            </td>
+                            <td>
+                                <i class="bi bi-envelope me-1"></i>
+                                <span th:text="${usuario.email}">email@example.com</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge" 
+                                      th:classappend="${usuario.rol == 'ADMIN' ? 'badge-rol-admin' : 
+                                                       usuario.rol == 'USER' ? 'badge-rol-user' : 
+                                                       usuario.rol == 'VENDEDOR' ? 'badge-rol-vendedor' : 
+                                                       'badge-rol-visualizador'}"
+                                      th:text="${usuario.rol}">
+                                    USER
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge" 
+                                      th:classappend="${usuario.activo ? 'bg-success' : 'bg-danger'}"
+                                      th:text="${usuario.activo ? 'Activo' : 'Inactivo'}">
+                                    Activo
+                                </span>
+                            </td>
+                            <td class="text-center" sec:authorize="hasRole('ADMIN')">
+                                <div class="btn-group" role="group">
+                                    <!-- Botón Editar -->
+                                    <a th:href="@{/usuarios/form/{id}(id=${usuario.id})}" 
+                                       class="btn btn-sm btn-outline-primary"
+                                       data-bs-toggle="tooltip"
+                                       title="Editar usuario">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </a>
+
+                                    <!-- Botón Toggle Activo/Inactivo -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-toggle-active"
+                                            th:classappend="${usuario.activo ? 'btn-outline-warning' : 'btn-outline-success'}"
+                                            th:data-id="${usuario.id}"
+                                            th:data-nombre="${usuario.nombre}"
+                                            th:data-activo="${usuario.activo}"
+                                            th:disabled="${usuario.id == usuarioActualId}"
+                                            data-bs-toggle="tooltip"
+                                            th:title="${usuario.activo ? 'Desactivar usuario' : 'Activar usuario'}">
+                                        <i class="bi" th:classappend="${usuario.activo ? 'bi-x-circle-fill' : 'bi-check-circle-fill'}"></i>
+                                    </button>
+
+                                    <!-- Botón Reset Password -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-info btn-reset-password"
+                                            th:data-id="${usuario.id}"
+                                            th:data-nombre="${usuario.nombre}"
+                                            data-bs-toggle="tooltip"
+                                            title="Restablecer contraseña">
+                                        <i class="bi bi-key-fill"></i>
+                                    </button>
+
+                                    <!-- Botón Reenviar Credenciales -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-primary btn-reenviar-credenciales"
+                                            th:data-id="${usuario.id}"
+                                            th:data-nombre="${usuario.nombre}"
+                                            th:data-email="${usuario.email}"
+                                            th:disabled="${usuario.email == null or usuario.email.isEmpty()}"
+                                            data-bs-toggle="tooltip"
+                                            th:title="${usuario.email == null or usuario.email.isEmpty() ? 'Usuario sin email configurado' : 'Reenviar credenciales por email'}">
+                                        <i class="bi bi-envelope-fill"></i>
+                                    </button>
+
+                                    <!-- Botón Eliminar -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger btn-eliminar"
+                                            th:data-id="${usuario.id}"
+                                            th:data-nombre="${usuario.nombre}"
+                                            th:disabled="${usuario.id == usuarioActualId}"
+                                            data-bs-toggle="tooltip"
+                                            title="Eliminar usuario">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        <div class="card-footer" th:if="${totalPages > 1}">
+            <nav aria-label="Paginación de usuarios">
+                <ul class="pagination justify-content-center mb-0">
+                    <!-- Primera página -->
+                    <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
+                        <a class="page-link" 
+                           th:href="@{/usuarios(page=0, search=${search}, rol=${rol}, activo=${activo}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+
+                    <!-- Página anterior -->
+                    <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
+                        <a class="page-link" 
+                           th:href="@{/usuarios(page=${currentPage - 1}, search=${search}, rol=${rol}, activo=${activo}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    <!-- Páginas numeradas -->
+                    <li class="page-item" 
+                        th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                        th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
+                        th:classappend="${i == currentPage ? 'active' : ''}">
+                        <a class="page-link" 
+                           th:href="@{/usuarios(page=${i}, search=${search}, rol=${rol}, activo=${activo}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                           th:text="${i + 1}">
+                            1
+                        </a>
+                    </li>
+
+                    <!-- Página siguiente -->
+                    <li class="page-item" th:classappend="${currentPage >= totalPages - 1 ? 'disabled' : ''}">
+                        <a class="page-link" 
+                           th:href="@{/usuarios(page=${currentPage + 1}, search=${search}, rol=${rol}, activo=${activo}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+
+                    <!-- Última página -->
+                    <li class="page-item" th:classappend="${currentPage >= totalPages - 1 ? 'disabled' : ''}">
+                        <a class="page-link" 
+                           th:href="@{/usuarios(page=${totalPages - 1}, search=${search}, rol=${rol}, activo=${activo}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Info de paginación -->
+                <div class="text-center mt-2">
+                    <small class="text-muted">
+                        Página <strong th:text="${currentPage + 1}">1</strong> de <strong th:text="${totalPages}">1</strong>
+                        (Mostrando <strong th:text="${usuarios.size()}">0</strong> de <strong th:text="${totalUsuarios}">0</strong> usuarios)
+                    </small>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Modal Reset Password -->
+    <div class="modal fade" id="modalResetPassword" tabindex="-1" aria-labelledby="modalResetPasswordLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalResetPasswordLabel">
+                        <i class="bi bi-key-fill me-2"></i>Restablecer Contraseña
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas generar una nueva contraseña para el usuario <strong id="resetPasswordNombre"></strong>?</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Se generará una contraseña aleatoria que deberás comunicar al usuario.
+                    </div>
+                    <div id="nuevaPasswordContainer" class="alert alert-success d-none">
+                        <strong>Nueva contraseña generada:</strong>
+                        <div class="input-group mt-2">
+                            <input type="text" class="form-control" id="nuevaPassword" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="btnCopiarPassword">
+                                <i class="bi bi-clipboard"></i> Copiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarReset">
+                        <i class="bi bi-key-fill me-2"></i>Generar Nueva Contraseña
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+        </div>
+    </main>
+
+    <!-- Scripts comunes (jQuery, Bootstrap, SweetAlert2) -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+    
+    <!-- Scripts específicos de usuarios (después de jQuery) -->
+    <script th:src="@{/js/usuarios.js}"></script>
+</body>
+</html>
