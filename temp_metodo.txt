@@ -1,0 +1,45 @@
+
+    /**
+     * Envía una factura por email al cliente
+     * Punto 5.3.1 - Envío de facturas por email
+     */
+    @PostMapping("/{id}/enviar-email")
+    @ResponseBody
+    public ResponseEntity<?> enviarFacturaPorEmail(@PathVariable Integer id) {
+        try {
+            // Buscar la factura
+            Optional<Factura> facturaOpt = facturaService.findById(id);
+            
+            if (facturaOpt.isEmpty()) {
+                log.warn("Factura con ID {} no encontrada", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            Factura factura = facturaOpt.get();
+            
+            // Validar que el cliente tenga email
+            if (factura.getCliente() == null || 
+                factura.getCliente().getEmail() == null || 
+                factura.getCliente().getEmail().isBlank()) {
+                log.warn("El cliente de la factura {} no tiene email configurado", id);
+                return ResponseEntity.badRequest()
+                    .body("{\"error\": \"El cliente no tiene email configurado\"}");
+            }
+            
+            // Enviar el email
+            emailService.enviarFacturaPorEmail(factura);
+            
+            log.info("✅ Factura {} enviada por email a {}", 
+                factura.getNumeroFactura(), 
+                factura.getCliente().getEmail());
+            
+            return ResponseEntity.ok()
+                .body("{\"message\": \"Factura enviada exitosamente a " + 
+                    factura.getCliente().getEmail() + "\"}");
+            
+        } catch (Exception e) {
+            log.error("Error al enviar factura por email: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body("{\"error\": \"Error al enviar el email: " + e.getMessage() + "\"}");
+        }
+    }

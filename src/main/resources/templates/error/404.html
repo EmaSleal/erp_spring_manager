@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}"></head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-5">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body text-center py-5">
+                            <!-- Icono de error -->
+                            <div class="mb-4">
+                                <i class="bi bi-question-circle-fill text-warning" style="font-size: 6rem;"></i>
+                            </div>
+
+                            <!-- Código de error -->
+                            <h1 class="display-4 fw-bold text-warning mb-3">
+                                404
+                            </h1>
+
+                            <!-- Título -->
+                            <h2 class="h3 mb-3">
+                                Página No Encontrada
+                            </h2>
+
+                            <!-- Mensaje -->
+                            <p class="text-muted mb-4 lead">
+                                La página que buscas no existe o ha sido movida.
+                            </p>
+
+                            <!-- Información adicional -->
+                            <div class="alert alert-info mb-4" role="alert">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                <strong>Sugerencia:</strong> Verifica la URL o navega desde el menú principal.
+                            </div>
+
+                            <!-- URL solicitada -->
+                            <div class="card bg-light mb-4" th:if="${path}">
+                                <div class="card-body">
+                                    <small class="text-muted">
+                                        <strong>Ruta solicitada:</strong> <code th:text="${path}"></code>
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="d-flex justify-content-center gap-3">
+                                <a th:href="@{/dashboard}" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-house-fill me-2"></i>Ir al Dashboard
+                                </a>
+                                <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                                    <i class="bi bi-arrow-left me-2"></i>Volver Atrás
+                                </button>
+                            </div>
+
+                            <!-- Enlaces útiles -->
+                            <div class="mt-5 pt-4 border-top">
+                                <p class="text-muted mb-3">
+                                    <i class="bi bi-compass me-1"></i>
+                                    Enlaces útiles:
+                                </p>
+                                <div class="d-flex flex-wrap justify-content-center gap-2">
+                                    <a th:href="@{/clientes}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-people-fill me-1"></i>Clientes
+                                    </a>
+                                    <a th:href="@{/productos}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-box-seam me-1"></i>Productos
+                                    </a>
+                                    <a th:href="@{/facturas}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-receipt me-1"></i>Facturas
+                                    </a>
+                                    <a th:href="@{/usuarios}" class="btn btn-sm btn-outline-primary" sec:authorize="hasRole('ADMIN')">
+                                        <i class="bi bi-person-gear me-1"></i>Usuarios
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta con ayuda -->
+                    <div class="card mt-4 border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-question-circle-fill me-2"></i>¿Necesitas ayuda?
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <i class="bi bi-check-circle text-success me-2"></i>
+                                Utiliza el menú lateral para navegar por el sistema
+                            </p>
+                            <p class="mb-2">
+                                <i class="bi bi-check-circle text-success me-2"></i>
+                                Verifica que tengas los permisos necesarios para acceder al módulo
+                            </p>
+                            <p class="mb-0">
+                                <i class="bi bi-check-circle text-success me-2"></i>
+                                Si el problema persiste, contacta al administrador
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts comunes -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+
+    <style>
+        .card {
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .btn-lg {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 10px;
+        }
+
+        .display-4 {
+            font-size: 5rem;
+        }
+
+        @media (max-width: 768px) {
+            .display-4 {
+                font-size: 3.5rem;
+            }
+
+            .btn-lg {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</body>
+</html>

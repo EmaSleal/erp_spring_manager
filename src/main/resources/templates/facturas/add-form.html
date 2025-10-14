@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+
+<!-- Modal de Nueva Factura (Bootstrap 5) -->
+<div th:fragment="nueva-factura-modal" class="modal fade" id="nuevaFacturaModal" tabindex="-1" aria-labelledby="nuevaFacturaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <!-- Modal Header -->
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="nuevaFacturaModalLabel">
+          <i class="fas fa-file-invoice-dollar me-2"></i>Nueva Factura
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body">
+        <form id="facturaForm">
+          <!-- Campo oculto que indica el paso -->
+          <input type="hidden" name="paso" id="paso" value="1" />
+
+          <!-- Paso 1: Datos de la factura -->
+          <div id="paso-1">
+            <h5 class="mb-4"><i class="fas fa-info-circle text-primary me-2"></i>Datos de Factura</h5>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="cliente" class="form-label">
+                  <i class="fas fa-user text-primary me-2"></i>Cliente <span class="text-danger">*</span>
+                </label>
+                <select name="cliente" id="cliente" class="form-select" required>
+                  <option value="">Seleccione un cliente</option>
+                  <option th:each="c : ${clientes}" th:value="${c.idCliente}" th:text="${c.nombre}"></option>
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="fechaEntrega" class="form-label">
+                  <i class="fas fa-calendar text-primary me-2"></i>Fecha de Entrega <span class="text-danger">*</span>
+                </label>
+                <input type="date" class="form-control" id="fechaEntrega" name="fechaEntrega" required />
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="tipoFactura" class="form-label">
+                  <i class="fas fa-tags text-primary me-2"></i>Tipo Factura <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" id="tipoFactura" name="tipoFactura" required>
+                  <option th:each="tipo : ${tiposFactura}"
+                          th:value="${tipo}"
+                          th:text="${tipo.getDisplayName()}">Tipo</option>
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">
+                  <i class="fas fa-truck text-primary me-2"></i>Estado
+                </label>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="entregado" name="entregado">
+                  <label class="form-check-label" for="entregado">
+                    Entregado
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="descripcion" class="form-label">
+                <i class="fas fa-comment text-primary me-2"></i>Descripción
+              </label>
+              <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
+            </div>
+          </div>
+
+          <!-- Paso 2: Líneas de factura -->
+          <div id="paso-2" style="display: none;">
+            <h5 class="mb-3">
+              <i class="fas fa-list text-primary me-2"></i>Líneas de Factura
+            </h5>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                <tr>
+                  <th style="width: 60px;" class="text-center">#</th>
+                  <th>Producto</th>
+                  <th style="width: 100px;" class="text-center">Cantidad</th>
+                  <th style="width: 120px;" class="text-center">Precio</th>
+                  <th style="width: 120px;" class="text-center">Subtotal</th>
+                  <th style="width: 100px;" class="text-center">Acciones</th>
+                </tr>
+                </thead>
+                <tbody id="lineas-body">
+                <!-- Aquí se llenan dinámicamente las filas vía JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <button class="btn btn-success" type="button" onclick="addLinea()">
+              <i class="fas fa-plus me-2"></i>Agregar línea
+            </button>
+
+            <div class="alert alert-info mt-3">
+              <strong><i class="fas fa-info-circle me-2"></i>Nota:</strong> Recuerde agregar al menos una línea de producto antes de guardar la factura.
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btnCancelar">
+          <i class="fas fa-times me-2"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" id="btnSiguiente" onclick="mostrarPaso2()">
+          <i class="fas fa-arrow-right me-2"></i>Siguiente
+        </button>
+        <button type="button" class="btn btn-success" id="btnGuardar" style="display: none;" onclick="guardarLineas()">
+          <i class="fas fa-save me-2"></i>Guardar factura
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

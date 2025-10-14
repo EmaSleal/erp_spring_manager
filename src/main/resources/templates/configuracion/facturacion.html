@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+
+<!-- ============================================================================
+     FRAGMENT: Formulario de Configuración de Facturación
+     WhatsApp Orders Manager - Sprint 2 - Fase 2
+     ============================================================================ -->
+
+<body>
+    <!-- Fragment: Formulario de Configuración de Facturación -->
+    <div th:fragment="facturacionForm">
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <form th:action="@{/configuracion/facturacion/guardar}" 
+                      th:object="${configuracion}" 
+                      method="post"
+                      id="formConfiguracionFacturacion"
+                      novalidate>
+                    
+                    <!-- ID oculto -->
+                    <input type="hidden" th:field="*{id}" />
+                    
+                    <!-- Sección: Numeración de Facturas -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-hashtag text-primary me-2"></i>
+                                Numeración de Facturas
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                
+                                <!-- Serie de Factura -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="serieFactura" class="form-label">
+                                        Serie de Factura <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           th:field="*{serieFactura}"
+                                           id="serieFactura"
+                                           placeholder="Ej: F001, B001"
+                                           maxlength="10"
+                                           required
+                                           oninput="actualizarPreview()">
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Identificador de la serie (máx. 10 caracteres)
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        La serie de factura es requerida
+                                    </div>
+                                </div>
+                                
+                                <!-- Prefijo (opcional) -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="prefijoFactura" class="form-label">
+                                        Prefijo (Opcional)
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           th:field="*{prefijoFactura}"
+                                           id="prefijoFactura"
+                                           placeholder="Ej: FAC, INV"
+                                           maxlength="10"
+                                           oninput="actualizarPreview()">
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Prefijo adicional para el número
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            
+                            <div class="row">
+                                
+                                <!-- Número Inicial -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="numeroInicial" class="form-label">
+                                        Número Inicial <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           th:field="*{numeroInicial}"
+                                           id="numeroInicial"
+                                           min="1"
+                                           required
+                                           oninput="actualizarPreview()">
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Primer número de factura (mínimo 1)
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        El número inicial es requerido y debe ser mayor a 0
+                                    </div>
+                                </div>
+                                
+                                <!-- Número Actual (solo lectura si ya existe) -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="numeroActual" class="form-label">
+                                        Número Actual <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           th:field="*{numeroActual}"
+                                           id="numeroActual"
+                                           min="1"
+                                           required
+                                           th:readonly="${configuracion.id != null}"
+                                           oninput="actualizarPreview()">
+                                    <div class="form-text" th:if="${configuracion.id == null}">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Número que se usará para la próxima factura
+                                    </div>
+                                    <div class="form-text text-warning" th:if="${configuracion.id != null}">
+                                        <i class="fas fa-exclamation-triangle"></i> 
+                                        Este campo se incrementa automáticamente
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        El número actual es requerido
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            
+                            <!-- Formato de Número -->
+                            <div class="mb-3">
+                                <label for="formatoNumero" class="form-label">
+                                    Formato de Número <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       th:field="*{formatoNumero}"
+                                       id="formatoNumero"
+                                       placeholder="{serie}-{numero}"
+                                       required
+                                       oninput="actualizarPreview()">
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Placeholders: <code>{serie}</code>, <code>{prefijo}</code>, <code>{numero}</code>
+                                    <br>
+                                    Ejemplo: <code>{serie}-{numero}</code> → F001-00001
+                                </div>
+                                <div class="invalid-feedback">
+                                    El formato debe contener {numero}
+                                </div>
+                            </div>
+                            
+                            <!-- Preview del Número -->
+                            <div class="alert alert-info mb-0">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-eye me-2"></i>Vista Previa
+                                </h6>
+                                <p class="mb-0">
+                                    Próximo número de factura: 
+                                    <strong id="previewNumero" th:text="${previewNumero}">F001-00001</strong>
+                                </p>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    
+                    <!-- Sección: Impuestos -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-percent text-primary me-2"></i>
+                                Configuración de Impuestos
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                
+                                <!-- IGV/IVA -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="igv" class="form-label">
+                                        IGV / IVA (%) <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" 
+                                               class="form-control" 
+                                               th:field="*{igv}"
+                                               id="igv"
+                                               step="0.01"
+                                               min="0"
+                                               max="100"
+                                               required>
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Porcentaje de impuesto (0 - 100). Ej: 18 para Perú, 16 para México
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        El porcentaje de IGV es requerido
+                                    </div>
+                                </div>
+                                
+                                <!-- Incluir IGV en Precio -->
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label d-block">
+                                        Precio en Facturas
+                                    </label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               th:field="*{incluirIgvEnPrecio}"
+                                               id="incluirIgvEnPrecio">
+                                        <label class="form-check-label" for="incluirIgvEnPrecio">
+                                            Precio incluye IGV
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Si está activado: Precio = Base + IGV<br>
+                                        Si está desactivado: IGV se calcula sobre el precio
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección: Moneda -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-money-bill text-primary me-2"></i>
+                                Configuración de Moneda
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                
+                                <!-- Código de Moneda -->
+                                <div class="col-md-4 mb-3">
+                                    <label for="moneda" class="form-label">
+                                        Código ISO 4217 <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control text-uppercase" 
+                                           th:field="*{moneda}"
+                                           id="moneda"
+                                           placeholder="PEN, USD, EUR"
+                                           maxlength="3"
+                                           required
+                                           pattern="[A-Z]{3}">
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        3 letras. Ej: PEN, USD, MXN
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        Código de moneda requerido (3 letras)
+                                    </div>
+                                </div>
+                                
+                                <!-- Símbolo de Moneda -->
+                                <div class="col-md-4 mb-3">
+                                    <label for="simboloMoneda" class="form-label">
+                                        Símbolo <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           th:field="*{simboloMoneda}"
+                                           id="simboloMoneda"
+                                           placeholder="S/, $, €"
+                                           maxlength="5"
+                                           required>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Símbolo que se mostrará
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        El símbolo es requerido
+                                    </div>
+                                </div>
+                                
+                                <!-- Decimales -->
+                                <div class="col-md-4 mb-3">
+                                    <label for="decimales" class="form-label">
+                                        Decimales <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" 
+                                            th:field="*{decimales}"
+                                            id="decimales"
+                                            required>
+                                        <option value="0">0 decimales (S/ 100)</option>
+                                        <option value="2" selected>2 decimales (S/ 100.00)</option>
+                                        <option value="3">3 decimales (S/ 100.000)</option>
+                                        <option value="4">4 decimales (S/ 100.0000)</option>
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Precisión de los montos
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección: Términos y Condiciones -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-contract text-primary me-2"></i>
+                                Información Adicional
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            
+                            <!-- Términos y Condiciones -->
+                            <div class="mb-3">
+                                <label for="terminosCondiciones" class="form-label">
+                                    Términos y Condiciones
+                                </label>
+                                <textarea class="form-control" 
+                                          th:field="*{terminosCondiciones}"
+                                          id="terminosCondiciones"
+                                          rows="4"
+                                          maxlength="5000"
+                                          placeholder="Ingrese los términos y condiciones que aparecerán en las facturas..."></textarea>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Texto que aparecerá en la parte inferior de las facturas (máx. 5000 caracteres)
+                                </div>
+                            </div>
+                            
+                            <!-- Nota de Pie de Página -->
+                            <div class="mb-3">
+                                <label for="notaPiePagina" class="form-label">
+                                    Nota de Pie de Página
+                                </label>
+                                <textarea class="form-control" 
+                                          th:field="*{notaPiePagina}"
+                                          id="notaPiePagina"
+                                          rows="2"
+                                          maxlength="500"
+                                          placeholder="Gracias por su compra..."></textarea>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Nota breve al final de la factura (máx. 500 caracteres)
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    
+                    <!-- Sección: Estado -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-toggle-on text-primary me-2"></i>
+                                Estado de la Configuración
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       th:field="*{activo}"
+                                       id="activo"
+                                       checked>
+                                <label class="form-check-label" for="activo">
+                                    Configuración Activa
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> 
+                                Solo puede haber una configuración activa a la vez
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de Acción -->
+                    <div class="d-flex justify-content-between">
+                        <button type="button" 
+                                class="btn btn-outline-secondary"
+                                onclick="limpiarFormulario()">
+                            <i class="fas fa-undo me-2"></i> Restablecer
+                        </button>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="fas fa-save me-2"></i> Guardar Configuración
+                        </button>
+                    </div>
+                    
+                </form>
+            </div>
+            
+            <!-- Sidebar con Ayuda -->
+            <div class="col-lg-4">
+                <div class="card bg-light border-0 sticky-top" style="top: 20px;">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-question-circle text-primary me-2"></i>
+                            Ayuda
+                        </h6>
+                        
+                        <div class="mb-3">
+                            <h6 class="text-muted small">Numeración Automática</h6>
+                            <p class="small mb-2">
+                                El sistema genera números de factura automáticamente usando la serie y el formato configurado.
+                            </p>
+                            <p class="small mb-0 text-success">
+                                <i class="fas fa-check-circle"></i> 
+                                Sin duplicados garantizado
+                            </p>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-3">
+                            <h6 class="text-muted small">Cálculo de Impuestos</h6>
+                            <p class="small mb-2">
+                                El IGV se calcula automáticamente según la configuración:
+                            </p>
+                            <ul class="small mb-0">
+                                <li><strong>Con IGV incluido:</strong> Extrae el impuesto del total</li>
+                                <li><strong>Sin IGV incluido:</strong> Suma el impuesto al subtotal</li>
+                            </ul>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-3">
+                            <h6 class="text-muted small">Ejemplos de Formato</h6>
+                            <ul class="small mb-0">
+                                <li><code>{serie}-{numero}</code> → F001-00001</li>
+                                <li><code>{prefijo}{serie}{numero}</code> → FACF00100001</li>
+                                <li><code>{serie}/{numero}</code> → F001/00001</li>
+                            </ul>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div>
+                            <h6 class="text-muted small">Monedas Comunes</h6>
+                            <ul class="small mb-0">
+                                <li><strong>PEN</strong> - Sol Peruano (S/)</li>
+                                <li><strong>USD</strong> - Dólar ($)</li>
+                                <li><strong>EUR</strong> - Euro (€)</li>
+                                <li><strong>MXN</strong> - Peso Mexicano ($)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+</body>
+</html>
+
+```

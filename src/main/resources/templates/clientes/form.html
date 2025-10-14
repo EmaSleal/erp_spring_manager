@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- ============================================================================
+     MODAL CLIENTE - Bootstrap 5
+     Modal para agregar y editar clientes
+     ============================================================================ -->
+
+<div th:fragment="cliente-modal" class="modal fade" id="clienteModal" tabindex="-1" aria-labelledby="clienteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h5 class="modal-title" id="clienteModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>
+                    <span id="modal-title">Agregar Cliente</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="clienteForm" th:action="@{/clientes/guardar}" method="post" th:object="${cliente}">
+                    <input type="hidden" id="idCliente" th:field="*{idCliente}">
+
+                    <!-- Nombre -->
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">
+                            <i class="fas fa-user text-primary me-1"></i>
+                            Nombre Completo
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="nombre" 
+                               th:field="*{nombre}" 
+                               placeholder="Ej: Juan Pérez" 
+                               required>
+                        <div class="invalid-feedback">
+                            Por favor ingrese el nombre del cliente.
+                        </div>
+                    </div>
+
+                    <!-- Teléfono -->
+                    <div class="mb-3">
+                        <label for="telefono" class="form-label">
+                            <i class="fas fa-phone text-success me-1"></i>
+                            Teléfono (WhatsApp)
+                        </label>
+                        <input type="tel" 
+                               class="form-control" 
+                               id="telefono" 
+                               th:field="*{usuario.telefono}" 
+                               placeholder="Ej: 5551234567" 
+                               pattern="[0-9]{10}" 
+                               required>
+                        <div class="form-text">10 dígitos sin espacios ni guiones</div>
+                        <div class="invalid-feedback">
+                            Por favor ingrese un teléfono válido de 10 dígitos.
+                        </div>
+                    </div>
+
+                    <!-- Tipo de Cliente -->
+                    <div class="mb-3">
+                        <label for="tipoCliente" class="form-label">
+                            <i class="fas fa-tag text-warning me-1"></i>
+                            Tipo de Cliente
+                        </label>
+                        <select class="form-select" 
+                                id="tipoCliente" 
+                                th:field="*{tipoCliente}" 
+                                required>
+                            <option value="">Seleccione un tipo...</option>
+                            <option th:each="tipo : ${tiposCliente}"
+                                    th:value="${tipo}"
+                                    th:text="${tipo.getDisplayName()}">Tipo</option>
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor seleccione el tipo de cliente.
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="submit" form="clienteForm" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Guardar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</html>

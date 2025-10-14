@@ -1,0 +1,330 @@
+/*
+ * ============================================================================
+ * NAVBAR.CSS - Barra de Navegación Superior
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Navbar fijo con logo, breadcrumbs y menú de usuario
+ */
+
+/* ============================================================================
+   NAVBAR PRINCIPAL
+   ============================================================================ */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--navbar-height);
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+}
+
+/* ============================================================================
+   SECCIÓN IZQUIERDA - Logo y Nombre
+   ============================================================================ */
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: white;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 600;
+    transition: opacity var(--transition-fast);
+}
+
+.navbar-brand:hover {
+    opacity: 0.9;
+    text-decoration: none;
+    color: white;
+}
+
+.navbar-logo {
+    font-size: 1.5rem;
+}
+
+.navbar-app-name {
+    display: none; /* Oculto en móvil */
+}
+
+/* ============================================================================
+   SECCIÓN CENTRO - Botón Dashboard y Breadcrumbs
+   ============================================================================ */
+.navbar-center {
+    display: none; /* Ocultado: breadcrumbs ahora solo en contenido */
+    align-items: center;
+    gap: var(--spacing-lg);
+    flex: 1;
+    margin-left: var(--spacing-xl);
+}
+
+.btn-dashboard {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--border-radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.btn-dashboard:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.breadcrumbs {
+    display: none; /* Se muestra solo en desktop */
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.breadcrumb-item a {
+    color: rgba(104, 102, 102, 0.9);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.breadcrumb-item a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.breadcrumb-item.active {
+    color: rgba(104, 102, 102, 0.9);
+    font-weight: 500;
+}
+
+.breadcrumb-item.active:hover {
+    color: white;
+    font-weight: 500;
+}
+
+
+/* ============================================================================
+   SECCIÓN DERECHA - Usuario y Dropdown
+   ============================================================================ */
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.navbar-user {
+    position: relative;
+}
+
+.navbar-user-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: var(--border-radius-lg);
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.navbar-user-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--border-radius-full);
+    background-color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-name {
+    display: none; /* Oculto en móvil */
+    font-weight: 500;
+}
+
+.user-dropdown-icon {
+    font-size: 0.75rem;
+    transition: transform var(--transition-fast);
+}
+
+.navbar-user-trigger.active .user-dropdown-icon {
+    transform: rotate(180deg);
+}
+
+/* ============================================================================
+   DROPDOWN MENU
+   ============================================================================ */
+.navbar-dropdown {
+    position: absolute;
+    top: calc(100% + var(--spacing-sm));
+    right: 0;
+    min-width: 220px;
+    background-color: white;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all var(--transition-fast);
+    z-index: 1001;
+}
+
+.navbar-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-header {
+    padding: var(--spacing-md);
+    background-color: var(--background-color);
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.dropdown-user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.dropdown-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-full);
+    background-color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: white;
+}
+
+.dropdown-user-details {
+    flex: 1;
+}
+
+.dropdown-user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.dropdown-user-role {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Menu items del dropdown */
+.navbar-menu-items {
+    list-style: none;
+    margin: 0;
+    padding: var(--spacing-sm) 0;
+}
+
+.navbar-menu-item {
+    margin: 0;
+}
+
+.navbar-menu-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.navbar-menu-link:hover {
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.navbar-menu-link i {
+    width: 20px;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.navbar-menu-divider {
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: var(--spacing-sm) 0;
+}
+
+.navbar-menu-logout {
+    color: var(--error-color);
+}
+
+.navbar-menu-logout:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* ============================================================================
+   RESPONSIVE - TABLET
+   ============================================================================ */
+@media (min-width: 768px) {
+    .navbar-app-name {
+        display: block;
+    }
+    
+    .user-name {
+        display: block;
+    }
+    
+    .breadcrumbs {
+        display: flex;
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE - DESKTOP
+   ============================================================================ */
+@media (min-width: 1200px) {
+    .navbar {
+        padding: 0 var(--spacing-xl);
+    }
+}
