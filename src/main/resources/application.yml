@@ -1,0 +1,41 @@
+spring:
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+  main:
+    allow-bean-definition-overriding: true
+    web-application-type: servlet
+  datasource:
+    url:  jdbc:mysql://192.168.100.8:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: m4n0
+    password: Chismosear01
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # ========================================
+  # CONFIGURACIÓN DE EMAIL
+  # ========================================
+  mail:
+    host: ${EMAIL_HOST:smtp.gmail.com}
+    port: ${EMAIL_PORT:587}
+    username: ${EMAIL_USERNAME:manusl2908@gmail.com}
+    password: ${EMAIL_PASSWORD:syzm qsxg mmiw hdsn}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: ${EMAIL_HOST:smtp.gmail.com}
+        debug: false
+    default-encoding: UTF-8

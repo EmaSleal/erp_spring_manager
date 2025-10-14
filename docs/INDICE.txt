@@ -1,0 +1,1291 @@
+================================================================================================================================================================================================================================================
+
+📚 ÍNDICE DE DOCUMENTACIÓN - WHATSAPP ORDERS MANAGER
+
+================================================================================📚 ÍNDICE DE DOCUMENTACIÓN - WHATSAPP ORDERS MANAGER📚 ÍNDICE MAESTRO - DOCUMENTACIÓN DEL PROYECTO
+
+Última actualización: 12 de octubre de 2025
+
+Estado del proyecto: 🟢 EN PROGRESO ACTIVO (Sprint 1: 87%)================================================================================WhatsApp Orders Manager - Rediseño UI/UX
+
+================================================================================
+
+Última actualización: 12 de octubre de 2025================================================================================
+
+🎯 INICIO RÁPIDO
+
+================================================================================Estado del proyecto: 🟢 EN PROGRESO ACTIVO (Sprint 1: 87%)Fecha de creación: 10 de octubre de 2025
+
+
+
+Para Nuevos Desarrolladores:================================================================================Última actualización: 11 de octubre de 2025
+
+1. ESTADO_PROYECTO.md ..................... Estado actual y progreso
+
+2. sprints/SPRINT_1_RESUMEN_COMPLETO.md ... Resumen ejecutivo completo================================================================================
+
+3. sprints/SPRINT_1_CHECKLIST.txt ......... Tareas detalladas
+
+4. diseno/MOCKUPS_VISUALES.txt ............ Diseño visual🎯 INICIO RÁPIDO
+
+
+
+Para Stakeholders:================================================================================📂 NUEVA UBICACIÓN DE LOS DOCUMENTOS:
+
+1. ESTADO_PROYECTO.md ..................... Dashboard del proyecto
+
+2. sprints/SPRINT_1_RESUMEN_COMPLETO.md ... Logros y estadísticas─────────────────────────────────────
+
+3. planificacion/RESUMEN_APROBACION.txt ... Decisiones aprobadas
+
+Para Nuevos Desarrolladores:Todos los documentos han sido reorganizados en subcarpetas para mejor orden:
+
+================================================================================
+
+📂 ESTRUCTURA DE CARPETAS1. ESTADO_PROYECTO.md ..................... Estado actual y progreso
+
+================================================================================
+
+2. sprints/SPRINT_1_RESUMEN_COMPLETO.md ... Resumen ejecutivo completodocs/
+
+docs/
+
+├── 📄 README.md .......................... Guía de navegación ⭐3. sprints/SPRINT_1_CHECKLIST.txt ......... Tareas detalladas├── README.md                           (Guía rápida de la documentación)
+
+├── 📄 ESTADO_PROYECTO.md ................. Estado actual consolidado ⭐
+
+├── 📄 INDICE.txt ......................... Este archivo4. diseno/MOCKUPS_VISUALES.txt ............ Diseño visual├── INDICE.txt                          (Este archivo)
+
+├── 📄 RESUMEN_IMPLEMENTACIONES.md ........ Resumen de implementaciones
+
+├── 📄 REORGANIZACION_COMPLETADA.txt ...... Log de reorganización├── ESTADO_PROYECTO.md                  (Estado actualizado del proyecto)
+
+├── 📄 REORGANIZACION_DOC_2025_10_12.md ... Reorganización 12/10/2025
+
+├── 📄 FIX_ACTUALIZACION_ESTADO_FACTURA.md  Fix estado facturaPara Stakeholders:├── planificacion/
+
+│
+
+├── 📁 planificacion/ ..................... Planificación estratégica1. ESTADO_PROYECTO.md ..................... Dashboard del proyecto│   ├── PLAN_MAESTRO.txt
+
+│   ├── PLAN_MAESTRO.txt .................. Plan completo del proyecto
+
+│   ├── DECISIONES_TECNICAS.txt ........... Stack y decisiones2. sprints/SPRINT_1_RESUMEN_COMPLETO.md ... Logros y estadísticas│   ├── DECISIONES_TECNICAS.txt
+
+│   ├── DECISIONES_APROBADAS_RESUMEN.txt .. Resumen de decisiones
+
+│   ├── RESUMEN_APROBACION.txt ............ Resumen ejecutivo3. planificacion/RESUMEN_APROBACION.txt ... Decisiones aprobadas│   ├── DECISIONES_APROBADAS_RESUMEN.txt
+
+│   └── MEJORAS_FUTURAS.md ................ Mejoras planificadas ⭐ NUEVO
+
+││   └── RESUMEN_APROBACION.txt
+
+├── 📁 sprints/ ........................... Sprints y fases
+
+│   ├── SPRINT_1_CHECKLIST.txt ............ Checklist Sprint 1 (1,292 líneas) ⭐================================================================================├── sprints/
+
+│   ├── SPRINT_1_RESUMEN_COMPLETO.md ...... Resumen ejecutivo (1,200+ líneas) ⭐
+
+│   ├── SPRINT_2_CHECKLIST.txt ............ Checklist Sprint 2📂 ESTRUCTURA DE CARPETAS│   ├── SPRINT_1_CHECKLIST.txt
+
+│   ├── SPRINT_2_PLAN.md .................. Plan Sprint 2
+
+│   │================================================================================│   ├── SPRINT_2_CHECKLIST.txt
+
+│   ├── FASE_1_VERIFICACION.md ............ Fase 1: Preparación ✅
+
+│   ├── FASE_3_DASHBOARD_COMPLETADA.md .... Fase 3: Dashboard ✅│   ├── SPRINT_2_PLAN.md
+
+│   ├── FASE_4_PERFIL_COMPLETADA.md ....... Fase 4: Perfil ✅
+
+│   ├── FASE_4_PUNTO_4.1_RESUMEN.md ....... Punto 4.1 resumen ✅docs/│   ├── FASE_3_DASHBOARD_COMPLETADA.md
+
+│   ├── FASE_4_RESUMEN_EJECUTIVO.md ....... Resumen ejecutivo Fase 4 ✅
+
+│   ├── FASE_5_SEGURIDAD_AVANZADA.md ...... Fase 5: Seguridad ✅ ⭐├── 📄 README.md .......................... Guía de navegación ⭐│   ├── FASE_4_PERFIL_COMPLETADA.md
+
+│   ├── FASE_5_PUNTO_5.1_COMPLETADO.md .... Punto 5.1 SecurityConfig ✅
+
+│   ├── FASE_5_PUNTO_5.3_COMPLETADO.md .... Punto 5.3 Último acceso ✅├── 📄 ESTADO_PROYECTO.md ................. Estado actual consolidado ⭐│   ├── FASE_4_RESUMEN_EJECUTIVO.md
+
+│   │
+
+│   ├── FIX_LOGOUT_403.md ................. Fix error logout ✅├── 📄 INDICE.txt ......................... Este archivo│   ├── FASE_4_PUNTO_4.1_RESUMEN.md
+
+│   └── FIX_ACTUALIZACION_ESTADO_FACTURA.md Fix estado factura ✅
+
+│├── 📄 RESUMEN_IMPLEMENTACIONES.md ........ Resumen de implementaciones│   ├── FASE_5_SEGURIDAD_AVANZADA.md
+
+├── 📁 base de datos/ ..................... Scripts SQL
+
+│   ├── MIGRATION_USUARIO_FASE_4.sql ...... Migración Fase 4 (150+ líneas) ⭐├── 📄 REORGANIZACION_COMPLETADA.txt ...... Log de reorganización│   └── FASE_5_PUNTO_5.1_COMPLETADO.md
+
+│   └── SPS.txt ........................... Stored procedures
+
+│├── 📄 FIX_ACTUALIZACION_ESTADO_FACTURA.md  Fix estado factura├── diseno/
+
+├── 📁 diseno/ ............................ Diseño y mockups
+
+│   └── MOCKUPS_VISUALES.txt .............. Mockups y referencias││   └── MOCKUPS_VISUALES.txt
+
+│
+
+└── 📁 referencias/ ....................... Material de referencia├── 📁 planificacion/ ..................... Planificación estratégica├── referencias/
+
+    └── FUNCIONALIDADES_ERP.txt ........... Checklist funcionalidades
+
+│   ├── PLAN_MAESTRO.txt .................. Plan completo del proyecto│   └── FUNCIONALIDADES_ERP.txt
+
+⭐ = Documentos más importantes/actualizados
+
+✅ = Completado│   ├── DECISIONES_TECNICAS.txt ........... Stack y decisiones└── base de datos/
+
+
+
+================================================================================│   ├── DECISIONES_APROBADAS_RESUMEN.txt .. Resumen de decisiones    ├── MIGRATION_USUARIO_FASE_4.sql
+
+📊 DOCUMENTOS POR CATEGORÍA
+
+================================================================================│   └── RESUMEN_APROBACION.txt ............ Resumen ejecutivo    └── SPS.txt
+
+
+
+ESTADO Y PROGRESO:│
+
+------------------
+
+📄 ESTADO_PROYECTO.md ..................... Estado actual, progreso, fixes├── 📁 sprints/ ........................... Sprints y fasesPROPÓSITO DE ESTE DOCUMENTO:
+
+📄 sprints/SPRINT_1_RESUMEN_COMPLETO.md ... Resumen ejecutivo Sprint 1
+
+📄 sprints/SPRINT_1_CHECKLIST.txt ......... Checklist detallado (1,292 líneas)│   ├── SPRINT_1_CHECKLIST.txt ............ Checklist Sprint 1 (1,292 líneas) ⭐────────────────────────────
+
+
+
+PLANIFICACIÓN:│   ├── SPRINT_1_RESUMEN_COMPLETO.md ...... Resumen ejecutivo (1,200+ líneas) ⭐Este es el punto de entrada a toda la documentación del rediseño de la
+
+--------------
+
+📄 planificacion/PLAN_MAESTRO.txt ......... Roadmap completo del proyecto│   ├── SPRINT_2_CHECKLIST.txt ............ Checklist Sprint 2interfaz de usuario del sistema WhatsApp Orders Manager. Aquí encontrarás
+
+📄 planificacion/DECISIONES_TECNICAS.txt .. Stack tecnológico y decisiones
+
+📄 planificacion/RESUMEN_APROBACION.txt ... Decisiones clave aprobadas│   ├── SPRINT_2_PLAN.md .................. Plan Sprint 2referencias rápidas a todos los documentos de planificación y desarrollo.
+
+📄 planificacion/MEJORAS_FUTURAS.md ....... Mejoras y cambios futuros ⭐ NUEVO
+
+│   │
+
+IMPLEMENTACIÓN:
+
+---------------│   ├── FASE_1_VERIFICACION.md ............ Fase 1: Preparación ✅================================================================================
+
+📄 sprints/FASE_1_VERIFICACION.md ......... Preparación y configuración ✅
+
+📄 sprints/FASE_3_DASHBOARD_COMPLETADA.md . Dashboard principal ✅│   ├── FASE_3_DASHBOARD_COMPLETADA.md .... Fase 3: Dashboard ✅📋 DOCUMENTOS PRINCIPALES
+
+📄 sprints/FASE_4_PERFIL_COMPLETADA.md .... Módulo de perfil ✅
+
+📄 sprints/FASE_5_SEGURIDAD_AVANZADA.md ... Seguridad avanzada ✅│   ├── FASE_4_PERFIL_COMPLETADA.md ....... Fase 4: Perfil ✅================================================================================
+
+
+
+BASE DE DATOS:│   ├── FASE_4_PUNTO_4.1_RESUMEN.md ....... Punto 4.1 resumen ✅
+
+--------------
+
+📄 base de datos/MIGRATION_USUARIO_FASE_4.sql  Migración campos Usuario│   ├── FASE_4_RESUMEN_EJECUTIVO.md ....... Resumen ejecutivo Fase 4 ✅1. 📄 referencias/FUNCIONALIDADES_ERP.txt
+
+📄 base de datos/SPS.txt .................. Stored procedures
+
+│   ├── FASE_5_SEGURIDAD_AVANZADA.md ...... Fase 5: Seguridad ✅ ⭐   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DISEÑO:
+
+-------│   ├── FASE_5_PUNTO_5.1_COMPLETADO.md .... Punto 5.1 SecurityConfig ✅   Ruta: docs/referencias/FUNCIONALIDADES_ERP.txt
+
+📄 diseno/MOCKUPS_VISUALES.txt ............ Mockups ASCII y referencias
+
+│   ├── FASE_5_PUNTO_5.3_COMPLETADO.md .... Punto 5.3 Último acceso ✅   Descripción: Checklist completo de funcionalidades de un ERP profesional
+
+FIXES Y CORRECCIONES:
+
+---------------------│   │   Uso: Referencia para entender qué módulos implementar
+
+📄 sprints/FIX_LOGOUT_403.md .............. Solución error logout 403
+
+📄 FIX_ACTUALIZACION_ESTADO_FACTURA.md .... Fix estado factura│   ├── FIX_LOGOUT_403.md ................. Fix error logout ✅   Cuándo consultar: Al planificar nuevos sprints o módulos
+
+📄 ESTADO_PROYECTO.md (sección Fixes) ..... Resumen de todos los fixes
+
+│   └── FIX_ACTUALIZACION_ESTADO_FACTURA.md Fix estado factura ✅   Estado: ✅ Original (base de comparación)
+
+================================================================================
+
+🎯 PROGRESO DEL SPRINT 1│
+
+================================================================================
+
+├── 📁 base de datos/ ..................... Scripts SQL2. 📘 planificacion/PLAN_MAESTRO.txt
+
+PROGRESO GENERAL: 87% (5/7 fases completadas)
+
+│   ├── MIGRATION_USUARIO_FASE_4.sql ...... Migración Fase 4 (150+ líneas) ⭐   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FASES:
+
+------│   └── SPS.txt ........................... Stored procedures   Ruta: docs/planificacion/PLAN_MAESTRO.txt
+
+✅ Fase 1: Preparación y Configuración ....... 100%
+
+✅ Fase 2: Layout Base y Navbar .............. 100%│   Descripción: Plan maestro de reorganización completa del sistema
+
+✅ Fase 3: Dashboard Principal ............... 100%
+
+✅ Fase 4: Perfil de Usuario ................. 100%├── 📁 diseno/ ............................ Diseño y mockups   Contenido:
+
+✅ Fase 5: Seguridad Avanzada ................ 100%
+
+⏳ Fase 6: Integración con Módulos ........... 0%│   └── MOCKUPS_VISUALES.txt .............. Mockups y referencias   - Fases del proyecto (1-10)
+
+⏳ Fase 7: Testing y Validación .............. 0%
+
+│   - Estructura de navegación
+
+ESTADÍSTICAS:
+
+-------------└── 📁 referencias/ ....................... Material de referencia   - Módulos planificados (todos)
+
+Líneas de código: ........... ~15,000+
+
+Archivos creados/modificados: 80+    └── FUNCIONALIDADES_ERP.txt ........... Checklist funcionalidades   - Modelo de datos nuevos
+
+Endpoints API: ............... 26
+
+Funcionalidades: ............. 27   - Prioridades de implementación (Sprints 1-7)
+
+Fixes aplicados: ............. 5
+
+Líneas de documentación: ..... 6,000+⭐ = Documentos más importantes/actualizados   - Wireframes ASCII
+
+
+
+================================================================================✅ = Completado   
+
+💡 MEJORAS FUTURAS PLANIFICADAS
+
+================================================================================   Uso: Documento de referencia principal para todo el proyecto
+
+
+
+Ver documento completo: planificacion/MEJORAS_FUTURAS.md ⭐================================================================================   Cuándo consultar: 
+
+
+
+ALTA PRIORIDAD (Sprint 2-3):📊 DOCUMENTOS POR CATEGORÍA   - Al inicio de cada sprint
+
+-----------------------------
+
+1. Cambiar username de teléfono a nombre de usuario propio================================================================================   - Al planificar nuevas funcionalidades
+
+   - Nuevo campo "username" en modelo Usuario
+
+   - Migración SQL para usuarios existentes   - Para entender la visión completa del sistema
+
+   - Actualizar login y registro
+
+   - Estimación: 8-11 horasESTADO Y PROGRESO:   
+
+
+
+2. Implementar "Remember Me" en login------------------   Estado: ✅ Completo - Documento vivo (actualizar según decisiones)
+
+   - Mantener sesión por 7 días
+
+   - Checkbox en formulario login📄 ESTADO_PROYECTO.md ..................... Estado actual, progreso, fixes
+
+   - Estimación: 1-2 horas
+
+📄 sprints/SPRINT_1_RESUMEN_COMPLETO.md ... Resumen ejecutivo Sprint 13. 🔧 planificacion/DECISIONES_TECNICAS.txt
+
+3. Gráficas reales en dashboard
+
+   - Implementar Chart.js📄 sprints/SPRINT_1_CHECKLIST.txt ......... Checklist detallado (1,292 líneas)   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   - Ventas por mes, productos top
+
+   - Estimación: 8-12 horas   Ruta: docs/planificacion/DECISIONES_TECNICAS.txt
+
+
+
+MEDIA PRIORIDAD (Sprint 3-4):PLANIFICACIÓN:   Descripción: Decisiones técnicas específicas para Sprint 1
+
+------------------------------
+
+4. Migrar de Timestamp a LocalDateTime--------------   Contenido:
+
+5. Refactorizar SecurityConfig en módulos
+
+6. Crear DTOs para responses📄 planificacion/PLAN_MAESTRO.txt ......... Roadmap completo del proyecto   - 20 decisiones clave (TODAS APROBADAS ✅)
+
+7. Exportación de reportes (PDF, Excel, CSV)
+
+📄 planificacion/DECISIONES_TECNICAS.txt .. Stack tecnológico y decisiones   - Framework CSS: Bootstrap 5
+
+BAJA PRIORIDAD (Sprint 4+):
+
+----------------------------📄 planificacion/RESUMEN_APROBACION.txt ... Decisiones clave aprobadas   - Librerías de iconos: Font Awesome 6
+
+8. Internacionalización (i18n)
+
+9. Historial de accesos   - Paleta de colores exacta
+
+10. Two-Factor Authentication (2FA)
+
+11. Social Login (OAuth2)IMPLEMENTACIÓN:   - Estructura de archivos
+
+12. Notificaciones en tiempo real
+
+---------------   - Configuraciones de seguridad
+
+================================================================================
+
+📚 GUÍA DE NAVEGACIÓN POR NECESIDAD📄 sprints/FASE_1_VERIFICACION.md ......... Preparación y configuración ✅   - Librerías adicionales
+
+================================================================================
+
+📄 sprints/FASE_3_DASHBOARD_COMPLETADA.md . Dashboard principal ✅   
+
+"¿Cuál es el estado actual del proyecto?"
+
+→ ESTADO_PROYECTO.md📄 sprints/FASE_4_PERFIL_COMPLETADA.md .... Módulo de perfil ✅   Uso: Guía de decisiones técnicas aprobadas
+
+
+
+"¿Qué tareas quedan por hacer?"📄 sprints/FASE_5_SEGURIDAD_AVANZADA.md ... Seguridad avanzada ✅   Cuándo consultar: 
+
+→ sprints/SPRINT_1_CHECKLIST.txt
+
+   - Durante desarrollo para confirmar decisiones
+
+"¿Qué mejoras están planificadas?"
+
+→ planificacion/MEJORAS_FUTURAS.md ⭐ NUEVOBASE DE DATOS:   - Al elegir tecnologías o librerías
+
+
+
+"¿Cómo se implementó el perfil de usuario?"--------------   - Para resolver dudas sobre stack técnico
+
+→ sprints/FASE_4_PERFIL_COMPLETADA.md
+
+📄 base de datos/MIGRATION_USUARIO_FASE_4.sql  Migración campos Usuario   
+
+"¿Qué cambios de seguridad se hicieron?"
+
+→ sprints/FASE_5_SEGURIDAD_AVANZADA.md📄 base de datos/SPS.txt .................. Stored procedures   Estado: ✅ APROBADO (con opción B en layout - con sidebar)
+
+
+
+"¿Qué fixes se han aplicado?"
+
+→ ESTADO_PROYECTO.md (sección "Fixes y Mejoras Recientes")
+
+DISEÑO:4. ✅ sprints/SPRINT_1_CHECKLIST.txt
+
+"¿Cómo migrar la base de datos?"
+
+→ base de datos/MIGRATION_USUARIO_FASE_4.sql-------   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+
+"¿Cuál es el plan general del proyecto?"📄 diseno/MOCKUPS_VISUALES.txt ............ Mockups ASCII y referencias   Ruta: docs/sprints/SPRINT_1_CHECKLIST.txt
+
+→ planificacion/PLAN_MAESTRO.txt
+
+   Descripción: Checklist detallado de tareas para Sprint 1
+
+"¿Qué decisiones técnicas se tomaron?"
+
+→ planificacion/DECISIONES_TECNICAS.txtFIXES Y CORRECCIONES:   Contenido:
+
+
+
+"¿Cómo se ve el diseño de la aplicación?"---------------------   - 8 Fases de implementación
+
+→ diseno/MOCKUPS_VISUALES.txt
+
+📄 sprints/FIX_LOGOUT_403.md .............. Solución error logout 403   - Checklist de archivos a crear/modificar
+
+"¿Quiero ver todo el Sprint 1 completo?"
+
+→ sprints/SPRINT_1_RESUMEN_COMPLETO.md📄 FIX_ACTUALIZACION_ESTADO_FACTURA.md .... Fix estado factura   - Código de ejemplo para cada componente
+
+
+
+================================================================================📄 ESTADO_PROYECTO.md (sección Fixes) ..... Resumen de todos los fixes   - Criterios de aceptación
+
+🔍 CONTENIDO DE DOCUMENTOS PRINCIPALES
+
+================================================================================   - Métricas de éxito
+
+
+
+ESTADO_PROYECTO.md (900+ líneas):================================================================================   - Estimación de tiempo por fase
+
+----------------------------------
+
+- Progreso general del Sprint 1 (87%)🎯 PROGRESO DEL SPRINT 1   
+
+- Estado de cada fase (1-5 completadas)
+
+- Arquitectura implementada (backend, frontend, DB)================================================================================   Uso: Guía paso a paso durante el desarrollo del Sprint 1
+
+- Funcionalidades completadas
+
+- Fixes y mejoras recientes (5 fixes)   Cuándo consultar: 
+
+- Estadísticas del código (15,000+ líneas)
+
+- Endpoints del API (26 endpoints)PROGRESO GENERAL: 87% (5/7 fases completadas)   - Diariamente durante el desarrollo
+
+- Documentación generada
+
+- Testing pendiente   - Al marcar tareas completadas
+
+- Próximos pasos (incluye enlace a MEJORAS_FUTURAS.md)
+
+- Hitos alcanzadosFASES:   - Para verificar que no se olvide nada
+
+
+
+MEJORAS_FUTURAS.md (NUEVO - 400+ líneas):------   
+
+------------------------------------------
+
+- 12 mejoras planificadas clasificadas por prioridad✅ Fase 1: Preparación y Configuración ....... 100%   Estado: ⏳ Listo para iniciar desarrollo
+
+- Cambio de username (teléfono → nombre de usuario)
+
+- Migración a LocalDateTime✅ Fase 2: Layout Base y Navbar .............. 100%   
+
+- Remember Me, 2FA, i18n
+
+- Código de ejemplo para cada mejora✅ Fase 3: Dashboard Principal ............... 100%   FASES DEL SPRINT 1:
+
+- Archivos a modificar
+
+- Estimaciones de tiempo✅ Fase 4: Perfil de Usuario ................. 100%   □ Fase 1: Preparación y Configuración
+
+- Riesgos y dependencias
+
+✅ Fase 5: Seguridad Avanzada ................ 100%   □ Fase 2: Layout Base y Navbar
+
+SPRINT_1_RESUMEN_COMPLETO.md (1,200+ líneas):
+
+----------------------------------------------⏳ Fase 6: Integración con Módulos ........... 0%   □ Fase 3: Dashboard
+
+- Resumen ejecutivo del Sprint 1
+
+- Detalle de cada fase (1-5)⏳ Fase 7: Testing y Validación .............. 0%   □ Fase 4: Perfil de Usuario
+
+- Todos los fixes aplicados
+
+- Estadísticas completas   □ Fase 5: Configuración de Seguridad
+
+- Métricas de calidad
+
+- Historial de cambiosESTADÍSTICAS:   □ Fase 6: Integración con Módulos Existentes
+
+- Próximos pasos
+
+- Conclusión y logros-------------   □ Fase 7: Testing y Validación
+
+
+
+SPRINT_1_CHECKLIST.txt (1,292 líneas):Líneas de código: ........... ~15,000+   □ Fase 8: Documentación
+
+---------------------------------------
+
+- Checklist detallado de todas las tareasArchivos creados/modificados: 80+
+
+- Estado de cada punto (✅/⏳/□)
+
+- Código esperado para cada implementaciónEndpoints API: ............... 265. 🎨 diseno/MOCKUPS_VISUALES.txt
+
+- Responsables y fechas
+
+- Validaciones y pruebasFuncionalidades: ............. 27   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Criterios de aceptación
+
+Fixes aplicados: ............. 5   Ruta: docs/diseno/MOCKUPS_VISUALES.txt
+
+FASE_5_SEGURIDAD_AVANZADA.md (667 líneas):
+
+-------------------------------------------Líneas de documentación: ..... 6,000+   Descripción: Mockups visuales en ASCII de todas las vistas
+
+- SecurityConfig.java completo
+
+- CSRF protection   Contenido:
+
+- Tracking de último acceso
+
+- Session management================================================================================   - Dashboard completo (desktop y móvil)
+
+- Permisos granulares por rol
+
+- Fixes aplicados (logout, template, dates)📚 GUÍA DE NAVEGACIÓN POR NECESIDAD   - Navbar con dropdown
+
+
+
+MIGRATION_USUARIO_FASE_4.sql (150+ líneas):================================================================================   - Vistas de perfil (ver y editar)
+
+--------------------------------------------
+
+- ALTER TABLE para agregar campos   - Módulo de clientes rediseñado
+
+- UPDATE para datos existentes
+
+- CREATE INDEX para optimización"¿Cuál es el estado actual del proyecto?"   - Paleta de colores visual
+
+- Comentarios y explicaciones
+
+→ ESTADO_PROYECTO.md   - Iconografía (Font Awesome)
+
+================================================================================
+
+📁 ARCHIVOS POR SPRINT   - Animaciones y transiciones
+
+================================================================================
+
+"¿Qué tareas quedan por hacer?"   - Ejemplos de alerts (SweetAlert2)
+
+SPRINT 1 (87% - EN PROGRESO):
+
+------------------------------→ sprints/SPRINT_1_CHECKLIST.txt   - Breadcrumbs
+
+Checklist: ............ sprints/SPRINT_1_CHECKLIST.txt
+
+Resumen: .............. sprints/SPRINT_1_RESUMEN_COMPLETO.md   
+
+Fase 1: ............... sprints/FASE_1_VERIFICACION.md
+
+Fase 3: ............... sprints/FASE_3_DASHBOARD_COMPLETADA.md"¿Cómo se implementó el perfil de usuario?"   Uso: Referencia visual durante el desarrollo de UI
+
+Fase 4: ............... sprints/FASE_4_PERFIL_COMPLETADA.md
+
+Fase 4 (resumen): ..... sprints/FASE_4_RESUMEN_EJECUTIVO.md→ sprints/FASE_4_PERFIL_COMPLETADA.md   Cuándo consultar: 
+
+Fase 5: ............... sprints/FASE_5_SEGURIDAD_AVANZADA.md
+
+Fase 5 (punto 5.1): ... sprints/FASE_5_PUNTO_5.1_COMPLETADO.md   - Al diseñar interfaces
+
+Fase 5 (punto 5.3): ... sprints/FASE_5_PUNTO_5.3_COMPLETADO.md
+
+Fix logout: ........... sprints/FIX_LOGOUT_403.md"¿Qué cambios de seguridad se hicieron?"   - Al escribir CSS
+
+Fix factura: .......... FIX_ACTUALIZACION_ESTADO_FACTURA.md
+
+→ sprints/FASE_5_SEGURIDAD_AVANZADA.md   - Para verificar diseño vs implementación
+
+SPRINT 2 (PLANIFICADO):
+
+-----------------------   - Para mostrar a stakeholders
+
+Plan: ................. sprints/SPRINT_2_PLAN.md
+
+Checklist: ............ sprints/SPRINT_2_CHECKLIST.txt"¿Qué fixes se han aplicado?"   
+
+Mejoras futuras: ...... planificacion/MEJORAS_FUTURAS.md ⭐
+
+→ ESTADO_PROYECTO.md (sección "Fixes y Mejoras Recientes")   Estado: ✅ Completo - Referencia visual
+
+================================================================================
+
+🏆 ÚLTIMAS ACTUALIZACIONES
+
+================================================================================
+
+"¿Cómo migrar la base de datos?"6. 📊 planificacion/RESUMEN_APROBACION.txt
+
+12/10/2025 - Tarde:
+
+-------------------→ base de datos/MIGRATION_USUARIO_FASE_4.sql   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Creado documento MEJORAS_FUTURAS.md
+
+   - 12 mejoras planificadas clasificadas   Ruta: docs/planificacion/RESUMEN_APROBACION.txt
+
+   - Prioridad #1: Cambiar username de teléfono a nombre propio
+
+   - Código de ejemplo completo"¿Cuál es el plan general del proyecto?"   Descripción: Resumen ejecutivo y formulario de aprobación
+
+   - Estimaciones de tiempo
+
+   - Archivos a modificar (13 archivos)→ planificacion/PLAN_MAESTRO.txt   Contenido:
+
+
+
+✅ Actualizado ESTADO_PROYECTO.md   - Resumen de todas las decisiones clave
+
+   - Agregada sección "Mejoras Futuras (Post-Sprint 1)"
+
+   - Enlaces a MEJORAS_FUTURAS.md"¿Qué decisiones técnicas se tomaron?"   - 10 decisiones principales aprobadas
+
+
+
+✅ Actualizado README.md→ planificacion/DECISIONES_TECNICAS.txt   - Alcance del Sprint 1
+
+   - Agregado MEJORAS_FUTURAS.md en planificación
+
+   - Nueva pregunta: "¿Qué mejoras están planificadas?"   - Criterios de aceptación
+
+
+
+✅ Actualizado INDICE.txt"¿Cómo se ve el diseño de la aplicación?"   - Formulario de aprobación
+
+   - Agregada sección "Mejoras Futuras Planificadas"
+
+   - Referencias a MEJORAS_FUTURAS.md→ diseno/MOCKUPS_VISUALES.txt   
+
+
+
+12/10/2025 - Mañana:   Uso: Documento de aprobación para iniciar desarrollo
+
+--------------------
+
+✅ Completada Fase 5: Seguridad Avanzada"¿Quiero ver todo el Sprint 1 completo?"   Cuándo consultar: 
+
+   - SecurityConfig.java modernizado (Spring Security 6.x)
+
+   - CSRF protection implementada→ sprints/SPRINT_1_RESUMEN_COMPLETO.md   - Antes de iniciar el proyecto
+
+   - Tracking de último acceso
+
+   - 3 fixes críticos (logout, template, dates)   - Para obtener aprobación de stakeholders
+
+
+
+✅ Documentación actualizada:================================================================================   - Como referencia de decisiones tomadas
+
+   - ESTADO_PROYECTO.md (progreso actualizado a 87%)
+
+   - SPRINT_1_RESUMEN_COMPLETO.md (nuevo, 1,200+ líneas)🔍 CONTENIDO DE DOCUMENTOS PRINCIPALES   
+
+   - README.md (reorganizado y actualizado)
+
+   - INDICE.txt (recreado)================================================================================   Estado: ✅ Decisiones aprobadas - Listo para desarrollo
+
+
+
+11/10/2025:
+
+-----------
+
+✅ Completadas Fases 1-4ESTADO_PROYECTO.md (800+ líneas):7. 📑 INDICE.txt (este archivo)
+
+✅ Creados documentos de cada fase
+
+✅ Primera versión de ESTADO_PROYECTO.md----------------------------------   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+
+================================================================================- Progreso general del Sprint 1 (87%)   Ruta: docs/INDICE.txt
+
+📝 CONVENCIONES
+
+================================================================================- Estado de cada fase (1-5 completadas)   Descripción: Índice de todos los documentos de planificación
+
+
+
+SÍMBOLOS:- Arquitectura implementada (backend, frontend, DB)   Uso: Navegación rápida entre documentos
+
+---------
+
+✅ = Completado- Funcionalidades completadas   Estado: ✅ Actualizado con nueva estructura
+
+⏳ = En progreso
+
+□ = Pendiente- Fixes y mejoras recientes (5 fixes)
+
+❌ = Error/Bloqueado
+
+⭐ = Importante/Destacado- Estadísticas del código (15,000+ líneas)8. 🔐 sprints/FASE_5_SEGURIDAD_AVANZADA.md
+
+📄 = Archivo
+
+📁 = Carpeta- Endpoints del API (26 endpoints)   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 = Mejora/Idea
+
+- Documentación generada   Ruta: docs/sprints/FASE_5_SEGURIDAD_AVANZADA.md
+
+FORMATOS:
+
+---------- Testing pendiente   Descripción: Documentación completa de la Fase 5 (Seguridad Avanzada)
+
+.md  = Markdown (documentos actuales, resúmenes, estados)
+
+.txt = Text (planificación, checklists)- Próximos pasos   Contenido:
+
+.sql = SQL (scripts de base de datos)
+
+- Hitos alcanzados   - Punto 5.1: SecurityConfig.java (✅ COMPLETADO)
+
+NOMENCLATURA:
+
+-------------   - Punto 5.2: CSRF Token en Meta Tags (⏳ Pendiente)
+
+SPRINT_X_* ................ Documentos de sprint
+
+FASE_X_* .................. Documentos de faseSPRINT_1_RESUMEN_COMPLETO.md (1,200+ líneas):   - Punto 5.3: Último Acceso (⏳ Pendiente)
+
+FIX_* ..................... Correcciones de bugs
+
+MIGRATION_* ............... Scripts de migración SQL----------------------------------------------   - Matriz de permisos por rol
+
+MEJORAS_* ................. Mejoras y cambios futuros
+
+- Resumen ejecutivo del Sprint 1   - Código completo implementado
+
+================================================================================
+
+🎯 PRÓXIMOS PASOS- Detalle de cada fase (1-5)   - Testing y validación
+
+================================================================================
+
+- Todos los fixes aplicados   
+
+INMEDIATO (Fase 6 - Sprint 1):
+
+-------------------------------- Estadísticas completas   Uso: Referencia de implementación de seguridad
+
+- Integración con Módulos
+
+- Navbar con avatar en todas las vistas- Métricas de calidad   Cuándo consultar:
+
+- Breadcrumbs
+
+- Links desde dashboard- Historial de cambios   - Durante implementación de puntos 5.2 y 5.3
+
+
+
+SIGUIENTE (Fase 7 - Sprint 1):- Próximos pasos   - Para entender configuración de seguridad
+
+-------------------------------
+
+- Testing y validación- Conclusión y logros   - Para testing de permisos
+
+- Pruebas funcionales
+
+- Pruebas de seguridad   
+
+- Responsive testing
+
+SPRINT_1_CHECKLIST.txt (1,292 líneas):   Estado: 🟡 En Progreso (1/3 puntos completados)
+
+FUTURO (Sprint 2 - Mejoras):
+
+--------------------------------------------------------------------
+
+- Cambiar username (teléfono → nombre de usuario) ⭐
+
+- Implementar "Remember Me"- Checklist detallado de todas las tareas9. ✅ sprints/FASE_5_PUNTO_5.1_COMPLETADO.md
+
+- Gráficas reales en dashboard
+
+- Ver planificacion/MEJORAS_FUTURAS.md para más detalles- Estado de cada punto (✅/⏳/□)   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+
+================================================================================- Código esperado para cada implementación   Ruta: docs/sprints/FASE_5_PUNTO_5.1_COMPLETADO.md
+
+📞 INFORMACIÓN
+
+================================================================================- Responsables y fechas   Descripción: Resumen ejecutivo del punto 5.1 completado
+
+
+
+Proyecto: ............. WhatsApp Orders Manager- Validaciones y pruebas   Contenido:
+
+Developer: ............ GitHub Copilot Agent
+
+Project Owner: ........ Emanuel Soto- Criterios de aceptación   - Cambios implementados en SecurityConfig.java
+
+Ubicación: ............ d:\programacion\java\spring-boot\whats_orders_manager
+
+Estado: ............... 🟢 EN PROGRESO ACTIVO   - @EnableMethodSecurity agregado
+
+Sprint actual: ........ Sprint 1 (87%)
+
+Última actualización: . 12 de octubre de 2025FASE_5_SEGURIDAD_AVANZADA.md (667 líneas):   - Matriz completa de permisos
+
+
+
+================================================================================-------------------------------------------   - Código before/after
+
+FIN DEL ÍNDICE
+
+================================================================================- SecurityConfig.java completo   - Métricas de implementación
+
+
+- CSRF protection   - Validación y testing
+
+- Tracking de último acceso   
+
+- Session management   Uso: Documentación de referencia del punto 5.1
+
+- Permisos granulares por rol   Cuándo consultar:
+
+- Fixes aplicados (logout, template, dates)   - Para entender cambios en SecurityConfig
+
+   - Para revisar permisos por rol
+
+MIGRATION_USUARIO_FASE_4.sql (150+ líneas):   - Para testing de seguridad
+
+--------------------------------------------   
+
+- ALTER TABLE para agregar campos   Estado: ✅ Completado - Punto 5.1 al 100%
+
+- UPDATE para datos existentes
+
+- CREATE INDEX para optimización================================================================================
+
+- Comentarios y explicaciones🗂️ FLUJO DE TRABAJO RECOMENDADO
+
+================================================================================
+
+================================================================================
+
+📁 ARCHIVOS POR SPRINTANTES DE INICIAR DESARROLLO:
+
+================================================================================────────────────────────────
+
+1. ✅ Leer referencias/FUNCIONALIDADES_ERP.txt
+
+SPRINT 1 (87% - EN PROGRESO):   → Entender qué es un ERP completo
+
+------------------------------
+
+Checklist: ............ sprints/SPRINT_1_CHECKLIST.txt2. ✅ Leer planificacion/PLAN_MAESTRO.txt
+
+Resumen: .............. sprints/SPRINT_1_RESUMEN_COMPLETO.md   → Comprender la visión completa del proyecto
+
+Fase 1: ............... sprints/FASE_1_VERIFICACION.md
+
+Fase 3: ............... sprints/FASE_3_DASHBOARD_COMPLETADA.md3. ✅ Revisar diseno/MOCKUPS_VISUALES.txt
+
+Fase 4: ............... sprints/FASE_4_PERFIL_COMPLETADA.md   → Visualizar cómo se verá el sistema
+
+Fase 4 (resumen): ..... sprints/FASE_4_RESUMEN_EJECUTIVO.md
+
+Fase 5: ............... sprints/FASE_5_SEGURIDAD_AVANZADA.md4. ✅ Revisar planificacion/DECISIONES_TECNICAS.txt
+
+Fase 5 (punto 5.1): ... sprints/FASE_5_PUNTO_5.1_COMPLETADO.md   → Confirmar decisiones aprobadas
+
+Fase 5 (punto 5.3): ... sprints/FASE_5_PUNTO_5.3_COMPLETADO.md
+
+Fix logout: ........... sprints/FIX_LOGOUT_403.md5. ✅ Revisar planificacion/RESUMEN_APROBACION.txt
+
+Fix factura: .......... FIX_ACTUALIZACION_ESTADO_FACTURA.md   → Verificar aprobación para desarrollo
+
+
+
+SPRINT 2 (PLANIFICADO):DURANTE EL SPRINT 1:
+
+-----------------------────────────────────
+
+Plan: ................. sprints/SPRINT_2_PLAN.md1. Seguir sprints/SPRINT_1_CHECKLIST.txt paso a paso
+
+Checklist: ............ sprints/SPRINT_2_CHECKLIST.txt2. Consultar diseno/MOCKUPS_VISUALES.txt para diseño
+
+3. Marcar tareas completadas en el checklist
+
+================================================================================4. Actualizar notas en SPRINT_1_CHECKLIST.txt
+
+🏆 ÚLTIMAS ACTUALIZACIONES
+
+================================================================================DESPUÉS DEL SPRINT 1:
+
+─────────────────────
+
+12/10/2025:1. Actualizar referencias/FUNCIONALIDADES_ERP.txt
+
+-----------   → Marcar funcionalidades implementadas
+
+✅ Completada Fase 5: Seguridad Avanzada
+
+   - SecurityConfig.java modernizado (Spring Security 6.x)2. Actualizar planificacion/PLAN_MAESTRO.txt
+
+   - CSRF protection implementada   → Marcar Sprint 1 como completado
+
+   - Tracking de último acceso   → Planificar Sprint 2
+
+   - 3 fixes críticos (logout, template, dates)
+
+3. Crear sprints/SPRINT_2_CHECKLIST.txt
+
+✅ Documentación actualizada:   → Para siguiente iteración
+
+   - ESTADO_PROYECTO.md (progreso actualizado a 87%)
+
+   - SPRINT_1_RESUMEN_COMPLETO.md (nuevo, 1,200+ líneas)================================================================================
+
+   - README.md (reorganizado y actualizado)📁 UBICACIÓN DE LOS ARCHIVOS
+
+   - INDICE.txt (este archivo, actualizado)================================================================================
+
+
+
+✅ Fixes aplicados:Nueva estructura organizada en subcarpetas:
+
+   - Fix 3: Logout 403 Forbiddend:\programacion\java\spring-boot\whats_orders_manager\docs\
+
+   - Fix 4: Template Field Names
+
+   - Fix 5: Temporals Format Errordocs/
+
+├── README.md                           ← Guía rápida
+
+11/10/2025:├── INDICE.txt                          ← Este archivo
+
+-----------│
+
+✅ Completadas Fases 1-4├── planificacion/                      ← Documentos de planificación
+
+✅ Creados documentos de cada fase│   ├── PLAN_MAESTRO.txt
+
+✅ Primera versión de ESTADO_PROYECTO.md│   ├── DECISIONES_TECNICAS.txt
+
+│   └── RESUMEN_APROBACION.txt
+
+================================================================================│
+
+📝 CONVENCIONES├── sprints/                            ← Documentación de sprints
+
+================================================================================│   └── SPRINT_1_CHECKLIST.txt
+
+│
+
+SÍMBOLOS:├── diseno/                             ← Mockups y diseño
+
+---------│   └── MOCKUPS_VISUALES.txt
+
+✅ = Completado│
+
+⏳ = En progreso└── referencias/                        ← Material de referencia
+
+□ = Pendiente    └── FUNCIONALIDADES_ERP.txt
+
+❌ = Error/Bloqueado
+
+⭐ = Importante/Destacado================================================================================
+
+📄 = Archivo🎯 OBJETIVOS POR SPRINT (RESUMEN)
+
+📁 = Carpeta================================================================================
+
+
+
+FORMATOS:SPRINT 1 - FUNDAMENTOS (3-5 días)
+
+---------──────────────────────────────────
+
+.md  = Markdown (documentos actuales, resúmenes, estados)✅ Dashboard con módulos
+
+.txt = Text (planificación, checklists)✅ Navbar con menú de usuario
+
+.sql = SQL (scripts de base de datos)✅ Perfil de usuario
+
+✅ Logout funcional
+
+NOMENCLATURA:✅ Integración con módulos existentes
+
+-------------
+
+SPRINT_X_* ................ Documentos de sprintSPRINT 2 - MÓDULO DE PAGOS (1 semana)
+
+FASE_X_* .................. Documentos de fase──────────────────────────────────────
+
+FIX_* ..................... Correcciones de bugs⏳ Entidad Pago
+
+MIGRATION_* ............... Scripts de migración SQL⏳ CRUD de pagos
+
+⏳ Integración con facturas
+
+================================================================================⏳ Estado de cuenta por factura
+
+🎯 PRÓXIMOS PASOS
+
+================================================================================SPRINT 3 - MÓDULO DE PEDIDOS (1 semana)
+
+────────────────────────────────────────
+
+INMEDIATO (Fase 6):⏳ Entidad Pedido
+
+-------------------⏳ CRUD de pedidos
+
+- Integración con Módulos⏳ Workflow: Pedido → Factura
+
+- Navbar con avatar en todas las vistas⏳ Estados de pedido
+
+- Breadcrumbs
+
+- Links desde dashboardSPRINT 4 - INVENTARIO MEJORADO (1-2 semanas)
+
+─────────────────────────────────────────────
+
+SIGUIENTE (Fase 7):⏳ Control de stock
+
+-------------------⏳ Movimientos de inventario
+
+- Testing y validación⏳ Alertas de stock mínimo
+
+- Pruebas funcionales⏳ Kardex
+
+- Pruebas de seguridad
+
+- Responsive testingSPRINT 5 - REPORTES (1 semana)
+
+──────────────────────────────
+
+FUTURO (Sprint 2):⏳ Reportes de ventas
+
+------------------⏳ Reportes de clientes
+
+- Módulos adicionales (Reportes, Configuración, Usuarios)⏳ Reportes de inventario
+
+- Notificaciones WhatsApp⏳ Exportar PDF/Excel
+
+- Exportación de datos
+
+SPRINT 6 - MÓDULO DE USUARIOS (1 semana)
+
+================================================================================─────────────────────────────────────────
+
+📞 INFORMACIÓN⏳ CRUD de usuarios (ADMIN)
+
+================================================================================⏳ Asignación de roles
+
+⏳ Log de actividades
+
+Proyecto: ............. WhatsApp Orders Manager
+
+Developer: ............ GitHub Copilot AgentSPRINT 7 - MEJORAS Y PULIDO (1 semana)
+
+Project Owner: ........ Emanuel Soto───────────────────────────────────────
+
+Ubicación: ............ d:\programacion\java\spring-boot\whats_orders_manager⏳ Gráficas con Chart.js
+
+Estado: ............... 🟢 EN PROGRESO ACTIVO⏳ DataTables en listados
+
+Sprint actual: ........ Sprint 1 (87%)⏳ Validaciones avanzadas
+
+Última actualización: . 12 de octubre de 2025⏳ Performance optimization
+
+
+
+================================================================================================================================================================
+
+FIN DEL ÍNDICE📊 ESTADO ACTUAL DEL PROYECTO
+
+================================================================================================================================================================
+
+
+ANÁLISIS COMPLETADO:
+✅ Revisión del check-list de ERP
+✅ Análisis de funcionalidades actuales
+✅ Identificación de gaps
+
+PLANIFICACIÓN COMPLETADA:
+✅ Plan general (10 fases)
+✅ Decisiones técnicas definidas
+✅ Sprint 1 detallado
+✅ Mockups visuales
+✅ Resumen ejecutivo
+
+PENDIENTE:
+⏳ Aprobación de decisiones técnicas
+⏳ Firma de inicio de desarrollo
+⏳ Implementación (Sprint 1)
+
+================================================================================
+🔑 DECISIONES CLAVE PENDIENTES
+================================================================================
+
+ALTA PRIORIDAD (SPRINT 1):
+1. ⏳ Aprobar framework CSS (Bootstrap 5 propuesto)
+2. ⏳ Aprobar librería de iconos (Font Awesome 6 propuesto)
+3. ⏳ Aprobar paleta de colores
+4. ⏳ Aprobar estructura de navbar
+5. ⏳ Aprobar diseño de tarjetas de módulos
+
+MEDIA PRIORIDAD:
+6. ⏳ Definir campos nuevos en BD (Usuario)
+7. ⏳ Aprobar librerías adicionales (SweetAlert2, Chart.js)
+8. ⏳ Definir nivel de animaciones
+
+BAJA PRIORIDAD (pueden decidirse durante desarrollo):
+9. ⏳ Detalles de responsive breakpoints
+10. ⏳ Estructura exacta de CSS files
+
+================================================================================
+📞 CONTACTOS Y RESPONSABLES
+================================================================================
+
+Desarrollador principal: ___________________
+Email: ___________________
+GitHub: ___________________
+
+Product Owner/Cliente: ___________________
+Email: ___________________
+
+Revisor técnico: ___________________
+Email: ___________________
+
+================================================================================
+📝 NOTAS IMPORTANTES
+================================================================================
+
+1. MANTENER ACTUALIZADO:
+   Todos los documentos deben actualizarse conforme se tomen decisiones
+   durante el desarrollo.
+
+2. VERSIONADO:
+   Cada documento tiene fecha de última actualización.
+   Considerar usar Git para versionar estos archivos.
+
+3. BACKUP:
+   Hacer backup de estos documentos regularmente.
+   Son la memoria del proyecto.
+
+4. COMUNICACIÓN:
+   Compartir RESUMEN_APROBACION.txt con stakeholders.
+   Usar MOCKUPS_VISUALES.txt para explicar diseño.
+
+5. REFERENCIA:
+   Estos documentos son la fuente de verdad.
+   Cualquier duda, consultar aquí primero.
+
+================================================================================
+🔄 HISTORIAL DE CAMBIOS
+================================================================================
+
+11/10/2025 - Reorganización de documentación en subcarpetas
+           - Creada estructura docs/ con subcarpetas
+           - docs/planificacion/ - Documentos de planificación
+           - docs/sprints/ - Checklists de sprints
+           - docs/diseno/ - Mockups y diseño
+           - docs/referencias/ - Material de referencia
+           - Renombrados archivos para mayor claridad:
+             * PLAN_REORGANIZACION_UI.txt → PLAN_MAESTRO.txt
+             * check-list_funcionalidades.txt → FUNCIONALIDADES_ERP.txt
+             * INDICE_MAESTRO.txt → INDICE.txt
+           - Creado README.md para la carpeta docs/
+           - Actualizado INDICE.txt con nuevas rutas
+
+10/10/2025 - Creación inicial de todos los documentos
+           - check-list_funcionalidades.txt (existente)
+           - PLAN_REORGANIZACION_UI.txt (nuevo)
+           - DECISIONES_TECNICAS.txt (nuevo)
+           - SPRINT_1_CHECKLIST.txt (nuevo)
+           - MOCKUPS_VISUALES.txt (nuevo)
+           - RESUMEN_APROBACION.txt (nuevo)
+           - INDICE_MAESTRO.txt (nuevo)
+
+================================================================================
+🚀 QUICK START
+================================================================================
+
+¿ERES NUEVO EN EL PROYECTO?
+────────────────────────────
+1. Lee docs/README.md para orientarte
+2. Lee docs/INDICE.txt (este archivo) completo
+3. Lee planificacion/RESUMEN_APROBACION.txt
+4. Revisa diseno/MOCKUPS_VISUALES.txt para ver el diseño
+5. Consulta sprints/SPRINT_1_CHECKLIST.txt para tareas
+
+¿VAS A EMPEZAR A DESARROLLAR?
+──────────────────────────────
+1. Verifica que planificacion/DECISIONES_TECNICAS.txt esté aprobado ✅
+2. Abre sprints/SPRINT_1_CHECKLIST.txt
+3. Comienza con Fase 1
+4. Consulta diseno/MOCKUPS_VISUALES.txt según necesites
+
+¿NECESITAS APROBAR EL PROYECTO?
+────────────────────────────────
+1. Lee planificacion/RESUMEN_APROBACION.txt
+2. Revisa planificacion/DECISIONES_TECNICAS.txt
+3. Mira diseno/MOCKUPS_VISUALES.txt
+4. Firma planificacion/RESUMEN_APROBACION.txt
+
+¿BUSCAS INFORMACIÓN ESPECÍFICA?
+────────────────────────────────
+- Diseño visual → diseno/MOCKUPS_VISUALES.txt
+- Tecnologías → planificacion/DECISIONES_TECNICAS.txt
+- Tareas pendientes → sprints/SPRINT_1_CHECKLIST.txt
+- Plan completo → planificacion/PLAN_MAESTRO.txt
+- Funcionalidades ERP → referencias/FUNCIONALIDADES_ERP.txt
+
+================================================================================
+🎓 GLOSARIO
+================================================================================
+
+ERP - Enterprise Resource Planning (Sistema de Planificación de Recursos)
+UI - User Interface (Interfaz de Usuario)
+UX - User Experience (Experiencia de Usuario)
+CRUD - Create, Read, Update, Delete (Crear, Leer, Actualizar, Eliminar)
+DTO - Data Transfer Object (Objeto de Transferencia de Datos)
+CDN - Content Delivery Network (Red de Entrega de Contenido)
+CSRF - Cross-Site Request Forgery (Falsificación de Petición en Sitios Cruzados)
+JWT - JSON Web Token
+MVC - Model-View-Controller
+ORM - Object-Relational Mapping
+REST - Representational State Transfer
+SPA - Single Page Application
+B2B - Business to Business
+B2C - Business to Consumer
+
+================================================================================
+📚 RECURSOS EXTERNOS ÚTILES
+================================================================================
+
+Bootstrap 5:
+https://getbootstrap.com/docs/5.3/getting-started/introduction/
+
+Font Awesome 6:
+https://fontawesome.com/icons
+
+SweetAlert2:
+https://sweetalert2.github.io/
+
+Spring Boot:
+https://spring.io/projects/spring-boot
+
+Thymeleaf:
+https://www.thymeleaf.org/documentation.html
+
+Material Design Colors:
+https://materialui.co/colors
+
+================================================================================
+FIN DEL ÍNDICE MAESTRO
+================================================================================
+
+Última actualización: 11 de octubre de 2025
+Próxima revisión: Al finalizar Sprint 1
+
+IMPORTANTE: Este documento es tu guía de navegación.
+Consúltalo siempre que necesites encontrar información específica.
+
+NUEVA ESTRUCTURA DE DOCUMENTACIÓN:
+Todos los archivos han sido reorganizados en docs/ con subcarpetas temáticas
+para facilitar su localización y mantenimiento.
+
+📂 docs/
+   ├── 📄 README.md (nuevo)
+   ├── 📄 INDICE.txt (este archivo)
+   ├── 📁 planificacion/
+   ├── 📁 sprints/
+   ├── 📁 diseno/
+   └── 📁 referencias/

@@ -1,0 +1,3 @@
+# Directorio para almacenar avatares de usuarios
+# Los archivos subidos por los usuarios se guardan aquí
+# Nomenclatura: avatar_{userId}_{UUID}.{extension}

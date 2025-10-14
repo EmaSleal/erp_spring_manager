@@ -1,0 +1,715 @@
+/*
+ * ============================================================================
+ * DASHBOARD.CSS - Página Principal del Dashboard
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Estilos para widgets de estadísticas y área de contenido principal
+ */
+
+/* ============================================================================
+   CONTENEDOR PRINCIPAL DEL DASHBOARD
+   ============================================================================ */
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.dashboard-subtitle {
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+/* ============================================================================
+   WIDGETS DE ESTADÍSTICAS (4 superiores)
+   ============================================================================ */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.stat-widget {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+    border-top: 4px solid transparent;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.stat-widget:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-4px);
+}
+
+/* Colores del borde superior por tipo */
+.stat-widget.clientes {
+    border-top-color: var(--module-clientes);
+}
+
+.stat-widget.productos {
+    border-top-color: var(--module-productos);
+}
+
+.stat-widget.facturas {
+    border-top-color: var(--module-facturas);
+}
+
+.stat-widget.pagos {
+    border-top-color: var(--module-pagos);
+}
+
+/* Header del widget */
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
+.stat-title {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: white;
+}
+
+.stat-widget.clientes .stat-icon {
+    background-color: var(--module-clientes);
+}
+
+.stat-widget.productos .stat-icon {
+    background-color: var(--module-productos);
+}
+
+.stat-widget.facturas .stat-icon {
+    background-color: var(--module-facturas);
+}
+
+.stat-widget.pagos .stat-icon {
+    background-color: var(--module-pagos);
+}
+
+/* Valor principal */
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Footer con tendencia */
+.stat-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 0.875rem;
+}
+
+.stat-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+
+.stat-trend.up {
+    color: var(--success-color);
+}
+
+.stat-trend.down {
+    color: var(--error-color);
+}
+
+.stat-trend.neutral {
+    color: var(--text-secondary);
+}
+
+.stat-trend-text {
+    color: var(--text-secondary);
+}
+
+/* ============================================================================
+   SKELETON LOADING PARA WIDGETS
+   ============================================================================ */
+.stat-widget.loading {
+    pointer-events: none;
+}
+
+.stat-widget.loading .stat-title,
+.stat-widget.loading .stat-value,
+.stat-widget.loading .stat-footer {
+    background: linear-gradient(90deg, 
+        var(--background-color) 25%, 
+        #e0e0e0 50%, 
+        var(--background-color) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--border-radius-sm);
+    color: transparent;
+}
+
+.stat-widget.loading .stat-title {
+    height: 16px;
+    width: 60%;
+}
+
+.stat-widget.loading .stat-value {
+    height: 32px;
+    width: 80%;
+}
+
+.stat-widget.loading .stat-footer {
+    height: 14px;
+    width: 70%;
+}
+
+/* ============================================================================
+   SECCIÓN DE BIENVENIDA
+   ============================================================================ */
+.welcome-section {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-2xl);
+    margin-bottom: var(--spacing-2xl);
+    box-shadow: var(--shadow-lg);
+}
+
+.welcome-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: white;
+}
+
+.welcome-message {
+    font-size: 1.125rem;
+    opacity: 0.95;
+    margin-bottom: var(--spacing-lg);
+}
+
+.welcome-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.welcome-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background-color: white;
+    color: var(--primary-color);
+    border-radius: var(--border-radius-md);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.welcome-btn:hover {
+    background-color: var(--background-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    text-decoration: none;
+}
+
+/* ============================================================================
+   SECCIÓN DE ACCESOS RÁPIDOS
+   ============================================================================ */
+.quick-actions {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--background-color);
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.action-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+    text-decoration: none;
+    transition: all var(--transition-normal);
+    border: 2px solid transparent;
+}
+
+.action-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-4px);
+    border-color: var(--primary-color);
+    text-decoration: none;
+}
+
+.action-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto var(--spacing-md);
+    border-radius: var(--border-radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    color: white;
+}
+
+.action-card[data-module="clientes"] .action-icon { background-color: var(--module-clientes); }
+.action-card[data-module="productos"] .action-icon { background-color: var(--module-productos); }
+.action-card[data-module="facturas"] .action-icon { background-color: var(--module-facturas); }
+.action-card[data-module="pedidos"] .action-icon { background-color: var(--module-pedidos); }
+
+.action-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.action-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* ============================================================================
+   SECCIÓN DE ACTIVIDAD RECIENTE
+   ============================================================================ */
+.recent-activity {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.activity-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.activity-item {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--background-color);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: background-color var(--transition-fast);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-item:hover {
+    background-color: var(--background-color);
+}
+
+.activity-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--border-radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.activity-icon.success { background-color: rgba(76, 175, 80, 0.1); color: var(--success-color); }
+.activity-icon.info { background-color: rgba(33, 150, 243, 0.1); color: var(--info-color); }
+.activity-icon.warning { background-color: rgba(255, 152, 0, 0.1); color: var(--warning-color); }
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.activity-time {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* ============================================================================
+   RESPONSIVE - MÓVIL
+   ============================================================================ */
+@media (max-width: 576px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .welcome-section {
+        padding: var(--spacing-lg);
+    }
+    
+    .welcome-title {
+        font-size: 1.5rem;
+    }
+    
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE - TABLET
+   ============================================================================ */
+@media (min-width: 577px) and (max-width: 991px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE - DESKTOP
+   ============================================================================ */
+@media (min-width: 992px) {
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* ============================================================================
+   TARJETAS DE ESTADÍSTICAS (stat-card) - Para template dashboard.html
+   ============================================================================ */
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Variantes de color para cada tipo de estadística */
+.stat-card.stat-clientes {
+    border-left: 4px solid #4CAF50;
+}
+
+.stat-card.stat-productos {
+    border-left: 4px solid #FF9800;
+}
+
+.stat-card.stat-facturas {
+    border-left: 4px solid #9C27B0;
+}
+
+.stat-card.stat-pagos {
+    border-left: 4px solid #2196F3;
+}
+
+/* Encabezado de la tarjeta con ícono */
+.stat-card .d-flex {
+    margin-bottom: 16px;
+}
+
+.stat-card .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-clientes .stat-icon {
+    background: linear-gradient(135deg, #66BB6A, #4CAF50);
+    color: white;
+}
+
+.stat-productos .stat-icon {
+    background: linear-gradient(135deg, #FFA726, #FF9800);
+    color: white;
+}
+
+.stat-facturas .stat-icon {
+    background: linear-gradient(135deg, #AB47BC, #9C27B0);
+    color: white;
+}
+
+.stat-pagos .stat-icon {
+    background: linear-gradient(135deg, #42A5F5, #2196F3);
+    color: white;
+}
+
+/* Contenido de estadísticas */
+.stat-content {
+    flex: 1;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #333;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    font-size: 0.95rem;
+    color: #666;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Footer con enlace */
+.stat-footer {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.stat-link {
+    color: #666;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.stat-link:hover {
+    color: #2196F3;
+    text-decoration: none;
+}
+
+/* ============================================================================
+   TARJETAS DE MÓDULOS (module-card)
+   ============================================================================ */
+.module-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-align: center;
+    border: 2px solid transparent;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.module-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    border-color: #2196F3;
+}
+
+.module-card.module-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #f9f9f9;
+}
+
+.module-card.module-disabled:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    border-color: #ccc;
+}
+
+/* Ícono del módulo */
+.module-icon {
+    margin-bottom: 16px;
+    transition: transform 0.3s ease;
+}
+
+.module-card:hover .module-icon {
+    transform: scale(1.1);
+}
+
+.module-card.module-disabled:hover .module-icon {
+    transform: scale(1.05);
+}
+
+/* Nombre del módulo */
+.module-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.module-card.module-disabled .module-name {
+    color: #999;
+}
+
+/* Descripción del módulo */
+.module-description {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.module-card.module-disabled .module-description {
+    color: #aaa;
+}
+
+/* Badge de estado */
+.module-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* ============================================================================
+   TARJETAS DE INFORMACIÓN (info-card)
+   ============================================================================ */
+.info-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #2196F3;
+    margin-bottom: 20px;
+}
+
+.info-card h5 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.info-card h5 i {
+    color: #2196F3;
+}
+
+.info-card p {
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.info-card ul {
+    margin: 12px 0 0 0;
+    padding-left: 20px;
+    color: #666;
+}
+
+.info-card ul li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Variantes de color para info-card */
+.info-card.info-tips {
+    border-left-color: #4CAF50;
+}
+
+.info-card.info-tips h5 i {
+    color: #4CAF50;
+}
+
+.info-card.info-system {
+    border-left-color: #FF9800;
+}
+
+.info-card.info-system h5 i {
+    color: #FF9800;
+}
+
+/* ============================================================================
+   ANIMACIÓN SHIMMER PARA LOADING
+   ============================================================================ */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE ADICIONAL PARA NUEVOS COMPONENTES
+   ============================================================================ */
+@media (max-width: 576px) {
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .module-card {
+        min-height: 160px;
+        padding: 16px;
+    }
+    
+    .module-name {
+        font-size: 1rem;
+    }
+    
+    .module-badge {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .module-card {
+        min-height: 170px;
+    }
+}

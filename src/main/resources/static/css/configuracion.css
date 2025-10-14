@@ -1,0 +1,361 @@
+/* ====================================================
+   CONFIGURACION.CSS - Estilos para módulo de configuración
+   Proyecto: WhatsApp Orders Manager
+   Sprint: 2 - Fase 1
+   ==================================================== */
+
+/* ==================== TABS ==================== */
+
+.nav-tabs {
+    border-bottom: 2px solid #e9ecef;
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover:not(.disabled) {
+    border-color: transparent;
+    color: #1976D2;
+    background-color: #f8f9fa;
+}
+
+.nav-tabs .nav-link.active {
+    color: #1976D2;
+    border-bottom-color: #1976D2;
+    background-color: transparent;
+}
+
+.nav-tabs .nav-link.disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.nav-tabs .nav-link i {
+    font-size: 1rem;
+}
+
+.nav-tabs .badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* ==================== PREVIEW DE LOGO ==================== */
+
+.logo-preview-container {
+    min-height: 150px;
+}
+
+.logo-preview,
+.logo-preview-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+}
+
+.logo-preview-empty {
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.logo-actions,
+.favicon-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+/* ==================== PREVIEW DE FAVICON ==================== */
+
+.favicon-preview-container {
+    min-height: 150px;
+}
+
+.favicon-preview,
+.favicon-preview-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.favicon-img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    background-color: white;
+}
+
+.favicon-preview-empty {
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+}
+
+/* ==================== FORMULARIOS ==================== */
+
+.form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.form-label .text-danger {
+    font-weight: 700;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #1976D2;
+    box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.25);
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* ==================== SECCIONES ==================== */
+
+.border-bottom {
+    border-color: #e9ecef !important;
+}
+
+h5 i {
+    font-size: 1.1rem;
+}
+
+/* ==================== BOTONES ==================== */
+
+.btn-primary {
+    background-color: #1976D2;
+    border-color: #1976D2;
+}
+
+.btn-primary:hover {
+    background-color: #1565C0;
+    border-color: #1565C0;
+}
+
+.btn-primary:focus {
+    box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.5);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+.d-flex.gap-2 {
+    gap: 0.5rem;
+}
+
+/* ==================== ALERTAS ==================== */
+
+.alert {
+    border-radius: 0.375rem;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    border-left-color: #28a745;
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.alert-danger {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.alert-info {
+    border-left-color: #17a2b8;
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.alert i {
+    font-size: 1.1rem;
+}
+
+/* ==================== SWITCH ==================== */
+
+.form-check-input:checked {
+    background-color: #1976D2;
+    border-color: #1976D2;
+}
+
+.form-check-input:focus {
+    border-color: #1976D2;
+    box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.25);
+}
+
+/* ==================== BREADCRUMBS ==================== */
+
+.breadcrumb {
+    background-color: #f8f9fa;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+}
+
+.breadcrumb-item a {
+    color: #1976D2;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: #1565C0;
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: #6c757d;
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+@media (max-width: 768px) {
+    
+    /* Tabs verticales en móvil */
+    .nav-tabs {
+        flex-direction: column;
+        border-bottom: none;
+        border-right: 2px solid #e9ecef;
+    }
+    
+    .nav-tabs .nav-link {
+        text-align: left;
+        border-bottom: none;
+        border-right: 3px solid transparent;
+    }
+    
+    .nav-tabs .nav-link.active {
+        border-bottom-color: transparent;
+        border-right-color: #1976D2;
+    }
+    
+    /* Formulario */
+    .logo-preview img {
+        max-height: 150px;
+    }
+    
+    .d-flex.gap-2 {
+        flex-direction: column;
+    }
+    
+    .d-flex.gap-2 .btn {
+        width: 100%;
+    }
+    
+}
+
+@media (max-width: 576px) {
+    
+    /* Header */
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    /* Tabs como acordeón en móviles pequeños */
+    .nav-tabs .nav-link {
+        font-size: 0.9rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    .nav-tabs .badge {
+        display: block;
+        margin-top: 0.25rem;
+        margin-left: 0 !important;
+    }
+    
+}
+
+/* ==================== ANIMACIONES ==================== */
+
+.tab-pane {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==================== UTILIDADES ==================== */
+
+.text-primary {
+    color: #1976D2 !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.border-rounded {
+    border-radius: 0.375rem;
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* ==================== CARD ==================== */
+
+.card {
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+}
+
+.card-header {
+    border-bottom: 1px solid #e9ecef;
+    padding: 0;
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+}

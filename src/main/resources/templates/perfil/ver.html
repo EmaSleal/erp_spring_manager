@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - WhatsApp Orders Manager</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/navbar.css}">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    
+    <style>
+        .profile-container {
+            max-width: 900px;
+            margin: 2rem auto;
+        }
+        
+        .profile-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            text-align: center;
+            color: white;
+        }
+        
+        .avatar-container {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+        
+        .avatar-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .avatar-initials {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: white;
+            border: 4px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+        }
+        
+        .profile-name {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .profile-role {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        
+        .profile-body {
+            padding: 2rem;
+        }
+        
+        .info-section {
+            margin-bottom: 2rem;
+        }
+        
+        .info-section h5 {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .info-row {
+            display: flex;
+            padding: 1rem 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            flex: 0 0 200px;
+            font-weight: 600;
+            color: #555;
+            display: flex;
+            align-items: center;
+        }
+        
+        .info-label i {
+            margin-right: 0.5rem;
+            width: 20px;
+            text-align: center;
+            color: #667eea;
+        }
+        
+        .info-value {
+            flex: 1;
+            color: #333;
+        }
+        
+        .info-value.empty {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .badge-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .badge-activo {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-inactivo {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            padding: 1.5rem 2rem;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .btn-edit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-edit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .alert-custom {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .profile-container {
+                margin: 1rem;
+            }
+            
+            .info-row {
+                flex-direction: column;
+            }
+            
+            .info-label {
+                margin-bottom: 0.5rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn-edit {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+    
+    <div class="layout-wrapper">
+        <!-- Sidebar -->
+        <div th:replace="~{components/sidebar :: sidebar}"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="profile-container">
+                
+                <!-- Breadcrumbs -->
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a th:href="@{/dashboard}" class="text-decoration-none">
+                                <i class="fas fa-home me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <i class="fas fa-user me-1"></i>Mi Perfil
+                        </li>
+                    </ol>
+                </nav>
+                
+                <!-- Success/Error Messages -->
+                <div th:if="${success}" class="alert alert-success alert-custom alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <span th:text="${success}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <div th:if="${error}" class="alert alert-danger alert-custom alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <span th:text="${error}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <!-- Profile Card -->
+                <div class="profile-card">
+                    <!-- Profile Header -->
+                    <div class="profile-header">
+                        <div class="avatar-container">
+                            <!-- Avatar Image if exists -->
+                            <img th:if="${usuario.avatar != null and !usuario.avatar.isEmpty()}" 
+                                 th:src="@{${usuario.avatar}}" 
+                                 th:alt="${usuario.nombre}"
+                                 class="avatar-image">
+                            
+                            <!-- Avatar Initials if no image -->
+                            <div th:unless="${usuario.avatar != null and !usuario.avatar.isEmpty()}" 
+                                 class="avatar-initials">
+                                <span th:text="${#strings.substring(usuario.nombre, 0, 1) + 
+                                              (#strings.indexOf(usuario.nombre, ' ') > 0 ? 
+                                               #strings.substring(usuario.nombre, #strings.indexOf(usuario.nombre, ' ') + 1, #strings.indexOf(usuario.nombre, ' ') + 2) : 
+                                               #strings.substring(usuario.nombre, 1, 2))}">AB</span>
+                            </div>
+                        </div>
+                        
+                        <h1 class="profile-name" th:text="${usuario.nombre}">Nombre del Usuario</h1>
+                        <p class="profile-role">
+                            <i class="fas fa-user-shield me-2"></i>
+                            <span th:text="${usuario.rol}">ROL</span>
+                        </p>
+                    </div>
+                    
+                    <!-- Profile Body -->
+                    <div class="profile-body">
+                        
+                        <!-- Personal Information Section -->
+                        <div class="info-section">
+                            <h5><i class="fas fa-user me-2"></i>Información Personal</h5>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-id-card"></i>
+                                    Nombre Completo
+                                </div>
+                                <div class="info-value" th:text="${usuario.nombre}">Juan Pérez</div>
+                            </div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-envelope"></i>
+                                    Correo Electrónico
+                                </div>
+                                <div class="info-value" 
+                                     th:classappend="${usuario.email == null or usuario.email.isEmpty()} ? 'empty'"
+                                     th:text="${usuario.email != null and !usuario.email.isEmpty()} ? ${usuario.email} : 'No configurado'">
+                                    correo@ejemplo.com
+                                </div>
+                            </div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-phone"></i>
+                                    Teléfono
+                                </div>
+                                <div class="info-value" th:text="${usuario.telefono}">+1234567890</div>
+                            </div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-user-tag"></i>
+                                    Rol
+                                </div>
+                                <div class="info-value" th:text="${usuario.rol}">ADMIN</div>
+                            </div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-circle-check"></i>
+                                    Estado
+                                </div>
+                                <div class="info-value">
+                                    <span th:if="${usuario.activo == null or usuario.activo}" 
+                                          class="badge-status badge-activo">
+                                        <i class="fas fa-check-circle me-1"></i>Activo
+                                    </span>
+                                    <span th:unless="${usuario.activo == null or usuario.activo}" 
+                                          class="badge-status badge-inactivo">
+                                        <i class="fas fa-times-circle me-1"></i>Inactivo
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Account Information Section -->
+                        <div class="info-section">
+                            <h5><i class="fas fa-history me-2"></i>Información de Cuenta</h5>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    Fecha de Registro
+                                </div>
+                                <div class="info-value">
+                                    <span th:if="${usuario.createDate != null}"
+                                          th:text="${#dates.format(usuario.createDate, 'dd/MM/yyyy HH:mm')}">
+                                        01/01/2024 10:00
+                                    </span>
+                                    <span th:unless="${usuario.createDate != null}" class="empty">
+                                        No disponible
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-clock"></i>
+                                    Último Acceso
+                                </div>
+                                <div class="info-value">
+                                    <span th:if="${usuario.ultimoAcceso != null}"
+                                          th:text="${#dates.format(usuario.ultimoAcceso, 'dd/MM/yyyy HH:mm')}">
+                                        12/10/2025 15:30
+                                    </span>
+                                    <span th:unless="${usuario.ultimoAcceso != null}" class="empty">
+                                        No registrado
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">
+                                    <i class="fas fa-edit"></i>
+                                    Última Modificación
+                                </div>
+                                <div class="info-value">
+                                    <span th:if="${usuario.updateDate != null}"
+                                          th:text="${#dates.format(usuario.updateDate, 'dd/MM/yyyy HH:mm')}">
+                                        10/10/2025 12:00
+                                    </span>
+                                    <span th:unless="${usuario.updateDate != null}" class="empty">
+                                        No modificado
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <a th:href="@{/perfil/editar}" class="btn btn-primary btn-edit">
+                            <i class="fas fa-edit me-2"></i>Editar Perfil
+                        </a>
+                        <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
+                        </a>
+                    </div>
+                </div>
+                
+            </div>
+        </main>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script th:src="@{/js/navbar.js}"></script>
+    <script th:src="@{/js/sidebar.js}"></script>
+    <script th:src="@{/js/common.js}"></script>
+    
+    <script>
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recordatorio de Pago</title>
+    <style>
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+            padding: 50px 30px;
+            text-align: center;
+        }
+        .header-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #495057;
+            margin-bottom: 20px;
+        }
+        .alert-box {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe5a3 100%);
+            border-left: 5px solid #ffc107;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        .alert-box .icon {
+            font-size: 50px;
+            margin-bottom: 15px;
+        }
+        .alert-box h2 {
+            margin: 0 0 10px 0;
+            color: #856404;
+            font-size: 22px;
+        }
+        .alert-box p {
+            margin: 5px 0;
+            color: #856404;
+            font-size: 16px;
+        }
+        .invoice-summary {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+            border: 2px solid #ffc107;
+        }
+        .invoice-summary h3 {
+            margin: 0 0 20px 0;
+            color: #856404;
+            font-size: 20px;
+            text-align: center;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+        .summary-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .summary-value {
+            color: #212529;
+        }
+        .amount-due {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 30px 0;
+            border: 3px solid #ffc107;
+            box-shadow: 0 4px 10px rgba(255, 193, 7, 0.2);
+        }
+        .amount-due p {
+            margin: 0 0 10px 0;
+            color: #6c757d;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .amount-due .amount {
+            font-size: 42px;
+            font-weight: 700;
+            color: #ffc107;
+            margin: 10px 0;
+        }
+        .due-date {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            border-left: 4px solid #dc3545;
+        }
+        .due-date .label {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .due-date .date {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .payment-methods {
+            background: #e7f3ff;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+            border-left: 4px solid #007bff;
+        }
+        .payment-methods h3 {
+            margin: 0 0 20px 0;
+            color: #004085;
+            font-size: 18px;
+        }
+        .payment-method {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 12px 0;
+            border-left: 3px solid #007bff;
+        }
+        .payment-method h4 {
+            margin: 0 0 10px 0;
+            color: #004085;
+            font-size: 16px;
+        }
+        .payment-method p {
+            margin: 5px 0;
+            color: #495057;
+            font-size: 14px;
+        }
+        .payment-method .account-number {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            color: #007bff;
+            font-size: 16px;
+        }
+        .consequences-box {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        .consequences-box h4 {
+            margin: 0 0 10px 0;
+            color: #721c24;
+            font-size: 16px;
+        }
+        .consequences-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+            color: #721c24;
+        }
+        .consequences-box li {
+            margin: 5px 0;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        }
+        .contact-box {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        .contact-box h4 {
+            margin: 0 0 15px 0;
+            color: #0c5460;
+            font-size: 18px;
+        }
+        .contact-box p {
+            margin: 8px 0;
+            color: #0c5460;
+            font-size: 15px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 3px solid #ffc107;
+        }
+        .footer p {
+            margin: 5px 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .days-overdue {
+            display: inline-block;
+            padding: 8px 20px;
+            background: #dc3545;
+            color: white;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 20px 15px;
+            }
+            .amount-due .amount {
+                font-size: 32px;
+            }
+            .summary-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-icon">⏰</div>
+            <h1>Recordatorio de Pago</h1>
+            <p>Factura Pendiente</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Greeting -->
+            <p class="greeting">
+                Estimado/a <strong th:text="${cliente.nombre}">Cliente</strong>,
+            </p>
+
+            <p>
+                Le recordamos que tiene una factura pendiente de pago. A continuación encontrará
+                los detalles de la factura y las opciones disponibles para realizar el pago.
+            </p>
+
+            <!-- Alert Box -->
+            <div class="alert-box">
+                <div class="icon">⚠️</div>
+                <h2>Factura Pendiente de Pago</h2>
+                <p>Factura <strong th:text="'#' + ${factura.numero}">#001</strong></p>
+                
+                <!-- Mostrar días de atraso si aplica -->
+                <div th:if="${diasVencidos > 0}">
+                    <span class="days-overdue" th:text="${diasVencidos + ' días de atraso'}">5 días de atraso</span>
+                </div>
+            </div>
+
+            <!-- Amount Due -->
+            <div class="amount-due">
+                <p>Monto Total a Pagar</p>
+                <div class="amount" th:text="${'$' + #numbers.formatDecimal(factura.total, 1, 2)}">$1,160.00</div>
+            </div>
+
+            <!-- Due Date -->
+            <div class="due-date">
+                <div class="label">Fecha de Vencimiento</div>
+                <div class="date" th:text="${#temporals.format(factura.fechaVencimiento, 'dd/MM/yyyy')}">27/10/2025</div>
+            </div>
+
+            <!-- Invoice Summary -->
+            <div class="invoice-summary">
+                <h3>📋 Resumen de la Factura</h3>
+                
+                <div class="summary-row">
+                    <span class="summary-label">Número de Factura:</span>
+                    <span class="summary-value" th:text="${factura.numero}">001</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span class="summary-label">Fecha de Emisión:</span>
+                    <span class="summary-value" th:text="${#temporals.format(factura.fechaEmision, 'dd/MM/yyyy')}">13/10/2025</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span class="summary-label">Fecha de Vencimiento:</span>
+                    <span class="summary-value" th:text="${#temporals.format(factura.fechaVencimiento, 'dd/MM/yyyy')}">27/10/2025</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span class="summary-label">Subtotal:</span>
+                    <span class="summary-value" th:text="${'$' + #numbers.formatDecimal(factura.subtotal, 1, 2)}">$1,000.00</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span class="summary-label" th:text="'IVA (' + ${factura.iva} + '%):'" >IVA (16%):</span>
+                    <span class="summary-value" th:text="${'$' + #numbers.formatDecimal(factura.montoIva, 1, 2)}">$160.00</span>
+                </div>
+                
+                <div class="summary-row" style="border-top: 2px solid #ffc107; padding-top: 15px; margin-top: 10px;">
+                    <span class="summary-label" style="font-size: 18px; color: #ffc107;">TOTAL:</span>
+                    <span class="summary-value" style="font-size: 18px; font-weight: 700; color: #ffc107;" 
+                          th:text="${'$' + #numbers.formatDecimal(factura.total, 1, 2)}">$1,160.00</span>
+                </div>
+            </div>
+
+            <!-- Payment Methods -->
+            <div class="payment-methods">
+                <h3>💳 Métodos de Pago Disponibles</h3>
+                
+                <div class="payment-method">
+                    <h4>🏦 Transferencia Bancaria</h4>
+                    <p><strong>Banco:</strong> <span th:text="${empresa.banco}">Banco Nacional</span></p>
+                    <p><strong>Cuenta:</strong> <span class="account-number" th:text="${empresa.numeroCuenta}">1234-5678-9012-3456</span></p>
+                    <p><strong>CLABE:</strong> <span class="account-number" th:text="${empresa.clabe}">012345678901234567</span></p>
+                    <p><strong>Beneficiario:</strong> <span th:text="${empresa.nombre}">Empresa S.A. de C.V.</span></p>
+                </div>
+                
+                <div class="payment-method" th:if="${empresa.aceptaEfectivo}">
+                    <h4>💵 Pago en Efectivo</h4>
+                    <p>Puede realizar el pago en efectivo en nuestras oficinas.</p>
+                    <p><strong>Dirección:</strong> <span th:text="${empresa.direccion}">Calle Principal #123</span></p>
+                    <p><strong>Horario:</strong> Lunes a Viernes de 9:00 AM a 6:00 PM</p>
+                </div>
+                
+                <div class="payment-method" th:if="${empresa.aceptaTarjeta}">
+                    <h4>💳 Tarjeta de Crédito/Débito</h4>
+                    <p>Contacte con nosotros para procesar el pago con tarjeta.</p>
+                    <p><strong>Teléfono:</strong> <span th:text="${empresa.telefono}">(555) 123-4567</span></p>
+                </div>
+            </div>
+
+            <!-- Important Note -->
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                <p style="margin: 0; color: #856404;">
+                    <strong>📝 Importante:</strong> Al realizar el pago, por favor incluya el número de factura 
+                    <strong th:text="${factura.numero}">001</strong> como referencia.
+                </p>
+            </div>
+
+            <!-- Consequences (if overdue) -->
+            <div class="consequences-box" th:if="${diasVencidos > 0}">
+                <h4>⚠️ Consecuencias por Pago Atrasado</h4>
+                <p>Le recordamos que el pago de esta factura está vencido. Por favor, regularice su situación a la brevedad posible.</p>
+                <ul>
+                    <li>Pueden aplicarse intereses moratorios</li>
+                    <li>Suspensión temporal de servicios</li>
+                    <li>Reporte a buró de crédito (en casos extremos)</li>
+                </ul>
+            </div>
+
+            <!-- View Invoice Button -->
+            <div class="button-container">
+                <a href="#" class="button" th:href="${urlFactura}">
+                    📄 Ver Factura Completa
+                </a>
+            </div>
+
+            <!-- Contact Box -->
+            <div class="contact-box">
+                <h4>¿Necesita Ayuda o una Extensión?</h4>
+                <p>Si tiene alguna pregunta o necesita más tiempo para realizar el pago, por favor contáctenos:</p>
+                <p><strong>📧 Email:</strong> <span th:text="${empresa.email}">facturacion@empresa.com</span></p>
+                <p><strong>📞 Teléfono:</strong> <span th:text="${empresa.telefono}">(555) 123-4567</span></p>
+                <p style="margin-top: 15px; font-size: 14px;">
+                    Estamos aquí para ayudarle. No dude en comunicarse con nosotros.
+                </p>
+            </div>
+
+            <!-- Thank You -->
+            <div style="text-align: center; margin-top: 30px; padding: 20px;">
+                <p style="font-size: 16px; color: #495057;">
+                    Agradecemos su pronta atención a este asunto.
+                </p>
+                <p style="color: #6c757d;">
+                    Atentamente,<br>
+                    <strong th:text="${empresa.nombre}">WhatsApp Orders Manager</strong>
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong th:text="${empresa.nombre}">WhatsApp Orders Manager</strong></p>
+            <p>Sistema de Gestión de Pedidos y Facturación</p>
+            <div style="margin-top: 15px;">
+                <p th:text="${empresa.telefono}">(555) 123-4567</p>
+                <p th:text="${empresa.email}">contacto@empresa.com</p>
+            </div>
+            <p style="margin-top: 20px; font-size: 12px;">
+                Este es un correo electrónico generado automáticamente. Por favor, no responda a este mensaje.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

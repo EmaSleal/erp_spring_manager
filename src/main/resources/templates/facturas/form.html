@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Editar Factura</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs (3 niveles) -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/facturas}" class="text-decoration-none">
+                            <i class="fas fa-file-invoice-dollar me-1"></i>Facturas
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-edit me-1"></i>Editar #<span th:text="${factura.idFactura}">1</span>
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1">
+                        <i class="fas fa-edit text-primary me-2"></i>Editar Factura #<span th:text="${factura.idFactura}">1</span>
+                    </h2>
+                    <p class="text-muted mb-0">Actualiza los datos de la factura y sus líneas de productos</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/facturas}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Facturas
+                    </a>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información General</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-user text-primary me-2"></i>Cliente
+                            </label>
+                            <input type="text" th:value="${factura.cliente.nombre}" class="form-control" readonly />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="fechaEntrega" class="form-label">
+                                <i class="fas fa-calendar text-primary me-2"></i>Fecha de Entrega
+                            </label>
+                            <input type="date" id="fechaEntrega" name="fechaEntrega" th:value="${factura.fechaEntrega}" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="entregado" class="form-label">
+                                <i class="fas fa-truck text-primary me-2"></i>Estado de Entrega
+                            </label>
+                            <select id="entregado" name="entregado" class="form-select">
+                                <option th:selected="${factura.entregado == true}" value="true">Entregado</option>
+                                <option th:selected="${factura.entregado == false}" value="false">Pendiente</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="descripcion" class="form-label">
+                                <i class="fas fa-comment text-primary me-2"></i>Descripción
+                            </label>
+                            <input type="text" id="descripcion" name="descripcion" th:value="${factura.descripcion}" class="form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Líneas de Productos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="lineas-table" class="table table-bordered table-hover">
+                            <thead class="table-light">
+                            <tr>
+                                <th style="width: 60px;" class="text-center">#</th>
+                                <th>Producto</th>
+                                <th style="width: 120px;" class="text-center">Cantidad</th>
+                                <th style="width: 140px;" class="text-center">Precio Unitario</th>
+                                <th style="width: 140px;" class="text-center">Subtotal</th>
+                                <th style="width: 100px;" class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody id="lineas-body">
+                            <!-- Se llenará con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="button" onclick="addLinea()" class="btn btn-success mt-3">
+                        <i class="fas fa-plus me-2"></i>Agregar Producto
+                    </button>
+
+                    <div class="d-flex justify-content-end mt-4 gap-2">
+                        <a th:href="@{/facturas}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </a>
+                        <button type="button" onclick="guardarLineas()" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+    
+    <!-- JavaScript específico de página -->
+    <script th:src="@{/js/editar-factura.js}"></script>
+</body>
+</html>

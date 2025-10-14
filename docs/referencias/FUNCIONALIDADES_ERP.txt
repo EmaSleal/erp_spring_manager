@@ -1,0 +1,119 @@
+Checklist de Funcionalidades Esenciales por Módulo de un ERP
+Módulo de Contabilidad
+
+Gestión financiera básica: Control de cuentas por pagar (AP) y cuentas por cobrar (AR), integrado a un libro mayor general y con generación de estados financieros clave (balances, cuentas de resultados, etc.)
+
+. Esto permite conocer la situación financiera de la empresa en tiempo real, almacenando documentos como balances generales y recibos de pago importantes.
+
+Procesos contables automatizados: Automatización de tareas como la facturación, los pagos a proveedores, la gestión de gastos y la gestión de activos fijos, lo que agiliza el cierre de libros contables y reduce errores humanos
+
+. Por ejemplo, un ERP financiero puede automatizar análisis de flujo de caja, conciliaciones bancarias y cumplimiento de normas contables, acelerando el trabajo del departamento de contabilidad.
+
+Finanzas integrales y control de costos: Incluye funciones de contabilidad financiera y analítica, control de costes, gestión de cobros/pagos (cuentas por cobrar y pagar), gestión de tesorería (bancos, caja) y presupuestación
+
+
+. Estas herramientas permiten llevar el control del dinero de la empresa, desde la elaboración de presupuestos hasta el seguimiento de tesorería y la presentación de informes financieros (por ejemplo, cuentas anuales)
+
+.Módulo de Ventas
+
+Gestión de clientes y cotizaciones: Registro de clientes (integrado con CRM si existe) y administración de cotizaciones/presupuestos de venta. Esto abarca desde el seguimiento de prospectos hasta la creación de ofertas formales para clientes potenciales, sirviendo como la base para futuros pedidos
+
+. Una buena gestión de ventas garantiza que “si no hay ventas, no hay dinero”, integrándose con herramientas CRM para aprovechar la información de contactos y oportunidades
+
+.Pedidos de venta y despachos: Control de los pedidos de clientes desde su entrada hasta la entrega. El sistema permite generar órdenes de venta, reservar y asignar inventario en tiempo real, emitir albaranes/guías de despacho y facturar total o parcialmente según disponibilidad de mercancía
+
+. También gestiona automáticamente la asignación de pedidos pendientes (backorders) en cuanto hay stock disponible, priorizando entregas para mejorar el servicio al cliente
+
+.Facturación, pagos y postventa: Emisión de facturas de venta (y documentos relacionados como notas de crédito) y registro de pagos recibidos. El módulo de ventas suele incluir la trazabilidad completa del documento comercial – desde la cotización inicial, orden de venta, entrega, hasta la factura y el cobro – para tener visibilidad de todo el ciclo
+
+. Adicionalmente, provee informes de ventas (por producto, cliente, vendedor, etc.) y gestiona devoluciones o servicio postventa, estando estrechamente ligado con Cuentas por Cobrar del módulo financiero para el análisis de deuda de clientes
+
+
+.Módulo de Inventario
+
+Control de existencias y almacenes: Administración centralizada del stock de la empresa, incluyendo manejo de múltiples almacenes o bodegas y catálogos de productos con sus categorías y características
+
+. El sistema mantiene una visión general del inventario (referencias de ítems y cantidades disponibles), permitiendo saber exactamente qué hay en cada almacén y su ubicación, así como el movimiento de mercancías desde la entrada hasta la salida
+
+.
+
+Gestión de niveles de stock y reabastecimiento: Planificación de inventarios para lograr el equilibrio entre no tener exceso de stock ni quedarnos sin producto. El módulo utiliza parámetros de reorden y alertas para avisar cuándo reponer existencias, asegurando tener siempre el material necesario pero evitando sobreinventarios
+
+
+. Por ejemplo, en sectores como alimentación, las alertas consideran fechas de caducidad para prevenir pérdidas
+
+.Operaciones de almacén y trazabilidad: Registro de entradas y salidas de inventario mediante documentos (recepciones con órdenes de compra, despachos contra ventas, transferencias internas, etc.), con soporte para manejo de lotes y números de serie para trazabilidad
+
+. Permite realizar inventarios físicos y ajustes, soporta distintas metodologías de valoración de inventario (PEPS, costo promedio, estándar, etc.)
+
+, y genera reportes como kardex, movimientos por almacén y niveles de stock valorizado en tiempo real. En suma, garantiza que la empresa “pueda controlar no tener excesivo stock de un ítem ni demasiado poco como para no poder trabajar” mediante planificación y alertas automatizadas
+
+.Módulo de Producción
+
+Planificación de la producción: Herramientas para planificar la producción en base a pedidos actuales o demanda prevista. Incluye la planificación de materiales (MRP) – calculando materias primas necesarias y cuándo pedirlas – y la planificación de capacidad (CRP) considerando disponibilidad de máquinas y personal, de modo que la fábrica pueda cumplir las órdenes sin interrupciones
+
+. Esto ayuda a secuenciar la carga de trabajo de la planta y evitar comprometer fechas de entrega sin capacidad suficiente.
+
+Órdenes de fabricación y control del proceso: Creación y seguimiento de órdenes de producción detalladas, desde la liberación de una orden hasta su finalización. El sistema permite definir fórmulas o listas de materiales (BOM) y rutas de producción para cada producto, explosionando la BOM para reservar componentes necesarios
+
+. También controla las estaciones de trabajo o centros productivos involucrados, monitorea el avance por fases (colas de producción) y registra los lotes producidos con sus costos asociados
+
+.Costeo y calidad en planta: Cálculo de costos de producción en tiempo real, comparando costos estándar vs. reales por orden o por planta, para análisis de variaciones
+
+
+. Permite llevar estadísticas de eficiencia (por ejemplo, porcentaje de utilización de máquinas, tiempos de ciclo) e integrar con sistemas MES o de control de planta para obtener datos en línea
+
+
+. Además, puede incorporar funcionalidades de gestión de calidad en producción (inspecciones, control de rechazo) para asegurar que el producto final cumpla los estándares requeridos. En resumen, el módulo de producción da un mejor control sobre los procesos de fabricación, con seguimiento detallado de cada orden y análisis de la eficiencia de la planta
+
+
+.Módulo de Recursos Humanos (Empleados)
+
+
+Administración de personal: Registro maestro de empleados con sus datos personales, información de contratos, puestos, departamentos y historial dentro de la empresa. Permite gestionar la estructura organizativa y tener una ficha completa de cada trabajador (inclusive con fotografía, en algunos sistemas)
+
+. Además, se controla la vigencia de contratos y se administran documentos del empleado (como contratos firmados, documentos de identidad, etc.) de forma centralizada.
+
+Asistencia, ausencias y tiempo laborado: Gestión de ausencias, bajas médicas, vacaciones y horas trabajadas de cada empleado
+
+. El módulo registra permisos solicitados, licencias por enfermedad, horas extra y otros eventos, facilitando la atención al personal y el cumplimiento de políticas de la empresa en cuanto a tiempo libre y horas laborales. Muchas soluciones incorporan un portal del empleado de autoservicio, donde los trabajadores pueden solicitar vacaciones, reportar ausencias o actualizar ciertos datos personales
+
+.Desarrollo de talento y gestión del desempeño: Apoyo a procesos de reclutamiento y selección de personal (seguimiento de candidatos, vacantes y contrataciones) así como a evaluaciones de desempeño periódicas de los empleados
+
+
+. También permite planificar ascensos, ajustes salariales y necesidades de formación. Por ejemplo, se pueden registrar las evaluaciones anuales de cada empleado y gestionar planes de capacitación o promoción internos. Nota: Algunas empresas optan por software especializado de RRHH para estas funciones avanzadas, pero un ERP integrado suele ofrecer funcionalidades básicas para cubrirlas
+
+
+.Módulo de Nómina (Payroll)
+
+Cálculo de nóminas y salarios: Generación automatizada de la nómina de la empresa, calculando sueldos brutos y netos para cada empleado conforme a su contrato y horas registradas
+
+. El software de nómina toma los datos de cada trabajador (salario base, ausencias, horas extra, comisiones, etc.) y aplica las fórmulas correspondientes para obtener el pago neto, incluyendo cálculo de impuestos y deducciones legales
+discuss.frappe.io
+
+. Por ejemplo, convierte sueldos de “líquido a bruto o viceversa” automáticamente según se requiera
+
+.Gestión de deducciones y aportes: Administración de retenciones (impuestos sobre la renta del trabajador) y aportes de seguridad social/pensiones, así como otras deducciones como anticipos de salario, préstamos a empleados, embargos judiciales o seguros de cesantía
+
+
+. El sistema aplica las tasas correspondientes y asegura el cumplimiento de las obligaciones legales en cada periodo de pago. Emisión de recibos y cumplimiento legal: Generación de recibos de nómina (comprobantes de pago) para los empleados, que pueden ser enviados electrónicamente según normas locales
+
+. El módulo registra automáticamente el asiento contable de la nómina en el módulo de contabilidad (distribuyendo costos por centro de costo/departamento) y mantiene un historial de pagos. Incluye calendarios de pago, gestión de diferentes tipos de nómina (semanal, quincenal, mensual) y manejo de finiquitos o liquidaciones al terminar la relación laboral
+
+. Muchas soluciones también soportan depósito directo a cuentas bancarias y están al día con requisitos fiscales, facilitando la generación de reportes legales (ej.: libro de remuneraciones, declaraciones de impuestos sobre nóminas, etc.)
+
+
+.Módulo de Manejo de Archivos (Gestión Documental)
+
+Repositorio central de documentos: Un sistema de gestión documental (DMS) integrado que permite almacenar, organizar y compartir documentos e imágenes digitales de la empresa en una ubicación centralizada, accesible para los empleados de forma sencilla
+
+. Todos los documentos relacionados con procesos del ERP (facturas, órdenes, contratos, informes, etc.) pueden adjuntarse y consultarse desde el sistema, evitando el manejo de papel y facilitando la búsqueda de información.
+
+Control de versiones y flujos de aprobación: Cada documento almacenado cuenta con control de versiones, registrando automáticamente los cambios, quién los hizo y cuándo
+
+. Esto asegura un historial claro de modificaciones en, por ejemplo, contratos o especificaciones. Asimismo, el módulo puede implementar flujos de trabajo (workflows) para la revisión y aprobación de documentos – por ejemplo, aprobación de una orden de compra pasando por distintos responsables antes de su emisión. Búsqueda, seguridad y colaboración: Funcionalidades de búsqueda avanzada mediante metadatos o contenido, que permiten encontrar rápidamente documentos por palabras clave. Incluye controles de acceso y permisos para proteger información sensible, asegurando que solo personal autorizado pueda ver o editar ciertos archivos
+
+
+. Adicionalmente, soporta colaboración en tiempo real, permitiendo que varios usuarios trabajen sobre un documento o proyecto simultáneamente (p. ej., edición colaborativa, comentarios), con herramientas como mensajería interna o incluso integración con suites ofimáticas
+
+. En resumen, el módulo documental garantiza que el flujo de documentos de la empresa esté bajo control, ordenado y disponible cuando se necesite.

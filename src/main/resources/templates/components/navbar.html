@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- ============================================================================
+     NAVBAR COMPONENT - Barra de Navegación Superior
+     WhatsApp Orders Manager
+     ============================================================================ -->
+
+<nav th:fragment="navbar" class="navbar">
+    
+    <!-- SECCIÓN IZQUIERDA: Logo y Nombre -->
+    <div class="navbar-left">
+        <a th:href="@{/dashboard}" class="navbar-brand">
+            <i class="fas fa-comments navbar-logo"></i>
+            <span class="navbar-app-name">WhatsApp Orders Manager</span>
+        </a>
+    </div>
+
+    <!-- SECCIÓN CENTRO: Botón Dashboard y Breadcrumbs -->
+    <div class="navbar-center">
+        <a th:href="@{/dashboard}" class="btn-dashboard">
+            <i class="fas fa-home"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <!-- Breadcrumbs (se llenan dinámicamente con JS) -->
+        <div class="breadcrumbs">
+            <!-- JavaScript en navbar.js actualiza esto -->
+        </div>
+    </div>
+
+    <!-- SECCIÓN DERECHA: Usuario y Dropdown -->
+    <div class="navbar-right">
+        <div class="navbar-user" sec:authorize="isAuthenticated()">
+            <!-- Trigger del dropdown -->
+            <button class="navbar-user-trigger">
+                <!-- Avatar con iniciales -->
+                <div class="user-avatar" th:data-initials="${userInitials != null ? userInitials : '50'}">
+                    <span th:text="${userInitials != null ? userInitials : '50'}">50</span>
+                </div>
+                <!-- Nombre del usuario (oculto en móvil) -->
+                <span class="user-name" th:text="${userName != null ? userName : #authentication.principal.username}">Usuario</span>
+                <!-- Icono dropdown -->
+                <i class="fas fa-chevron-down user-dropdown-icon"></i>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div class="navbar-dropdown">
+                <!-- Header con info del usuario -->
+                <div class="dropdown-header">
+                    <div class="dropdown-user-info">
+                        <div class="dropdown-user-avatar" th:data-initials="${userInitials != null ? userInitials : '50'}">
+                            <span th:text="${userInitials != null ? userInitials : '50'}">50</span>
+                        </div>
+                        <div class="dropdown-user-details">
+                            <div class="dropdown-user-name" th:text="${userName != null ? userName : #authentication.principal.username}">Usuario</div>
+                            <div class="dropdown-user-role" th:text="${userRole != null ? userRole : 'USER'}">ROLE_ADMIN</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Items -->
+                <ul class="navbar-menu-items">
+                    <li class="navbar-menu-item">
+                        <a th:href="@{/perfil}" class="navbar-menu-link">
+                            <i class="fas fa-user"></i>
+                            <span>Ver mi perfil</span>
+                        </a>
+                    </li>
+                    
+                    <li class="navbar-menu-item" sec:authorize="hasRole('ADMIN')">
+                        <a th:href="@{/configuracion}" class="navbar-menu-link">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                    
+                    <li class="navbar-menu-item">
+                        <a th:href="@{/perfil/editar}" class="navbar-menu-link">
+                            <i class="fas fa-edit"></i>
+                            <span>Editar perfil</span>
+                        </a>
+                    </li>
+                    
+                    <li class="navbar-menu-item">
+                        <a href="#" class="navbar-menu-link">
+                            <i class="fas fa-question-circle"></i>
+                            <span>Ayuda</span>
+                        </a>
+                    </li>
+                    
+                    <!-- Divider -->
+                    <li><div class="navbar-menu-divider"></div></li>
+                    
+                    <!-- Logout -->
+                    <li class="navbar-menu-item">
+                        <a href="#" class="navbar-menu-link navbar-menu-logout" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Cerrar sesión</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Si no está autenticado -->
+        <div sec:authorize="!isAuthenticated()">
+            <a th:href="@{/auth/login}" class="btn btn-primary">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Iniciar Sesión</span>
+            </a>
+        </div>
+    </div>
+
+</nav>
+
+</html>

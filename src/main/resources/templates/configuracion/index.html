@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+
+<!-- ============================================================================
+     CONFIGURACIÓN - Módulo de Configuración del Sistema
+     WhatsApp Orders Manager - Sprint 2
+     ============================================================================ -->
+
+<head th:replace="~{layout :: head}">
+    <title>Configuración del Sistema</title>
+</head>
+
+<body>
+    <!-- CSS específico de configuración -->
+    <link rel="stylesheet" th:href="@{/css/configuracion.css}">
+    
+    <!-- NAVBAR -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- SIDEBAR -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="container-fluid mt-4 px-4">
+        
+        <!-- Breadcrumbs -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a th:href="@{/dashboard}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    <i class="fas fa-cog"></i> Configuración
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1">
+                    <i class="fas fa-cog text-primary"></i> Configuración del Sistema
+                </h1>
+                <p class="text-muted mb-0">Administra la configuración de tu empresa y sistema</p>
+            </div>
+        </div>
+
+        <!-- Alertas de Mensajes Flash -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+
+        <!-- Tabs de Configuración -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white border-bottom-0">
+                <ul class="nav nav-tabs card-header-tabs" id="configTabs" role="tablist">
+                    
+                    <!-- Tab Empresa -->
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" 
+                                th:classappend="${activeTab == 'empresa' or activeTab == null} ? 'active' : ''"
+                                id="empresa-tab" 
+                                data-bs-toggle="tab" 
+                                data-bs-target="#empresa" 
+                                type="button" 
+                                role="tab" 
+                                aria-controls="empresa" 
+                                th:attr="aria-selected=${activeTab == 'empresa' or activeTab == null}">
+                            <i class="fas fa-building me-2"></i> Empresa
+                        </button>
+                    </li>
+
+                    <!-- Tab Facturación -->
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" 
+                                th:classappend="${activeTab == 'facturacion'} ? 'active' : ''"
+                                id="facturacion-tab" 
+                                data-bs-toggle="tab" 
+                                data-bs-target="#facturacion" 
+                                type="button" 
+                                role="tab" 
+                                aria-controls="facturacion"
+                                th:attr="aria-selected=${activeTab == 'facturacion'}">
+                            <i class="fas fa-file-invoice me-2"></i> Facturación
+                        </button>
+                    </li>
+
+                    <!-- Tab Usuarios (Próximamente) -->
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link disabled" 
+                                id="usuarios-tab" 
+                                type="button" 
+                                role="tab"
+                                disabled>
+                            <i class="fas fa-users me-2"></i> Usuarios
+                            <span class="badge bg-secondary ms-1">Próximo</span>
+                        </button>
+                    </li>
+
+                    <!-- Tab Notificaciones -->
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" 
+                                th:classappend="${activeTab == 'notificaciones'} ? 'active' : ''"
+                                id="notificaciones-tab" 
+                                data-bs-toggle="tab" 
+                                data-bs-target="#notificaciones" 
+                                type="button" 
+                                role="tab" 
+                                aria-controls="notificaciones"
+                                th:attr="aria-selected=${activeTab == 'notificaciones'}">
+                            <i class="fas fa-bell me-2"></i> Notificaciones
+                        </button>
+                    </li>
+
+                </ul>
+            </div>
+
+            <div class="card-body">
+                <div class="tab-content" id="configTabsContent">
+                    
+                    <!-- Contenido Tab Empresa -->
+                    <div class="tab-pane fade" 
+                         th:classappend="${activeTab == 'empresa' or activeTab == null} ? 'show active' : ''"
+                         id="empresa" 
+                         role="tabpanel" 
+                         aria-labelledby="empresa-tab">
+                        
+                        <div th:replace="~{configuracion/empresa :: empresaForm}"></div>
+                        
+                    </div>
+
+                    <!-- Contenido Tab Facturación -->
+                    <div class="tab-pane fade" 
+                         th:classappend="${activeTab == 'facturacion'} ? 'show active' : ''"
+                         id="facturacion" 
+                         role="tabpanel" 
+                         aria-labelledby="facturacion-tab">
+                        
+                        <div th:replace="~{configuracion/facturacion :: facturacionForm}"></div>
+                        
+                    </div>
+
+                    <!-- Contenido Tab Usuarios (Placeholder) -->
+                    <div class="tab-pane fade" 
+                         id="usuarios" 
+                         role="tabpanel" 
+                         aria-labelledby="usuarios-tab">
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">Gestión de Usuarios</h4>
+                            <p class="text-muted">Esta sección estará disponible en la Fase 3</p>
+                        </div>
+                    </div>
+
+                    <!-- Contenido Tab Notificaciones -->
+                    <div class="tab-pane fade" 
+                         th:classappend="${activeTab == 'notificaciones'} ? 'show active' : ''"
+                         id="notificaciones" 
+                         role="tabpanel" 
+                         aria-labelledby="notificaciones-tab">
+                        
+                        <div th:replace="~{configuracion/notificaciones :: notificacionesForm}"></div>
+                        
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        
+    </main>
+
+    <!-- Scripts -->
+    <div th:replace="~{layout :: scripts}"></div>
+    
+    <!-- JS específico de configuración -->
+    <script th:src="@{/js/configuracion.js}"></script>
+</body>
+</html>

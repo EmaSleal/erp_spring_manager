@@ -1,0 +1,376 @@
+/*
+ * ============================================================================
+ * SIDEBAR.CSS - Menú Lateral de Navegación
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Sidebar con menú de módulos, colapsable en móvil (Opción B aprobada)
+ */
+
+/* ============================================================================
+   SIDEBAR PRINCIPAL
+   ============================================================================ */
+.sidebar {
+    position: fixed;
+    top: var(--navbar-height);
+    left: 0;
+    width: var(--sidebar-width);
+    height: calc(100vh - var(--navbar-height));
+    background-color: white;
+    box-shadow: var(--shadow-md);
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: all var(--transition-normal);
+    z-index: 999;
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+}
+
+/* Ocultar sidebar en móvil por defecto */
+@media (max-width: 767px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+}
+
+/* ============================================================================
+   BOTÓN TOGGLE (Hamburger)
+   ============================================================================ */
+.sidebar-toggle {
+    display: none; /* Solo visible en móvil */
+    position: fixed;
+    bottom: var(--spacing-xl);
+    right: var(--spacing-xl);
+    width: 56px;
+    height: 56px;
+    border-radius: var(--border-radius-full);
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    box-shadow: var(--shadow-xl);
+    cursor: pointer;
+    z-index: 1001;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-toggle:hover {
+    background-color: var(--primary-dark);
+    transform: scale(1.1);
+}
+
+.sidebar-toggle i {
+    font-size: 1.5rem;
+}
+
+@media (max-width: 767px) {
+    .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* ============================================================================
+   OVERLAY (para cerrar sidebar en móvil)
+   ============================================================================ */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: var(--navbar-height);
+    left: 0;
+    width: 100%;
+    height: calc(100vh - var(--navbar-height));
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.sidebar-overlay.show {
+    display: block;
+    opacity: 1;
+}
+
+/* ============================================================================
+   HEADER DEL SIDEBAR
+   ============================================================================ */
+.sidebar-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--background-color);
+}
+
+.sidebar-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-sm);
+    opacity: 1;
+    transition: opacity var(--transition-normal);
+}
+
+.sidebar.collapsed .sidebar-title {
+    opacity: 0;
+}
+
+/* ============================================================================
+   MENÚ DE MÓDULOS
+   ============================================================================ */
+.sidebar-menu {
+    list-style: none;
+    margin: 0;
+    padding: var(--spacing-md) 0;
+}
+
+.menu-item {
+    margin: 0;
+}
+
+.menu-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    position: relative;
+    white-space: nowrap;
+}
+
+.menu-link:hover {
+    background-color: var(--background-color);
+    text-decoration: none;
+}
+
+.menu-link.active {
+    background-color: rgba(25, 118, 210, 0.1);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.menu-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--primary-color);
+}
+
+/* Iconos de módulos */
+.menu-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+/* Colores específicos por módulo */
+.menu-link[data-module="clientes"] .menu-icon { color: var(--module-clientes); }
+.menu-link[data-module="productos"] .menu-icon { color: var(--module-productos); }
+.menu-link[data-module="facturas"] .menu-icon { color: var(--module-facturas); }
+.menu-link[data-module="pedidos"] .menu-icon { color: var(--module-pedidos); }
+.menu-link[data-module="reportes"] .menu-icon { color: var(--module-reportes); }
+.menu-link[data-module="inventario"] .menu-icon { color: var(--module-inventario); }
+.menu-link[data-module="usuarios"] .menu-icon { color: var(--module-usuarios); }
+.menu-link[data-module="config"] .menu-icon { color: var(--module-config); }
+.menu-link[data-module="documentos"] .menu-icon { color: var(--module-documentos); }
+.menu-link[data-module="pagos"] .menu-icon { color: var(--module-pagos); }
+
+/* Nombre del módulo */
+.menu-text {
+    flex: 1;
+    font-size: 0.95rem;
+    opacity: 1;
+    transition: opacity var(--transition-normal);
+}
+
+.sidebar.collapsed .menu-text {
+    opacity: 0;
+    display: none;
+}
+
+/* Badge "Próximamente" */
+.menu-badge {
+    padding: 2px 8px;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background-color: var(--text-secondary);
+    color: white;
+    opacity: 1;
+    transition: opacity var(--transition-normal);
+}
+
+.sidebar.collapsed .menu-badge {
+    opacity: 0;
+    display: none;
+}
+
+/* Módulos deshabilitados */
+.menu-link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.menu-link.disabled:hover {
+    background-color: transparent;
+}
+
+/* ============================================================================
+   SEPARADORES
+   ============================================================================ */
+.menu-divider {
+    height: 1px;
+    background-color: var(--background-color);
+    margin: var(--spacing-md) var(--spacing-lg);
+}
+
+.menu-section-title {
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 1;
+    transition: opacity var(--transition-normal);
+}
+
+.sidebar.collapsed .menu-section-title {
+    opacity: 0;
+    display: none;
+}
+
+/* ============================================================================
+   BOTÓN DE COLAPSO (Desktop)
+   ============================================================================ */
+.sidebar-collapse-btn {
+    display: none; /* Solo en desktop */
+    position: absolute;
+    bottom: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-full);
+    background-color: var(--background-color);
+    border: 1px solid #e0e0e0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-collapse-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.sidebar-collapse-btn i {
+    transition: transform var(--transition-normal);
+}
+
+.sidebar.collapsed .sidebar-collapse-btn i {
+    transform: rotate(180deg);
+}
+
+@media (min-width: 768px) {
+    .sidebar-collapse-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* ============================================================================
+   TOOLTIP PARA SIDEBAR COLAPSADO
+   ============================================================================ */
+.menu-link {
+    position: relative;
+}
+
+.sidebar.collapsed .menu-link::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + var(--spacing-sm));
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--text-primary);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-fast);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.sidebar.collapsed .menu-link:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ============================================================================
+   SCROLLBAR PERSONALIZADA
+   ============================================================================ */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: var(--background-color);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* ============================================================================
+   RESPONSIVE - TABLET
+   ============================================================================ */
+@media (min-width: 768px) and (max-width: 1199px) {
+    .sidebar {
+        width: 200px;
+    }
+    
+    .sidebar.collapsed {
+        width: var(--sidebar-collapsed-width);
+    }
+}
+
+/* ============================================================================
+   AJUSTES PARA MODO COLLAPSED
+   ============================================================================ */
+.sidebar.collapsed .sidebar-header {
+    padding: var(--spacing-md) var(--spacing-sm);
+}
+
+.sidebar.collapsed .menu-link {
+    padding: var(--spacing-md) var(--spacing-sm);
+    justify-content: center;
+}
+
+.sidebar.collapsed .menu-icon {
+    margin: 0 auto;
+}

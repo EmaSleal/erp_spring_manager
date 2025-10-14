@@ -1,0 +1,370 @@
+/* ============================================
+   USUARIOS.CSS - Estilos para Gestión de Usuarios
+   ============================================ */
+
+/* Tarjetas de Estadísticas */
+.stats-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.stats-card .stats-icon {
+    opacity: 0.3;
+}
+
+.stats-card .card-title {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.stats-card .card-subtitle {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+/* Avatar Circle */
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+/* Tabla de Usuarios */
+#usuariosTable {
+    font-size: 0.95rem;
+}
+
+#usuariosTable thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#usuariosTable tbody tr {
+    transition: background-color 0.2s;
+}
+
+#usuariosTable tbody tr:hover {
+    background-color: rgba(0,123,255,0.05) !important;
+}
+
+#usuariosTable tbody tr.table-info {
+    background-color: rgba(13,202,240,0.15) !important;
+}
+
+/* Badges personalizados */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+    font-weight: 600;
+}
+
+/* Badges de rol con colores específicos */
+.badge-rol-admin {
+    background-color: #dc3545 !important; /* Rojo */
+    color: white;
+}
+
+.badge-rol-user {
+    background-color: #0d6efd !important; /* Azul */
+    color: white;
+}
+
+.badge-rol-vendedor {
+    background-color: #198754 !important; /* Verde */
+    color: white;
+}
+
+.badge-rol-visualizador {
+    background-color: #6c757d !important; /* Gris */
+    color: white;
+}
+
+/* Botones de acción en tabla */
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.btn-group .btn i {
+    font-size: 0.9rem;
+}
+
+.btn-toggle-active:disabled,
+.btn-eliminar:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Card de filtros */
+.card-header h5 {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Formulario de Usuario */
+#formUsuario .form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+#formUsuario .input-group-text {
+    background-color: #e9ecef;
+    border-right: none;
+}
+
+#formUsuario .input-group .form-control,
+#formUsuario .input-group .form-select {
+    border-left: none;
+}
+
+#formUsuario .input-group .form-control:focus,
+#formUsuario .input-group .form-select:focus {
+    border-left: none;
+    box-shadow: none;
+}
+
+#formUsuario .input-group:focus-within .input-group-text {
+    border-color: #86b7fe;
+}
+
+/* Switch de estado */
+.form-check-input {
+    width: 3rem;
+    height: 1.5rem;
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.form-check-label {
+    cursor: pointer;
+    margin-left: 0.5rem;
+    font-weight: 500;
+}
+
+/* Modal de Reset Password */
+#modalResetPassword .modal-header {
+    background-color: #0d6efd;
+    color: white;
+}
+
+#modalResetPassword .modal-header .btn-close {
+    filter: invert(1);
+}
+
+#nuevaPasswordContainer {
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#nuevaPasswordContainer input {
+    font-family: monospace;
+    font-size: 1.1rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+/* Paginación personalizada */
+.pagination {
+    margin-top: 1rem;
+}
+
+.pagination .page-link {
+    color: #0d6efd;
+    border-radius: 5px;
+    margin: 0 2px;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #6c757d;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .stats-card .card-title {
+        font-size: 1.5rem;
+    }
+    
+    .stats-card .card-subtitle {
+        font-size: 0.75rem;
+    }
+    
+    .stats-icon {
+        display: none;
+    }
+    
+    #usuariosTable {
+        font-size: 0.85rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .avatar-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Ocultar columnas menos importantes en móvil */
+    #usuariosTable th:nth-child(3),
+    #usuariosTable td:nth-child(3),
+    #usuariosTable th:nth-child(4),
+    #usuariosTable td:nth-child(4) {
+        display: none;
+    }
+    
+    .stats-card .card-body {
+        padding: 1rem;
+    }
+}
+
+/* Animaciones */
+.alert {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Tooltips personalizados */
+.tooltip-inner {
+    background-color: #212529;
+    color: #fff;
+    font-size: 0.875rem;
+}
+
+.tooltip.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: #212529;
+}
+
+/* Loading state para botones */
+.btn.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.btn.loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    border-right-color: transparent;
+    animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Estados de validación mejorados */
+.form-control.is-valid,
+.form-select.is-valid {
+    border-color: #198754;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(.375em + .1875rem) center;
+    background-size: calc(.75em + .375rem) calc(.75em + .375rem);
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+    border-color: #dc3545;
+}
+
+/* Sidebar de ayuda */
+.card-subtitle {
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.card ul.small {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    padding-left: 1.25rem;
+}
+
+.card ul.small li {
+    margin-bottom: 0.5rem;
+}
+
+/* Print styles */
+@media print {
+    .btn,
+    .breadcrumb,
+    .card-header,
+    .pagination,
+    .btn-group {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000;
+        box-shadow: none;
+    }
+    
+    #usuariosTable {
+        font-size: 10pt;
+    }
+}

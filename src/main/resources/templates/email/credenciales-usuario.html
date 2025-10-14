@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credenciales de Acceso</title>
+    <style>
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 50px 30px;
+            text-align: center;
+        }
+        .header-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .welcome-section h2 {
+            color: #667eea;
+            font-size: 24px;
+            margin: 0 0 15px 0;
+        }
+        .welcome-section p {
+            color: #6c757d;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        .credentials-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+            border: 2px solid #667eea;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.1);
+        }
+        .credentials-box h3 {
+            margin: 0 0 20px 0;
+            color: #667eea;
+            font-size: 20px;
+            text-align: center;
+        }
+        .credential-item {
+            background: white;
+            padding: 15px 20px;
+            margin: 12px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .credential-label {
+            font-size: 13px;
+            color: #6c757d;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .credential-value {
+            font-size: 18px;
+            color: #212529;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        .info-box h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+            font-size: 16px;
+        }
+        .info-box p {
+            margin: 8px 0;
+            color: #856404;
+            font-size: 14px;
+        }
+        .info-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info-box li {
+            color: #856404;
+            margin: 5px 0;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        .role-admin {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .role-user {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .role-vendedor {
+            background: #d4edda;
+            color: #155724;
+        }
+        .role-visualizador {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        .steps-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        .steps-section h3 {
+            margin: 0 0 20px 0;
+            color: #667eea;
+            font-size: 18px;
+        }
+        .step {
+            display: flex;
+            margin: 15px 0;
+            align-items: flex-start;
+        }
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-right: 15px;
+        }
+        .step-content {
+            flex-grow: 1;
+        }
+        .step-content p {
+            margin: 0;
+            color: #495057;
+            font-size: 14px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 3px solid #667eea;
+        }
+        .footer p {
+            margin: 5px 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .security-notice {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .security-notice p {
+            margin: 5px 0;
+            color: #0c5460;
+            font-size: 13px;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 20px 15px;
+            }
+            .credentials-box {
+                padding: 20px 15px;
+            }
+            .credential-value {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-icon">🔑</div>
+            <h1>¡Bienvenido!</h1>
+            <p>Sus credenciales de acceso al sistema</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <h2>Hola, <span th:text="${usuario.nombre}">Usuario</span> 👋</h2>
+                <p>
+                    Se ha creado una cuenta para usted en <strong>WhatsApp Orders Manager</strong>.
+                    A continuación encontrará sus credenciales de acceso al sistema.
+                </p>
+            </div>
+
+            <!-- Credentials Box -->
+            <div class="credentials-box">
+                <h3>🔐 Sus Credenciales de Acceso</h3>
+                
+                <div class="credential-item">
+                    <div class="credential-label">Usuario / Email</div>
+                    <div class="credential-value" th:text="${usuario.email}">usuario@empresa.com</div>
+                </div>
+                
+                <div class="credential-item">
+                    <div class="credential-label">Contraseña Temporal</div>
+                    <div class="credential-value" th:text="${contrasena}">Temp123!</div>
+                </div>
+                
+                <div class="credential-item">
+                    <div class="credential-label">Rol Asignado</div>
+                    <div>
+                        <span class="role-badge" 
+                              th:classappend="${usuario.rol == 'ADMIN' ? 'role-admin' : 
+                                              (usuario.rol == 'USER' ? 'role-user' : 
+                                              (usuario.rol == 'VENDEDOR' ? 'role-vendedor' : 'role-visualizador'))}"
+                              th:text="${usuario.rol}">USER</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login Button -->
+            <div class="button-container">
+                <a href="#" class="button" th:href="${urlLogin}">
+                    🚀 Acceder al Sistema
+                </a>
+            </div>
+
+            <!-- Important Information -->
+            <div class="info-box">
+                <h4>⚠️ Importante: Cambio de Contraseña</h4>
+                <p>
+                    Por seguridad, <strong>debe cambiar su contraseña</strong> la primera vez que acceda al sistema.
+                </p>
+                <ul>
+                    <li>La contraseña debe tener al menos 8 caracteres</li>
+                    <li>Debe incluir mayúsculas, minúsculas y números</li>
+                    <li>Se recomienda usar caracteres especiales</li>
+                </ul>
+            </div>
+
+            <!-- Steps Section -->
+            <div class="steps-section">
+                <h3>📝 Pasos para Comenzar</h3>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <p><strong>Acceda al sistema</strong> usando el botón de arriba o la URL proporcionada</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <p><strong>Inicie sesión</strong> con el email y contraseña temporal proporcionados</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <p><strong>Cambie su contraseña</strong> por una nueva y segura</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <p><strong>Complete su perfil</strong> con su información personal</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <p><strong>¡Comience a usar el sistema!</strong> Explore las funcionalidades disponibles</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Notice -->
+            <div class="security-notice">
+                <p><strong>🔒 Nota de Seguridad:</strong></p>
+                <p>
+                    No comparta sus credenciales con nadie. Si no solicitó esta cuenta o tiene 
+                    alguna pregunta, contacte inmediatamente con el administrador del sistema.
+                </p>
+            </div>
+
+            <!-- Permissions Info (Based on Role) -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 30px;">
+                <h4 style="color: #667eea; margin: 0 0 15px 0;">✨ Funcionalidades de su Rol</h4>
+                
+                <!-- ADMIN -->
+                <div th:if="${usuario.rol == 'ADMIN'}">
+                    <ul style="color: #495057; margin: 0; padding-left: 20px;">
+                        <li>Acceso completo al sistema</li>
+                        <li>Gestión de usuarios y roles</li>
+                        <li>Configuración de empresa y facturación</li>
+                        <li>Gestión completa de clientes, productos y facturas</li>
+                        <li>Visualización del dashboard completo</li>
+                    </ul>
+                </div>
+                
+                <!-- USER -->
+                <div th:if="${usuario.rol == 'USER'}">
+                    <ul style="color: #495057; margin: 0; padding-left: 20px;">
+                        <li>Gestión de clientes y productos</li>
+                        <li>Creación y edición de facturas</li>
+                        <li>Envío de facturas por email</li>
+                        <li>Visualización de reportes básicos</li>
+                        <li>Gestión de su perfil</li>
+                    </ul>
+                </div>
+                
+                <!-- VENDEDOR -->
+                <div th:if="${usuario.rol == 'VENDEDOR'}">
+                    <ul style="color: #495057; margin: 0; padding-left: 20px;">
+                        <li>Gestión de clientes</li>
+                        <li>Creación y edición de facturas</li>
+                        <li>Consulta de productos</li>
+                        <li>Envío de facturas por email</li>
+                        <li>Gestión de su perfil</li>
+                    </ul>
+                </div>
+                
+                <!-- VISUALIZADOR -->
+                <div th:if="${usuario.rol == 'VISUALIZADOR'}">
+                    <ul style="color: #495057; margin: 0; padding-left: 20px;">
+                        <li>Visualización de clientes</li>
+                        <li>Consulta de productos</li>
+                        <li>Visualización de facturas (sin edición)</li>
+                        <li>Visualización de reportes</li>
+                        <li>Gestión de su perfil</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Contact Support -->
+            <div style="text-align: center; margin-top: 30px; padding: 20px;">
+                <p style="color: #6c757d; font-size: 15px;">
+                    ¿Necesita ayuda? Contáctenos:
+                </p>
+                <p style="color: #667eea; font-weight: 600; margin: 5px 0;">
+                    📧 <span th:text="${empresaEmail}">soporte@empresa.com</span>
+                </p>
+                <p style="color: #667eea; font-weight: 600; margin: 5px 0;" th:if="${empresaTelefono}">
+                    📞 <span th:text="${empresaTelefono}">(555) 123-4567</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>WhatsApp Orders Manager</strong></p>
+            <p>Sistema de Gestión de Pedidos y Facturación</p>
+            <p style="margin-top: 15px; font-size: 12px;">
+                © 2025 - Todos los derechos reservados
+            </p>
+            <p style="font-size: 12px;">
+                Este es un correo electrónico generado automáticamente. Por favor, no responda a este mensaje.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

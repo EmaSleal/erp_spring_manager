@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}"></head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+<section>
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/dashboard}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a th:href="@{/usuarios}">Usuarios</a></li>
+            <li class="breadcrumb-item active" aria-current="page" th:text="${usuario.id != null ? 'Editar' : 'Nuevo'}">Nuevo</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi me-2" th:classappend="${usuario.id != null ? 'bi-pencil-square' : 'bi-person-plus-fill'}"></i>
+                <span th:text="${usuario.id != null ? 'Editar Usuario' : 'Nuevo Usuario'}">Nuevo Usuario</span>
+            </h2>
+            <p class="text-muted mb-0" th:text="${usuario.id != null ? 'Modifica los datos del usuario' : 'Completa los datos del nuevo usuario'}">
+                Completa los datos del nuevo usuario
+            </p>
+        </div>
+        <div>
+            <a th:href="@{/usuarios}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Mensajes de error -->
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-card-text me-2"></i>Datos del Usuario
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/usuarios/save}" 
+                          th:object="${usuario}" 
+                          method="post" 
+                          id="formUsuario" 
+                          novalidate>
+                        
+                        <!-- ID oculto -->
+                        <input type="hidden" th:field="*{id}">
+
+                        <!-- Nombre completo -->
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">
+                                Nombre Completo <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-person-fill"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="nombre" 
+                                       th:field="*{nombre}"
+                                       th:classappend="${#fields.hasErrors('nombre')} ? 'is-invalid' : ''"
+                                       placeholder="Ingresa el nombre completo"
+                                       required
+                                       minlength="3"
+                                       maxlength="100">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}">
+                                    Error en nombre
+                                </div>
+                                <div class="invalid-feedback" th:unless="${#fields.hasErrors('nombre')}">
+                                    El nombre debe tener entre 3 y 100 caracteres
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Ejemplo: Juan Pérez García</small>
+                        </div>
+
+                        <!-- Teléfono -->
+                        <div class="mb-3">
+                            <label for="telefono" class="form-label">
+                                Teléfono <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-phone-fill"></i>
+                                </span>
+                                <input type="tel" 
+                                       class="form-control" 
+                                       id="telefono" 
+                                       th:field="*{telefono}"
+                                       th:classappend="${#fields.hasErrors('telefono')} ? 'is-invalid' : ''"
+                                       placeholder="12345678"
+                                       required
+                                       pattern="[0-9]{8}"
+                                       maxlength="8"
+                                       inputmode="numeric">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}">
+                                    Error en teléfono
+                                </div>
+                                <div class="invalid-feedback" th:unless="${#fields.hasErrors('telefono')}">
+                                    Ingresa un teléfono válido de 8 dígitos
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Formato: 8 dígitos sin espacios ni guiones</small>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                Correo Electrónico <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-envelope-fill"></i>
+                                </span>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="email" 
+                                       th:field="*{email}"
+                                       th:classappend="${#fields.hasErrors('email')} ? 'is-invalid' : ''"
+                                       placeholder="usuario@ejemplo.com"
+                                       required
+                                       pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+                                       maxlength="100">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">
+                                    Error en email
+                                </div>
+                                <div class="invalid-feedback" th:unless="${#fields.hasErrors('email')}">
+                                    Ingresa un email válido (ejemplo: usuario@dominio.com)
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Será usado para notificaciones del sistema</small>
+                        </div>
+
+                        <!-- Contraseña (solo para nuevo usuario) -->
+                        <div class="mb-3" th:if="${usuario.id == null}">
+                            <label for="password" class="form-label">
+                                Contraseña <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="password" 
+                                       name="passwordNueva"
+                                       placeholder="Ingresa una contraseña segura"
+                                       th:required="${usuario.id == null}"
+                                       minlength="6"
+                                       maxlength="100"
+                                       autocomplete="new-password">
+                                <button class="btn btn-outline-secondary" type="button" id="btnTogglePassword" title="Mostrar/Ocultar contraseña">
+                                    <i class="bi bi-eye-fill"></i>
+                                </button>
+                                <button class="btn btn-outline-primary" type="button" id="btnGenerarPassword" title="Generar contraseña segura">
+                                    <i class="bi bi-arrow-clockwise"></i> Generar
+                                </button>
+                                <div class="invalid-feedback">
+                                    La contraseña debe tener al menos 6 caracteres
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Mínimo 6 caracteres. Usa el botón "Generar" para crear una contraseña segura</small>
+                        </div>
+
+                        <!-- Confirmación de contraseña (solo para nuevo usuario) -->
+                        <div class="mb-3" th:if="${usuario.id == null}">
+                            <label for="passwordConfirmacion" class="form-label">
+                                Confirmar Contraseña <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="passwordConfirmacion"
+                                       name="passwordConfirmacion"
+                                       placeholder="Confirma la contraseña"
+                                       th:required="${usuario.id == null}"
+                                       minlength="6"
+                                       maxlength="100"
+                                       autocomplete="new-password">
+                                <button class="btn btn-outline-secondary" type="button" id="btnTogglePasswordConfirm" title="Mostrar/Ocultar contraseña">
+                                    <i class="bi bi-eye-fill"></i>
+                                </button>
+                                <div class="invalid-feedback">
+                                    Las contraseñas no coinciden
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rol -->
+                        <div class="mb-3">
+                            <label for="rol" class="form-label">
+                                Rol <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-shield-fill"></i>
+                                </span>
+                                <select class="form-select" 
+                                        id="rol" 
+                                        th:field="*{rol}"
+                                        th:classappend="${#fields.hasErrors('rol')} ? 'is-invalid' : ''"
+                                        required>
+                                    <option value="">Selecciona un rol</option>
+                                    <option value="ADMIN">Administrador</option>
+                                    <option value="USER">Usuario</option>
+                                    <option value="VENDEDOR">Vendedor</option>
+                                    <option value="VISUALIZADOR">Visualizador</option>
+                                </select>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('rol')}" th:errors="*{rol}">
+                                    Error en rol
+                                </div>
+                                <div class="invalid-feedback" th:unless="${#fields.hasErrors('rol')}">
+                                    Debes seleccionar un rol
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">
+                                <strong>Administrador:</strong> Acceso completo al sistema<br>
+                                <strong>Usuario:</strong> Acceso a módulos operativos y reportes<br>
+                                <strong>Vendedor:</strong> Solo puede crear facturas y consultar catálogos<br>
+                                <strong>Visualizador:</strong> Solo lectura de información
+                            </small>
+                        </div>
+
+                        <!-- Estado -->
+                        <div class="mb-3">
+                            <label for="activo" class="form-label">Estado</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="activo" 
+                                       th:field="*{activo}"
+                                       th:checked="${usuario.activo != null ? usuario.activo : true}">
+                                <label class="form-check-label" for="activo">
+                                    <span id="estadoLabel">Usuario activo</span>
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">Los usuarios inactivos no pueden iniciar sesión</small>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a th:href="@{/usuarios}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" 
+                                    th:classappend="${usuario.id == null ? 'btn-secondary' : 'btn-primary'}"
+                                    th:class="'btn'"
+                                    th:disabled="${usuario.id == null}">
+                                <i class="bi bi-save-fill me-2"></i>
+                                <span th:text="${usuario.id != null ? 'Actualizar Usuario' : 'Crear Usuario'}">Guardar</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar con ayuda -->
+        <div class="col-lg-4">
+            <!-- Información de ayuda -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle-fill me-2"></i>Información de Ayuda
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2"><i class="bi bi-shield-check me-2"></i>Roles del Sistema</h6>
+                    <ul class="small">
+                        <li><strong>ADMIN:</strong> Acceso completo a todas las funcionalidades</li>
+                        <li><strong>USER:</strong> Acceso limitado a funciones operativas</li>
+                    </ul>
+
+                    <hr>
+
+                    <h6 class="card-subtitle mb-2"><i class="bi bi-key me-2"></i>Contraseñas</h6>
+                    <ul class="small">
+                        <li>Mínimo 6 caracteres</li>
+                        <li>Se recomienda usar letras, números y símbolos</li>
+                        <li>Usa el botón "Generar" para contraseñas seguras</li>
+                        <li>Para usuarios existentes, usa la opción "Restablecer contraseña" en la lista</li>
+                    </ul>
+
+                    <hr>
+
+                    <h6 class="card-subtitle mb-2"><i class="bi bi-telephone me-2"></i>Formato de Teléfono</h6>
+                    <ul class="small">
+                        <li>Debe ser un número de 8 dígitos</li>
+                        <li>Solo números, sin espacios ni guiones</li>
+                        <li>Ejemplo: 12345678</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Notas importantes (solo en edición) -->
+            <div class="card" th:if="${usuario.id != null}">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Notas Importantes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li>No puedes eliminar tu propia cuenta</li>
+                        <li>No puedes desactivar tu propia cuenta</li>
+                        <li>Para cambiar la contraseña, usa "Restablecer contraseña" en la lista</li>
+                        <li>Los cambios en el rol se aplican en el próximo inicio de sesión</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+        </div>
+    </main>
+
+    <!-- Scripts comunes (jQuery y Bootstrap primero) -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+    
+    <!-- Scripts específicos del formulario (después de jQuery) -->
+    <script th:src="@{/js/usuarios.js}"></script>
+</body>
+</html>

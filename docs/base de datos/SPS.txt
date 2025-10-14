@@ -1,0 +1,362 @@
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ActualizarCliente`(
+    IN pIdCliente INT,
+    IN pNombre VARCHAR(255),
+    IN pIdUsuario INT,
+    IN pUpdateBy INT
+)
+BEGIN
+    UPDATE cliente
+    SET 
+        nombre = pNombre,
+        id_usuario = pIdUsuario,
+        update_by = pUpdateBy,
+        update_date = CURRENT_TIMESTAMP
+    WHERE id_cliente = pIdCliente;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ActualizarTotalFactura`(
+    IN pIdFactura INT
+)
+BEGIN
+    UPDATE factura
+    SET total = (
+        SELECT SUM(subtotal)
+        FROM linea_factura
+        WHERE id_factura = pIdFactura
+    )
+    WHERE id_factura = pIdFactura;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `CrearFactura`(
+    IN pIdCliente INT,
+    IN pFechaEntrega DATE,
+    IN pDescripcion VARCHAR(255),
+    OUT pIdFactura INT
+)
+BEGIN
+    INSERT INTO factura (id_cliente, create_date, fecha_entrega, entregado, total, descripcion)
+    VALUES (pIdCliente, NOW(), pFechaEntrega, 0, 0, pDescripcion);
+    
+    SET pIdFactura = LAST_INSERT_ID(); -- Devuelve el ID generado
+    SELECT pIdFactura AS pIdFactura;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarCliente`(
+    IN pNombre VARCHAR(255),
+    IN pIdUsuario VARCHAR(50),
+    OUT pIdCliente INT
+)
+BEGIN
+    -- Verificar si el cliente ya existe por nombre
+    SELECT id_cliente INTO pIdCliente
+    FROM cliente
+    WHERE nombre = pNombre
+    LIMIT 1;
+
+    -- Si no existe, insertar el nuevo cliente
+    IF pIdCliente IS NULL THEN
+        INSERT INTO cliente (nombre, id_usuario)
+        VALUES (pNombre, pIdUsuario);
+
+        SET pIdCliente = LAST_INSERT_ID(); -- Asignar el nuevo ID generado
+    END IF;
+
+    -- Retornar el ID del cliente (ya existente o recién creado)
+    SELECT pIdCliente AS pIdCliente;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarLineaFactura`(
+    IN pIdFactura INT,
+    IN pIdProducto INT,
+    IN pCantidad INT,
+    IN pPrecioUnitario DECIMAL(10, 2),
+    OUT pIdLineaFactura INT
+)
+BEGIN
+    INSERT INTO linea_factura (id_factura, id_producto, cantidad, precio_unitario, subtotal)
+    VALUES (pIdFactura, pIdProducto, pCantidad, pPrecioUnitario, pCantidad*pPrecioUnitario);
+    
+    SET pIdLineaFactura = LAST_INSERT_ID(); -- Devuelve el ID generado
+    
+	CALL ActualizarTotalFactura();
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarPresentacion`(IN pNombre VARCHAR(50), OUT pIdPresentacion INT)
+BEGIN
+    -- Verificar si la presentación ya existe
+    SELECT id_presentacion INTO pIdPresentacion 
+    FROM presentacion WHERE nombre = pNombre 
+    LIMIT 1;
+    
+    -- Si no existe, la insertamos
+    IF pIdPresentacion IS NULL THEN
+        INSERT INTO presentacion (nombre) VALUES (pNombre);
+        SELECT pIdPresentacion = LAST_INSERT_ID();
+    END IF;
+    SELECT pIdPresentacion;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarProducto`(
+    IN pDescripcion VARCHAR(255),
+    IN pCodigo VARCHAR(50),
+    IN pIdPresentacion INT,
+    IN pPrecioInstitucional DECIMAL(10,2),
+    IN pPrecioMayorista DECIMAL(10,2),
+    OUT pIdProducto INT
+)
+BEGIN
+    DECLARE existingId INT;
+    
+    -- Verificar si el producto ya existe por código
+    SELECT id_producto INTO existingId FROM producto WHERE codigo = pCodigo LIMIT 1;
+    
+    IF existingId IS NOT NULL THEN
+        -- Si existe, actualizar los datos
+        UPDATE producto
+        SET descripcion = pDescripcion,
+            id_presentacion = pIdPresentacion,
+            precio_institucional = pPrecioInstitucional,
+            precio_mayorista = pPrecioMayorista
+        WHERE id_producto = existingId;
+        
+        SET pIdProducto = existingId; -- Devolver el ID del producto actualizado
+    ELSE
+        -- Si no existe, insertar un nuevo producto
+        INSERT INTO producto (descripcion, codigo, id_presentacion, precio_institucional, precio_mayorista)
+        VALUES (pDescripcion, pCodigo, pIdPresentacion, pPrecioInstitucional, pPrecioMayorista);
+        
+        SET pIdProducto = LAST_INSERT_ID(); -- Devolver el ID generado
+    END IF;
+    
+    -- Retornar el ID del producto afectado
+    SELECT pIdProducto AS pIdProducto;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarUsuario`(
+    IN pNombre VARCHAR(255),
+    IN pTelefono VARCHAR(15),
+    OUT pIdUsuario INT
+)
+BEGIN
+    INSERT INTO usuario (nombre, telefono)
+    VALUES (pNombre, pTelefono);
+    
+    SET pIdUsuario = LAST_INSERT_ID(); -- Devuelve el ID generado
+    
+    SELECT pIdUsuario AS pIdUsuario;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerClientes`()
+BEGIN
+    SELECT id_cliente AS idCliente, nombre FROM cliente;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerFacturaCompleta`(
+    IN pIdFactura INT
+)
+BEGIN
+    -- 1. Información del Cliente y la Factura
+	SELECT 
+        f.id_Factura AS idFactura,
+        c.id_cliente AS idCliente,
+        c.nombre AS nombreCliente,
+        c.id_usuario AS telefono,
+        f.create_date AS fechaCreacion,
+        f.fecha_entrega AS fechaEntrega,
+        f.descripcion AS tipoFactura,
+        c.nombre AS NombreCliente
+    FROM factura f
+    INNER JOIN cliente c ON f.id_cliente = c.id_cliente
+    WHERE f.id_factura = pIdFactura;
+
+    -- 2. Detalle de la Factura (desglose de productos con presentación)
+    SELECT 
+        lf.id_linea_factura,
+        p.id_producto,
+        CONCAT(p.descripcion, " (", pres.nombre, ")") AS nombreProducto,
+        lf.cantidad,
+        lf.precio_unitario,
+        lf.subtotal
+    FROM linea_factura lf
+    INNER JOIN producto p ON lf.id_producto = p.id_producto
+    INNER JOIN presentacion pres ON p.id_presentacion = pres.id_presentacion
+    WHERE lf.id_factura = pIdFactura;
+
+    -- 3. Total de la Factura
+    SELECT 
+        f.id_factura,
+        f.total AS totalFactura
+    FROM factura f
+    WHERE f.id_factura = pIdFactura;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `ObtenerHistorialMensajes`(
+    IN pPhoneNumber VARCHAR(50),
+    IN pLimite INT
+)
+BEGIN
+    SELECT message_body
+    FROM webhooklogs
+    WHERE phone_number = pPhoneNumber
+    ORDER BY timestamp DESC
+    LIMIT pLimite;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerProductos`()
+BEGIN
+    SELECT PRO.id_producto, CONCAT(PRO.descripcion," (",PRES.nombre,")")  AS nombre, PRO.precio_institucional, PRO.precio_mayorista FROM producto PRO
+    INNER JOIN presentacion PRES ON PRES.id_presentacion = PRO.id_presentacion
+    ORDER BY PRO.descripcion;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerReportePorArticulo`(
+    IN pFechaInicio DATE,
+    IN pFechaFin DATE
+)
+BEGIN
+    SELECT 
+        p.id_producto,
+        CONCAT(p.descripcion, " (", pres.nombre, ")") AS nombreProducto,
+        SUM(lf.cantidad) AS cantidadTotal
+    FROM linea_factura lf
+    INNER JOIN factura f ON lf.id_factura = f.id_factura
+    INNER JOIN producto p ON lf.id_producto = p.id_producto
+    INNER JOIN presentacion pres ON p.id_presentacion = pres.id_presentacion
+    WHERE f.fecha_entrega BETWEEN pFechaInicio AND pFechaFin
+    GROUP BY p.id_producto, nombreProducto
+    ORDER BY cantidadTotal DESC;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `RegistrarWebhook`(
+    IN pMessageId VARCHAR(255),
+    IN pPhoneNumber VARCHAR(50),
+    IN pMessageBody TEXT,
+    IN pWholeMessage JSON,
+    OUT pExiste INT
+)
+BEGIN
+    -- Verificar si el mensaje ya está registrado
+    SELECT COUNT(*) INTO pExiste FROM webhooklogs WHERE message_id = pMessageId;
+
+    IF pExiste = 0 THEN
+        -- Si no existe, insertar el mensaje
+        INSERT INTO webhooklogs (message_id, timestamp ,phone_number, message_body, whole_message)
+        VALUES (pMessageId, CURDATE(),pPhoneNumber, pMessageBody, pWholeMessage);
+    END IF;
+    
+    SELECT pExiste;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_actualizar_linea_factura`(
+    IN p_id_linea_factura INT,
+    IN p_numero_linea INT,
+    IN p_id_factura INT, -- 🔹 Necesario para el INSERT
+    IN p_id_producto INT,
+    IN p_cantidad INT,
+    IN p_precioUnitario DECIMAL(10,2),
+    IN p_subtotal DECIMAL(10,2),
+    IN p_update_by INT
+)
+BEGIN
+    DECLARE v_exists INT;
+
+    SELECT COUNT(*) INTO v_exists
+    FROM linea_factura
+    WHERE id_linea_factura = p_id_linea_factura;
+
+    IF v_exists > 0 THEN
+        --  Actualiza si existe
+        UPDATE linea_factura
+        SET
+            numero_linea = p_numero_linea,
+            id_producto = p_id_producto,
+            cantidad = p_cantidad,
+            precio_unitario = p_precioUnitario,
+            subtotal = p_subtotal,
+            update_by = p_update_by,
+            update_date = CURRENT_TIMESTAMP
+        WHERE id_linea_factura = p_id_linea_factura;
+        
+        CALL ActualizarTotalFactura(p_id_factura);
+    ELSE 
+        --  Inserta si no existe
+        INSERT INTO linea_factura (
+            numero_linea,
+            id_factura,
+            id_producto,
+            cantidad,
+            precio_unitario,
+            subtotal,
+            create_by,
+            update_by,
+            create_date,
+            update_date
+        ) VALUES (
+            p_numero_linea,
+            p_id_factura,
+            p_id_producto,
+            p_cantidad,
+            p_precioUnitario,
+            p_subtotal,
+            p_update_by,
+            p_update_by,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        );
+        CALL ActualizarTotalFactura(p_id_factura);
+    END IF;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_desactivar_producto`(
+	IN p_id_producto INT
+)
+BEGIN
+    UPDATE producto
+    SET active = false
+    WHERE (id_producto = p_id_producto);
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_get_lineas_factura`(
+	IN idFactura INT
+)
+BEGIN
+	SELECT  lf.id_linea_factura, lf.numero_linea, lf.id_producto, lf.id_factura,CONCAT(pr.descripcion,' (',PRE.nombre,')'), lf.cantidad, lf.precio_unitario AS precioUnitario, lf.subtotal, lf.create_by, lf.update_by, lf.create_date, lf.update_date 
+    FROM linea_factura AS lf
+    INNER JOIN producto AS pr ON pr.id_producto = lf.id_producto
+    INNER JOIN presentacion AS PRE ON PRE.id_presentacion = pr.id_presentacion
+    WHERE id_factura = idFactura;
+END$$
+DELIMITER ;

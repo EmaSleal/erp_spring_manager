@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Clientes</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-users me-1"></i>Clientes
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1"><i class="fas fa-users text-primary me-2"></i>Gestión de Clientes</h2>
+                    <p class="text-muted mb-0">
+                        Administra tu base de clientes
+                        <span sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" class="badge bg-secondary ms-2">
+                            <i class="bi bi-eye-fill me-1"></i>Solo lectura
+                        </span>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
+                    </a>
+                    <button id="open-modal" class="btn btn-primary" sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                        <i class="fas fa-plus me-2"></i>Agregar Cliente
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 data-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 80px;">ID</th>
+                                    <th>Nombre / Tipo</th>
+                                    <th class="text-center" style="width: 200px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="cliente : ${clientes}">
+                                    <td class="text-center fw-bold" th:text="${cliente.idCliente}"></td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-primary text-white me-3">
+                                                <span th:text="${#strings.substring(cliente.nombre, 0, 2).toUpperCase()}">CL</span>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold" th:text="${cliente.nombre}"></div>
+                                                <small class="text-muted">
+                                                    <span class="badge bg-light text-dark" th:text="${cliente.tipoCliente}"></span>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.idUsuario}')|"
+                                                    class="btn btn-sm btn-warning"
+                                                    sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </button>
+                                            <a th:href="@{/clientes/eliminar/{id}(id=${cliente.idCliente})}"
+                                               onclick="return confirm('¿Seguro que deseas eliminar este cliente?');"
+                                               class="btn btn-sm btn-danger"
+                                               sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                                                <i class="fas fa-trash"></i> Eliminar
+                                            </a>
+                                        </div>
+                                        <!-- Badge para usuarios de solo lectura -->
+                                        <span sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" 
+                                              class="badge bg-secondary">
+                                            <i class="bi bi-eye-fill"></i> Solo lectura
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Importar el formulario modal -->
+        <div th:replace="~{clientes/form :: cliente-modal}"></div>
+    </main>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+    
+    <!-- JavaScript específico de página -->
+    <script th:src="@{/js/clientes.js}"></script>
+</body>
+</html>

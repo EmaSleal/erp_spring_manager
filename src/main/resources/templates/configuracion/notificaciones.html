@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="notificacionesForm">
+<head>
+    <meta charset="UTF-8">
+    <title>Configuración de Notificaciones</title>
+</head>
+<body>
+
+<!-- ============================================================================
+     FORMULARIO DE CONFIGURACIÓN DE NOTIFICACIONES
+     Fragment reutilizable para el tab de Notificaciones
+     ============================================================================ -->
+
+<div th:fragment="notificacionesForm">
+    
+    <form id="notificacionesForm" 
+          th:action="@{/configuracion/notificaciones/guardar}" 
+          th:object="${configuracionNotif}" 
+          method="post">
+        
+        <input type="hidden" th:field="*{idConfiguracion}">
+        <input type="hidden" th:field="*{activo}">
+        <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+
+        <div class="row">
+            
+            <!-- Columna Principal -->
+            <div class="col-lg-8">
+                
+                <!-- SECCIÓN: Estado General -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-toggle-on me-2"></i>
+                        <strong>Estado General del Sistema</strong>
+                    </div>
+                    <div class="card-body">
+                        
+                        <!-- Activar Email -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <label class="form-label fw-bold mb-1">
+                                        <i class="fas fa-envelope text-primary me-2"></i>
+                                        Sistema de Notificaciones por Email
+                                    </label>
+                                    <p class="text-muted small mb-0">
+                                        Activa o desactiva completamente el envío de correos electrónicos automáticos
+                                    </p>
+                                </div>
+                                <div class="form-check form-switch" style="transform: scale(1.5);">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           th:field="*{activarEmail}" 
+                                           id="activarEmail">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Enviar Factura Automáticamente -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <label class="form-label fw-bold mb-1">
+                                        <i class="fas fa-file-invoice text-success me-2"></i>
+                                        Enviar Factura Automáticamente
+                                    </label>
+                                    <p class="text-muted small mb-0">
+                                        Al crear una factura, se enviará automáticamente por email al cliente
+                                    </p>
+                                </div>
+                                <div class="form-check form-switch" style="transform: scale(1.5);">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           th:field="*{enviarFacturaAutomatica}" 
+                                           id="enviarFacturaAutomatica">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: Recordatorios de Pago -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="fas fa-clock me-2"></i>
+                        <strong>Recordatorios de Pago</strong>
+                    </div>
+                    <div class="card-body">
+                        
+                        <!-- Recordatorio Preventivo -->
+                        <div class="mb-4">
+                            <label for="diasRecordatorioPreventivo" class="form-label fw-bold">
+                                <i class="fas fa-calendar-check text-info me-2"></i>
+                                Recordatorio Preventivo (días antes)
+                            </label>
+                            <p class="text-muted small mb-2">
+                                Enviar recordatorio <strong>X días antes</strong> de la fecha de pago
+                            </p>
+                            <div class="input-group" style="max-width: 250px;">
+                                <input type="number" 
+                                       class="form-control" 
+                                       th:field="*{diasRecordatorioPreventivo}" 
+                                       id="diasRecordatorioPreventivo"
+                                       min="0"
+                                       max="30"
+                                       placeholder="3">
+                                <span class="input-group-text">días antes</span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Valor 0 = desactivado
+                            </small>
+                        </div>
+
+                        <!-- Recordatorio de Pago -->
+                        <div class="mb-4">
+                            <label for="diasRecordatorioPago" class="form-label fw-bold">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                Recordatorio de Pago Vencido (días después)
+                            </label>
+                            <p class="text-muted small mb-2">
+                                Enviar recordatorio cuando la factura esté vencida por <strong>X días</strong>
+                            </p>
+                            <div class="input-group" style="max-width: 250px;">
+                                <input type="number" 
+                                       class="form-control" 
+                                       th:field="*{diasRecordatorioPago}" 
+                                       id="diasRecordatorioPago"
+                                       min="0"
+                                       max="90"
+                                       placeholder="0">
+                                <span class="input-group-text">días después</span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Valor 0 = enviar el mismo día del vencimiento
+                            </small>
+                        </div>
+
+                        <!-- Frecuencia de Recordatorios -->
+                        <div class="mb-3">
+                            <label for="frecuenciaRecordatorios" class="form-label fw-bold">
+                                <i class="fas fa-redo text-danger me-2"></i>
+                                Frecuencia de Recordatorios
+                            </label>
+                            <p class="text-muted small mb-2">
+                                Después del primer recordatorio, repetir cada <strong>X días</strong>
+                            </p>
+                            <div class="input-group" style="max-width: 250px;">
+                                <input type="number" 
+                                       class="form-control" 
+                                       th:field="*{frecuenciaRecordatorios}" 
+                                       id="frecuenciaRecordatorios"
+                                       min="1"
+                                       max="30"
+                                       placeholder="7">
+                                <span class="input-group-text">días</span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Mínimo 1 día
+                            </small>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: Notificaciones Administrativas -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-user-shield me-2"></i>
+                        <strong>Notificaciones al Administrador</strong>
+                    </div>
+                    <div class="card-body">
+                        
+                        <!-- Email Admin -->
+                        <div class="mb-4">
+                            <label for="emailAdmin" class="form-label fw-bold">
+                                <i class="fas fa-at text-primary me-2"></i>
+                                Email del Administrador
+                            </label>
+                            <p class="text-muted small mb-2">
+                                Email donde se recibirán las notificaciones administrativas
+                            </p>
+                            <input type="email" 
+                                   class="form-control" 
+                                   th:field="*{emailAdmin}" 
+                                   id="emailAdmin"
+                                   placeholder="admin@empresa.com">
+                        </div>
+
+                        <hr>
+
+                        <!-- Notificar Nuevo Cliente -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <label class="form-label fw-bold mb-1">
+                                        <i class="fas fa-user-plus text-success me-2"></i>
+                                        Notificar al Crear Cliente
+                                    </label>
+                                    <p class="text-muted small mb-0">
+                                        Recibir email cuando se registre un nuevo cliente
+                                    </p>
+                                </div>
+                                <div class="form-check form-switch" style="transform: scale(1.5);">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           th:field="*{notificarNuevoCliente}" 
+                                           id="notificarNuevoCliente">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Notificar Nuevo Usuario -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <label class="form-label fw-bold mb-1">
+                                        <i class="fas fa-user-cog text-warning me-2"></i>
+                                        Notificar al Crear Usuario
+                                    </label>
+                                    <p class="text-muted small mb-0">
+                                        Recibir email cuando se registre un nuevo usuario del sistema
+                                    </p>
+                                </div>
+                                <div class="form-check form-switch" style="transform: scale(1.5);">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           th:field="*{notificarNuevoUsuario}" 
+                                           id="notificarNuevoUsuario">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: Configuración Avanzada -->
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-cog me-2"></i>
+                        <strong>Configuración Avanzada</strong>
+                    </div>
+                    <div class="card-body">
+                        
+                        <!-- Email Copia Facturas -->
+                        <div class="mb-3">
+                            <label for="emailCopiaFacturas" class="form-label fw-bold">
+                                <i class="fas fa-copy text-secondary me-2"></i>
+                                Email para Copia Oculta (BCC)
+                            </label>
+                            <p class="text-muted small mb-2">
+                                Todas las facturas enviadas incluirán este email en copia oculta (BCC).
+                                Útil para contabilidad o respaldo.
+                            </p>
+                            <input type="email" 
+                                   class="form-control" 
+                                   th:field="*{emailCopiaFacturas}" 
+                                   id="emailCopiaFacturas"
+                                   placeholder="contabilidad@empresa.com">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Dejar vacío si no se requiere copia
+                            </small>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="d-flex justify-content-between gap-3">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>
+                        Guardar Configuración
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-lg" onclick="location.reload()">
+                        <i class="fas fa-undo me-2"></i>
+                        Cancelar
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Columna Lateral (Sidebar) -->
+            <div class="col-lg-4">
+                
+                <!-- Card: Información -->
+                <div class="card mb-4 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Información</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3">
+                            <i class="fas fa-bell text-warning me-2"></i>
+                            Sistema de Notificaciones
+                        </h6>
+                        <p class="small text-muted mb-3">
+                            Configure cómo y cuándo el sistema enviará notificaciones automáticas por email.
+                        </p>
+
+                        <h6 class="fw-bold mb-2 mt-4">
+                            <i class="fas fa-clock text-info me-2"></i>
+                            Scheduler Automático
+                        </h6>
+                        <p class="small text-muted mb-3">
+                            El sistema ejecuta el scheduler de recordatorios todos los días a las 
+                            <span class="badge bg-info">9:00 AM</span>
+                        </p>
+
+                        <h6 class="fw-bold mb-2 mt-4">
+                            <i class="fas fa-shield-alt text-success me-2"></i>
+                            Seguridad
+                        </h6>
+                        <p class="small text-muted mb-0">
+                            Solo los administradores pueden modificar esta configuración.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card: Probar Email -->
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-flask me-2"></i>
+                        <strong>Probar Configuración</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-3">
+                            Envía un email de prueba para verificar que el sistema de correo está funcionando correctamente.
+                        </p>
+                        
+                        <div class="mb-3">
+                            <label for="emailPrueba" class="form-label small fw-bold">Email de destino:</label>
+                            <input type="email" 
+                                   class="form-control form-control-sm" 
+                                   id="emailPrueba" 
+                                   placeholder="tu@email.com"
+                                   th:value="${configuracionNotif.emailAdmin}">
+                        </div>
+
+                        <button type="button" 
+                                class="btn btn-success btn-sm w-100" 
+                                onclick="probarEmail()">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Enviar Email de Prueba
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card: Ejecutar Recordatorios Manualmente -->
+                <div class="card mb-4 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="fas fa-play-circle me-2"></i>
+                        <strong>Testing Manual</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-3">
+                            Ejecuta el scheduler de recordatorios de pago manualmente sin esperar a las 9:00 AM.
+                        </p>
+                        
+                        <button type="button" 
+                                class="btn btn-warning btn-sm w-100" 
+                                onclick="ejecutarRecordatorios()">
+                            <i class="fas fa-rocket me-2"></i>
+                            Ejecutar Recordatorios Ahora
+                        </button>
+
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Solo para testing y pruebas
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Card: Estado Actual -->
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        <strong>Estado Actual</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold">Sistema de Email:</span>
+                                <span th:if="${configuracionNotif.activarEmail}" 
+                                      class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>Activo
+                                </span>
+                                <span th:unless="${configuracionNotif.activarEmail}" 
+                                      class="badge bg-danger">
+                                    <i class="fas fa-times-circle me-1"></i>Inactivo
+                                </span>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold">Envío Automático:</span>
+                                <span th:if="${configuracionNotif.enviarFacturaAutomatica}" 
+                                      class="badge bg-success">Sí</span>
+                                <span th:unless="${configuracionNotif.enviarFacturaAutomatica}" 
+                                      class="badge bg-secondary">No</span>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold">Recordatorios:</span>
+                                <span th:if="${configuracionNotif.diasRecordatorioPago != null and configuracionNotif.diasRecordatorioPago >= 0}" 
+                                      class="badge bg-success">Activos</span>
+                                <span th:unless="${configuracionNotif.diasRecordatorioPago != null and configuracionNotif.diasRecordatorioPago >= 0}" 
+                                      class="badge bg-secondary">Inactivos</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+        
+    </form>
+
+</div>
+
+<!-- JavaScript para funciones del formulario -->
+<script th:inline="javascript">
+    
+    /**
+     * Envía un email de prueba
+     */
+    function probarEmail() {
+        const emailDestino = document.getElementById('emailPrueba').value;
+        
+        if (!emailDestino || !emailDestino.includes('@')) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Email Inválido',
+                text: 'Por favor, ingresa un email válido',
+                confirmButtonColor: '#3085d6'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: '📧 Enviando Email de Prueba',
+            html: 'Enviando a: <strong>' + emailDestino + '</strong>',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // Obtener CSRF token
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+
+        fetch('/configuracion/notificaciones/probar-email?emailDestino=' + encodeURIComponent(emailDestino), {
+            method: 'POST',
+            headers: {
+                [csrfHeader]: csrfToken
+            }
+        })
+        .then(response => response.text())
+        .then(data => {
+            if (data === 'OK') {
+                Swal.fire({
+                    icon: 'success',
+                    title: '✅ Email Enviado',
+                    html: 'El email de prueba fue enviado exitosamente a:<br><strong>' + emailDestino + '</strong>',
+                    confirmButtonColor: '#28a745'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: '❌ Error',
+                    text: data,
+                    confirmButtonColor: '#dc3545'
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: '❌ Error',
+                text: 'Ocurrió un error al enviar el email: ' + error,
+                confirmButtonColor: '#dc3545'
+            });
+        });
+    }
+
+    /**
+     * Ejecuta el scheduler de recordatorios manualmente
+     */
+    function ejecutarRecordatorios() {
+        Swal.fire({
+            title: '⚠️ Confirmar Ejecución',
+            text: 'Esto ejecutará el scheduler de recordatorios de pago ahora. ¿Continuar?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, Ejecutar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                
+                Swal.fire({
+                    title: '⏰ Ejecutando Scheduler',
+                    html: 'Buscando facturas vencidas y enviando recordatorios...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                // Obtener CSRF token
+                const csrfToken = /*[[${_csrf.token}]]*/ '';
+                const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+
+                fetch('/configuracion/ejecutar-recordatorios', {
+                    method: 'POST',
+                    headers: {
+                        [csrfHeader]: csrfToken
+                    }
+                })
+                .then(response => response.text())
+                .then(data => {
+                    if (data === 'OK') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '✅ Scheduler Ejecutado',
+                            text: 'El scheduler de recordatorios se ejecutó correctamente. Revisa los logs para ver detalles.',
+                            confirmButtonColor: '#28a745'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: '❌ Error',
+                            text: data,
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '❌ Error',
+                        text: 'Ocurrió un error al ejecutar el scheduler: ' + error,
+                        confirmButtonColor: '#dc3545'
+                    });
+                });
+            }
+        });
+    }
+
+    // Validación del formulario
+    document.getElementById('notificacionesForm').addEventListener('submit', function(e) {
+        const activarEmail = document.getElementById('activarEmail').checked;
+        const diasPago = document.getElementById('diasRecordatorioPago').value;
+        const frecuencia = document.getElementById('frecuenciaRecordatorios').value;
+
+        // Validar frecuencia mínima
+        if (frecuencia < 1) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Validación',
+                text: 'La frecuencia de recordatorios debe ser al menos 1 día',
+                confirmButtonColor: '#ffc107'
+            });
+            return false;
+        }
+
+        // Confirmación si se desactiva el sistema
+        if (!activarEmail) {
+            e.preventDefault();
+            Swal.fire({
+                title: '⚠️ Sistema Desactivado',
+                text: '¿Estás seguro de desactivar el sistema de notificaciones? No se enviarán emails automáticos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, Desactivar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('notificacionesForm').submit();
+                }
+            });
+        }
+    });
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,507 @@
+================================================================================
+✅ RESUMEN DE DECISIONES APROBADAS - SPRINT 1
+WhatsApp Orders Manager - Rediseño UI/UX
+================================================================================
+Fecha de aprobación: 11 de octubre de 2025
+Estado: ✅ TODAS LAS DECISIONES APROBADAS - LISTO PARA DESARROLLO
+================================================================================
+
+🎯 CONFIRMACIÓN: ¡TODAS LAS 20 DECISIONES HAN SIDO APROBADAS!
+
+Este documento resume las decisiones técnicas finales que guiarán el
+desarrollo del Sprint 1. Todas han sido revisadas y aprobadas.
+
+================================================================================
+📋 RESUMEN DE DECISIONES APROBADAS
+================================================================================
+
+✅ 1. FRAMEWORK CSS
+────────────────────
+   APROBADO: Bootstrap 5
+   CDN: https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css
+   Razón: Rápido de implementar, componentes listos, documentación extensa
+
+✅ 2. LIBRERÍA DE ICONOS
+─────────────────────────
+   APROBADO: Font Awesome 6 (Free)
+   CDN: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css
+   ~2000 iconos disponibles
+
+✅ 3. PALETA DE COLORES
+────────────────────────
+   APROBADA: Paleta Material Design
+   
+   Colores principales:
+   - Navbar/Header: #1976D2 (Azul Material Design)
+   - Background: #F5F5F5 (Gris claro)
+   - Cards: #FFFFFF (Blanco)
+   
+   Colores por módulo:
+   - Clientes: #2196F3 (Azul)
+   - Productos: #FF9800 (Naranja)
+   - Facturas: #4CAF50 (Verde)
+   - Pedidos: #9C27B0 (Púrpura)
+   - Reportes: #009688 (Teal)
+   - Inventario: #3F51B5 (Índigo)
+   - Usuarios: #607D8B (Gris azulado)
+   - Configuración: #9E9E9E (Gris)
+   - Documentos: #546E7A (Azul grisáceo)
+   - Pagos: #8BC34A (Verde lima)
+
+✅ 4. ESTRUCTURA DEL NAVBAR
+─────────────────────────────
+   APROBADA: Navbar completo con dropdown
+   
+   Elementos:
+   - Logo/Icono + Nombre app (izquierda)
+   - Botón "Volver a Dashboard" (centro-izquierda)
+   - Breadcrumbs (centro)
+   - Nombre usuario + dropdown (derecha)
+   
+   Dropdown incluye:
+   - Ver mi perfil
+   - Configuración (solo ADMIN)
+   - Mi actividad
+   - Ayuda
+   - ───────────────
+   - Cerrar sesión
+   
+   Altura: 64px
+   Sticky: Sí (fijo al hacer scroll)
+
+✅ 5. DISEÑO DE TARJETAS DE MÓDULOS
+─────────────────────────────────────
+   APROBADO: Tarjetas de 180x180px
+   
+   Grid responsive:
+   - Desktop (≥1200px): 5 columnas
+   - Tablet (≥768px): 3 columnas
+   - Móvil (<576px): 2 columnas
+   
+   Estados:
+   - Normal: Fondo blanco, sombra suave
+   - Hover: Levantamiento con sombra pronunciada
+   - Disabled: Opacidad 50% + badge "Próximamente"
+
+✅ 6. WIDGETS DE ESTADÍSTICAS
+───────────────────────────────
+   APROBADOS: 4 widgets superiores
+   
+   1. 👥 Total Clientes
+   2. 📦 Total Productos
+   3. 💰 Facturas Hoy
+   4. 💳 Pagos Pendientes
+   
+   Tamaño: 250px x 120px cada uno
+   Colores: Borde superior de color según tipo
+
+✅ 7. LAYOUT GENERAL
+─────────────────────
+   ⚠️ APROBADO: OPCIÓN B - CON SIDEBAR (estilo Odoo)
+   
+   Estructura:
+   ┌───────┬─────────────────────────────┐
+   │       │     NAVBAR FIJO             │
+   │       ├─────────────────────────────┤
+   │ SIDE  │                             │
+   │ BAR   │   CONTENIDO PRINCIPAL       │
+   │ MENÚ  │   (80% ancho)               │
+   │       │                             │
+   └───────┴─────────────────────────────┘
+   
+   ⚠️ NOTA IMPORTANTE:
+   Esta decisión difiere de la recomendación inicial (sin sidebar).
+   El sidebar contendrá el menú de módulos de forma permanente.
+
+✅ 8. RUTA POST-LOGIN
+──────────────────────
+   APROBADA: /dashboard
+   
+   Configuración en SecurityConfig.java:
+   .defaultSuccessUrl("/dashboard", true)
+
+✅ 9. MÓDULOS A MOSTRAR
+────────────────────────
+   APROBADO: Mostrar TODOS los módulos (Opción 1)
+   
+   Módulos activos (funcionales):
+   ✅ Clientes
+   ✅ Productos
+   ✅ Facturas
+   
+   Módulos inactivos (con badge "Próximamente"):
+   🏷️ Pedidos
+   🏷️ Reportes
+   🏷️ Inventario (mejorar)
+   🏷️ Usuarios (solo ADMIN)
+   🏷️ Configuración (solo ADMIN)
+   🏷️ Documentos
+   🏷️ Pagos
+   🏷️ Ayuda
+
+✅ 10. AVATAR DE USUARIO
+─────────────────────────
+   APROBADO: Opción A - Iniciales en círculo de color
+   
+   Ejemplo: "JD" para Juan Díaz
+   Implementación: Círculo con fondo de color, iniciales en blanco
+
+✅ 11. MANEJO DE ROLES
+───────────────────────
+   APROBADO: Renderizado condicional según rol
+   
+   - ADMIN: Ve todos los módulos
+   - USER: No ve Usuarios ni Configuración
+   - CLIENTE: Solo ve Mis Pedidos y Mis Facturas
+
+✅ 12. ANIMACIONES
+───────────────────
+   APROBADO: Nivel MODERADO
+   
+   - Hover en tarjetas: 0.3s ease
+   - Dropdown: 0.2s ease
+   - Loading spinner
+   - Skeleton loading
+
+✅ 13. RESPONSIVE BREAKPOINTS
+──────────────────────────────
+   APROBADOS: Bootstrap 5 standard
+   
+   - xs (<576px): 1-2 columnas
+   - sm (≥576px): 2 columnas
+   - md (≥768px): 3 columnas
+   - lg (≥992px): 4 columnas
+   - xl (≥1200px): 5 columnas
+
+✅ 14. LIBRERÍAS ADICIONALES
+─────────────────────────────
+   APROBADAS: TODAS
+   
+   ✅ SweetAlert2 - Alertas y confirmaciones
+   ✅ Chart.js - Gráficas en dashboard
+   ✅ DataTables - Tablas interactivas
+   ✅ Flatpickr - Date picker moderno
+
+✅ 15. ESTRUCTURA CSS
+──────────────────────
+   APROBADA: Múltiples archivos CSS
+   
+   static/css/
+   ├── common.css
+   ├── navbar.css
+   ├── dashboard.css
+   ├── module-cards.css
+   ├── forms.css
+   ├── tables.css
+   └── responsive.css
+
+✅ 16. LOADING STATES
+──────────────────────
+   APROBADOS: Skeleton loading y spinners
+   
+   - Skeleton en widgets
+   - Shimmer effect en tarjetas
+   - Overlay con spinner en operaciones
+
+✅ 17. MANEJO DE ERRORES
+─────────────────────────
+   APROBADO: Toast notifications con SweetAlert2
+   
+   Posición: Esquina superior derecha
+   - Success: Verde con check
+   - Error: Rojo con X
+   - Warning: Amarillo con !
+   - Info: Azul con i
+
+✅ 18. PERFIL DE USUARIO
+─────────────────────────
+   APROBADO: Sistema completo de perfil
+   
+   Vista de perfil:
+   - Nombre completo
+   - Teléfono
+   - Email
+   - Rol (no editable)
+   - Fecha de registro
+   - Último acceso
+   
+   Edición:
+   - Nombre, Email, Teléfono (editables)
+   - Cambio de contraseña (separado)
+
+✅ 19. SEGURIDAD - LOGOUT
+──────────────────────────
+   APROBADO: Logout con confirmación
+   
+   - Endpoint: POST /auth/logout
+   - Confirmación con SweetAlert2
+   - Invalidar sesión y cookies
+   - Redirect a /auth/login
+
+✅ 20. NOMENCLATURA
+────────────────────
+   APROBADA: Convenciones definidas
+   
+   - Rutas: kebab-case (/mi-perfil)
+   - Métodos: camelCase (mostrarDashboard)
+   - Vistas: kebab-case (dashboard.html)
+   - CSS clases: kebab-case (.module-card)
+   - CSS IDs: camelCase (#dashboardGrid)
+   - JS: camelCase (userName, loadStatistics())
+
+================================================================================
+💾 CAMPOS NUEVOS EN BASE DE DATOS
+================================================================================
+
+✅ APROBADO: Agregar campos a tabla 'usuario'
+
+ALTER TABLE usuario ADD COLUMN:
+- email VARCHAR(100)
+- avatar VARCHAR(255)
+- activo BOOLEAN DEFAULT true
+- ultimo_acceso TIMESTAMP
+
+================================================================================
+🎯 ALCANCE DEL SPRINT 1 (Estimado: 3-5 días)
+================================================================================
+
+✅ INCLUIDO:
+────────────
+1. ✅ Crear estructura de carpetas (static/css, static/js, templates/components)
+2. ✅ Configurar Bootstrap 5 y Font Awesome 6 en layout.html
+3. ✅ Crear componente navbar.html con sidebar
+4. ✅ Crear DashboardController.java
+5. ✅ Crear vista dashboard.html con widgets y módulos
+6. ✅ Crear PerfilController.java
+7. ✅ Crear vistas de perfil (ver y editar)
+8. ✅ Implementar sistema de logout
+9. ✅ Crear todos los archivos CSS necesarios
+10. ✅ Crear archivos JavaScript para interactividad
+11. ✅ Integrar navbar en módulos existentes
+12. ✅ Configurar SecurityConfig.java para redirect
+13. ✅ Responsive design completo
+14. ✅ Testing en múltiples dispositivos
+
+❌ NO INCLUIDO (Sprints futuros):
+──────────────────────────────────
+- Módulo de Pedidos (Sprint 2)
+- Módulo de Pagos (Sprint 2)
+- Módulo de Reportes (Sprint 5)
+- Mejoras en Inventario (Sprint 4)
+- Gestión de Usuarios CRUD (Sprint 6)
+- Gráficas con Chart.js (Sprint 5 o mejoras)
+- Exportación a PDF/Excel (Sprint 5)
+- Centro de notificaciones (Sprint 7)
+
+================================================================================
+⚠️ CONSIDERACIONES ESPECIALES - SIDEBAR
+================================================================================
+
+Debido a la aprobación de Layout con SIDEBAR (Opción B), se requiere:
+
+1. CREAR COMPONENTE SIDEBAR:
+   - templates/components/sidebar.html
+   - Menú de módulos en lugar de grid
+   - Iconos + nombres de módulos
+   - Estado activo/inactivo
+   - Colapsable en móvil
+
+2. AJUSTAR ESTRUCTURA HTML:
+   - Layout con 2 columnas (sidebar + content)
+   - Sidebar fijo en desktop
+   - Sidebar oculto/hamburger en móvil
+   - Content area con padding apropiado
+
+3. CREAR CSS ADICIONAL:
+   - static/css/sidebar.css
+   - Estilos para menú lateral
+   - Transiciones de colapso
+   - Responsive behavior
+
+4. JAVASCRIPT ADICIONAL:
+   - static/js/sidebar.js
+   - Toggle sidebar (móvil)
+   - Estado activo de menú
+   - Local storage para estado (opcional)
+
+5. ACTUALIZAR MOCKUPS:
+   - Los mockups actuales no incluyen sidebar
+   - Ajustar referencias visuales (opcional)
+   - Dashboard sin grid de módulos (solo widgets)
+
+================================================================================
+📁 ARCHIVOS A CREAR EN SPRINT 1
+================================================================================
+
+CONTROLADORES (Java):
+□ DashboardController.java
+□ PerfilController.java
+
+MODELOS/DTOs (Java):
+□ ModuloDTO.java
+
+VISTAS (HTML):
+□ templates/components/navbar.html
+□ templates/components/sidebar.html         ← NUEVO por Opción B
+□ templates/dashboard/dashboard.html
+□ templates/perfil/ver.html
+□ templates/perfil/editar.html
+
+CSS:
+□ static/css/common.css
+□ static/css/navbar.css
+□ static/css/sidebar.css                    ← NUEVO por Opción B
+□ static/css/dashboard.css
+□ static/css/module-cards.css               (puede ser innecesario con sidebar)
+□ static/css/forms.css
+□ static/css/tables.css
+□ static/css/responsive.css
+
+JAVASCRIPT:
+□ static/js/common.js
+□ static/js/navbar.js
+□ static/js/sidebar.js                      ← NUEVO por Opción B
+□ static/js/dashboard.js
+
+MODIFICACIONES:
+□ SecurityConfig.java (rutas, redirect)
+□ templates/layout.html (CDNs, estructura con sidebar)
+□ Usuario.java (nuevos campos)
+□ templates/clientes/clientes.html (integración)
+□ templates/productos/productos.html (integración)
+□ templates/facturas/facturas.html (integración)
+
+TOTAL: ~20 archivos nuevos + ~5 modificaciones
+
+================================================================================
+✅ CRITERIOS DE ACEPTACIÓN
+================================================================================
+
+El Sprint 1 se considerará COMPLETADO cuando:
+
+✅ 1. Usuario hace login → redirigido a /dashboard
+✅ 2. Dashboard muestra:
+     - Navbar superior con usuario y dropdown
+     - Sidebar lateral con módulos
+     - 4 widgets de estadísticas con datos reales
+     - Área de contenido principal
+✅ 3. Sidebar incluye:
+     - Todos los módulos (activos e inactivos)
+     - Iconos con colores apropiados
+     - Badge "Próximamente" en módulos inactivos
+     - Estado activo del módulo actual
+     - Colapsable en móvil
+✅ 4. Navbar funciona correctamente:
+     - Logo y nombre de app
+     - Botón Dashboard
+     - Avatar con iniciales
+     - Dropdown con todas las opciones
+     - Breadcrumbs (si aplica)
+✅ 5. Perfil de usuario:
+     - Ver perfil muestra información completa
+     - Editar perfil permite modificar datos
+     - Cambiar contraseña funciona
+     - Validaciones client y server-side
+✅ 6. Logout:
+     - Confirmación con SweetAlert2
+     - Cierra sesión correctamente
+     - Redirige a /auth/login
+✅ 7. Módulos existentes integrados:
+     - Navbar y sidebar visibles
+     - Funcionalidad original intacta
+     - Navegación coherente
+✅ 8. Responsive:
+     - Desktop (sidebar visible)
+     - Tablet (sidebar colapsable)
+     - Móvil (sidebar hamburger menu)
+✅ 9. Sin errores:
+     - Consola del navegador limpia
+     - Sin errores 404 o 500
+     - Sin warnings de Thymeleaf
+✅ 10. Seguridad:
+      - Rutas protegidas correctamente
+      - Roles aplicados en vista
+      - CSRF tokens en formularios
+
+================================================================================
+🚀 ESTADO ACTUAL Y PRÓXIMOS PASOS
+================================================================================
+
+DOCUMENTACIÓN:
+✅ Completada y organizada en docs/
+✅ Todas las decisiones aprobadas
+✅ Checklist de Sprint 1 listo
+
+PRÓXIMO PASO:
+⏳ Iniciar desarrollo del Sprint 1
+   Comenzar con Fase 1: Preparación y Configuración
+   Seguir docs/sprints/SPRINT_1_CHECKLIST.txt
+
+RECORDATORIOS:
+⚠️ Implementar sidebar en lugar de solo navbar
+⚠️ Ajustar mockups para incluir sidebar (opcional)
+⚠️ Considerar UX de sidebar colapsable en móvil
+
+================================================================================
+📊 TIEMPO ESTIMADO
+================================================================================
+
+DESGLOSE POR FASE:
+
+Fase 1 - Preparación: 2-3 horas
+Fase 2 - Navbar + Sidebar: 5-7 horas         (más tiempo por sidebar)
+Fase 3 - Dashboard: 4-6 horas                (menos tiempo sin grid)
+Fase 4 - Perfil: 4-5 horas
+Fase 5 - Seguridad: 2-3 horas
+Fase 6 - Integración: 3-4 horas
+Fase 7 - Testing: 3-4 horas
+Fase 8 - Documentación: 2-3 horas
+
+TOTAL ESTIMADO: 25-35 horas (3-5 días laborables)
+
+================================================================================
+✅ APROBACIÓN FINAL
+================================================================================
+
+DECISIONES APROBADAS:
+✅ Framework CSS: Bootstrap 5
+✅ Librería de iconos: Font Awesome 6
+✅ Paleta de colores: Material Design
+✅ Navbar: Completo con dropdown
+✅ Tarjetas de módulos: 180x180px (en sidebar ahora)
+✅ Widgets: 4 estadísticas superiores
+✅ Layout: CON SIDEBAR (Opción B) ⚠️
+✅ Ruta post-login: /dashboard
+✅ Módulos: Mostrar todos (Opción 1)
+✅ Avatar: Iniciales en círculo (Opción A)
+✅ Librerías: Todas aprobadas
+✅ Animaciones: Nivel moderado
+✅ Responsive: Bootstrap 5 standard
+✅ Loading: Skeleton y spinners
+✅ Alertas: SweetAlert2 toast
+✅ Perfil: Sistema completo
+✅ Logout: Con confirmación
+✅ Nomenclatura: Definida
+✅ Roles: Condicional en vista
+✅ Campos BD: Aprobados
+
+ESTADO: ✅ APROBADO PARA DESARROLLO
+
+Fecha de aprobación: 11 de octubre de 2025
+Aprobado por: [Usuario]
+
+AUTORIZACIÓN PARA INICIAR SPRINT 1: ✅ SÍ
+
+================================================================================
+FIN DEL RESUMEN DE APROBACIÓN
+================================================================================
+
+¡Todas las decisiones han sido aprobadas! 🎉
+Listo para iniciar el desarrollo del Sprint 1.
+
+Consultar:
+- docs/sprints/SPRINT_1_CHECKLIST.txt para tareas detalladas
+- docs/diseno/MOCKUPS_VISUALES.txt para referencias visuales
+- docs/planificacion/DECISIONES_TECNICAS.txt para detalles técnicos
+
+¡Éxito en el desarrollo! 🚀

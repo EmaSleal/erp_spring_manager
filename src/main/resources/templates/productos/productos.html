@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Productos</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-box me-1"></i>Productos
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1"><i class="fas fa-box text-warning me-2"></i>Gestión de Productos</h2>
+                    <p class="text-muted mb-0">
+                        Administra tu catálogo de productos
+                        <span sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" class="badge bg-secondary ms-2">
+                            <i class="bi bi-eye-fill me-1"></i>Solo lectura
+                        </span>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
+                    </a>
+                    <button type="button" class="btn btn-success" onclick="openAddModal()" sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                        <i class="fas fa-plus me-2"></i>Agregar Producto
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white">
+                                    <i class="fas fa-search text-muted"></i>
+                                </span>
+                                <input type="text" id="searchInput"
+                                       class="form-control border-start-0"
+                                       placeholder="Buscar por nombre, código o descripción..."
+                                       oninput="filtrarProductos()" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 data-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 60px;">ID</th>
+                                    <th class="d-none d-md-table-cell" style="width: 120px;">Código</th>
+                                    <th>Descripción</th>
+                                    <th class="text-end" style="width: 140px;">P. Institucional</th>
+                                    <th class="text-end d-none d-lg-table-cell" style="width: 140px;">P. Mayorista</th>
+                                    <th class="text-center d-none d-md-table-cell" style="width: 90px;">Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productosBody">
+                                <!-- Renderizado por JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginación -->
+                    <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Producto -->
+    <div th:replace="~{productos/form :: producto-modal}"></div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+    
+    <!-- JSON embebido para uso en JS -->
+    <script th:inline="javascript">
+        const productos = /*[[${productos}]]*/ [];
+        const userRole = /*[[${#authentication.principal.authorities[0].authority}]]*/ 'ROLE_USER';
+    </script>
+    
+    <!-- JavaScript específico de página -->
+    <script th:src="@{/js/productos.js}"></script>
+</body>
+</html>

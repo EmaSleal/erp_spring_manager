@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Facturas</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-file-invoice-dollar me-1"></i>Facturas
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Gestión de Facturas</h2>
+                    <p class="text-muted mb-0">
+                        Administra las facturas y pedidos de tus clientes
+                        <span sec:authorize="hasRole('VISUALIZADOR')" class="badge bg-secondary ms-2">
+                            <i class="bi bi-eye-fill me-1"></i>Solo lectura
+                        </span>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
+                    </a>
+                    <button type="button" class="btn btn-success" onclick="openNuevaFacturaModal()" 
+                            sec:authorize="hasAnyRole('ADMIN', 'USER', 'VENDEDOR')">
+                        <i class="fas fa-plus me-2"></i>Nueva Factura
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="startDate" class="form-label">Fecha Inicio</label>
+                            <input type="date" id="startDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="endDate" class="form-label">Fecha Fin</label>
+                            <input type="date" id="endDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="statusFilter" class="form-label">Estado</label>
+                            <select id="statusFilter" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="entregado">Entregado</option>
+                                <option value="pendiente">Pendiente</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end gap-2">
+                            <button id="filterBtn" class="btn btn-primary flex-fill">
+                                <i class="fas fa-filter me-1"></i>Filtrar
+                            </button>
+                            <button id="clearFilterBtn" class="btn btn-secondary flex-fill">
+                                <i class="fas fa-eraser me-1"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 data-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 60px;">ID</th>
+                                    <th>Cliente</th>
+                                    <th class="text-end" style="width: 120px;">Total</th>
+                                    <th class="text-center" style="width: 120px;">Estado</th>
+                                    <th class="text-center" style="width: 130px;">Fecha Entrega</th>
+                                    <th class="text-center" style="width: 180px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="factura : ${facturas}">
+                                    <td class="text-center" th:text="${factura.idFactura}">1</td>
+                                    <td>
+                                        <div class="fw-semibold" th:text="${factura.cliente.nombre}">Cliente</div>
+                                        <small class="text-muted">ID: <span th:text="${factura.cliente.idCliente}">123</span></small>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold" th:text="${'$' + #numbers.formatDecimal(factura.total, 1, 2)}">$0.00</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span th:if="${factura.entregado}" class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>Entregado
+                                        </span>
+                                        <span th:unless="${factura.entregado}" class="badge bg-warning text-dark">
+                                            <i class="fas fa-clock me-1"></i>Pendiente
+                                        </span>
+                                    </td>
+                                    <td class="text-center" th:text="${#dates.format(factura.fechaEntrega, 'dd/MM/yyyy')}">01/01/2025</td>
+                                    <td class="text-center">
+                                        <button th:attr="data-id=${factura.idFactura}" 
+                                                onclick="openModal(this)"
+                                                class="btn btn-sm btn-primary me-1"
+                                                title="Ver Detalle">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <a th:href="@{/facturas/editar/{id}(id=${factura.idFactura})}"
+                                           class="btn btn-sm btn-warning me-1"
+                                           title="Editar"
+                                           sec:authorize="hasAnyRole('ADMIN', 'USER', 'VENDEDOR')">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button th:if="${factura.cliente.email != null and factura.cliente.email != ''}"
+                                                th:attr="data-id=${factura.idFactura}, data-email=${factura.cliente.email}"
+                                                onclick="enviarFacturaPorEmail(this)"
+                                                class="btn btn-sm btn-info me-1"
+                                                title="Enviar por Email"
+                                                sec:authorize="hasAnyRole('ADMIN', 'USER', 'VENDEDOR')">
+                                            <i class="fas fa-envelope"></i>
+                                        </button>
+                                        <a th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
+                                           onclick="return confirmarEliminacion(event)"
+                                           class="btn btn-sm btn-danger"
+                                           title="Eliminar"
+                                           sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                        <!-- Badge para usuarios de solo lectura -->
+                                        <span sec:authorize="hasRole('VISUALIZADOR')" 
+                                              class="badge bg-secondary">
+                                            <i class="bi bi-eye-fill"></i> Solo lectura
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Detalle de Factura -->
+    <div class="modal fade" id="facturaModal" tabindex="-1" aria-labelledby="facturaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <!-- Modal Header -->
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="facturaModalLabel">
+                        <i class="fas fa-file-invoice me-2"></i>
+                        Detalle de Factura
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Datos Generales -->
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-primary fw-bold mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Información General
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item px-0">
+                                    <strong>ID Factura:</strong> <span id="modal-idFactura" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong>Fecha de Creación:</strong> <span id="modal-createDate" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong>Última Actualización:</strong> <span id="modal-updateDate" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong>Fecha de Entrega:</strong> <span id="modal-fechaEntrega" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong>Estado:</strong> <span id="modal-entregado" class="badge">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Datos del Cliente -->
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-primary fw-bold mb-3">
+                                <i class="fas fa-user me-2"></i>Datos del Cliente
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item px-0">
+                                    <strong>ID Cliente:</strong> <span id="modal-idCliente" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong>Nombre:</strong> <span id="modal-cliente" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong>Usuario Registro:</strong> <span id="modal-usuario" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong>Fecha de Registro:</strong> <span id="modal-fechaRegistro" class="text-muted">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Productos -->
+                    <div class="mt-4">
+                        <h6 class="text-primary fw-bold mb-3">
+                            <i class="fas fa-box me-2"></i>Productos
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-end">Precio</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modal-productos">
+                                    <!-- Se llena dinámicamente con JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="d-flex justify-content-end mt-3">
+                        <h5 class="mb-0">
+                            <strong>Total: </strong>
+                            <span id="modal-total" class="text-success">$0.00</span>
+                        </h5>
+                    </div>
+
+                    <!-- Botones adicionales -->
+                    <div id="modal-buttons" class="mt-3"></div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Nueva Factura -->
+    <div th:replace="~{facturas/add-form :: nueva-factura-modal}"></div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{layout :: scripts}"></th:block>
+    
+    <!-- Variable global del rol de usuario para JavaScript -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const USER_ROLE = /*[[${userRole}]]*/ 'USER';
+        /*]]>*/
+    </script>
+    
+    <!-- JavaScript específico de página -->
+    <script th:src="@{/js/facturas.js}"></script>
+    <script th:src="@{/js/editar-factura.js}"></script>
+</body>
+</html>
