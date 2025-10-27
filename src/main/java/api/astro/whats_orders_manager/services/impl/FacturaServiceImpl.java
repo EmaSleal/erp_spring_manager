@@ -7,6 +7,8 @@ import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.services.FacturaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,14 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<Factura> findAll(Pageable pageable) { 
+        log.debug("Obteniendo facturas paginadas - Página: {}, Tamaño: {}", 
+            pageable.getPageNumber(), pageable.getPageSize());
+        return facturaRepository.findAll(pageable); 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Factura> findById(Integer id) { 
         log.debug("Buscando factura por ID: {}", id);
         return facturaRepository.findById(id); 
@@ -56,11 +66,22 @@ public class FacturaServiceImpl implements FacturaService {
         log.debug("Configuración de facturación obtenida: Serie={}, Número={}", 
                 config.getSerieFactura(), config.getNumeroActual());
         
-        // Generar número de factura automáticamente
-        String numeroFactura = config.generarNumeroFactura();
-        factura.setNumeroFactura(numeroFactura);
-        factura.setSerie(config.getSerieFactura());
-        log.info("Número de factura generado: {}", numeroFactura);
+        // ✅ MODIFICADO: Solo generar si no viene del formulario
+        if (factura.getNumeroFactura() == null || factura.getNumeroFactura().trim().isEmpty()) {
+            String numeroFactura = config.generarNumeroFactura();
+            factura.setNumeroFactura(numeroFactura);
+            log.info("Número de factura generado automáticamente: {}", numeroFactura);
+        } else {
+            log.info("Número de factura proporcionado manualmente: {}", factura.getNumeroFactura());
+        }
+        
+        // ✅ MODIFICADO: Solo generar serie si no viene del formulario
+        if (factura.getSerie() == null || factura.getSerie().trim().isEmpty()) {
+            factura.setSerie(config.getSerieFactura());
+            log.info("Serie generada automáticamente: {}", config.getSerieFactura());
+        } else {
+            log.info("Serie proporcionada manualmente: {}", factura.getSerie());
+        }
         
         // Calcular IGV y total si no están establecidos
         if (factura.getSubtotal() != null && factura.getSubtotal().compareTo(BigDecimal.ZERO) > 0) {

@@ -97,6 +97,42 @@ Los archivos en esta carpeta documentan:
 
 ---
 
+### **Sprint 2 - Fase 7 (Integración)**
+
+#### Autenticación (1 archivo)
+
+**11. FIX_LOGIN_FLEXIBLE_NOMBRE_TELEFONO.md**
+**Problema:** Login dejó de funcionar después de implementar Punto 7.3 (Último Acceso)  
+**Causa:** Se cambió `loadUserByUsername()` para buscar SOLO por teléfono, pero el formulario envía un campo genérico que puede ser nombre O teléfono  
+**Solución:** Búsqueda flexible con `Optional.or()` - primero intenta por teléfono, luego por nombre  
+**Impacto:** ✅ Login funciona con nombre o teléfono (más robusto que antes)  
+**Severidad:** 🔴 CRÍTICA (Sistema bloqueado - 0% usuarios podían entrar)  
+**Tiempo de resolución:** 15 minutos  
+**Archivos modificados:**
+- `services/impl/UserDetailsServiceImpl.java` (líneas 28-46)
+
+**12. FIX_TIMESTAMP_FORMAT_THYMELEAF.md**
+**Problema:** Vista de usuarios (`/usuarios`) generaba error al intentar formatear `ultimoAcceso`  
+**Causa:** Thymeleaf `#temporals.format()` no puede formatear `java.sql.Timestamp` directamente, solo tipos `java.time.*`  
+**Solución:** Convertir Timestamp a LocalDateTime con `.toLocalDateTime()` antes de formatear  
+**Impacto:** ✅ Vista de usuarios carga correctamente con fechas formateadas  
+**Severidad:** 🟡 MEDIA (Vista no se cargaba - Error 500)  
+**Tiempo de resolución:** 5 minutos  
+**Archivos modificados:**
+- `templates/usuarios/usuarios.html` (línea 262)
+
+**13. FIX_LINEAS_FACTURA_PRODUCTO_NULL.md**
+**Problema:** Error al guardar factura cuando se agregaba línea nueva sin seleccionar producto  
+**Causa:** Sistema intentaba insertar línea con `id_producto = null`, violando constraint de BD  
+**Solución:** Filtrar líneas vacías automáticamente antes de enviar al backend + validación de IDs temporales (timestamps)  
+**Impacto:** ✅ Facturas se guardan correctamente omitiendo líneas vacías automáticamente  
+**Severidad:** 🔴 CRÍTICA (Guardado de facturas bloqueado)  
+**Tiempo de resolución:** 20 minutos  
+**Archivos modificados:**
+- `static/js/editar-factura.js` (funciones `guardarLineas()` y `createLineaRow()`)
+
+---
+
 ## 🎯 CÓMO USAR ESTA CARPETA
 
 ### **Cuando encuentres un bug:**
@@ -136,12 +172,16 @@ Los archivos en esta carpeta documentan:
 | Formularios | 2 | 0 | 2 | ✅ Completados |
 | Templates/Errores | 0 | 1 | 1 | ✅ Completado |
 | JavaScript/Dependencias | 0 | 1 | 1 | ✅ Completado |
-| **Total** | **8** | **2** | **10** | **100%** |
+| Autenticación | 0 | 1 | 1 | ✅ Completado |
+| Thymeleaf/Formatting | 0 | 1 | 1 | ✅ Completado |
+| Data Validation | 0 | 1 | 1 | ✅ Completado |
+| **Total** | **8** | **5** | **13** | **100%** |
 
 ### Desglose por Sprint
 
 **Sprint 1:** 8 fixes (Fase de consolidación y mejoras UX)
 **Sprint 2 - Fase 5:** 2 fixes críticos (Notificaciones)
+**Sprint 2 - Fase 7:** 3 fixes (Integración - Login + Formato de fechas + Validación de líneas)
 
 ### Impacto de Fixes Sprint 2
 
@@ -155,6 +195,24 @@ Los archivos en esta carpeta documentan:
 - Desbloquea: Toda la funcionalidad JavaScript
 - Beneficio: Botones funcionales + AJAX operativo
 
+**FIX_LOGIN_FLEXIBLE_NOMBRE_TELEFONO.md:**
+- Severidad: 🔴 CRÍTICA (Bloqueante total)
+- Desbloquea: Acceso al sistema completo
+- Beneficio: Login flexible (nombre O teléfono) + más robusto que antes
+- Tiempo de resolución: 15 minutos
+
+**FIX_TIMESTAMP_FORMAT_THYMELEAF.md:**
+- Severidad: 🟡 MEDIA (Vista usuarios inaccesible)
+- Desbloquea: Vista de gestión de usuarios
+- Beneficio: Fechas formateadas correctamente + última actividad visible
+- Tiempo de resolución: 5 minutos
+
+**FIX_LINEAS_FACTURA_PRODUCTO_NULL.md:**
+- Severidad: 🔴 CRÍTICA (Guardado de facturas bloqueado)
+- Desbloquea: Guardado completo de facturas con líneas
+- Beneficio: Filtrado automático de líneas vacías + mejor UX + validación defensiva
+- Tiempo de resolución: 20 minutos
+
 ---
 
 ## 🔗 REFERENCIAS
@@ -165,5 +223,5 @@ Los archivos en esta carpeta documentan:
 
 ---
 
-**Última actualización:** 13/10/2025  
+**Última actualización:** 20/10/2025  
 **Mantenido por:** GitHub Copilot

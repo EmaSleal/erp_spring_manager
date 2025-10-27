@@ -24,6 +24,7 @@
           <div id="paso-1">
             <h5 class="mb-4"><i class="fas fa-info-circle text-primary me-2"></i>Datos de Factura</h5>
 
+            <!-- Fila 1: Cliente y Tipo de Factura -->
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="cliente" class="form-label">
@@ -36,15 +37,6 @@
               </div>
 
               <div class="col-md-6 mb-3">
-                <label for="fechaEntrega" class="form-label">
-                  <i class="fas fa-calendar text-primary me-2"></i>Fecha de Entrega <span class="text-danger">*</span>
-                </label>
-                <input type="date" class="form-control" id="fechaEntrega" name="fechaEntrega" required />
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
                 <label for="tipoFactura" class="form-label">
                   <i class="fas fa-tags text-primary me-2"></i>Tipo Factura <span class="text-danger">*</span>
                 </label>
@@ -54,17 +46,64 @@
                           th:text="${tipo.getDisplayName()}">Tipo</option>
                 </select>
               </div>
+            </div>
+
+            <!-- Fila 2: Serie y Número de Factura -->
+            <div class="row">
+              <div class="col-md-3 mb-3">
+                <label for="serie" class="form-label">
+                  <i class="fas fa-hashtag text-primary me-2"></i>Serie
+                </label>
+                <input type="text" class="form-control" id="serie" name="serie" 
+                       placeholder="Ej: F001" maxlength="10"
+                       title="Serie de la factura (opcional)">
+                <small class="text-muted">Opcional</small>
+              </div>
+
+              <div class="col-md-9 mb-3">
+                <label for="numeroFactura" class="form-label">
+                  <i class="fas fa-file-invoice text-primary me-2"></i>Número de Factura
+                </label>
+                <input type="text" class="form-control" id="numeroFactura" name="numeroFactura" 
+                       placeholder="Ej: 001-2025-00123" maxlength="50"
+                       title="Número único de la factura (se genera automáticamente si se deja vacío)">
+                <small class="text-muted">Se generará automáticamente si no se especifica</small>
+              </div>
+            </div>
+
+            <!-- Fila 3: Fechas -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="fechaEntrega" class="form-label">
+                  <i class="fas fa-calendar text-primary me-2"></i>Fecha de Entrega <span class="text-danger">*</span>
+                </label>
+                <input type="date" class="form-control" id="fechaEntrega" name="fechaEntrega" required 
+                       onchange="calcularFechaPago()" />
+              </div>
 
               <div class="col-md-6 mb-3">
+                <label for="fechaPago" class="form-label">
+                  <i class="fas fa-money-check-alt text-primary me-2"></i>Fecha Límite de Pago
+                </label>
+                <input type="date" class="form-control" id="fechaPago" name="fechaPago"
+                       title="Se calcula automáticamente como Fecha de Entrega + 7 días">
+                <small class="text-muted">Se calcula automáticamente (+7 días desde entrega)</small>
+              </div>
+            </div>
+
+            <!-- Fila 4: Estado y Descripción -->
+            <div class="row">
+              <div class="col-md-12 mb-3">
                 <label class="form-label">
-                  <i class="fas fa-truck text-primary me-2"></i>Estado
+                  <i class="fas fa-truck text-primary me-2"></i>Estado de Entrega
                 </label>
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" id="entregado" name="entregado">
                   <label class="form-check-label" for="entregado">
-                    Entregado
+                    <strong>Marcar como entregado</strong>
                   </label>
                 </div>
+                <small class="text-muted">Indica si el pedido ya fue entregado al cliente</small>
               </div>
             </div>
 
@@ -103,6 +142,36 @@
             <button class="btn btn-success" type="button" onclick="addLinea()">
               <i class="fas fa-plus me-2"></i>Agregar línea
             </button>
+
+            <!-- Resumen de Totales -->
+            <div class="card mt-4 border-primary">
+              <div class="card-body">
+                <h6 class="card-title text-primary">
+                  <i class="fas fa-calculator me-2"></i>Resumen de Factura
+                </h6>
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="d-flex justify-content-between">
+                      <span>Subtotal:</span>
+                      <strong id="resumen-subtotal">$0.00</strong>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="d-flex justify-content-between">
+                      <span>IGV (0%):</span>
+                      <strong id="resumen-igv">$0.00</strong>
+                    </div>
+                    <small class="text-muted">No se aplica impuesto actualmente</small>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="h5 mb-0">Total:</span>
+                      <strong class="h5 mb-0 text-success" id="resumen-total">$0.00</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div class="alert alert-info mt-3">
               <strong><i class="fas fa-info-circle me-2"></i>Nota:</strong> Recuerde agregar al menos una línea de producto antes de guardar la factura.

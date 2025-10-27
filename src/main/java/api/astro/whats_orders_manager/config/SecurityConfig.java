@@ -25,6 +25,11 @@ public class SecurityConfig {
                         // Recursos públicos (CSS, JS, imágenes, auth)
                         .requestMatchers("/", "/auth/**", "/css/**", "/js/**", "/images/**").permitAll()
                         
+                        // ========================================
+                        // WEBHOOK DE WHATSAPP - Público (Meta verifica)
+                        // ========================================
+                        .requestMatchers("/api/whatsapp/webhook").permitAll()
+                        
                         // Dashboard y perfil - requiere autenticación (todos los roles)
                         .requestMatchers("/dashboard", "/perfil/**").authenticated()
                         
@@ -72,6 +77,11 @@ public class SecurityConfig {
                         
                         // Cualquier otro request requiere autenticación
                         .anyRequest().authenticated()
+                )
+                
+                // Deshabilitar CSRF para webhook de WhatsApp
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/api/whatsapp/webhook")
                 )
                 
                 // Configuración de login

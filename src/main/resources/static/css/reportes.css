@@ -1,0 +1,530 @@
+/* ============================================================================
+   REPORTES CSS
+   WhatsApp Orders Manager - Sprint 2 Fase 6
+   ============================================================================
+   Estilos personalizados para el módulo de reportes y estadísticas.
+   ============================================================================
+*/
+
+/* ============================================================================
+   TARJETAS DE ESTADÍSTICAS
+   ============================================================================ */
+
+.stats-card {
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.stats-card .card-body {
+    padding: 1.5rem;
+}
+
+.stats-icon {
+    opacity: 0.3;
+}
+
+.stats-card h2 {
+    font-weight: 700;
+    font-size: 2.5rem;
+}
+
+.stats-card h6 {
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.75rem;
+}
+
+/* ============================================================================
+   TARJETAS DE REPORTES
+   ============================================================================ */
+
+.report-card {
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.report-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+.report-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.report-card .card-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+    color: #2c3e50;
+}
+
+.report-card .card-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.report-card ul li {
+    font-size: 0.85rem;
+    padding: 0.25rem 0;
+}
+
+.report-card ul li i {
+    margin-right: 0.5rem;
+}
+
+/* ============================================================================
+   FILTROS
+   ============================================================================ */
+
+.filter-section {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.filter-section .form-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-section .form-control,
+.filter-section .form-select {
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+}
+
+.filter-section .form-control:focus,
+.filter-section .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-buttons .btn {
+    flex: 1;
+}
+
+/* ============================================================================
+   TABLAS DE REPORTES
+   ============================================================================ */
+
+.table-report {
+    font-size: 0.9rem;
+}
+
+.table-report thead {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table-report thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table-report tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-report tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table-report tbody td {
+    padding: 0.875rem;
+    vertical-align: middle;
+}
+
+.table-report .text-end {
+    text-align: right;
+}
+
+/* ============================================================================
+   BADGES Y ESTADOS
+   ============================================================================ */
+
+.badge-estado {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 20px;
+}
+
+.badge-pagada {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-pendiente {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-entregada {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-no-entregada {
+    background-color: #6c757d;
+    color: white;
+}
+
+.badge-activo {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-inactivo {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* ============================================================================
+   ESTADÍSTICAS DEL REPORTE
+   ============================================================================ */
+
+.stats-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.stats-summary .stats-item {
+    text-align: center;
+    padding: 1rem;
+}
+
+.stats-summary .stats-value {
+    font-size: 2rem;
+    font-weight: 700;
+    display: block;
+}
+
+.stats-summary .stats-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
+}
+
+/* ============================================================================
+   BOTONES DE EXPORTACIÓN
+   ============================================================================ */
+
+.export-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.export-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+.export-buttons .btn i {
+    font-size: 1rem;
+}
+
+/* ============================================================================
+   GRÁFICOS
+   ============================================================================ */
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-bottom: 2rem;
+}
+
+.chart-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.chart-card .chart-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #dee2e6;
+    margin-bottom: 1rem;
+}
+
+.empty-state h5 {
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.empty-state p {
+    color: #adb5bd;
+    font-size: 0.9rem;
+}
+
+/* ============================================================================
+   LOADING STATE
+   ============================================================================ */
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3rem;
+}
+
+/* ============================================================================
+   FECHA PICKER
+   ============================================================================ */
+
+.date-range-picker {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.date-range-picker .form-control {
+    flex: 1;
+}
+
+.date-range-picker .separator {
+    font-weight: 600;
+    color: #6c757d;
+}
+
+/* ============================================================================
+   TOTALES
+   ============================================================================ */
+
+.totals-row {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-top: 2px solid #dee2e6;
+}
+
+.totals-row td {
+    padding: 1rem !important;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .stats-card h2 {
+        font-size: 1.75rem;
+    }
+    
+    .report-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .report-icon i {
+        font-size: 2rem !important;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+    
+    .filter-buttons {
+        flex-direction: column;
+    }
+    
+    .filter-buttons .btn {
+        width: 100%;
+    }
+    
+    .export-buttons {
+        flex-direction: column;
+    }
+    
+    .export-buttons .btn {
+        width: 100%;
+    }
+    
+    .date-range-picker {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .date-range-picker .separator {
+        text-align: center;
+    }
+    
+    .table-report {
+        font-size: 0.8rem;
+    }
+    
+    .table-report thead th,
+    .table-report tbody td {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .stats-summary .stats-item {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .stats-summary .stats-value {
+        font-size: 1.5rem;
+    }
+    
+    .stats-summary .stats-label {
+        font-size: 0.75rem;
+    }
+}
+
+/* ============================================================================
+   ANIMACIONES
+   ============================================================================ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-down {
+    animation: slideDown 0.3s ease-in-out;
+}
+
+/* ============================================================================
+   UTILIDADES
+   ============================================================================ */
+
+.text-money {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+.text-percentage {
+    font-weight: 600;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.no-data-message {
+    padding: 2rem;
+    text-align: center;
+    color: #6c757d;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    margin: 1rem 0;
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+    .report-card:hover {
+        transform: none;
+        box-shadow: none !important;
+    }
+    
+    .btn,
+    .filter-section,
+    .export-buttons,
+    .breadcrumb,
+    nav {
+        display: none !important;
+    }
+    
+    .table-report {
+        font-size: 10pt;
+    }
+    
+    .stats-card {
+        break-inside: avoid;
+    }
+}

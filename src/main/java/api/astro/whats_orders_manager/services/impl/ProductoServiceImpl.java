@@ -6,6 +6,8 @@ import api.astro.whats_orders_manager.repositories.ProductoRepository;
 import api.astro.whats_orders_manager.services.ProductoService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +23,11 @@ public class ProductoServiceImpl implements ProductoService {
 
     @Override
     public List<Producto> findAll() { return productoRepository.findAll(); }
+
+    @Override
+    public Page<Producto> findAll(Pageable pageable) { 
+        return productoRepository.findAll(pageable); 
+    }
 
     @Override
     public Optional<Producto> findById(Integer id) { return productoRepository.findById(id); }
