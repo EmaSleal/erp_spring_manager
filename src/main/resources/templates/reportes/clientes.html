@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Reporte de Clientes</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+        <!-- Breadcrumbs -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/reportes}"><i class="fas fa-chart-bar"></i> Reportes</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Clientes</li>
+            </ol>
+        </nav>
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-users text-success"></i> Reporte de Clientes</h2>
+                <p class="text-muted mb-0">Análisis de clientes y su actividad</p>
+            </div>
+            <div class="export-buttons">
+                <button type="button" class="btn btn-danger" onclick="exportarPDF()">
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+                <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filter-section">
+            <form th:action="@{/reportes/clientes}" method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="activo" class="form-label">
+                            <i class="fas fa-toggle-on"></i> Estado
+                        </label>
+                        <select class="form-select" id="activo" name="activo">
+                            <option value="">Todos</option>
+                            <option value="true" th:selected="${activo != null && activo}">Activos</option>
+                            <option value="false" th:selected="${activo != null && !activo}">Inactivos</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="conDeuda" class="form-label">
+                            <i class="fas fa-money-bill-wave"></i> Deuda
+                        </label>
+                        <select class="form-select" id="conDeuda" name="conDeuda">
+                            <option value="">Todos</option>
+                            <option value="true" th:selected="${conDeuda != null && conDeuda}">Con deuda</option>
+                            <option value="false" th:selected="${conDeuda != null && !conDeuda}">Sin deuda</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="filter-buttons">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            <a th:href="@{/reportes/clientes}" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Estadísticas -->
+        <div th:if="${estadisticas != null}" class="stats-summary slide-down">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value" th:text="${estadisticas.totalClientes}">0</span>
+                        <span class="stats-label">Total Clientes</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value" th:text="${estadisticas.clientesActivos}">0</span>
+                        <span class="stats-label">Activos</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value" th:text="${estadisticas.clientesConDeuda}">0</span>
+                        <span class="stats-label">Con Deuda</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value" th:text="${estadisticas.clientesNuevosEsteMes}">0</span>
+                        <span class="stats-label">Nuevos este Mes</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Clientes -->
+        <div class="card shadow-sm fade-in">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="fas fa-table text-success"></i> 
+                    Listado de Clientes
+                    <span th:if="${clientes != null}" class="badge bg-success ms-2" th:text="${clientes.size()}">0</span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div th:if="${clientes != null && !clientes.isEmpty()}" class="table-responsive">
+                    <table class="table table-report table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">#</th>
+                                <th style="width: 25%;">Nombre</th>
+                                <th style="width: 15%;">Tipo</th>
+                                <th style="width: 20%;">Email</th>
+                                <th style="width: 15%;">Fecha Registro</th>
+                                <th style="width: 10%;" class="text-center">Estado</th>
+                                <th style="width: 10%;" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="cliente, iterStat : ${clientes}">
+                                <td th:text="${iterStat.count}">1</td>
+                                <td>
+                                    <strong th:text="${cliente.nombre}">Cliente</strong>
+                                </td>
+                                <td>
+                                    <span th:if="${cliente.tipoCliente != null}" 
+                                          class="badge bg-info" 
+                                          th:text="${cliente.tipoCliente}">Tipo</span>
+                                </td>
+                                <td th:text="${cliente.email}">email@example.com</td>
+                                <td th:text="${#dates.format(cliente.createDate, 'dd/MM/yyyy')}">01/01/2024</td>
+                                <td class="text-center">
+                                    <span class="badge badge-estado badge-activo">
+                                        <i class="fas fa-check-circle"></i> Activo
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <a th:href="@{/clientes(edit=${cliente.idCliente})}" 
+                                       class="btn btn-sm btn-outline-success" 
+                                       title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div th:if="${clientes == null || clientes.isEmpty()}" class="empty-state">
+                    <i class="fas fa-users-slash"></i>
+                    <h5>No hay clientes para mostrar</h5>
+                    <p>No se encontraron clientes con los filtros seleccionados.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script th:src="@{/js/navbar.js}"></script>
+    <script>
+        function exportarPDF() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activo = urlParams.get('activo') || '';
+            const conDeuda = urlParams.get('conDeuda') || '';
+            
+            const exportUrl = /*[[@{/reportes/clientes/exportar/pdf}]]*/ '/reportes/clientes/exportar/pdf' + 
+                             '?' +
+                             (activo ? 'activo=' + activo + '&' : '') +
+                             (conDeuda ? 'conDeuda=' + conDeuda : '');
+            
+            window.location.href = exportUrl.replace(/&$/, '').replace(/\?$/, '');
+        }
+        
+        function exportarExcel() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activo = urlParams.get('activo') || '';
+            const conDeuda = urlParams.get('conDeuda') || '';
+            
+            const exportUrl = /*[[@{/reportes/clientes/exportar/excel}]]*/ '/reportes/clientes/exportar/excel' + 
+                             '?' +
+                             (activo ? 'activo=' + activo + '&' : '') +
+                             (conDeuda ? 'conDeuda=' + conDeuda : '');
+            
+            window.location.href = exportUrl.replace(/&$/, '').replace(/\?$/, '');
+        }
+    </script>
+    </main>
+</body>
+</html>

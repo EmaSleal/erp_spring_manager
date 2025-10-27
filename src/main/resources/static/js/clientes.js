@@ -13,6 +13,37 @@ document.addEventListener('DOMContentLoaded', function() {
     if (clienteModalElement) {
         clienteModal = new bootstrap.Modal(clienteModalElement);
     }
+    
+    // Detectar parámetro 'edit' en la URL y abrir modal automáticamente
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+        // Cargar el cliente desde el servidor y abrir el modal
+        fetch(`/clientes/detalle/${editId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Cliente no encontrado');
+                }
+                return response.json();
+            })
+            .then(cliente => {
+                // Abrir modal de edición con los datos del cliente
+                openEditModal(
+                    cliente.idCliente,
+                    cliente.nombre,
+                    cliente.usuario?.telefono || '',
+                    cliente.tipoCliente
+                );
+                
+                // Limpiar el parámetro de la URL sin recargar la página
+                window.history.replaceState({}, '', window.location.pathname);
+            })
+            .catch(error => {
+                console.error('Error al cargar el cliente:', error);
+                // Limpiar el parámetro de la URL en caso de error
+                window.history.replaceState({}, '', window.location.pathname);
+            });
+    }
 });
 
 // Abrir modal para agregar nuevo cliente

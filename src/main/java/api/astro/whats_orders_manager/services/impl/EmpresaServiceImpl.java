@@ -6,6 +6,8 @@ import api.astro.whats_orders_manager.services.EmpresaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -72,8 +74,9 @@ public class EmpresaServiceImpl implements EmpresaService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "empresa", key = "'principal'")
     public Empresa getEmpresaPrincipal() {
-        log.debug("Obteniendo empresa principal");
+        log.debug("Obteniendo empresa principal (sin caché)");
         
         Optional<Empresa> empresaOpt = findEmpresaActiva();
         
@@ -92,8 +95,9 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     @Override
+    @CacheEvict(value = "empresa", allEntries = true)
     public Empresa save(Empresa empresa, Integer usuarioId) {
-        log.info("Guardando empresa: {}", empresa.getNombreEmpresa());
+        log.info("Guardando empresa: {} (invalidando caché)", empresa.getNombreEmpresa());
         
         // Validar datos
         if (!validarEmpresa(empresa)) {
@@ -116,8 +120,9 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     @Override
+    @CacheEvict(value = "empresa", allEntries = true)
     public Empresa update(Empresa empresa, Integer usuarioId) {
-        log.info("Actualizando empresa ID: {}", empresa.getIdEmpresa());
+        log.info("Actualizando empresa ID: {} (invalidando caché)", empresa.getIdEmpresa());
         
         if (empresa.getIdEmpresa() == null) {
             throw new IllegalArgumentException("El ID de la empresa no puede ser nulo para actualizar");
@@ -144,8 +149,9 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     @Override
+    @CacheEvict(value = "empresa", allEntries = true)
     public Empresa guardarLogo(Integer empresaId, MultipartFile file, Integer usuarioId) throws IOException {
-        log.info("Guardando logo para empresa ID: {}", empresaId);
+        log.info("Guardando logo para empresa ID: {} (invalidando caché)", empresaId);
         
         // Validar archivo
         validarArchivo(file);
@@ -167,8 +173,9 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     @Override
+    @CacheEvict(value = "empresa", allEntries = true)
     public Empresa guardarFavicon(Integer empresaId, MultipartFile file, Integer usuarioId) throws IOException {
-        log.info("Guardando favicon para empresa ID: {}", empresaId);
+        log.info("Guardando favicon para empresa ID: {} (invalidando caché)", empresaId);
         
         // Validar archivo
         validarArchivo(file);
@@ -190,8 +197,9 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     @Override
+    @CacheEvict(value = "empresa", allEntries = true)
     public Empresa eliminarLogo(Integer empresaId, Integer usuarioId) throws IOException {
-        log.info("Eliminando logo de empresa ID: {}", empresaId);
+        log.info("Eliminando logo de empresa ID: {} (invalidando caché)", empresaId);
         
         Empresa empresa = empresaRepository.findById(empresaId)
                 .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada con ID: " + empresaId));
@@ -206,8 +214,9 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     @Override
+    @CacheEvict(value = "empresa", allEntries = true)
     public Empresa eliminarFavicon(Integer empresaId, Integer usuarioId) throws IOException {
-        log.info("Eliminando favicon de empresa ID: {}", empresaId);
+        log.info("Eliminando favicon de empresa ID: {} (invalidando caché)", empresaId);
         
         Empresa empresa = empresaRepository.findById(empresaId)
                 .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada con ID: " + empresaId));

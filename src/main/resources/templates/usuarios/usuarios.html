@@ -206,17 +206,18 @@
                     <thead class="table-light">
                         <tr>
                             <th style="width: 5%">#</th>
-                            <th style="width: 25%">Nombre</th>
-                            <th style="width: 15%">Teléfono</th>
-                            <th style="width: 20%">Email</th>
-                            <th style="width: 10%" class="text-center">Rol</th>
-                            <th style="width: 10%" class="text-center">Estado</th>
+                            <th style="width: 20%">Nombre</th>
+                            <th style="width: 12%">Teléfono</th>
+                            <th style="width: 18%">Email</th>
+                            <th style="width: 8%" class="text-center">Rol</th>
+                            <th style="width: 12%" class="text-center">Último Acceso</th>
+                            <th style="width: 8%" class="text-center">Estado</th>
                             <th style="width: 15%" class="text-center" sec:authorize="hasRole('ADMIN')">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:if="${usuarios.isEmpty()}">
-                            <td colspan="7" class="text-center py-4">
+                            <td colspan="8" class="text-center py-4">
                                 <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted mb-0">No se encontraron usuarios</p>
                             </td>
@@ -254,6 +255,15 @@
                                       th:text="${usuario.rol}">
                                     USER
                                 </span>
+                            </td>
+                            <td class="text-center">
+                                <small class="text-muted" th:if="${usuario.ultimoAcceso != null}">
+                                    <i class="bi bi-clock-history me-1"></i>
+                                    <span th:text="${#temporals.format(usuario.ultimoAcceso.toLocalDateTime(), 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</span>
+                                </small>
+                                <small class="text-muted fst-italic" th:if="${usuario.ultimoAcceso == null}">
+                                    Nunca
+                                </small>
                             </td>
                             <td class="text-center">
                                 <span class="badge" 

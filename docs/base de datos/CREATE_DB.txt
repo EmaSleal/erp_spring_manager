@@ -1,0 +1,186 @@
+CREATE DATABASE `facturas_monrachem` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+
+CREATE TABLE `cliente` (
+  `create_by` int DEFAULT NULL,
+  `id_cliente` int NOT NULL AUTO_INCREMENT,
+  `update_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `fecha_registro` datetime(6) DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  `id_usuario` varchar(255) DEFAULT NULL,
+  `nombre` varchar(255) DEFAULT NULL,
+  `tipo_cliente` tinyint DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id_cliente`),
+  KEY `FKetx0tojxf5yevxcyt6qb526x5` (`id_usuario`),
+  KEY `idx_cliente_email` (`email`),
+  KEY `idx_cliente_create_date` (`create_date`),
+  CONSTRAINT `FKetx0tojxf5yevxcyt6qb526x5` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`telefono`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `configuracion_facturacion` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `activo` bit(1) NOT NULL,
+  `create_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `decimales` int DEFAULT NULL,
+  `formato_numero` varchar(50) DEFAULT NULL,
+  `igv` decimal(5,2) NOT NULL,
+  `incluir_igv_en_precio` bit(1) DEFAULT NULL,
+  `moneda` varchar(3) NOT NULL,
+  `nota_pie_pagina` varchar(500) DEFAULT NULL,
+  `numero_actual` int NOT NULL,
+  `numero_inicial` int DEFAULT NULL,
+  `prefijo_factura` varchar(10) DEFAULT NULL,
+  `serie_factura` varchar(10) DEFAULT NULL,
+  `simbolo_moneda` varchar(5) DEFAULT NULL,
+  `terminos_condiciones` text,
+  `update_by` int DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `configuracion_notificaciones` (
+  `id_configuracion` int NOT NULL AUTO_INCREMENT,
+  `activar_email` bit(1) NOT NULL,
+  `activo` bit(1) NOT NULL,
+  `create_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `dias_recordatorio_pago` int DEFAULT NULL,
+  `dias_recordatorio_preventivo` int DEFAULT NULL,
+  `email_admin` varchar(100) DEFAULT NULL,
+  `email_copia_facturas` varchar(100) DEFAULT NULL,
+  `enviar_factura_automatica` bit(1) NOT NULL,
+  `frecuencia_recordatorios` int DEFAULT NULL,
+  `notificar_nuevo_cliente` bit(1) NOT NULL,
+  `notificar_nuevo_usuario` bit(1) NOT NULL,
+  `update_by` int DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id_configuracion`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `empresa` (
+  `id_empresa` int NOT NULL AUTO_INCREMENT,
+  `activo` bit(1) NOT NULL,
+  `direccion` varchar(300) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `favicon` varchar(255) DEFAULT NULL,
+  `logo` varchar(255) DEFAULT NULL,
+  `nombre_comercial` varchar(200) DEFAULT NULL,
+  `nombre_empresa` varchar(200) NOT NULL,
+  `ruc` varchar(20) DEFAULT NULL,
+  `sitio_web` varchar(200) DEFAULT NULL,
+  `telefono` varchar(20) DEFAULT NULL,
+  `usuario_modificacion` int DEFAULT NULL,
+  `create_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `update_by` int DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id_empresa`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `factura` (
+  `create_by` int DEFAULT NULL,
+  `entregado` bit(1) DEFAULT NULL,
+  `fecha_entrega` date DEFAULT NULL,
+  `id_cliente` int NOT NULL,
+  `id_factura` int NOT NULL AUTO_INCREMENT,
+  `total` decimal(10,2) DEFAULT NULL,
+  `update_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `tipo_factura` tinyint DEFAULT NULL,
+  `igv` decimal(10,2) DEFAULT NULL,
+  `numero_factura` varchar(50) DEFAULT NULL,
+  `serie` varchar(10) DEFAULT NULL,
+  `subtotal` decimal(10,2) DEFAULT NULL,
+  `fecha_pago` date DEFAULT NULL,
+  PRIMARY KEY (`id_factura`),
+  UNIQUE KEY `UKq4rschxwntd1d2yt1heie7l5j` (`numero_factura`),
+  KEY `FKs1vkgwvkxrt5hrmt0c50auyug` (`id_cliente`),
+  KEY `idx_factura_pago_vencido` (`tipo_factura`,`fecha_pago`,`entregado`),
+  KEY `idx_factura_fecha_pago` (`fecha_pago`),
+  KEY `idx_factura_fecha_emision` (`create_date`),
+  KEY `idx_factura_fecha_cliente` (`create_date`,`id_cliente`),
+  CONSTRAINT `FKs1vkgwvkxrt5hrmt0c50auyug` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`)
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `linea_factura` (
+  `id_linea_factura` int NOT NULL AUTO_INCREMENT,
+  `numero_linea` int DEFAULT NULL,
+  `id_factura` int NOT NULL,
+  `id_producto` int NOT NULL,
+  `cantidad` int DEFAULT NULL,
+  `precio_unitario` decimal(38,2) DEFAULT NULL,
+  `subtotal` decimal(38,2) DEFAULT NULL,
+  `create_by` int DEFAULT NULL,
+  `update_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id_linea_factura`),
+  KEY `FKlsp1njhh532v655s2wt1rnioi` (`id_factura`),
+  KEY `idx_linea_factura_producto` (`id_producto`),
+  CONSTRAINT `FK9jcf7hnomwt8bybc5jdpuar17` FOREIGN KEY (`id_producto`) REFERENCES `producto` (`id_producto`),
+  CONSTRAINT `FKlsp1njhh532v655s2wt1rnioi` FOREIGN KEY (`id_factura`) REFERENCES `factura` (`id_factura`)
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `presentacion` (
+  `id_presentacion` int NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(255) DEFAULT NULL,
+  `create_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `update_by` int DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id_presentacion`)
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `producto` (
+  `create_by` int DEFAULT NULL,
+  `id_presentacion` int DEFAULT NULL,
+  `id_producto` int NOT NULL AUTO_INCREMENT,
+  `precio_institucional` decimal(38,2) DEFAULT NULL,
+  `precio_mayorista` decimal(38,2) DEFAULT NULL,
+  `update_by` int DEFAULT NULL,
+  `create_date` datetime(6) DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  `codigo` varchar(255) DEFAULT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `active` bit(1) DEFAULT NULL,
+  PRIMARY KEY (`id_producto`),
+  KEY `FKls5hvvg6iuifia8ar9trna3c1` (`id_presentacion`),
+  CONSTRAINT `FKls5hvvg6iuifia8ar9trna3c1` FOREIGN KEY (`id_presentacion`) REFERENCES `presentacion` (`id_presentacion`)
+) ENGINE=InnoDB AUTO_INCREMENT=173 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `usuario` (
+  `id_usuario` int NOT NULL AUTO_INCREMENT,
+  `create_date` datetime(6) DEFAULT NULL,
+  `update_date` datetime(6) DEFAULT NULL,
+  `nombre` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `rol` varchar(255) DEFAULT NULL,
+  `telefono` varchar(255) DEFAULT NULL,
+  `create_by` int DEFAULT NULL,
+  `update_by` int DEFAULT NULL,
+  `activo` bit(1) DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `ultimo_acceso` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id_usuario`),
+  UNIQUE KEY `UKlyn4jrsa2ou2meyuarytj8tcc` (`telefono`),
+  UNIQUE KEY `UK5171l57faosmj8myawaucatdw` (`email`),
+  KEY `idx_usuario_email` (`email`),
+  KEY `idx_usuario_activo` (`activo`),
+  KEY `idx_usuario_login` (`telefono`,`activo`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `webhooklogs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `timestamp` datetime(6) DEFAULT NULL,
+  `message_body` varchar(255) DEFAULT NULL,
+  `message_id` varchar(255) DEFAULT NULL,
+  `phone_number` varchar(255) DEFAULT NULL,
+  `whole_message` json DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

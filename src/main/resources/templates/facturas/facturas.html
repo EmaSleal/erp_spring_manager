@@ -91,6 +91,7 @@
                             <thead>
                                 <tr>
                                     <th class="text-center" style="width: 60px;">ID</th>
+                                    <th style="width: 150px;">N° Factura</th>
                                     <th>Cliente</th>
                                     <th class="text-end" style="width: 120px;">Total</th>
                                     <th class="text-center" style="width: 120px;">Estado</th>
@@ -101,6 +102,12 @@
                             <tbody>
                                 <tr th:each="factura : ${facturas}">
                                     <td class="text-center" th:text="${factura.idFactura}">1</td>
+                                    <td>
+                                        <div class="fw-semibold text-primary" th:text="${factura.numeroFactura}">F001-00001</div>
+                                        <small class="text-muted" th:if="${factura.serie != null}">
+                                            Serie: <span th:text="${factura.serie}">F001</span>
+                                        </small>
+                                    </td>
                                     <td>
                                         <div class="fw-semibold" th:text="${factura.cliente.nombre}">Cliente</div>
                                         <small class="text-muted">ID: <span th:text="${factura.cliente.idCliente}">123</span></small>
@@ -155,6 +162,59 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Paginación -->
+                    <div th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <div class="text-muted">
+                            Mostrando <span th:text="${#lists.size(facturas)}"></span> de 
+                            <span th:text="${totalItems}"></span> facturas
+                        </div>
+                        <nav aria-label="Paginación de facturas">
+                            <ul class="pagination mb-0">
+                                <!-- Primera página -->
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/facturas(page=0, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                
+                                <!-- Página anterior -->
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/facturas(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+
+                                <!-- Números de página -->
+                                <li class="page-item" 
+                                    th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
+                                    th:if="${pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2}"
+                                    th:classappend="${pageNumber == currentPage} ? 'active'">
+                                    <a class="page-link" 
+                                       th:href="@{/facturas(page=${pageNumber}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                                       th:text="${pageNumber + 1}">1</a>
+                                </li>
+
+                                <!-- Página siguiente -->
+                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/facturas(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                
+                                <!-- Última página -->
+                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/facturas(page=${totalPages - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
                 </div>
             </div>
         </div>
@@ -166,7 +226,7 @@
             <div class="modal-content">
                 <!-- Modal Header -->
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="facturaModalLabel">
+                    <h5 class="modal-title text-white" id="facturaModalLabel">
                         <i class="fas fa-file-invoice me-2"></i>
                         Detalle de Factura
                     </h5>
@@ -186,13 +246,26 @@
                                     <strong>ID Factura:</strong> <span id="modal-idFactura" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
+                                    <strong><i class="fas fa-file-invoice text-primary me-1"></i>N° Factura:</strong> 
+                                    <span id="modal-numeroFactura" class="text-muted fw-bold">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong><i class="fas fa-hashtag text-primary me-1"></i>Serie:</strong> 
+                                    <span id="modal-serie" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
                                     <strong>Fecha de Creación:</strong> <span id="modal-createDate" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
                                     <strong>Última Actualización:</strong> <span id="modal-updateDate" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
-                                    <strong>Fecha de Entrega:</strong> <span id="modal-fechaEntrega" class="text-muted">-</span>
+                                    <strong><i class="fas fa-calendar text-primary me-1"></i>Fecha de Entrega:</strong> 
+                                    <span id="modal-fechaEntrega" class="text-muted">-</span>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <strong><i class="fas fa-money-check-alt text-primary me-1"></i>Fecha Límite de Pago:</strong> 
+                                    <span id="modal-fechaPago" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
                                     <strong>Estado:</strong> <span id="modal-entregado" class="badge">-</span>

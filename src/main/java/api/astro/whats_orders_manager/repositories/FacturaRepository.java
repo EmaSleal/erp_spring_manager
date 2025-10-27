@@ -52,4 +52,38 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
            "AND f.entregado = true " +
            "AND f.cliente.email IS NOT NULL")
     List<Factura> findFacturasConPagoVencido();
+    
+    /**
+     * Llama al SP para obtener ventas por mes
+     * @param meses Número de meses hacia atrás
+     * @return Lista de arrays [mes, total_ventas]
+     */
+    @Query(value = "CALL sp_obtener_ventas_por_mes(:meses)", nativeQuery = true)
+    List<Object[]> obtenerVentasPorMes(@Param("meses") int meses);
+    
+    /**
+     * Llama al SP para obtener ventas por día en un rango
+     * @param fechaInicio Fecha de inicio (puede ser null)
+     * @param fechaFin Fecha de fin (puede ser null)
+     * @param clienteId ID del cliente (puede ser null)
+     * @return Lista de arrays [fecha, total_ventas]
+     */
+    @Query(value = "CALL sp_obtener_ventas_por_dia(:fechaInicio, :fechaFin, :clienteId)", nativeQuery = true)
+    List<Object[]> obtenerVentasPorDia(
+        @Param("fechaInicio") java.sql.Date fechaInicio,
+        @Param("fechaFin") java.sql.Date fechaFin,
+        @Param("clienteId") Integer clienteId
+    );
+    
+    /**
+     * Llama al SP para obtener estadísticas de ventas
+     * @param fechaInicio Fecha de inicio (puede ser null)
+     * @param fechaFin Fecha de fin (puede ser null)
+     * @return Array con estadísticas [total_facturas, total_ventas, ticket_promedio, etc.]
+     */
+    @Query(value = "CALL sp_obtener_estadisticas_ventas(:fechaInicio, :fechaFin)", nativeQuery = true)
+    Object[] obtenerEstadisticasVentas(
+        @Param("fechaInicio") java.sql.Date fechaInicio,
+        @Param("fechaFin") java.sql.Date fechaFin
+    );
 }

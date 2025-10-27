@@ -66,6 +66,58 @@ function resetForm() {
     document.getElementById('lineas-body').innerHTML = '';
     newFactura = {};
     facturaId = 0;
+    actualizarResumenTotales();
+}
+
+// ========================================
+// NUEVA FUNCIÓN: Calcular Fecha de Pago
+// ========================================
+function calcularFechaPago() {
+    const fechaEntrega = document.getElementById('fechaEntrega');
+    const fechaPago = document.getElementById('fechaPago');
+    
+    if (fechaEntrega && fechaEntrega.value && fechaPago) {
+        // Convertir fecha de entrega a objeto Date
+        const entrega = new Date(fechaEntrega.value + 'T00:00:00');
+        
+        // Agregar 7 días
+        entrega.setDate(entrega.getDate() + 7);
+        
+        // Formatear a YYYY-MM-DD para el input
+        const year = entrega.getFullYear();
+        const month = String(entrega.getMonth() + 1).padStart(2, '0');
+        const day = String(entrega.getDate()).padStart(2, '0');
+        
+        fechaPago.value = `${year}-${month}-${day}`;
+    }
+}
+
+// ========================================
+// NUEVA FUNCIÓN: Actualizar Resumen de Totales
+// ========================================
+function actualizarResumenTotales() {
+    const rows = document.querySelectorAll("#lineas-body tr");
+    let subtotal = 0;
+    
+    rows.forEach(row => {
+        const subtotalInput = row.querySelector('input[name="subtotal"]');
+        if (subtotalInput && subtotalInput.value) {
+            subtotal += parseFloat(subtotalInput.value) || 0;
+        }
+    });
+    
+    // IGV es 0% por ahora (puedes cambiarlo a 18% si es necesario)
+    const igv = 0; // subtotal * 0.18 para 18%
+    const total = subtotal + igv;
+    
+    // Actualizar elementos en el DOM
+    const elementoSubtotal = document.getElementById('resumen-subtotal');
+    const elementoIgv = document.getElementById('resumen-igv');
+    const elementoTotal = document.getElementById('resumen-total');
+    
+    if (elementoSubtotal) elementoSubtotal.textContent = `$${subtotal.toFixed(2)}`;
+    if (elementoIgv) elementoIgv.textContent = `$${igv.toFixed(2)}`;
+    if (elementoTotal) elementoTotal.textContent = `$${total.toFixed(2)}`;
 }
 
 
@@ -89,6 +141,9 @@ function actualizarProductoSeleccionado(element) {
     const subtotalInput = row.querySelector('input[name="subtotal"]');
     const subtotal = parseFloat(producto.precio_institucional) * parseFloat(inputCantidad.value || 1);
     subtotalInput.value = subtotal.toFixed(2);
+    
+    // ✅ NUEVO: Actualizar resumen de totales
+    actualizarResumenTotales();
 }
 
 
@@ -96,6 +151,8 @@ function actualizarProductoSeleccionado(element) {
 
 function removeLinea(button) {
     button.closest("tr").remove();
+    // ✅ NUEVO: Actualizar resumen después de eliminar línea
+    actualizarResumenTotales();
 }
 
 function addLinea() {
@@ -116,6 +173,11 @@ function addLinea() {
 function createLineaRow(linea) {
     const selectId = `select-producto-${linea.id_linea_factura}`;
 
+    // Opción por defecto para líneas nuevas
+    const opcionDefault = linea.id_producto > 1000000000000 
+        ? `<option value="" selected>-- Seleccione un producto --</option>` 
+        : `<option value="">-- Seleccione un producto --</option>`;
+
     const opciones = allProductos.map(p => {
         const selected = p.id_producto === linea.id_producto ? "selected" : "";
         return `<option value="${p.id_producto}" ${selected}>${p.nombre} - $${p.precio_institucional}</option>`;
@@ -131,6 +193,7 @@ function createLineaRow(linea) {
         <input type="hidden" name="idLinea" value="${linea.id_linea_factura}">
         <input type="hidden" name="idProducto" value="${linea.id_producto}">
         <select name="producto" id="${selectId}" class="form-select" onchange="actualizarProductoSeleccionado(this)">
+          ${opcionDefault}
           ${opciones}
         </select>
       </td>
@@ -190,15 +253,22 @@ function mostrarPaso2() {
 
     addLinea(); // Agrega al menos una línea por defecto
 
+    // ✅ NUEVO: Obtener campos adicionales
     const descripcion = document.getElementById("descripcion");
     const entregado = document.getElementById("entregado");
+    const serie = document.getElementById("serie");
+    const numeroFactura = document.getElementById("numeroFactura");
+    const fechaPago = document.getElementById("fechaPago");
 
-    // Construir el objeto Factura
+    // Construir el objeto Factura con nuevos campos
     const factura = {
         cliente: {
             idCliente: parseInt(selectCliente.value)
         },
         fechaEntrega: fechaEntrega.value,
+        fechaPago: fechaPago.value || null, // ✅ NUEVO
+        serie: serie.value || null, // ✅ NUEVO
+        numeroFactura: numeroFactura.value || null, // ✅ NUEVO
         descripcion: descripcion.value,
         tipoFactura: tipoFactura.value,
         entregado: entregado.checked
@@ -243,20 +313,35 @@ function guardarLineas() {
     }
 
     const lineas = [];
+    let lineasVacias = 0;
 
     rows.forEach((row, index) => {
         const idLinea = row.querySelector('input[name="idLinea"]').value;
         const idProducto = row.querySelector('input[name="idProducto"]').value;
+        const selectProducto = row.querySelector('select[name="producto"]');
         const cantidad = row.querySelector('input[name="cantidad"]').value;
         const precio = row.querySelector('input[name="precio"]').value;
         const numeroLinea = row.querySelector('input[name="numero_linea"]').value;
         const subtotal = row.querySelector('input[name="subtotal"]').value;
 
+        // Validar que se haya seleccionado un producto válido
+        // Si el select no tiene un valor válido, o el idProducto es un timestamp (> 1000000000000), saltamos esta línea
+        const productoSeleccionado = selectProducto && selectProducto.value;
+        const idProductoValido = parseInt(idProducto);
+        
+        // Un timestamp de Date.now() es mayor a 1000000000000 (13 dígitos)
+        // Los IDs de productos normales son mucho menores
+        if (!productoSeleccionado || !idProductoValido || idProductoValido > 1000000000000) {
+            lineasVacias++;
+            console.log(`Línea ${index + 1} omitida: sin producto seleccionado`);
+            return; // Saltar esta línea
+        }
+
         lineas.push({
             id_factura: parseInt(facturaId),
             id_linea_factura: parseInt(idLinea),
-            numero_linea: index + 1,
-            id_producto: parseInt(idProducto),
+            numero_linea: lineas.length + 1, // Renumerar basado en líneas válidas
+            id_producto: idProductoValido,
             descripcion: null,
             cantidad: parseInt(cantidad),
             precioUnitario: parseFloat(precio),
@@ -267,6 +352,22 @@ function guardarLineas() {
             update_date: null
         });
     });
+    
+    // Validar que haya al menos una línea válida
+    if (lineas.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Sin productos',
+            text: 'Debe seleccionar al menos un producto válido',
+            confirmButtonColor: '#3085d6'
+        });
+        return;
+    }
+    
+    // Informar al usuario si se omitieron líneas vacías
+    if (lineasVacias > 0) {
+        console.log(`Se omitieron ${lineasVacias} línea(s) vacía(s)`);
+    }
 
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');

@@ -5,6 +5,8 @@ import api.astro.whats_orders_manager.repositories.ConfiguracionFacturacionRepos
 import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,13 +40,15 @@ public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFactura
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "configuracionFacturacion", key = "'activa'")
     public Optional<ConfiguracionFacturacion> getConfiguracionActiva() {
-        log.debug("Obteniendo configuración de facturación activa");
+        log.debug("Obteniendo configuración de facturación activa (sin caché)");
         return configuracionRepository.findConfiguracionActiva();
     }
 
     @Override
     @Transactional
+    @Cacheable(value = "configuracionFacturacion", key = "'activa'")
     public ConfiguracionFacturacion getOrCreateConfiguracion() {
         log.debug("Obteniendo o creando configuración de facturación");
         
@@ -69,8 +73,9 @@ public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFactura
 
     @Override
     @Transactional
+    @CacheEvict(value = "configuracionFacturacion", allEntries = true)
     public ConfiguracionFacturacion save(ConfiguracionFacturacion configuracion) {
-        log.debug("Guardando nueva configuración de facturación");
+        log.debug("Guardando nueva configuración de facturación (invalidando caché)");
         
         // Validar datos
         validarConfiguracion(configuracion);
@@ -105,8 +110,9 @@ public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFactura
 
     @Override
     @Transactional
+    @CacheEvict(value = "configuracionFacturacion", allEntries = true)
     public ConfiguracionFacturacion update(ConfiguracionFacturacion configuracion) {
-        log.debug("Actualizando configuración de facturación con ID: {}", configuracion.getId());
+        log.debug("Actualizando configuración de facturación con ID: {} (invalidando caché)", configuracion.getId());
         
         // Verificar que la configuración existe
         ConfiguracionFacturacion existente = configuracionRepository.findById(configuracion.getId())

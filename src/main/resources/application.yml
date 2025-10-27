@@ -6,19 +6,25 @@ spring:
   main:
     allow-bean-definition-overriding: true
     web-application-type: servlet
+  
+  # ========================================
+  # CONFIGURACIÓN DE BASE DE DATOS
+  # ========================================
   datasource:
-    url:  jdbc:mysql://192.168.100.8:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: m4n0
-    password: Chismosear01
+    url: ${DB_URL:jdbc:mysql://localhost:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  
   jpa:
     database-platform: org.hibernate.dialect.MySQL8Dialect
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false  # Controlado por logging.level.org.hibernate.SQL
     properties:
       hibernate:
         format_sql: true
+        use_sql_comments: true
   
   # ========================================
   # CONFIGURACIÓN DE EMAIL
@@ -39,3 +45,80 @@ spring:
             trust: ${EMAIL_HOST:smtp.gmail.com}
         debug: false
     default-encoding: UTF-8
+
+# ========================================
+# CONFIGURACIÓN DE WHATSAPP WEBHOOK
+# ========================================
+meta:
+  webhook:
+    verify-token: ${META_WEBHOOK_VERIFY_TOKEN:defaulttoken}
+
+# ========================================
+# CONFIGURACIÓN DE LOGGING
+# ========================================
+logging:
+  level:
+    root: INFO
+    
+    # Paquetes de la aplicación
+    api.astro.whats_orders_manager: INFO
+    api.astro.whats_orders_manager.controllers: INFO
+    api.astro.whats_orders_manager.services: INFO
+    api.astro.whats_orders_manager.repositories: DEBUG
+    
+    # Hibernate SQL (queries)
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.orm.jdbc.bind: TRACE
+    
+    # Spring Framework
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.web.servlet.mvc.method.annotation: INFO
+    
+    # Transacciones de base de datos
+    org.springframework.jdbc.core: DEBUG
+    org.springframework.transaction: DEBUG
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  
+  # Configuración de archivos de log (opcional)
+  file:
+    name: logs/whats-orders-manager.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
+
+# ========================================
+# PROFILES - Configuración por ambiente
+# ========================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  level:
+    root: DEBUG
+    api.astro.whats_orders_manager: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    root: WARN
+    api.astro.whats_orders_manager: INFO
+    api.astro.whats_orders_manager.controllers: INFO
+    org.hibernate.SQL: WARN
+  
+  file:
+    name: /var/log/whats-orders-manager/application.log

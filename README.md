@@ -186,19 +186,29 @@ GRANT ALL PRIVILEGES ON whatsapp_orders.* TO 'orders_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-### 3️⃣ Configurar `application.yml`
+### 3️⃣ Configurar Variables de Entorno
 
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/whatsapp_orders
-    username: orders_user
-    password: tu_password
-    
-  jpa:
-    hibernate:
-      ddl-auto: update  # En producción usar 'validate'
-    show-sql: true
+#### Opción A: Archivo .env.local (Recomendado para desarrollo)
+
+```bash
+# 1. Copiar el template
+Copy-Item .env.local.template .env.local
+
+# 2. Editar .env.local con tus credenciales reales
+# (Phone Number ID, Access Token, Webhook Token, etc.)
+```
+
+#### Opción B: Variables de entorno del sistema
+
+```powershell
+# PowerShell
+$env:META_WEBHOOK_VERIFY_TOKEN="tu_token_aqui"
+
+# CMD
+set META_WEBHOOK_VERIFY_TOKEN=tu_token_aqui
+
+# Linux/Mac
+export META_WEBHOOK_VERIFY_TOKEN=tu_token_aqui
 ```
 
 ### 4️⃣ Compilar el Proyecto
@@ -209,8 +219,27 @@ mvn clean compile
 
 ### 5️⃣ Ejecutar la Aplicación
 
+#### Opción A: Con script de inicio (Recomendado)
+
+```powershell
+# PowerShell - Carga automáticamente .env.local
+.\start.ps1
+```
+
+#### Opción B: Manual
+
+```powershell
+# 1. Cargar variables de entorno
+. .\.env.ps1
+
+# 2. Iniciar aplicación
+mvn spring-boot:run
+```
+
+#### Opción C: Sin variables de entorno
 ```bash
 mvn spring-boot:run
+# (Usará valores por defecto de application.yml)
 ```
 
 ### 6️⃣ Acceder a la Aplicación

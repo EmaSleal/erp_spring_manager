@@ -35,9 +35,17 @@
         <div class="navbar-user" sec:authorize="isAuthenticated()">
             <!-- Trigger del dropdown -->
             <button class="navbar-user-trigger">
-                <!-- Avatar con iniciales -->
-                <div class="user-avatar" th:data-initials="${userInitials != null ? userInitials : '50'}">
-                    <span th:text="${userInitials != null ? userInitials : '50'}">50</span>
+                <!-- Avatar: imagen o iniciales como fallback -->
+                <div class="user-avatar" th:classappend="${userAvatar != null and userAvatar != '' ? 'has-image' : 'has-initials'}">
+                    <!-- Si hay avatar, mostrar imagen -->
+                    <img th:if="${userAvatar != null and userAvatar != ''}" 
+                         th:src="@{${userAvatar}}" 
+                         th:alt="${userName}"
+                         class="avatar-img" />
+                    <!-- Si no hay avatar, mostrar iniciales -->
+                    <span th:if="${userAvatar == null or userAvatar == ''}" 
+                          class="avatar-initials"
+                          th:text="${userInitials != null ? userInitials : 'U'}">U</span>
                 </div>
                 <!-- Nombre del usuario (oculto en móvil) -->
                 <span class="user-name" th:text="${userName != null ? userName : #authentication.principal.username}">Usuario</span>
@@ -50,8 +58,17 @@
                 <!-- Header con info del usuario -->
                 <div class="dropdown-header">
                     <div class="dropdown-user-info">
-                        <div class="dropdown-user-avatar" th:data-initials="${userInitials != null ? userInitials : '50'}">
-                            <span th:text="${userInitials != null ? userInitials : '50'}">50</span>
+                        <!-- Avatar grande en dropdown: imagen o iniciales -->
+                        <div class="dropdown-user-avatar" th:classappend="${userAvatar != null and userAvatar != '' ? 'has-image' : 'has-initials'}">
+                            <!-- Si hay avatar, mostrar imagen -->
+                            <img th:if="${userAvatar != null and userAvatar != ''}" 
+                                 th:src="@{${userAvatar}}" 
+                                 th:alt="${userName}"
+                                 class="avatar-img" />
+                            <!-- Si no hay avatar, mostrar iniciales -->
+                            <span th:if="${userAvatar == null or userAvatar == ''}" 
+                                  class="avatar-initials"
+                                  th:text="${userInitials != null ? userInitials : 'U'}">U</span>
                         </div>
                         <div class="dropdown-user-details">
                             <div class="dropdown-user-name" th:text="${userName != null ? userName : #authentication.principal.username}">Usuario</div>

@@ -5,6 +5,8 @@ import api.astro.whats_orders_manager.repositories.ConfiguracionNotificacionesRe
 import api.astro.whats_orders_manager.services.ConfiguracionNotificacionesService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,15 +33,17 @@ public class ConfiguracionNotificacionesServiceImpl implements ConfiguracionNoti
     private ConfiguracionNotificacionesRepository repository;
 
     @Override
+    @Cacheable(value = "configuracionNotificaciones", key = "'activa'")
     public Optional<ConfiguracionNotificaciones> getConfiguracionActiva() {
-        log.debug("Buscando configuración de notificaciones activa");
+        log.debug("Buscando configuración de notificaciones activa (sin caché)");
         return repository.findConfiguracionActiva();
     }
 
     @Override
     @Transactional
+    @Cacheable(value = "configuracionNotificaciones", key = "'activa'")
     public ConfiguracionNotificaciones getOrCreateConfiguracion() {
-        log.debug("Obteniendo o creando configuración de notificaciones");
+        log.debug("Obteniendo o creando configuración de notificaciones (sin caché)");
         
         Optional<ConfiguracionNotificaciones> configuracionOpt = repository.findConfiguracionActiva();
         
@@ -61,8 +65,9 @@ public class ConfiguracionNotificacionesServiceImpl implements ConfiguracionNoti
 
     @Override
     @Transactional
+    @CacheEvict(value = "configuracionNotificaciones", allEntries = true)
     public ConfiguracionNotificaciones save(ConfiguracionNotificaciones configuracion) {
-        log.info("Guardando configuración de notificaciones: {}", configuracion);
+        log.info("Guardando configuración de notificaciones: {} (invalidando caché)", configuracion);
         
         // Si esta configuración se marca como activa, desactivar las demás
         if (Boolean.TRUE.equals(configuracion.getActivo())) {
@@ -77,8 +82,9 @@ public class ConfiguracionNotificacionesServiceImpl implements ConfiguracionNoti
 
     @Override
     @Transactional
+    @CacheEvict(value = "configuracionNotificaciones", allEntries = true)
     public ConfiguracionNotificaciones update(ConfiguracionNotificaciones configuracion) {
-        log.info("Actualizando configuración de notificaciones ID: {}", configuracion.getIdConfiguracion());
+        log.info("Actualizando configuración de notificaciones ID: {} (invalidando caché)", configuracion.getIdConfiguracion());
         
         if (configuracion.getIdConfiguracion() == null) {
             throw new IllegalArgumentException("No se puede actualizar una configuración sin ID");

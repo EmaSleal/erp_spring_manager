@@ -1,18 +1,18 @@
 package api.astro.whats_orders_manager.controllers;
 
+import api.astro.whats_orders_manager.dto.EstadisticasUsuariosDTO;
+import api.astro.whats_orders_manager.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.models.Usuario;
 import api.astro.whats_orders_manager.services.UsuarioService;
 import api.astro.whats_orders_manager.services.EmailService;
+import api.astro.whats_orders_manager.util.PaginacionUtil;
+import api.astro.whats_orders_manager.util.PasswordUtil;
+import api.astro.whats_orders_manager.util.ResponseUtil;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpSession;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,11 +20,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.security.SecureRandom;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,27 +30,21 @@ import java.util.stream.Collectors;
  * Permite CRUD completo, activar/desactivar usuarios y reset de contraseñas.
  * Solo accesible por usuarios con rol ADMIN.
  * 
- * @author Astro Dev Team
- * @version 1.0
- * @since Sprint 2 - Fase 3
+ * @version 2.1 - Refactorizado con DTOs y Utils
+ * @since 26/10/2025
  */
 @Controller
 @RequestMapping("/usuarios")
 @PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor
 @Slf4j
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioService usuarioService;
+    private final UsuarioService usuarioService;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
     
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    
-    @Autowired
-    private EmailService emailService;
-    
-    private static final String CARACTERES_PASSWORD = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
-    private static final int LONGITUD_PASSWORD = 12;
+    private static final String URL_LOGIN = "http://localhost:8080/auth/login"; // TODO: Mover a configuración
 
     /**
      * Lista todos los usuarios con paginación, filtros y búsqueda
@@ -71,89 +62,47 @@ public class UsuarioController {
             @RequestParam(required = false) Boolean activo,
             @RequestParam(required = false) String search,
             Model model,
-            HttpSession session) {
-        
+            HttpSession session
+    ) {
         log.info("Listando usuarios - página: {}, tamaño: {}, orden: {} {}", page, size, sort, direction);
         
-        // Agregar datos del usuario logueado
-        agregarDatosUsuarioAlModelo(model, session);
-        
-        // Obtener todos los usuarios
-        List<Usuario> todosUsuarios = usuarioService.findAll();
-        
-        // Aplicar filtros
-        List<Usuario> usuariosFiltrados = todosUsuarios.stream()
-                .filter(u -> rol == null || rol.isEmpty() || u.getRol().equalsIgnoreCase(rol))
-                .filter(u -> activo == null || u.getActivo().equals(activo))
-                .filter(u -> search == null || search.isEmpty() || 
-                        u.getNombre().toLowerCase().contains(search.toLowerCase()) ||
-                        (u.getEmail() != null && u.getEmail().toLowerCase().contains(search.toLowerCase())) ||
-                        (u.getTelefono() != null && u.getTelefono().contains(search)))
-                .collect(Collectors.toList());
-        
-        // Ordenar
-        Comparator<Usuario> comparator;
-        switch (sort.toLowerCase()) {
-            case "email":
-                comparator = Comparator.comparing(Usuario::getEmail, Comparator.nullsLast(String::compareTo));
-                break;
-            case "rol":
-                comparator = Comparator.comparing(Usuario::getRol, Comparator.nullsLast(String::compareTo));
-                break;
-            case "activo":
-                comparator = Comparator.comparing(Usuario::getActivo, Comparator.nullsLast(Boolean::compareTo));
-                break;
-            case "createdate":
-                comparator = Comparator.comparing(Usuario::getCreateDate, Comparator.nullsLast(Timestamp::compareTo));
-                break;
-            default: // nombre
-                comparator = Comparator.comparing(Usuario::getNombre, Comparator.nullsLast(String::compareTo));
+        try {
+            // Agregar datos del usuario logueado
+            agregarDatosUsuarioAlModelo(model, session);
+            
+            // Obtener todos los usuarios
+            List<Usuario> todosUsuarios = usuarioService.findAll();
+            
+            // Convertir Boolean a String para el filtro
+            String estadoFiltro = activo != null ? (activo ? "activo" : "inactivo") : null;
+            
+            // Aplicar filtros
+            List<Usuario> usuariosFiltrados = aplicarFiltros(todosUsuarios, rol, estadoFiltro, search);
+            
+            // Ordenar
+            usuariosFiltrados = ordenarUsuarios(usuariosFiltrados, sort, direction);
+            
+            // Paginación manual
+            PaginacionDTO<Usuario> paginacion = aplicarPaginacion(usuariosFiltrados, page, size);
+            
+            // Calcular estadísticas
+            EstadisticasUsuariosDTO estadisticas = calcularEstadisticas(todosUsuarios);
+            
+            // Agregar al modelo
+            agregarAtributosPaginacion(model, paginacion);
+            agregarFiltrosAlModelo(model, rol, estadoFiltro, search, sort, direction);
+            agregarEstadisticasAlModelo(model, estadisticas);
+            
+            log.info("Mostrando {} usuarios de un total de {}", 
+                    paginacion.getContenido().size(), usuariosFiltrados.size());
+            
+            return "usuarios/usuarios";
+            
+        } catch (Exception e) {
+            log.error("Error al listar usuarios: {}", e.getMessage(), e);
+            model.addAttribute("error", "Error al cargar los usuarios");
+            return "error/error";
         }
-        
-        if ("desc".equalsIgnoreCase(direction)) {
-            comparator = comparator.reversed();
-        }
-        
-        usuariosFiltrados.sort(comparator);
-        
-        // Paginación manual
-        int start = Math.min(page * size, usuariosFiltrados.size());
-        int end = Math.min((page + 1) * size, usuariosFiltrados.size());
-        List<Usuario> usuariosPaginados = usuariosFiltrados.subList(start, end);
-        
-        int totalPages = (int) Math.ceil((double) usuariosFiltrados.size() / size);
-        
-        // Estadísticas
-        long totalUsuarios = todosUsuarios.size();
-        long usuariosActivos = todosUsuarios.stream().filter(Usuario::getActivo).count();
-        long usuariosInactivos = totalUsuarios - usuariosActivos;
-        long admins = todosUsuarios.stream().filter(u -> "ADMIN".equalsIgnoreCase(u.getRol())).count();
-        long users = todosUsuarios.stream().filter(u -> "USER".equalsIgnoreCase(u.getRol())).count();
-        
-        // Agregar al modelo
-        model.addAttribute("usuarios", usuariosPaginados);
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("pageSize", size);
-        model.addAttribute("totalUsuarios", usuariosFiltrados.size());
-        model.addAttribute("sortField", sort);
-        model.addAttribute("sortDir", direction);
-        
-        // Filtros aplicados
-        model.addAttribute("rolFiltro", rol);
-        model.addAttribute("activoFiltro", activo);
-        model.addAttribute("searchFiltro", search);
-        
-        // Estadísticas
-        model.addAttribute("totalUsuariosGlobal", totalUsuarios);
-        model.addAttribute("usuariosActivos", usuariosActivos);
-        model.addAttribute("usuariosInactivos", usuariosInactivos);
-        model.addAttribute("totalAdmins", admins);
-        model.addAttribute("totalUsers", users);
-        
-        log.info("Mostrando {} usuarios de un total de {}", usuariosPaginados.size(), usuariosFiltrados.size());
-        
-        return "usuarios/usuarios";
     }
 
     /**
@@ -165,17 +114,24 @@ public class UsuarioController {
     public String mostrarFormularioNuevo(Model model, HttpSession session) {
         log.info("Mostrando formulario para nuevo usuario");
         
-        agregarDatosUsuarioAlModelo(model, session);
-        
-        Usuario usuario = new Usuario();
-        usuario.setActivo(true); // Activo por defecto
-        usuario.setRol("USER"); // Rol USER por defecto
-        
-        model.addAttribute("usuario", usuario);
-        model.addAttribute("esNuevo", true);
-        model.addAttribute("titulo", "Nuevo Usuario");
-        
-        return "usuarios/form";
+        try {
+            agregarDatosUsuarioAlModelo(model, session);
+            
+            Usuario usuario = new Usuario();
+            usuario.setActivo(true); // Activo por defecto
+            usuario.setRol("USER"); // Rol USER por defecto
+            
+            model.addAttribute("usuario", usuario);
+            model.addAttribute("esNuevo", true);
+            model.addAttribute("titulo", "Nuevo Usuario");
+            
+            return "usuarios/form";
+            
+        } catch (Exception e) {
+            log.error("Error al cargar formulario de nuevo usuario: {}", e.getMessage(), e);
+            model.addAttribute("error", "Error al cargar el formulario");
+            return "error/error";
+        }
     }
 
     /**
@@ -184,29 +140,41 @@ public class UsuarioController {
      * GET /usuarios/form/{id}
      */
     @GetMapping("/form/{id}")
-    public String mostrarFormularioEditar(@PathVariable Integer id, Model model, HttpSession session, RedirectAttributes redirectAttributes) {
+    public String mostrarFormularioEditar(
+            @PathVariable Integer id,
+            Model model,
+            HttpSession session,
+            RedirectAttributes redirectAttributes
+    ) {
         log.info("Mostrando formulario para editar usuario ID: {}", id);
         
-        agregarDatosUsuarioAlModelo(model, session);
-        
-        Optional<Usuario> usuarioOpt = usuarioService.findById(id);
-        
-        if (usuarioOpt.isEmpty()) {
-            log.error("Usuario no encontrado con ID: {}", id);
-            redirectAttributes.addFlashAttribute("error", "Usuario no encontrado");
+        try {
+            agregarDatosUsuarioAlModelo(model, session);
+            
+            Optional<Usuario> usuarioOpt = usuarioService.findById(id);
+            
+            if (usuarioOpt.isEmpty()) {
+                log.warn("Usuario no encontrado con ID: {}", id);
+                redirectAttributes.addFlashAttribute("error", "Usuario no encontrado");
+                return "redirect:/usuarios";
+            }
+            
+            Usuario usuario = usuarioOpt.get();
+            
+            // No enviar la contraseña al formulario
+            usuario.setPassword(null);
+            
+            model.addAttribute("usuario", usuario);
+            model.addAttribute("esNuevo", false);
+            model.addAttribute("titulo", "Editar Usuario");
+            
+            return "usuarios/form";
+            
+        } catch (Exception e) {
+            log.error("Error al cargar formulario de edición: {}", e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", "Error al cargar el formulario");
             return "redirect:/usuarios";
         }
-        
-        Usuario usuario = usuarioOpt.get();
-        
-        // No enviar la contraseña al formulario
-        usuario.setPassword(null);
-        
-        model.addAttribute("usuario", usuario);
-        model.addAttribute("esNuevo", false);
-        model.addAttribute("titulo", "Editar Usuario");
-        
-        return "usuarios/form";
     }
 
     /**
@@ -222,8 +190,8 @@ public class UsuarioController {
             @RequestParam(required = false) String passwordConfirmacion,
             HttpSession session,
             RedirectAttributes redirectAttributes,
-            Model model) {
-        
+            Model model
+    ) {
         log.info("Guardando usuario: {}", usuario.getNombre());
         
         boolean esNuevo = (usuario.getIdUsuario() == null || usuario.getIdUsuario() == 0);
@@ -239,96 +207,26 @@ public class UsuarioController {
         
         try {
             // Validar teléfono único
-            Optional<Usuario> usuarioExistenteTelefono = usuarioService.findByTelefono(usuario.getTelefono());
-            if (usuarioExistenteTelefono.isPresent() && 
-                !usuarioExistenteTelefono.get().getIdUsuario().equals(usuario.getIdUsuario())) {
-                log.error("El teléfono {} ya está registrado", usuario.getTelefono());
-                redirectAttributes.addFlashAttribute("error", "El teléfono ya está registrado por otro usuario");
+            if (!validarTelefonoUnico(usuario, redirectAttributes)) {
                 return "redirect:/usuarios/form" + (esNuevo ? "" : "/" + usuario.getIdUsuario());
             }
             
             // Validar email único
-            if (usuario.getEmail() != null && !usuario.getEmail().isEmpty()) {
-                Optional<Usuario> usuarioExistenteEmail = usuarioService.findByEmail(usuario.getEmail());
-                if (usuarioExistenteEmail.isPresent() && 
-                    !usuarioExistenteEmail.get().getIdUsuario().equals(usuario.getIdUsuario())) {
-                    log.error("El email {} ya está registrado", usuario.getEmail());
-                    redirectAttributes.addFlashAttribute("error", "El email ya está registrado por otro usuario");
-                    return "redirect:/usuarios/form" + (esNuevo ? "" : "/" + usuario.getIdUsuario());
-                }
+            if (!validarEmailUnico(usuario, redirectAttributes)) {
+                return "redirect:/usuarios/form" + (esNuevo ? "" : "/" + usuario.getIdUsuario());
             }
             
             if (esNuevo) {
-                // Nuevo usuario - contraseña obligatoria
-                if (passwordNueva == null || passwordNueva.isEmpty()) {
-                    log.error("Contraseña requerida para nuevo usuario");
-                    redirectAttributes.addFlashAttribute("error", "La contraseña es requerida para nuevos usuarios");
-                    return "redirect:/usuarios/form";
-                }
-                
-                if (!passwordNueva.equals(passwordConfirmacion)) {
-                    log.error("Las contraseñas no coinciden");
-                    redirectAttributes.addFlashAttribute("error", "Las contraseñas no coinciden");
-                    return "redirect:/usuarios/form";
-                }
-                
-                // Encriptar contraseña
-                usuario.setPassword(passwordEncoder.encode(passwordNueva));
-                
-                Usuario guardado = usuarioService.save(usuario);
-                log.info("Usuario creado exitosamente con ID: {}", guardado.getIdUsuario());
-                
-                // Enviar credenciales por email si el usuario tiene email configurado
-                if (guardado.getEmail() != null && !guardado.getEmail().isBlank()) {
-                    try {
-                        String urlLogin = "http://localhost:8080/auth/login"; // TODO: Obtener de configuración
-                        emailService.enviarCredencialesUsuario(guardado, passwordNueva, urlLogin);
-                        log.info("📧 Credenciales enviadas por email a: {}", guardado.getEmail());
-                        redirectAttributes.addFlashAttribute("success", 
-                            "Usuario creado exitosamente. Se han enviado las credenciales por email.");
-                    } catch (MessagingException e) {
-                        log.error("❌ Error al enviar credenciales por email: {}", e.getMessage());
-                        redirectAttributes.addFlashAttribute("warning", 
-                            "Usuario creado exitosamente, pero no se pudieron enviar las credenciales por email.");
-                    }
-                } else {
-                    redirectAttributes.addFlashAttribute("success", "Usuario creado exitosamente");
-                }
-                
+                return guardarNuevoUsuario(usuario, passwordNueva, passwordConfirmacion, redirectAttributes);
             } else {
-                // Actualizar usuario existente
-                Usuario usuarioExistente = usuarioService.findById(usuario.getIdUsuario())
-                        .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-                
-                // Actualizar campos
-                usuarioExistente.setNombre(usuario.getNombre());
-                usuarioExistente.setTelefono(usuario.getTelefono());
-                usuarioExistente.setEmail(usuario.getEmail());
-                usuarioExistente.setRol(usuario.getRol());
-                usuarioExistente.setActivo(usuario.getActivo());
-                
-                // Actualizar contraseña solo si se proporcionó una nueva
-                if (passwordNueva != null && !passwordNueva.isEmpty()) {
-                    if (!passwordNueva.equals(passwordConfirmacion)) {
-                        log.error("Las contraseñas no coinciden");
-                        redirectAttributes.addFlashAttribute("error", "Las contraseñas no coinciden");
-                        return "redirect:/usuarios/form/" + usuario.getIdUsuario();
-                    }
-                    usuarioExistente.setPassword(passwordEncoder.encode(passwordNueva));
-                }
-                
-                usuarioService.save(usuarioExistente);
-                log.info("Usuario actualizado exitosamente: ID {}", usuarioExistente.getIdUsuario());
-                redirectAttributes.addFlashAttribute("success", "Usuario actualizado exitosamente");
+                return actualizarUsuarioExistente(usuario, passwordNueva, passwordConfirmacion, redirectAttributes);
             }
             
         } catch (Exception e) {
-            log.error("Error al guardar usuario", e);
-            redirectAttributes.addFlashAttribute("error", "Error al guardar el usuario: " + e.getMessage());
+            log.error("Error al guardar usuario: {}", e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", "Error al guardar el usuario. Por favor intente nuevamente.");
             return "redirect:/usuarios/form" + (esNuevo ? "" : "/" + usuario.getIdUsuario());
         }
-        
-        return "redirect:/usuarios";
     }
 
     /**
@@ -338,43 +236,33 @@ public class UsuarioController {
      */
     @DeleteMapping("/delete/{id}")
     @ResponseBody
-    public ResponseEntity<?> eliminarUsuario(@PathVariable Integer id, HttpSession session) {
+    public ResponseEntity<Map<String, Object>> eliminarUsuario(
+            @PathVariable Integer id,
+            HttpSession session
+    ) {
         log.info("Eliminando usuario ID: {}", id);
         
         try {
             // Verificar que el usuario no se esté eliminando a sí mismo
-            Usuario usuarioLogueado = (Usuario) session.getAttribute("usuario");
-            if (usuarioLogueado != null && usuarioLogueado.getIdUsuario().equals(id)) {
-                log.error("Un usuario no puede eliminarse a sí mismo");
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "No puedes eliminar tu propia cuenta"
-                ));
+            if (esUsuarioLogueado(id, session)) {
+                log.warn("Intento de auto-eliminación bloqueado para usuario ID: {}", id);
+                return ResponseUtil.error("No puedes eliminar tu propia cuenta");
             }
             
             Optional<Usuario> usuarioOpt = usuarioService.findById(id);
             if (usuarioOpt.isEmpty()) {
-                log.error("Usuario no encontrado con ID: {}", id);
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Usuario no encontrado"
-                ));
+                log.warn("Intento de eliminar usuario inexistente ID: {}", id);
+                return ResponseUtil.error("Usuario no encontrado");
             }
             
             usuarioService.deleteById(id);
-            log.info("Usuario eliminado exitosamente: ID {}", id);
+            log.info("✅ Usuario eliminado exitosamente: ID {}", id);
             
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Usuario eliminado exitosamente"
-            ));
+            return ResponseUtil.success("Usuario eliminado exitosamente");
             
         } catch (Exception e) {
-            log.error("Error al eliminar usuario", e);
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Error al eliminar el usuario: " + e.getMessage()
-            ));
+            log.error("Error al eliminar usuario: {}", e.getMessage(), e);
+            return ResponseUtil.error("Error al eliminar el usuario. Por favor intente nuevamente.");
         }
     }
 
@@ -385,18 +273,17 @@ public class UsuarioController {
      */
     @PostMapping("/toggle-active/{id}")
     @ResponseBody
-    public ResponseEntity<?> toggleActivo(@PathVariable Integer id, HttpSession session) {
+    public ResponseEntity<Map<String, Object>> toggleActivo(
+            @PathVariable Integer id,
+            HttpSession session
+    ) {
         log.info("Cambiando estado activo del usuario ID: {}", id);
         
         try {
             // Verificar que el usuario no se esté desactivando a sí mismo
-            Usuario usuarioLogueado = (Usuario) session.getAttribute("usuario");
-            if (usuarioLogueado != null && usuarioLogueado.getIdUsuario().equals(id)) {
-                log.error("Un usuario no puede desactivarse a sí mismo");
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "No puedes desactivar tu propia cuenta"
-                ));
+            if (esUsuarioLogueado(id, session)) {
+                log.warn("Intento de auto-desactivación bloqueado para usuario ID: {}", id);
+                return ResponseUtil.error("No puedes desactivar tu propia cuenta");
             }
             
             Usuario usuario = usuarioService.findById(id)
@@ -406,20 +293,18 @@ public class UsuarioController {
             usuario.setActivo(nuevoEstado);
             usuarioService.save(usuario);
             
-            log.info("Usuario {} {}", id, nuevoEstado ? "activado" : "desactivado");
+            log.info("✅ Usuario {} {}", id, nuevoEstado ? "activado" : "desactivado");
             
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "activo", nuevoEstado,
-                "message", "Usuario " + (nuevoEstado ? "activado" : "desactivado") + " exitosamente"
-            ));
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("activo", nuevoEstado);
+            response.put("message", "Usuario " + (nuevoEstado ? "activado" : "desactivado") + " exitosamente");
+            
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            log.error("Error al cambiar estado del usuario", e);
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Error al cambiar el estado: " + e.getMessage()
-            ));
+            log.error("Error al cambiar estado del usuario: {}", e.getMessage(), e);
+            return ResponseUtil.error("Error al cambiar el estado. Por favor intente nuevamente.");
         }
     }
 
@@ -430,7 +315,7 @@ public class UsuarioController {
      */
     @PostMapping("/reset-password/{id}")
     @ResponseBody
-    public ResponseEntity<?> resetPassword(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, Object>> resetPassword(@PathVariable Integer id) {
         log.info("Reseteando contraseña del usuario ID: {}", id);
         
         try {
@@ -444,20 +329,18 @@ public class UsuarioController {
             usuario.setPassword(passwordEncoder.encode(nuevaPassword));
             usuarioService.save(usuario);
             
-            log.info("Contraseña reseteada exitosamente para usuario ID: {}", id);
+            log.info("✅ Contraseña reseteada exitosamente para usuario ID: {}", id);
             
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "password", nuevaPassword,
-                "message", "Contraseña reseteada exitosamente"
-            ));
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("password", nuevaPassword);
+            response.put("message", "Contraseña reseteada exitosamente");
+            
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            log.error("Error al resetear contraseña", e);
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Error al resetear la contraseña: " + e.getMessage()
-            ));
+            log.error("Error al resetear contraseña: {}", e.getMessage(), e);
+            return ResponseUtil.error("Error al resetear la contraseña. Por favor intente nuevamente.");
         }
     }
 
@@ -468,12 +351,14 @@ public class UsuarioController {
      */
     @GetMapping("/generar-password")
     @ResponseBody
-    public ResponseEntity<?> generarPassword() {
+    public ResponseEntity<Map<String, Object>> generarPassword() {
         String password = generarPasswordAleatoria();
-        return ResponseEntity.ok(Map.of(
-            "success", true,
-            "password", password
-        ));
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("password", password);
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -484,7 +369,7 @@ public class UsuarioController {
      */
     @PostMapping("/{id}/reenviar-credenciales")
     @ResponseBody
-    public ResponseEntity<?> reenviarCredenciales(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, Object>> reenviarCredenciales(@PathVariable Integer id) {
         log.info("Reenviando credenciales del usuario ID: {}", id);
         
         try {
@@ -493,11 +378,8 @@ public class UsuarioController {
             
             // Validar que el usuario tenga email
             if (usuario.getEmail() == null || usuario.getEmail().isBlank()) {
-                log.error("El usuario {} no tiene email configurado", usuario.getNombre());
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "El usuario no tiene email configurado"
-                ));
+                log.warn("El usuario {} no tiene email configurado", usuario.getNombre());
+                return ResponseUtil.error("El usuario no tiene email configurado");
             }
             
             // Generar nueva contraseña temporal
@@ -508,46 +390,300 @@ public class UsuarioController {
             usuarioService.save(usuario);
             
             // Enviar credenciales por email
-            String urlLogin = "http://localhost:8080/auth/login"; // TODO: Obtener de configuración
-            emailService.enviarCredencialesUsuario(usuario, nuevaPassword, urlLogin);
+            emailService.enviarCredencialesUsuario(usuario, nuevaPassword, URL_LOGIN);
             
             log.info("✅ Credenciales reenviadas exitosamente a: {}", usuario.getEmail());
             
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Credenciales enviadas exitosamente a " + usuario.getEmail()
-            ));
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Credenciales enviadas exitosamente a " + usuario.getEmail());
+            
+            return ResponseEntity.ok(response);
             
         } catch (MessagingException e) {
-            log.error("❌ Error al enviar credenciales por email: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Error al enviar el email: " + e.getMessage()
-            ));
+            log.error("❌ Error al enviar credenciales por email: {}", e.getMessage(), e);
+            return ResponseUtil.error("Error al enviar el email. Por favor intente nuevamente.");
         } catch (Exception e) {
-            log.error("❌ Error al reenviar credenciales", e);
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Error al reenviar credenciales: " + e.getMessage()
-            ));
+            log.error("❌ Error al reenviar credenciales: {}", e.getMessage(), e);
+            return ResponseUtil.error("Error al reenviar credenciales. Por favor intente nuevamente.");
         }
     }
 
     // ==================== MÉTODOS PRIVADOS ====================
 
     /**
-     * Genera una contraseña aleatoria segura
+     * Aplica filtros a la lista de usuarios
      */
-    private String generarPasswordAleatoria() {
-        SecureRandom random = new SecureRandom();
-        StringBuilder password = new StringBuilder(LONGITUD_PASSWORD);
-        
-        for (int i = 0; i < LONGITUD_PASSWORD; i++) {
-            int index = random.nextInt(CARACTERES_PASSWORD.length());
-            password.append(CARACTERES_PASSWORD.charAt(index));
+    private List<Usuario> aplicarFiltros(List<Usuario> usuarios, String rol, String estado, String search) {
+        // Filtrar por rol
+        if (rol != null && !rol.isEmpty()) {
+            usuarios = usuarios.stream()
+                    .filter(u -> u.getRol().equalsIgnoreCase(rol))
+                    .collect(Collectors.toList());
         }
         
-        return password.toString();
+        // Filtrar por estado
+        if (estado != null && !estado.isEmpty()) {
+            boolean activo = "activo".equalsIgnoreCase(estado);
+            usuarios = usuarios.stream()
+                    .filter(u -> u.getActivo() == activo)
+                    .collect(Collectors.toList());
+        }
+        
+        // Filtrar por búsqueda (nombre, email, teléfono)
+        if (search != null && !search.isEmpty()) {
+            String searchLower = search.toLowerCase();
+            usuarios = usuarios.stream()
+                    .filter(u -> {
+                        String nombre = u.getNombre() != null ? u.getNombre().toLowerCase() : "";
+                        String email = u.getEmail() != null ? u.getEmail().toLowerCase() : "";
+                        String telefono = u.getTelefono() != null ? u.getTelefono() : "";
+                        
+                        return nombre.contains(searchLower) 
+                            || email.contains(searchLower) 
+                            || telefono.contains(searchLower);
+                    })
+                    .collect(Collectors.toList());
+        }
+        
+        return usuarios;
+    }
+
+    /**
+     * Ordena la lista de usuarios según el campo y dirección especificados
+     */
+    private List<Usuario> ordenarUsuarios(List<Usuario> usuarios, String sortBy, String sortDir) {
+        Comparator<Usuario> comparator;
+        
+        switch (sortBy) {
+            case "nombre":
+                comparator = Comparator.comparing(Usuario::getNombre, String.CASE_INSENSITIVE_ORDER);
+                break;
+            case "email":
+                comparator = Comparator.comparing(u -> u.getEmail() != null ? u.getEmail() : "", 
+                                                 String.CASE_INSENSITIVE_ORDER);
+                break;
+            case "telefono":
+                comparator = Comparator.comparing(u -> u.getTelefono() != null ? u.getTelefono() : "",
+                                                 String.CASE_INSENSITIVE_ORDER);
+                break;
+            case "rol":
+                comparator = Comparator.comparing(Usuario::getRol, String.CASE_INSENSITIVE_ORDER);
+                break;
+            case "activo":
+                comparator = Comparator.comparing(Usuario::getActivo);
+                break;
+            default:
+                comparator = Comparator.comparing(Usuario::getId);
+        }
+        
+        if ("desc".equalsIgnoreCase(sortDir)) {
+            comparator = comparator.reversed();
+        }
+        
+        return usuarios.stream()
+                .sorted(comparator)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Aplica paginación manual a la lista de usuarios
+     */
+    private PaginacionDTO<Usuario> aplicarPaginacion(List<Usuario> usuarios, int page, int size) {
+        int totalElementos = usuarios.size();
+        int totalPaginas = (int) Math.ceil((double) totalElementos / size);
+        
+        // Ajustar página si está fuera de rango
+        page = Math.max(0, Math.min(page, totalPaginas - 1));
+        
+        int inicio = page * size;
+        int fin = Math.min(inicio + size, totalElementos);
+        
+        List<Usuario> usuariosPaginados = usuarios.subList(inicio, fin);
+        
+        return new PaginacionDTO<Usuario>(usuariosPaginados, page, size, totalElementos, totalPaginas);
+    }
+
+    /**
+     * Calcula estadísticas de usuarios
+     */
+    private EstadisticasUsuariosDTO calcularEstadisticas(List<Usuario> todosUsuarios) {
+        long totalUsuarios = todosUsuarios.size();
+        long usuariosActivos = todosUsuarios.stream().filter(Usuario::getActivo).count();
+        long usuariosInactivos = totalUsuarios - usuariosActivos;
+        long administradores = todosUsuarios.stream()
+                .filter(u -> "ADMIN".equalsIgnoreCase(u.getRol()))
+                .count();
+        long vendedores = todosUsuarios.stream()
+                .filter(u -> "VENDEDOR".equalsIgnoreCase(u.getRol()))
+                .count();
+        
+        return new EstadisticasUsuariosDTO(totalUsuarios, usuariosActivos, usuariosInactivos, 
+                                       administradores, vendedores);
+    }
+
+    /**
+     * Agrega atributos de paginación al modelo
+     */
+    private void agregarAtributosPaginacion(Model model, PaginacionDTO<Usuario> resultado) {
+        model.addAttribute("usuarios", resultado.getContenido());
+        model.addAttribute("currentPage", resultado.getPaginaActual());
+        model.addAttribute("totalPages", resultado.getTotalPaginas());
+        model.addAttribute("totalItems", resultado.getTotalElementos());
+        model.addAttribute("pageSize", resultado.getTamanoPagina());
+    }
+
+    /**
+     * Agrega atributos de filtros al modelo
+     */
+    private void agregarFiltrosAlModelo(Model model, String rol, String estado, String search, 
+                                       String sortBy, String sortDir) {
+        model.addAttribute("filtroRol", rol != null ? rol : "");
+        model.addAttribute("filtroEstado", estado != null ? estado : "");
+        model.addAttribute("search", search != null ? search : "");
+        model.addAttribute("sortBy", sortBy);
+        model.addAttribute("sortDir", sortDir);
+    }
+
+    /**
+     * Agrega estadísticas al modelo
+     */
+    private void agregarEstadisticasAlModelo(Model model, EstadisticasUsuariosDTO stats) {
+        model.addAttribute("totalUsuarios", stats.total());
+        model.addAttribute("usuariosActivos", stats.activos());
+        model.addAttribute("usuariosInactivos", stats.inactivos());
+        model.addAttribute("totalAdministradores", stats.administradores());
+        model.addAttribute("totalVendedores", stats.vendedores());
+    }
+
+    /**
+     * Valida que el teléfono sea único
+     */
+    private boolean validarTelefonoUnico(Usuario usuario, RedirectAttributes redirectAttributes) {
+        Optional<Usuario> usuarioExistente = usuarioService.findByTelefono(usuario.getTelefono());
+        
+        if (usuarioExistente.isPresent() && !usuarioExistente.get().getId().equals(usuario.getId())) {
+            redirectAttributes.addFlashAttribute("error", 
+                "Ya existe un usuario con el teléfono " + usuario.getTelefono());
+            log.warn("Intento de guardar usuario con teléfono duplicado: {}", usuario.getTelefono());
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Valida que el email sea único (si está presente)
+     */
+    private boolean validarEmailUnico(Usuario usuario, RedirectAttributes redirectAttributes) {
+        if (usuario.getEmail() != null && !usuario.getEmail().isBlank()) {
+            Optional<Usuario> usuarioExistente = usuarioService.findByEmail(usuario.getEmail());
+            
+            if (usuarioExistente.isPresent() && !usuarioExistente.get().getId().equals(usuario.getId())) {
+                redirectAttributes.addFlashAttribute("error", 
+                    "Ya existe un usuario con el email " + usuario.getEmail());
+                log.warn("Intento de guardar usuario con email duplicado: {}", usuario.getEmail());
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Guarda un nuevo usuario con contraseña y email
+     */
+    private String guardarNuevoUsuario(Usuario usuario, String password, String confirmPassword,
+                                      RedirectAttributes redirectAttributes) {
+        // Validar contraseña
+        if (password == null || password.length() < 6) {
+            redirectAttributes.addFlashAttribute("error", "La contraseña debe tener al menos 6 caracteres");
+            redirectAttributes.addFlashAttribute("usuario", usuario);
+            return "redirect:/usuarios/nuevo";
+        }
+        
+        if (!password.equals(confirmPassword)) {
+            redirectAttributes.addFlashAttribute("error", "Las contraseñas no coinciden");
+            redirectAttributes.addFlashAttribute("usuario", usuario);
+            return "redirect:/usuarios/nuevo";
+        }
+        
+        // Encriptar contraseña
+        usuario.setPassword(passwordEncoder.encode(password));
+        usuario.setActivo(true);
+        
+        usuarioService.save(usuario);
+        log.info("✅ Nuevo usuario creado: {} ({})", usuario.getNombre(), usuario.getRol());
+        
+        // Enviar credenciales por email si tiene email
+        if (usuario.getEmail() != null && !usuario.getEmail().isBlank()) {
+            try {
+                emailService.enviarCredencialesUsuario(usuario, password, URL_LOGIN);
+                log.info("📧 Credenciales enviadas a: {}", usuario.getEmail());
+            } catch (MessagingException e) {
+                log.error("❌ Error al enviar credenciales por email: {}", e.getMessage(), e);
+                redirectAttributes.addFlashAttribute("warning", 
+                    "Usuario creado pero no se pudo enviar el email de credenciales");
+            }
+        }
+        
+        redirectAttributes.addFlashAttribute("success", "Usuario creado exitosamente");
+        return "redirect:/usuarios";
+    }
+
+    /**
+     * Actualiza un usuario existente
+     */
+    private String actualizarUsuarioExistente(Usuario usuario, String password, String confirmPassword,
+                                             RedirectAttributes redirectAttributes) {
+        Usuario usuarioExistente = usuarioService.findById(usuario.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        // Actualizar datos básicos
+        usuarioExistente.setNombre(usuario.getNombre());
+        usuarioExistente.setTelefono(usuario.getTelefono());
+        usuarioExistente.setEmail(usuario.getEmail());
+        usuarioExistente.setRol(usuario.getRol());
+        
+        // Actualizar contraseña solo si se proporciona
+        if (password != null && !password.isBlank()) {
+            if (password.length() < 6) {
+                redirectAttributes.addFlashAttribute("error", "La contraseña debe tener al menos 6 caracteres");
+                redirectAttributes.addFlashAttribute("usuario", usuario);
+                return "redirect:/usuarios/editar/" + usuario.getId();
+            }
+            
+            if (!password.equals(confirmPassword)) {
+                redirectAttributes.addFlashAttribute("error", "Las contraseñas no coinciden");
+                redirectAttributes.addFlashAttribute("usuario", usuario);
+                return "redirect:/usuarios/editar/" + usuario.getId();
+            }
+            
+            usuarioExistente.setPassword(passwordEncoder.encode(password));
+            log.info("🔐 Contraseña actualizada para usuario: {}", usuarioExistente.getNombre());
+        }
+        
+        usuarioService.save(usuarioExistente);
+        log.info("✅ Usuario actualizado: {} ({})", usuarioExistente.getNombre(), usuarioExistente.getRol());
+        
+        redirectAttributes.addFlashAttribute("success", "Usuario actualizado exitosamente");
+        return "redirect:/usuarios";
+    }
+
+    /**
+     * Verifica si el usuario a eliminar/modificar es el usuario logueado
+     */
+    private boolean esUsuarioLogueado(Integer usuarioId, HttpSession session) {
+        Usuario usuarioLogueado = (Usuario) session.getAttribute("usuario");
+        return usuarioLogueado != null && usuarioLogueado.getId().equals(usuarioId);
+    }
+
+    /**
+     * Genera una contraseña aleatoria segura
+     * Delegado a PasswordUtil para reutilización
+     */
+    private String generarPasswordAleatoria() {
+        return PasswordUtil.generarPasswordAleatoria();
     }
 
     /**

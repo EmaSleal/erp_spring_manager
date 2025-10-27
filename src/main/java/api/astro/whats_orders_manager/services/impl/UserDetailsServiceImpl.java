@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.models.Usuario;
 import api.astro.whats_orders_manager.repositories.UsuarioRepository;
 
 import api.astro.whats_orders_manager.services.UsuarioService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.sql.Timestamp;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
@@ -26,9 +28,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private UsuarioService usuarioService;
 
     @Override
-    public UserDetails loadUserByUsername(String nombre) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByNombre(nombre)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + nombre));
+    public UserDetails loadUserByUsername(String usernameOrPhone) throws UsernameNotFoundException {
+        // Buscar usuario por teléfono O por nombre (más flexible)
+        Usuario usuario = usuarioRepository.findByTelefono(usernameOrPhone)
+                .or(() -> usuarioRepository.findByNombre(usernameOrPhone))
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + usernameOrPhone));
+
+        // Verificar si el usuario está activo
+        if (usuario.getActivo() == null || !usuario.getActivo()) {
+            throw new UsernameNotFoundException("Usuario inactivo: " + usernameOrPhone);
+        }
 
         // Actualizar último acceso
         actualizarUltimoAcceso(usuario);
@@ -47,11 +56,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     private void actualizarUltimoAcceso(Usuario usuario) {
         try {
-            usuario.setUltimoAcceso(new Timestamp(System.currentTimeMillis()));
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            usuario.setUltimoAcceso(now);
             usuarioRepository.save(usuario);
+            log.info("Último acceso actualizado para usuario: {} (ID: {}) - Timestamp: {}", 
+                    usuario.getNombre(), usuario.getIdUsuario(), now);
         } catch (Exception e) {
             // Log del error pero no interrumpir el login
-            System.err.println("Error al actualizar último acceso para usuario " + usuario.getTelefono() + ": " + e.getMessage());
+            log.error("Error al actualizar último acceso para usuario {} (ID: {}): {}", 
+                    usuario.getNombre(), usuario.getIdUsuario(), e.getMessage(), e);
         }
     }
 

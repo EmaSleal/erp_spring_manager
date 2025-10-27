@@ -6,7 +6,9 @@ import api.astro.whats_orders_manager.services.ClienteService;
 import api.astro.whats_orders_manager.services.FacturaService;
 import api.astro.whats_orders_manager.services.ProductoService;
 import api.astro.whats_orders_manager.services.UsuarioService;
-import org.springframework.beans.factory.annotation.Autowired;
+import api.astro.whats_orders_manager.util.StringUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
@@ -15,7 +17,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,23 +32,21 @@ import java.util.List;
  * - Mostrar módulos disponibles según rol del usuario
  * - Cargar información del usuario actual
  * - Generar breadcrumbs y datos de navegación
+ * 
+ * @version 3.1 - Aplicado StringUtil
+ * @since 26/10/2025
  * ============================================================================
  */
 @Controller
 @RequestMapping("/dashboard")
+@RequiredArgsConstructor
+@Slf4j
 public class DashboardController {
 
-    @Autowired
-    private ClienteService clienteService;
-
-    @Autowired
-    private ProductoService productoService;
-
-    @Autowired
-    private FacturaService facturaService;
-
-    @Autowired
-    private UsuarioService usuarioService;
+    private final ClienteService clienteService;
+    private final ProductoService productoService;
+    private final FacturaService facturaService;
+    private final UsuarioService usuarioService;
 
     /**
      * Muestra el dashboard principal con estadísticas y módulos disponibles
@@ -58,35 +57,69 @@ public class DashboardController {
      */
     @GetMapping
     public String mostrarDashboard(Model model, Authentication authentication) {
-        // Obtener usuario actual
-        Usuario usuario = obtenerUsuarioActual(authentication);
+        log.info("Accediendo al dashboard");
+        
+        try {
+            // Obtener usuario actual
+            Usuario usuario = obtenerUsuarioActual(authentication);
+            log.debug("Usuario actual: {} ({})", usuario.getNombre(), usuario.getRol());
 
-        // Cargar estadísticas
+            // Cargar estadísticas del sistema
+            cargarEstadisticas(model);
+
+            // Cargar información del usuario para el navbar
+            cargarInformacionUsuario(model, usuario);
+
+            // Cargar módulos disponibles según rol
+            List<ModuloDTO> modulos = cargarModulosSegunRol(usuario.getRol());
+            model.addAttribute("modulos", modulos);
+
+            // Breadcrumbs
+            model.addAttribute("currentPage", "dashboard");
+            model.addAttribute("title", "Dashboard");
+
+            log.info("Dashboard cargado exitosamente para usuario: {}", usuario.getNombre());
+            return "dashboard/dashboard";
+            
+        } catch (Exception e) {
+            log.error("Error al cargar dashboard: {}", e.getMessage(), e);
+            model.addAttribute("error", "Error al cargar el dashboard");
+            return "error/error";
+        }
+    }
+
+    // ==================== MÉTODOS PRIVADOS ====================
+
+    /**
+     * Carga las estadísticas del sistema en el modelo
+     */
+    private void cargarEstadisticas(Model model) {
         long totalClientes = clienteService.count();
         long totalProductos = productoService.count();
         long facturasHoy = facturaService.countByFechaToday();
         BigDecimal totalPendiente = facturaService.sumTotalPendiente();
 
-        // Agregar estadísticas al modelo
         model.addAttribute("totalClientes", totalClientes);
         model.addAttribute("totalProductos", totalProductos);
         model.addAttribute("facturasHoy", facturasHoy);
         model.addAttribute("totalPendiente", totalPendiente != null ? totalPendiente : BigDecimal.ZERO);
+        
+        log.debug("Estadísticas cargadas - Clientes: {}, Productos: {}, Facturas hoy: {}", 
+                totalClientes, totalProductos, facturasHoy);
+    }
 
-        // Información de usuario para navbar
+    /**
+     * Carga la información del usuario en el modelo para el navbar
+     */
+    private void cargarInformacionUsuario(Model model, Usuario usuario) {
         model.addAttribute("userName", usuario.getNombre());
         model.addAttribute("userRole", usuario.getRol());
-        model.addAttribute("userInitials", generarIniciales(usuario.getNombre()));
-
-        // Módulos disponibles según rol
-        List<ModuloDTO> modulos = cargarModulosSegunRol(usuario.getRol());
-        model.addAttribute("modulos", modulos);
-
-        // Breadcrumbs
-        model.addAttribute("currentPage", "dashboard");
-        model.addAttribute("title", "Dashboard");
-
-        return "dashboard/dashboard";
+        model.addAttribute("userInitials", StringUtil.generarIniciales(usuario.getNombre()));
+        
+        // Avatar si existe
+        if (usuario.getAvatar() != null && !usuario.getAvatar().isEmpty()) {
+            model.addAttribute("userAvatar", usuario.getAvatar());
+        }
     }
 
     /**
@@ -94,41 +127,25 @@ public class DashboardController {
      * 
      * @param authentication Objeto de autenticación de Spring Security
      * @return Usuario actual
+     * @throws RuntimeException si el usuario no está autenticado o no se encuentra
      */
     private Usuario obtenerUsuarioActual(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof UserDetails userDetails) {
-            String telefono = userDetails.getUsername();
-            return usuarioService.findByTelefono(telefono)
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        if (authentication == null) {
+            log.error("Authentication es null");
+            throw new RuntimeException("Usuario no autenticado");
         }
-        throw new RuntimeException("Usuario no autenticado");
-    }
-
-    /**
-     * Genera las iniciales del nombre del usuario
-     * 
-     * @param nombre Nombre completo del usuario
-     * @return Iniciales en mayúsculas (máximo 2 caracteres)
-     */
-    private String generarIniciales(String nombre) {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            return "US";
-        }
-
-        String[] partes = nombre.trim().split("\\s+");
         
-        if (partes.length >= 2) {
-            // Si tiene dos o más palabras, usar primera letra de las primeras dos
-            return String.valueOf(partes[0].charAt(0)) + partes[1].charAt(0);
-        } else {
-            // Si tiene una sola palabra, usar las dos primeras letras
-            String palabra = partes[0];
-            if (palabra.length() >= 2) {
-                return palabra.substring(0, 2);
-            } else {
-                return palabra + "U"; // Agregar 'U' si solo tiene una letra
-            }
+        if (!(authentication.getPrincipal() instanceof UserDetails userDetails)) {
+            log.error("Principal no es UserDetails: {}", authentication.getPrincipal().getClass());
+            throw new RuntimeException("Usuario no autenticado correctamente");
         }
+        
+        String telefono = userDetails.getUsername();
+        return usuarioService.findByTelefono(telefono)
+                .orElseThrow(() -> {
+                    log.error("Usuario no encontrado con teléfono: {}", telefono);
+                    return new RuntimeException("Usuario no encontrado");
+                });
     }
 
     /**
@@ -144,6 +161,8 @@ public class DashboardController {
      * @return Lista de módulos con permisos y estado
      */
     private List<ModuloDTO> cargarModulosSegunRol(String rol) {
+        log.debug("Cargando módulos para rol: {}", rol);
+        
         List<ModuloDTO> modulos = new ArrayList<>();
         
         boolean esAdmin = "ADMIN".equals(rol);
@@ -151,8 +170,8 @@ public class DashboardController {
         boolean esVendedor = "VENDEDOR".equals(rol);
         boolean esVisualizador = "VISUALIZADOR".equals(rol);
 
-        // Clientes (ADMIN, USER, VENDEDOR, VISUALIZADOR pueden ver)
-        modulos.add(new ModuloDTO(
+        // Clientes (todos pueden ver)
+        modulos.add(crearModulo(
                 "Clientes",
                 "Gestión de clientes",
                 "fas fa-users",
@@ -162,8 +181,8 @@ public class DashboardController {
                 esAdmin || esUser || esVendedor || esVisualizador
         ));
 
-        // Productos (ADMIN, USER, VENDEDOR, VISUALIZADOR pueden ver)
-        modulos.add(new ModuloDTO(
+        // Productos (todos pueden ver)
+        modulos.add(crearModulo(
                 "Productos",
                 "Catálogo de productos",
                 "fas fa-box",
@@ -173,8 +192,8 @@ public class DashboardController {
                 esAdmin || esUser || esVendedor || esVisualizador
         ));
 
-        // Facturas (ADMIN, USER, VENDEDOR, VISUALIZADOR pueden ver)
-        modulos.add(new ModuloDTO(
+        // Facturas (todos pueden ver)
+        modulos.add(crearModulo(
                 "Facturas",
                 "Gestión de facturas",
                 "fas fa-file-invoice-dollar",
@@ -185,7 +204,7 @@ public class DashboardController {
         ));
 
         // Usuarios (solo ADMIN)
-        modulos.add(new ModuloDTO(
+        modulos.add(crearModulo(
                 "Usuarios",
                 "Gestión de usuarios",
                 "fas fa-user-cog",
@@ -195,30 +214,30 @@ public class DashboardController {
                 esAdmin
         ));
 
-        // Pedidos (próximamente - visible para ADMIN, USER, VENDEDOR)
-        modulos.add(new ModuloDTO(
+        // Pedidos (próximamente - ADMIN, USER, VENDEDOR)
+        modulos.add(crearModulo(
                 "Pedidos",
                 "Gestión de pedidos",
                 "fas fa-shopping-cart",
                 "#F44336",
                 "/pedidos",
-                false,  // No implementado aún
+                false,
                 esAdmin || esUser || esVendedor
         ));
 
-        // Reportes (ADMIN y USER pueden ver)
-        modulos.add(new ModuloDTO(
+        // Reportes (ADMIN y USER)
+        modulos.add(crearModulo(
                 "Reportes",
                 "Informes y estadísticas",
                 "fas fa-chart-bar",
                 "#00BCD4",
                 "/reportes",
-                false,  // No implementado aún
+                true,
                 esAdmin || esUser
         ));
 
         // Configuración (solo ADMIN)
-        modulos.add(new ModuloDTO(
+        modulos.add(crearModulo(
                 "Configuración",
                 "Ajustes del sistema",
                 "fas fa-cog",
@@ -228,6 +247,25 @@ public class DashboardController {
                 esAdmin
         ));
 
+        long modulosVisibles = modulos.stream().filter(ModuloDTO::isVisible).count();
+        log.debug("Módulos cargados: {} visibles de {}", modulosVisibles, modulos.size());
+
         return modulos;
+    }
+
+    /**
+     * Método auxiliar para crear un ModuloDTO
+     * Reduce duplicación de código
+     */
+    private ModuloDTO crearModulo(
+            String titulo,
+            String descripcion,
+            String icono,
+            String color,
+            String url,
+            boolean implementado,
+            boolean visible
+    ) {
+        return new ModuloDTO(titulo, descripcion, icono, color, url, implementado, visible);
     }
 }

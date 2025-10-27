@@ -37,9 +37,17 @@ function openModal(button) {
         .then(data => {
             // Datos de la Factura
             document.getElementById("modal-idFactura").innerText = data.idFactura;
+            
+            // ✅ NUEVO: Mostrar número de factura y serie
+            document.getElementById("modal-numeroFactura").innerText = data.numeroFactura || 'N/A';
+            document.getElementById("modal-serie").innerText = data.serie || 'N/A';
+            
             document.getElementById("modal-createDate").innerText = new Date(data.createDate).toLocaleString('es-MX');
             document.getElementById("modal-updateDate").innerText = new Date(data.updateDate).toLocaleString('es-MX');
             document.getElementById("modal-fechaEntrega").innerText = data.fechaEntrega;
+            
+            // ✅ NUEVO: Mostrar fecha de pago
+            document.getElementById("modal-fechaPago").innerText = data.fechaPago || 'No especificada';
             
             // Estado con badge de Bootstrap
             const estadoBadge = document.getElementById("modal-entregado");

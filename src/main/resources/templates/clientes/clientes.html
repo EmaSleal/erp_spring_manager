@@ -102,6 +102,59 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Paginación -->
+                    <div th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <div class="text-muted">
+                            Mostrando <span th:text="${#lists.size(clientes)}"></span> de 
+                            <span th:text="${totalItems}"></span> clientes
+                        </div>
+                        <nav aria-label="Paginación de clientes">
+                            <ul class="pagination mb-0">
+                                <!-- Primera página -->
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/clientes(page=0, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                
+                                <!-- Página anterior -->
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/clientes(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+
+                                <!-- Números de página -->
+                                <li class="page-item" 
+                                    th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
+                                    th:if="${pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2}"
+                                    th:classappend="${pageNumber == currentPage} ? 'active'">
+                                    <a class="page-link" 
+                                       th:href="@{/clientes(page=${pageNumber}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                                       th:text="${pageNumber + 1}">1</a>
+                                </li>
+
+                                <!-- Página siguiente -->
+                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/clientes(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                
+                                <!-- Última página -->
+                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/clientes(page=${totalPages - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
                 </div>
             </div>
         </div>
