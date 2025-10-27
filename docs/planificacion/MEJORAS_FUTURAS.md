@@ -18,7 +18,1123 @@
 
 ## 🔴 MEJORAS DE ALTA PRIORIDAD
 
-### 1. CAMBIAR USERNAME DE TELÉFONO A NOMBRE DE USUARIO
+### 1. SISTEMA DE GESTIÓN MULTI-DIVISA
+
+**Estado:** 📝 Planificado  
+**Prioridad:** Alta  
+**Sprint sugerido:** Sprint 3  
+**Fecha de solicitud:** 20/10/2025
+
+#### Descripción
+Implementar un **sistema completo de gestión de múltiples divisas** que permita facturar en diferentes monedas, registrar tipos de cambio diarios, y mantener una divisa maestra para reportes consolidados.
+
+#### Contexto Actual
+
+Actualmente el sistema tiene configurada una divisa en `configuracion_facturacion` (campo `moneda` y `simbolo_moneda`), pero:
+
+❌ **Solo soporta UNA divisa** para todo el sistema  
+❌ **No permite facturar en diferentes monedas** según el cliente  
+❌ **No registra tipos de cambio**  
+❌ **No convierte valores** entre divisas  
+❌ **Reportes en una sola moneda**  
+
+#### Solución Propuesta
+
+Implementar un sistema que permita:
+
+✅ **Gestionar múltiples divisas** (USD, MXN, EUR, etc.)  
+✅ **Definir una divisa maestra** para reportes consolidados  
+✅ **Registrar tipos de cambio diarios** de forma manual o automática  
+✅ **Facturar en cualquier divisa** disponible  
+✅ **Ver facturas con divisa original** + valor convertido a divisa maestra  
+✅ **Reportes consolidados** en divisa maestra  
+
+---
+
+#### 📊 Modelo de Base de Datos
+
+##### 1. Tabla de Divisas
+
+```sql
+CREATE TABLE divisa (
+    id_divisa INT PRIMARY KEY AUTO_INCREMENT,
+    codigo VARCHAR(3) NOT NULL UNIQUE COMMENT 'Código ISO 4217: USD, MXN, EUR, etc.',
+    nombre VARCHAR(50) NOT NULL COMMENT 'Nombre completo: Dólar Estadounidense, Peso Mexicano',
+    simbolo VARCHAR(10) NOT NULL COMMENT 'Símbolo: $, MX$, €, etc.',
+    es_maestra BOOLEAN DEFAULT FALSE COMMENT 'Divisa principal para reportes',
+    activo BOOLEAN DEFAULT TRUE,
+    decimales INT DEFAULT 2 COMMENT 'Cantidad de decimales para esta divisa',
+    pais VARCHAR(50) COMMENT 'País de origen',
+    
+    -- Auditoría
+    create_by INT,
+    create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_by INT,
+    update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    CONSTRAINT uk_codigo_divisa UNIQUE (codigo),
+    CONSTRAINT chk_solo_una_maestra CHECK (
+        (SELECT COUNT(*) FROM divisa WHERE es_maestra = TRUE AND activo = TRUE) <= 1
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Catálogo de divisas del sistema';
+
+-- Datos iniciales
+INSERT INTO divisa (codigo, nombre, simbolo, es_maestra, decimales, pais) VALUES
+('MXN', 'Peso Mexicano', 'MX$', TRUE, 2, 'México'),
+('USD', 'Dólar Estadounidense', '$', FALSE, 2, 'Estados Unidos'),
+('EUR', 'Euro', '€', FALSE, 2, 'Unión Europea'),
+('GTQ', 'Quetzal Guatemalteco', 'Q', FALSE, 2, 'Guatemala'),
+('HNL', 'Lempira Hondureña', 'L', FALSE, 2, 'Honduras');
+```
+
+##### 2. Tabla de Tipos de Cambio
+
+```sql
+CREATE TABLE tipo_cambio (
+    id_tipo_cambio INT PRIMARY KEY AUTO_INCREMENT,
+    id_divisa_origen INT NOT NULL COMMENT 'Divisa desde la que se convierte',
+    id_divisa_destino INT NOT NULL COMMENT 'Divisa a la que se convierte',
+    
+    -- Tipo de cambio
+    fecha DATE NOT NULL COMMENT 'Fecha de vigencia del tipo de cambio',
+    tasa DECIMAL(18, 6) NOT NULL COMMENT 'Tasa de conversión: 1 origen = X destino',
+    tasa_compra DECIMAL(18, 6) COMMENT 'Tasa de compra (opcional)',
+    tasa_venta DECIMAL(18, 6) COMMENT 'Tasa de venta (opcional)',
+    
+    -- Metadatos
+    fuente VARCHAR(100) COMMENT 'Fuente del tipo de cambio: Manual, Banco Central, API, etc.',
+    activo BOOLEAN DEFAULT TRUE,
+    
+    -- Auditoría
+    create_by INT,
+    create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_by INT,
+    update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (id_divisa_origen) REFERENCES divisa(id_divisa),
+    FOREIGN KEY (id_divisa_destino) REFERENCES divisa(id_divisa),
+    
+    -- Solo un tipo de cambio activo por par de divisas por día
+    CONSTRAINT uk_tipo_cambio_diario UNIQUE (id_divisa_origen, id_divisa_destino, fecha, activo),
+    
+    INDEX idx_fecha_tipo_cambio (fecha DESC),
+    INDEX idx_divisas_tipo_cambio (id_divisa_origen, id_divisa_destino)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Histórico de tipos de cambio entre divisas';
+
+-- Ejemplo de datos iniciales (USD -> MXN al 20/10/2025)
+INSERT INTO tipo_cambio (id_divisa_origen, id_divisa_destino, fecha, tasa, tasa_compra, tasa_venta, fuente) 
+VALUES 
+(2, 1, '2025-10-20', 19.85, 19.75, 19.95, 'Banco de México'),
+(3, 1, '2025-10-20', 21.20, 21.10, 21.30, 'Banco Central Europeo');
+```
+
+##### 3. Modificar Tabla Factura
+
+```sql
+-- Agregar campos de divisa a la tabla factura
+ALTER TABLE factura 
+ADD COLUMN id_divisa INT COMMENT 'Divisa en la que se emitió la factura',
+ADD COLUMN tipo_cambio_registrado DECIMAL(18, 6) COMMENT 'Tipo de cambio al momento de crear la factura',
+ADD COLUMN total_divisa_maestra DECIMAL(10, 2) COMMENT 'Total convertido a divisa maestra para reportes';
+
+-- Relación con tabla divisa
+ALTER TABLE factura
+ADD CONSTRAINT fk_factura_divisa 
+FOREIGN KEY (id_divisa) REFERENCES divisa(id_divisa);
+
+-- Índice para reportes
+CREATE INDEX idx_factura_divisa ON factura(id_divisa);
+
+-- Trigger para calcular total_divisa_maestra automáticamente
+DELIMITER $$
+
+CREATE TRIGGER tr_factura_calcular_total_maestra
+BEFORE INSERT ON factura
+FOR EACH ROW
+BEGIN
+    DECLARE divisa_maestra_id INT;
+    DECLARE tipo_cambio DECIMAL(18, 6);
+    
+    -- Obtener ID de divisa maestra
+    SELECT id_divisa INTO divisa_maestra_id 
+    FROM divisa 
+    WHERE es_maestra = TRUE AND activo = TRUE 
+    LIMIT 1;
+    
+    -- Si la factura es en divisa maestra, el total es el mismo
+    IF NEW.id_divisa = divisa_maestra_id THEN
+        SET NEW.total_divisa_maestra = NEW.total;
+        SET NEW.tipo_cambio_registrado = 1.0;
+    ELSE
+        -- Obtener tipo de cambio del día
+        SELECT tasa INTO tipo_cambio
+        FROM tipo_cambio
+        WHERE id_divisa_origen = NEW.id_divisa
+          AND id_divisa_destino = divisa_maestra_id
+          AND fecha = CURDATE()
+          AND activo = TRUE
+        LIMIT 1;
+        
+        -- Si no hay tipo de cambio, usar 1.0 (o lanzar error según lógica de negocio)
+        IF tipo_cambio IS NULL THEN
+            SET tipo_cambio = 1.0;
+        END IF;
+        
+        -- Calcular total en divisa maestra
+        SET NEW.tipo_cambio_registrado = tipo_cambio;
+        SET NEW.total_divisa_maestra = NEW.total * tipo_cambio;
+    END IF;
+END$$
+
+DELIMITER ;
+```
+
+---
+
+#### 💻 Modelo Java
+
+##### 1. Entidad Divisa
+
+```java
+package api.astro.whats_orders_manager.models;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
+
+/**
+ * Entidad que representa una divisa (moneda) en el sistema.
+ * Permite gestionar múltiples divisas y definir cuál es la maestra.
+ */
+@Entity
+@Table(name = "divisa")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+public class Divisa {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_divisa")
+    private Integer idDivisa;
+
+    @Column(name = "codigo", unique = true, nullable = false, length = 3)
+    private String codigo; // USD, MXN, EUR
+
+    @Column(name = "nombre", nullable = false, length = 50)
+    private String nombre; // Dólar Estadounidense, Peso Mexicano
+
+    @Column(name = "simbolo", nullable = false, length = 10)
+    private String simbolo; // $, MX$, €
+
+    @Column(name = "es_maestra")
+    private Boolean esMaestra = false; // Solo una puede ser true
+
+    @Column(name = "activo")
+    private Boolean activo = true;
+
+    @Column(name = "decimales")
+    private Integer decimales = 2;
+
+    @Column(name = "pais", length = 50)
+    private String pais;
+
+    // Auditoría
+    @CreatedBy
+    @Column(name = "create_by", updatable = false)
+    private Integer createBy;
+
+    @CreatedDate
+    @Column(name = "create_date", updatable = false)
+    private LocalDateTime createDate;
+
+    @LastModifiedBy
+    @Column(name = "update_by")
+    private Integer updateBy;
+
+    @LastModifiedDate
+    @Column(name = "update_date")
+    private LocalDateTime updateDate;
+}
+```
+
+##### 2. Entidad TipoCambio
+
+```java
+package api.astro.whats_orders_manager.models;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+/**
+ * Entidad que representa el tipo de cambio entre dos divisas en una fecha específica.
+ */
+@Entity
+@Table(name = "tipo_cambio")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+public class TipoCambio {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_tipo_cambio")
+    private Integer idTipoCambio;
+
+    @ManyToOne
+    @JoinColumn(name = "id_divisa_origen", nullable = false)
+    private Divisa divisaOrigen;
+
+    @ManyToOne
+    @JoinColumn(name = "id_divisa_destino", nullable = false)
+    private Divisa divisaDestino;
+
+    @Column(name = "fecha", nullable = false)
+    private LocalDate fecha;
+
+    @Column(name = "tasa", nullable = false, precision = 18, scale = 6)
+    private BigDecimal tasa; // 1 divisaOrigen = X divisaDestino
+
+    @Column(name = "tasa_compra", precision = 18, scale = 6)
+    private BigDecimal tasaCompra;
+
+    @Column(name = "tasa_venta", precision = 18, scale = 6)
+    private BigDecimal tasaVenta;
+
+    @Column(name = "fuente", length = 100)
+    private String fuente; // "Manual", "Banco Central", "API XE", etc.
+
+    @Column(name = "activo")
+    private Boolean activo = true;
+
+    // Auditoría
+    @CreatedBy
+    @Column(name = "create_by", updatable = false)
+    private Integer createBy;
+
+    @CreatedDate
+    @Column(name = "create_date", updatable = false)
+    private LocalDateTime createDate;
+
+    @Column(name = "update_by")
+    private Integer updateBy;
+
+    @Column(name = "update_date")
+    private LocalDateTime updateDate;
+}
+```
+
+##### 3. Actualizar Entidad Factura
+
+```java
+@Entity
+@Table(name = "factura")
+public class Factura {
+    
+    // ... campos existentes ...
+    
+    @ManyToOne
+    @JoinColumn(name = "id_divisa")
+    private Divisa divisa; // Divisa de la factura
+    
+    @Column(name = "tipo_cambio_registrado", precision = 18, scale = 6)
+    private BigDecimal tipoCambioRegistrado; // Tipo de cambio al momento de crear
+    
+    @Column(name = "total_divisa_maestra", precision = 10, scale = 2)
+    private BigDecimal totalDivisaMaestra; // Total convertido para reportes
+    
+    // ... resto de campos ...
+}
+```
+
+---
+
+#### 🎨 Interfaz de Usuario
+
+##### 1. Módulo de Gestión de Divisas
+
+**Ubicación:** `/configuracion?tab=divisas`
+
+```html
+<!-- Tabla de divisas -->
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Símbolo</th>
+                <th>País</th>
+                <th>Decimales</th>
+                <th>Maestra</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="divisa : ${divisas}">
+                <td><strong th:text="${divisa.codigo}">USD</strong></td>
+                <td th:text="${divisa.nombre}">Dólar Estadounidense</td>
+                <td th:text="${divisa.simbolo}">$</td>
+                <td th:text="${divisa.pais}">Estados Unidos</td>
+                <td th:text="${divisa.decimales}">2</td>
+                <td>
+                    <span th:if="${divisa.esMaestra}" class="badge bg-warning">
+                        <i class="fas fa-star"></i> Maestra
+                    </span>
+                </td>
+                <td>
+                    <span th:if="${divisa.activo}" class="badge bg-success">Activa</span>
+                    <span th:unless="${divisa.activo}" class="badge bg-secondary">Inactiva</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="editarDivisa(${divisa.idDivisa})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Botón agregar -->
+<button class="btn btn-success" onclick="openModalNuevaDivisa()">
+    <i class="fas fa-plus me-2"></i>Nueva Divisa
+</button>
+```
+
+##### 2. Gestión de Tipos de Cambio
+
+**Ubicación:** `/configuracion?tab=tipos-cambio`
+
+```html
+<!-- Formulario de registro de tipo de cambio -->
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5><i class="fas fa-exchange-alt me-2"></i>Registrar Tipo de Cambio</h5>
+    </div>
+    <div class="card-body">
+        <form id="formTipoCambio">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Divisa Origen</label>
+                    <select name="divisaOrigen" class="form-select" required>
+                        <option th:each="d : ${divisas}" 
+                                th:value="${d.idDivisa}" 
+                                th:text="${d.codigo + ' - ' + d.nombre}">
+                        </option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label>Divisa Destino</label>
+                    <select name="divisaDestino" class="form-select" required>
+                        <option th:each="d : ${divisas}" 
+                                th:value="${d.idDivisa}" 
+                                th:text="${d.codigo + ' - ' + d.nombre}">
+                        </option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label>Fecha</label>
+                    <input type="date" name="fecha" class="form-control" 
+                           th:value="${#dates.format(#dates.createNow(), 'yyyy-MM-dd')}" required>
+                </div>
+                
+                <div class="col-md-2">
+                    <label>Tasa</label>
+                    <input type="number" name="tasa" class="form-control" 
+                           step="0.000001" min="0" placeholder="19.850000" required>
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="d-block">&nbsp;</label>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-save me-1"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de histórico -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5><i class="fas fa-history me-2"></i>Histórico de Tipos de Cambio</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>De</th>
+                        <th>A</th>
+                        <th class="text-end">Tasa</th>
+                        <th>Fuente</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="tc : ${tiposCambio}">
+                        <td th:text="${#temporals.format(tc.fecha, 'dd/MM/yyyy')}">20/10/2025</td>
+                        <td>
+                            <span class="badge bg-info" 
+                                  th:text="${tc.divisaOrigen.codigo}">USD</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-success" 
+                                  th:text="${tc.divisaDestino.codigo}">MXN</span>
+                        </td>
+                        <td class="text-end">
+                            <strong th:text="${#numbers.formatDecimal(tc.tasa, 1, 6)}">19.850000</strong>
+                        </td>
+                        <td>
+                            <small th:text="${tc.fuente}">Manual</small>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" 
+                                    th:onclick="'editarTipoCambio(' + ${tc.idTipoCambio} + ')'">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+```
+
+##### 3. Formulario de Factura con Divisa
+
+**Actualización:** `templates/facturas/add-form.html`
+
+```html
+<!-- Agregar selector de divisa en Paso 1 -->
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="divisa" class="form-label">
+            <i class="fas fa-dollar-sign text-primary me-2"></i>Divisa <span class="text-danger">*</span>
+        </label>
+        <select name="divisa" id="divisa" class="form-select" required onchange="actualizarSimboloDivisa()">
+            <option value="">Seleccione divisa</option>
+            <option th:each="d : ${divisas}" 
+                    th:value="${d.idDivisa}" 
+                    th:text="${d.codigo + ' - ' + d.simbolo + ' - ' + d.nombre}"
+                    th:attr="data-simbolo=${d.simbolo}, data-decimales=${d.decimales}">
+            </option>
+        </select>
+        <small class="text-muted">
+            Divisa en la que se emitirá la factura
+        </small>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <label for="tipoCambio" class="form-label">
+            <i class="fas fa-exchange-alt text-primary me-2"></i>Tipo de Cambio
+        </label>
+        <input type="text" id="tipoCambio" class="form-control" readonly 
+               placeholder="Se obtendrá automáticamente">
+        <small class="text-muted" id="textoConversion">
+            <!-- Se mostrará: 1 USD = 19.85 MXN -->
+        </small>
+    </div>
+</div>
+```
+
+##### 4. Detalle de Factura con Conversión
+
+**Modal de detalle actualizado:**
+
+```html
+<!-- Información de Divisa -->
+<div class="card mt-3">
+    <div class="card-header bg-info text-white">
+        <h6 class="mb-0">
+            <i class="fas fa-money-bill-wave me-2"></i>Información de Divisa
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-1">
+                    <strong>Divisa de Facturación:</strong>
+                    <span class="badge bg-primary" th:text="${factura.divisa.codigo}">USD</span>
+                    <span th:text="${factura.divisa.nombre}">Dólar Estadounidense</span>
+                </p>
+                <p class="mb-1">
+                    <strong>Total en Divisa Original:</strong>
+                    <span class="text-success h5" 
+                          th:text="${factura.divisa.simbolo + ' ' + #numbers.formatDecimal(factura.total, 1, factura.divisa.decimales)}">
+                        $1,500.00
+                    </span>
+                </p>
+            </div>
+            
+            <div class="col-md-6">
+                <p class="mb-1">
+                    <strong>Tipo de Cambio Registrado:</strong>
+                    <span th:text="${#numbers.formatDecimal(factura.tipoCambioRegistrado, 1, 6)}">19.850000</span>
+                </p>
+                <p class="mb-1">
+                    <strong>Total en Divisa Maestra:</strong>
+                    <span class="text-primary h5" 
+                          th:text="${divisaMaestra.simbolo + ' ' + #numbers.formatDecimal(factura.totalDivisaMaestra, 1, 2)}">
+                        MX$29,775.00
+                    </span>
+                </p>
+                <small class="text-muted">
+                    *Para reportes consolidados
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+---
+
+#### 🔧 Servicios y Lógica de Negocio
+
+##### 1. DivisaService
+
+```java
+package api.astro.whats_orders_manager.services;
+
+import api.astro.whats_orders_manager.models.Divisa;
+import java.util.List;
+import java.util.Optional;
+
+public interface DivisaService {
+    
+    List<Divisa> findAllActivas();
+    
+    Optional<Divisa> findById(Integer id);
+    
+    Optional<Divisa> findByCodigo(String codigo);
+    
+    Optional<Divisa> findDivisaMaestra();
+    
+    Divisa save(Divisa divisa);
+    
+    void establecerDivisaMaestra(Integer idDivisa);
+    
+    boolean existsByCodigo(String codigo);
+}
+```
+
+##### 2. TipoCambioService
+
+```java
+package api.astro.whats_orders_manager.services;
+
+import api.astro.whats_orders_manager.models.TipoCambio;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+public interface TipoCambioService {
+    
+    /**
+     * Obtiene el tipo de cambio vigente para una fecha específica
+     */
+    Optional<TipoCambio> findTipoCambioVigente(Integer divisaOrigenId, Integer divisaDestinoId, LocalDate fecha);
+    
+    /**
+     * Obtiene el tipo de cambio vigente para HOY
+     */
+    Optional<TipoCambio> findTipoCambioActual(Integer divisaOrigenId, Integer divisaDestinoId);
+    
+    /**
+     * Convierte un monto de una divisa a otra usando el tipo de cambio del día
+     */
+    BigDecimal convertir(BigDecimal monto, Integer divisaOrigenId, Integer divisaDestinoId, LocalDate fecha);
+    
+    /**
+     * Registra un nuevo tipo de cambio
+     */
+    TipoCambio save(TipoCambio tipoCambio);
+    
+    /**
+     * Obtiene histórico de tipos de cambio
+     */
+    List<TipoCambio> findHistorico(Integer divisaOrigenId, Integer divisaDestinoId, int limit);
+    
+    /**
+     * Obtiene todos los tipos de cambio de hoy
+     */
+    List<TipoCambio> findTodosTipoCambioHoy();
+}
+```
+
+##### 3. Actualizar FacturaService
+
+```java
+@Service
+public class FacturaServiceImpl implements FacturaService {
+    
+    @Autowired
+    private TipoCambioService tipoCambioService;
+    
+    @Autowired
+    private DivisaService divisaService;
+    
+    @Override
+    @Transactional
+    public Factura save(Factura factura) {
+        // ... código existente ...
+        
+        // Obtener divisa maestra
+        Divisa divisaMaestra = divisaService.findDivisaMaestra()
+            .orElseThrow(() -> new RuntimeException("No hay divisa maestra configurada"));
+        
+        // Si la factura es en divisa diferente a la maestra, convertir
+        if (!factura.getDivisa().getIdDivisa().equals(divisaMaestra.getIdDivisa())) {
+            
+            // Obtener tipo de cambio del día
+            TipoCambio tipoCambio = tipoCambioService
+                .findTipoCambioActual(factura.getDivisa().getIdDivisa(), divisaMaestra.getIdDivisa())
+                .orElseThrow(() -> new RuntimeException(
+                    "No hay tipo de cambio registrado para " + factura.getDivisa().getCodigo() + 
+                    " a " + divisaMaestra.getCodigo()
+                ));
+            
+            // Registrar tipo de cambio usado
+            factura.setTipoCambioRegistrado(tipoCambio.getTasa());
+            
+            // Calcular total en divisa maestra
+            BigDecimal totalConvertido = factura.getTotal().multiply(tipoCambio.getTasa());
+            factura.setTotalDivisaMaestra(totalConvertido);
+            
+            log.info("Factura convertida: {} {} = {} {} (TC: {})",
+                factura.getTotal(), factura.getDivisa().getCodigo(),
+                totalConvertido, divisaMaestra.getCodigo(),
+                tipoCambio.getTasa());
+                
+        } else {
+            // Factura en divisa maestra
+            factura.setTipoCambioRegistrado(BigDecimal.ONE);
+            factura.setTotalDivisaMaestra(factura.getTotal());
+        }
+        
+        return facturaRepository.save(factura);
+    }
+}
+```
+
+---
+
+#### 📊 Reportes Consolidados
+
+##### ReporteService Actualizado
+
+```java
+@Service
+public class ReporteServiceImpl implements ReporteService {
+    
+    @Override
+    public BigDecimal calcularVentasTotales(LocalDate inicio, LocalDate fin) {
+        // Obtener divisa maestra
+        Divisa divisaMaestra = divisaService.findDivisaMaestra()
+            .orElseThrow(() -> new RuntimeException("No hay divisa maestra"));
+        
+        // Sumar todas las facturas usando total_divisa_maestra
+        List<Factura> facturas = facturaRepository
+            .findByFechaEntregaBetween(inicio, fin);
+        
+        BigDecimal totalConsolidado = facturas.stream()
+            .map(Factura::getTotalDivisaMaestra) // Usa el total convertido
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        log.info("Ventas totales ({} - {}): {} {}", 
+            inicio, fin, divisaMaestra.getSimbolo(), totalConsolidado);
+        
+        return totalConsolidado;
+    }
+    
+    @Override
+    public Map<String, BigDecimal> calcularVentasPorDivisa(LocalDate inicio, LocalDate fin) {
+        List<Factura> facturas = facturaRepository.findByFechaEntregaBetween(inicio, fin);
+        
+        return facturas.stream()
+            .collect(Collectors.groupingBy(
+                f -> f.getDivisa().getCodigo(),
+                Collectors.reducing(
+                    BigDecimal.ZERO,
+                    Factura::getTotal,
+                    BigDecimal::add
+                )
+            ));
+    }
+}
+```
+
+---
+
+#### 🧪 Casos de Uso
+
+##### Caso 1: Registrar Tipo de Cambio Diario
+
+```
+Usuario: Admin
+Acción: Registra tipo de cambio USD -> MXN para hoy
+Datos:
+  - Divisa Origen: USD
+  - Divisa Destino: MXN
+  - Fecha: 2025-10-20
+  - Tasa: 19.850000
+  - Fuente: Banco de México
+
+Resultado:
+✅ Tipo de cambio registrado
+✅ Disponible para facturas del día
+```
+
+##### Caso 2: Crear Factura en USD
+
+```
+Usuario: Vendedor
+Acción: Crea factura para cliente con divisa USD
+Datos:
+  - Cliente: Juan Pérez (USA)
+  - Divisa: USD
+  - Productos: $1,500.00 USD
+  
+Sistema automáticamente:
+  1. Busca tipo de cambio USD -> MXN del día (19.85)
+  2. Registra TC en factura: 19.850000
+  3. Calcula total en divisa maestra: $29,775.00 MXN
+  4. Guarda ambos valores
+
+Resultado:
+✅ Factura emitida en USD
+✅ Total original: $1,500.00 USD
+✅ Total convertido: $29,775.00 MXN
+✅ TC registrado: 19.850000
+```
+
+##### Caso 3: Ver Detalle de Factura
+
+```
+Usuario: Admin
+Acción: Abre detalle de factura #125
+
+Vista muestra:
+┌─────────────────────────────────────────┐
+│ 💵 Información de Divisa                │
+├─────────────────────────────────────────┤
+│ Divisa de Facturación: USD              │
+│ Total Original: $1,500.00 USD           │
+│                                         │
+│ Tipo de Cambio: 19.850000               │
+│ Total Consolidado: MX$29,775.00         │
+│ *Para reportes en divisa maestra        │
+└─────────────────────────────────────────┘
+
+Resultado:
+✅ Usuario ve ambos valores
+✅ Transparencia en conversión
+```
+
+##### Caso 4: Reporte Consolidado
+
+```
+Usuario: Admin
+Acción: Genera reporte de ventas del mes
+
+Sistema:
+  - Suma total_divisa_maestra de todas las facturas
+  - Muestra en divisa maestra (MXN)
+
+Reporte muestra:
+  Facturas en USD: 10 facturas = MX$297,750.00
+  Facturas en EUR: 5 facturas  = MX$106,000.00
+  Facturas en MXN: 15 facturas = MX$450,000.00
+  ───────────────────────────────────────
+  TOTAL CONSOLIDADO:            MX$853,750.00
+
+Resultado:
+✅ Reporte en una sola divisa
+✅ Fácil comparación
+```
+
+---
+
+#### 📁 Archivos a Crear/Modificar
+
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `MIGRATION_DIVISAS.sql` | Crear | Script de migración de BD |
+| `models/Divisa.java` | Crear | Entidad Divisa |
+| `models/TipoCambio.java` | Crear | Entidad TipoCambio |
+| `models/Factura.java` | Modificar | Agregar campos divisa |
+| `repositories/DivisaRepository.java` | Crear | Repository de divisas |
+| `repositories/TipoCambioRepository.java` | Crear | Repository tipos cambio |
+| `services/DivisaService.java` | Crear | Interfaz servicio |
+| `services/DivisaServiceImpl.java` | Crear | Implementación |
+| `services/TipoCambioService.java` | Crear | Interfaz servicio |
+| `services/TipoCambioServiceImpl.java` | Crear | Implementación |
+| `services/FacturaServiceImpl.java` | Modificar | Agregar conversión |
+| `services/ReporteServiceImpl.java` | Modificar | Usar divisa maestra |
+| `controllers/DivisaController.java` | Crear | CRUD divisas |
+| `controllers/TipoCambioController.java` | Crear | CRUD tipos cambio |
+| `controllers/FacturaController.java` | Modificar | Enviar divisas al form |
+| `templates/configuracion/configuracion.html` | Modificar | Tab de divisas |
+| `templates/configuracion/divisas.html` | Crear | Vista gestión divisas |
+| `templates/configuracion/tipos-cambio.html` | Crear | Vista tipos cambio |
+| `templates/facturas/add-form.html` | Modificar | Selector de divisa |
+| `templates/facturas/facturas.html` | Modificar | Mostrar divisa en tabla |
+| `static/js/divisas.js` | Crear | JS gestión divisas |
+| `static/js/tipos-cambio.js` | Crear | JS tipos cambio |
+| `static/js/editar-factura.js` | Modificar | Obtener TC automático |
+
+**Total:** 23 archivos (10 nuevos, 13 modificados)
+
+---
+
+#### ⚙️ Configuración Adicional
+
+##### application.yml
+
+```yaml
+app:
+  divisas:
+    # Código de divisa maestra por defecto
+    maestra-defecto: MXN
+    
+    # API externa para obtener tipos de cambio (opcional)
+    api-tipo-cambio:
+      enabled: false
+      url: https://api.exchangerate-api.com/v4/latest/
+      api-key: ${EXCHANGE_RATE_API_KEY:}
+      
+    # Días de vigencia de tipo de cambio
+    dias-vigencia: 1
+    
+    # Decimales por defecto
+    decimales-defecto: 2
+```
+
+---
+
+#### 🔮 Mejoras Futuras de este Módulo
+
+##### Fase 2: Integración con APIs Externas
+
+```java
+/**
+ * Servicio para obtener tipos de cambio de APIs externas
+ */
+@Service
+public class ExchangeRateApiService {
+    
+    @Value("${app.divisas.api-tipo-cambio.url}")
+    private String apiUrl;
+    
+    @Value("${app.divisas.api-tipo-cambio.api-key}")
+    private String apiKey;
+    
+    /**
+     * Obtiene tipos de cambio actuales de API externa
+     */
+    public Map<String, BigDecimal> obtenerTiposCambioActuales(String divisaBase) {
+        // Llamada a API externa (ej: exchangerate-api.com, fixer.io)
+        // Retorna Map con pares divisa -> tasa
+    }
+    
+    /**
+     * Actualiza automáticamente tipos de cambio en BD
+     */
+    @Scheduled(cron = "0 0 9 * * MON-FRI") // Cada día a las 9 AM
+    public void actualizarTiposCambioAutomatico() {
+        // Obtiene tipos de cambio de API
+        // Guarda en BD
+        // Notifica si hay error
+    }
+}
+```
+
+##### Fase 3: Historial de Variación
+
+```java
+/**
+ * Gráfica de evolución del tipo de cambio
+ */
+@GetMapping("/api/divisas/grafica/{divisaOrigenId}/{divisaDestinoId}")
+public ResponseEntity<List<TipoCambioDTO>> getGraficaTipoCambio(
+    @PathVariable Integer divisaOrigenId,
+    @PathVariable Integer divisaDestinoId,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta
+) {
+    // Retorna datos para Chart.js
+}
+```
+
+##### Fase 4: Alertas de Variación
+
+```java
+/**
+ * Notifica si el tipo de cambio varía más del X%
+ */
+@Service
+public class AlertaTipoCambioService {
+    
+    public void verificarVariacionSignificativa(TipoCambio nuevoTC) {
+        TipoCambio anterior = tipoCambioService.findTipoCambioAnterior(
+            nuevoTC.getDivisaOrigen(), 
+            nuevoTC.getDivisaDestino()
+        );
+        
+        if (anterior != null) {
+            BigDecimal variacion = calcularVariacionPorcentual(anterior.getTasa(), nuevoTC.getTasa());
+            
+            if (variacion.abs().compareTo(new BigDecimal("5.0")) > 0) {
+                // Variación mayor a 5%
+                notificacionService.enviarAlerta(
+                    "Variación significativa en tipo de cambio",
+                    String.format("%s -> %s: %.2f%%", 
+                        nuevoTC.getDivisaOrigen().getCodigo(),
+                        nuevoTC.getDivisaDestino().getCodigo(),
+                        variacion)
+                );
+            }
+        }
+    }
+}
+```
+
+---
+
+#### ⏱️ Estimación de Tiempo
+
+| Tarea | Horas |
+|-------|-------|
+| Diseño de BD y migraciones | 3-4h |
+| Modelos Java (Divisa, TipoCambio) | 2-3h |
+| Repositories y Services | 4-6h |
+| Controllers (CRUD completo) | 4-5h |
+| Vistas HTML (gestión divisas + TC) | 6-8h |
+| JavaScript (formularios, validaciones) | 4-5h |
+| Integración con facturas | 4-6h |
+| Actualizar reportes | 3-4h |
+| Testing (unitario + integración) | 6-8h |
+| Documentación | 2-3h |
+| **TOTAL** | **38-52 horas** |
+
+**Estimación:** 5-7 días de desarrollo
+
+---
+
+#### ✅ Checklist de Implementación
+
+**Fase 1: Base de Datos**
+- [ ] Crear tabla `divisa`
+- [ ] Crear tabla `tipo_cambio`
+- [ ] Modificar tabla `factura`
+- [ ] Crear triggers de conversión automática
+- [ ] Insertar divisas iniciales (MXN, USD, EUR, GTQ, HNL)
+- [ ] Insertar tipos de cambio de prueba
+
+**Fase 2: Backend - Modelos**
+- [ ] Crear entidad `Divisa.java`
+- [ ] Crear entidad `TipoCambio.java`
+- [ ] Actualizar entidad `Factura.java`
+- [ ] Crear DTOs necesarios
+
+**Fase 3: Backend - Persistencia**
+- [ ] Crear `DivisaRepository.java`
+- [ ] Crear `TipoCambioRepository.java`
+- [ ] Agregar queries personalizados
+
+**Fase 4: Backend - Servicios**
+- [ ] Crear `DivisaService` + Impl
+- [ ] Crear `TipoCambioService` + Impl
+- [ ] Actualizar `FacturaService`
+- [ ] Actualizar `ReporteService`
+
+**Fase 5: Backend - Controllers**
+- [ ] Crear `DivisaController`
+- [ ] Crear `TipoCambioController`
+- [ ] Actualizar `FacturaController`
+- [ ] Actualizar `ReporteController`
+- [ ] Crear endpoints API REST
+
+**Fase 6: Frontend - Vistas**
+- [ ] Vista gestión de divisas
+- [ ] Vista gestión de tipos de cambio
+- [ ] Actualizar formulario de factura
+- [ ] Actualizar modal de detalle
+- [ ] Actualizar tabla de facturas
+- [ ] Actualizar reportes
+
+**Fase 7: Frontend - JavaScript**
+- [ ] `divisas.js` - CRUD divisas
+- [ ] `tipos-cambio.js` - CRUD tipos cambio
+- [ ] Actualizar `editar-factura.js`
+- [ ] Validaciones de formularios
+- [ ] Cálculos automáticos de conversión
+
+**Fase 8: Testing**
+- [ ] Tests unitarios de servicios
+- [ ] Tests de conversión de divisas
+- [ ] Tests de triggers de BD
+- [ ] Tests de validación de unicidad
+- [ ] Tests de reportes consolidados
+- [ ] Tests E2E de flujo completo
+
+**Fase 9: Documentación**
+- [ ] Documentar modelo de datos
+- [ ] Documentar API REST
+- [ ] Manual de usuario (gestión divisas)
+- [ ] Manual de usuario (tipos de cambio)
+- [ ] Guía de migración
+
+---
+
+#### 🎯 Beneficios Esperados
+
+✅ **Facturación Internacional:** Emitir facturas en la divisa del cliente  
+✅ **Reportes Consolidados:** Análisis en una sola divisa maestra  
+✅ **Trazabilidad:** Histórico de tipos de cambio usados  
+✅ **Transparencia:** Cliente ve factura en su divisa + conversión  
+✅ **Flexibilidad:** Soporte para múltiples mercados  
+✅ **Precisión:** Tipo de cambio registrado al momento de facturar  
+✅ **Cumplimiento:** Registro histórico para auditorías  
+
+---
+
+**Notas Importantes:**
+- Esta funcionalidad es **crítica** para negocios internacionales
+- Requiere **coordinación** con equipo contable para definir divisa maestra
+- Se recomienda **backup** de BD antes de migración
+- Considerar **zona horaria** para tipos de cambio (UTC vs local)
+- Evaluar si se necesita **API externa** o registro manual
+
+---
+
+### 2. CAMBIAR USERNAME DE TELÉFONO A NOMBRE DE USUARIO
 
 **Estado:** 📝 Planificado  
 **Prioridad:** Alta  

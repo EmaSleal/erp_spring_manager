@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Reporte de Productos</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+        <!-- Breadcrumbs -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/reportes}"><i class="fas fa-chart-bar"></i> Reportes</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Productos</li>
+            </ol>
+        </nav>
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-boxes text-warning"></i> Reporte de Productos</h2>
+                <p class="text-muted mb-0">Análisis de inventario y ventas</p>
+            </div>
+            <div class="export-buttons">
+                <button type="button" class="btn btn-danger" onclick="exportarPDF()">
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+                <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filter-section">
+            <form th:action="@{/reportes/productos}" method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="stockBajo" class="form-label">
+                            <i class="fas fa-boxes"></i> Stock
+                        </label>
+                        <select class="form-select" id="stockBajo" name="stockBajo">
+                            <option value="">Todos</option>
+                            <option value="true" th:selected="${stockBajo != null && stockBajo}">Stock bajo</option>
+                            <option value="false" th:selected="${stockBajo != null && !stockBajo}">Stock normal</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="sinVentas" class="form-label">
+                            <i class="fas fa-chart-line"></i> Ventas
+                        </label>
+                        <select class="form-select" id="sinVentas" name="sinVentas">
+                            <option value="">Todos</option>
+                            <option value="true" th:selected="${sinVentas != null && sinVentas}">Sin ventas</option>
+                            <option value="false" th:selected="${sinVentas != null && !sinVentas}">Con ventas</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="filter-buttons">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            <a th:href="@{/reportes/productos}" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Estadísticas -->
+        <div th:if="${estadisticas != null}" class="stats-summary slide-down" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value" th:text="${estadisticas.totalProductos}">0</span>
+                        <span class="stats-label">Total Productos</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value" th:text="${estadisticas.productosActivos}">0</span>
+                        <span class="stats-label">Activos</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value" th:text="${estadisticas.productosStockBajo}">0</span>
+                        <span class="stats-label">Stock Bajo</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-item">
+                        <span class="stats-value text-money">
+                            S/ <span th:text="${#numbers.formatDecimal(estadisticas.precioPromedioMayorista ?: 0, 1, 2)}">0.00</span>
+                        </span>
+                        <span class="stats-label">Precio Promedio</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Productos -->
+        <div class="card shadow-sm fade-in">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="fas fa-table text-warning"></i> 
+                    Listado de Productos
+                    <span th:if="${productos != null}" class="badge bg-warning ms-2" th:text="${productos.size()}">0</span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div th:if="${productos != null && !productos.isEmpty()}" class="table-responsive">
+                    <table class="table table-report table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">#</th>
+                                <th style="width: 30%;">Descripción</th>
+                                <th style="width: 15%;">Presentación</th>
+                                <th style="width: 12%;" class="text-end">Precio Mayorista</th>
+                                <th style="width: 12%;" class="text-end">Precio Institucional</th>
+                                <th style="width: 10%;" class="text-center">Estado</th>
+                                <th style="width: 8%;" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="producto, iterStat : ${productos}">
+                                <td th:text="${iterStat.count}">1</td>
+                                <td>
+                                    <strong th:text="${producto.descripcion}">Producto</strong>
+                                </td>
+                                <td>
+                                    <span th:if="${producto.presentacion != null}" 
+                                          th:text="${producto.presentacion.nombre}">Presentación</span>
+                                </td>
+                                <td class="text-end text-money">
+                                    S/ <span th:text="${#numbers.formatDecimal(producto.precioMayorista ?: 0, 1, 2)}">0.00</span>
+                                </td>
+                                <td class="text-end text-money">
+                                    S/ <span th:text="${#numbers.formatDecimal(producto.precioInstitucional ?: 0, 1, 2)}">0.00</span>
+                                </td>
+                                <td class="text-center">
+                                    <span th:if="${producto.active}" class="badge badge-estado badge-activo">
+                                        <i class="fas fa-check-circle"></i> Activo
+                                    </span>
+                                    <span th:unless="${producto.active}" class="badge badge-estado badge-inactivo">
+                                        <i class="fas fa-times-circle"></i> Inactivo
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <a th:href="@{/productos(edit=${producto.idProducto})}" 
+                                       class="btn btn-sm btn-outline-warning" 
+                                       title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div th:if="${productos == null || productos.isEmpty()}" class="empty-state">
+                    <i class="fas fa-box-open"></i>
+                    <h5>No hay productos para mostrar</h5>
+                    <p>No se encontraron productos con los filtros seleccionados.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script th:src="@{/js/navbar.js}"></script>
+    <script>
+        function exportarPDF() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const stockBajo = urlParams.get('stockBajo') || '';
+            const sinVentas = urlParams.get('sinVentas') || '';
+            
+            const exportUrl = /*[[@{/reportes/productos/exportar/pdf}]]*/ '/reportes/productos/exportar/pdf' + 
+                             '?' +
+                             (stockBajo ? 'stockBajo=' + stockBajo + '&' : '') +
+                             (sinVentas ? 'sinVentas=' + sinVentas : '');
+            
+            window.location.href = exportUrl.replace(/&$/, '').replace(/\?$/, '');
+        }
+        
+        function exportarExcel() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const stockBajo = urlParams.get('stockBajo') || '';
+            const sinVentas = urlParams.get('sinVentas') || '';
+            
+            const exportUrl = /*[[@{/reportes/productos/exportar/excel}]]*/ '/reportes/productos/exportar/excel' + 
+                             '?' +
+                             (stockBajo ? 'stockBajo=' + stockBajo + '&' : '') +
+                             (sinVentas ? 'sinVentas=' + sinVentas : '');
+            
+            window.location.href = exportUrl.replace(/&$/, '').replace(/\?$/, '');
+        }
+    </script>
+    </main>
+</body>
+</html>

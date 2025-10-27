@@ -36,4 +36,5 @@ build/
 .env
 .env.local
 .env.production
+.env.ps1
 *.env

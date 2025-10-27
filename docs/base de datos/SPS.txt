@@ -338,6 +338,32 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_CLIENTES_NUEVOS_POR_MES`(IN p_meses INT)
+BEGIN
+    DECLARE v_fecha_inicio DATE;
+    
+    -- Calcular fecha de inicio (N meses atrás)
+    SET v_fecha_inicio = DATE_SUB(CURDATE(), INTERVAL p_meses MONTH);
+    
+    -- Obtener clientes nuevos agrupados por mes
+    SELECT 
+        DATE_FORMAT(c.create_date, '%b %Y') AS mes_anio,
+        COUNT(*) AS cantidad_clientes
+    FROM 
+        cliente c
+    WHERE 
+        c.create_date >= v_fecha_inicio
+        AND c.create_date <= CURDATE()
+    GROUP BY 
+        YEAR(c.create_date), 
+        MONTH(c.create_date)
+    ORDER BY 
+        YEAR(c.create_date), 
+        MONTH(c.create_date);
+END$$
+DELIMITER ;
+
+DELIMITER $$
 CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_desactivar_producto`(
 	IN p_id_producto INT
 )
@@ -345,6 +371,41 @@ BEGIN
     UPDATE producto
     SET active = false
     WHERE (id_producto = p_id_producto);
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_ESTADISTICAS_DASHBOARD`()
+BEGIN
+    SELECT 
+        -- Total de facturas
+        (SELECT COUNT(*) FROM factura) AS total_facturas,
+        
+        -- Total de clientes
+        (SELECT COUNT(*) FROM cliente) AS total_clientes,
+        
+        -- Total de productos
+        (SELECT COUNT(*) FROM producto WHERE active = TRUE) AS total_productos,
+        
+        -- Total de usuarios
+        (SELECT COUNT(*) FROM usuario WHERE activo = TRUE) AS total_usuarios,
+        
+        -- Ventas del mes actual
+        (SELECT COALESCE(SUM(total), 0) 
+         FROM factura 
+         WHERE MONTH(create_date) = MONTH(CURDATE()) 
+         AND YEAR(create_date) = YEAR(CURDATE())) AS ventas_mes_actual,
+        
+        -- Facturas pendientes
+        (SELECT COUNT(*) 
+         FROM factura 
+         WHERE tipo_factura = 'PENDIENTE') AS facturas_pendientes,
+        
+        -- Clientes nuevos este mes
+        (SELECT COUNT(*) 
+         FROM cliente 
+         WHERE MONTH(create_date) = MONTH(CURDATE()) 
+         AND YEAR(create_date) = YEAR(CURDATE())) AS clientes_nuevos_mes;
 END$$
 DELIMITER ;
 
@@ -358,5 +419,109 @@ BEGIN
     INNER JOIN producto AS pr ON pr.id_producto = lf.id_producto
     INNER JOIN presentacion AS PRE ON PRE.id_presentacion = pr.id_presentacion
     WHERE id_factura = idFactura;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_clientes_nuevos_por_mes`(IN p_meses INT)
+BEGIN
+    DECLARE v_fecha_inicio DATE;
+    SET v_fecha_inicio = DATE_SUB(CURDATE(), INTERVAL p_meses MONTH);
+    
+    SELECT 
+        DATE_FORMAT(c.create_date, '%b %Y') AS mes,
+        COUNT(*) AS cantidad_clientes
+    FROM cliente c
+    WHERE c.create_date >= v_fecha_inicio
+        AND c.create_date <= CURDATE()
+    GROUP BY DATE_FORMAT(c.create_date, '%Y-%m'),
+             DATE_FORMAT(c.create_date, '%b %Y')
+    ORDER BY DATE_FORMAT(c.create_date, '%Y-%m') ASC;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_productos_mas_vendidos`(IN p_limite INT)
+BEGIN
+    SELECT 
+        p.descripcion AS producto,
+        COALESCE(SUM(lf.cantidad), 0) AS cantidad_vendida
+    FROM producto p
+    LEFT JOIN linea_factura lf ON p.id_producto = lf.id_producto
+    LEFT JOIN factura f ON lf.id_factura = f.id_factura
+    WHERE p.active = 1
+    GROUP BY p.id_producto, p.descripcion
+    HAVING cantidad_vendida > 0
+    ORDER BY cantidad_vendida DESC
+    LIMIT p_limite;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_ventas_por_mes`(IN p_meses INT)
+BEGIN
+    DECLARE v_fecha_inicio DATE;
+    SET v_fecha_inicio = DATE_SUB(CURDATE(), INTERVAL p_meses MONTH);
+    
+    SELECT 
+        DATE_FORMAT(f.create_date, '%b %Y') AS mes,
+        COALESCE(SUM(f.total), 0) AS total_ventas
+    FROM factura f
+    WHERE f.create_date >= v_fecha_inicio
+        AND f.create_date <= CURDATE()
+    GROUP BY DATE_FORMAT(f.create_date, '%Y-%m'),
+             DATE_FORMAT(f.create_date, '%b %Y')
+    ORDER BY DATE_FORMAT(f.create_date, '%Y-%m') ASC;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_PRODUCTOS_MAS_VENDIDOS`(IN p_limite INT)
+BEGIN
+    -- Obtener productos más vendidos (top N)
+    SELECT 
+        p.descripcion AS nombre_producto,
+        COALESCE(SUM(lf.cantidad), 0) AS cantidad_vendida
+    FROM 
+        producto p
+    LEFT JOIN 
+        linea_factura lf ON p.id_producto = lf.producto_id
+    LEFT JOIN
+        factura f ON lf.factura_id = f.id_factura
+    WHERE
+        p.active = TRUE
+    GROUP BY 
+        p.id_producto, 
+        p.descripcion
+    HAVING 
+        cantidad_vendida > 0
+    ORDER BY 
+        cantidad_vendida DESC
+    LIMIT p_limite;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_VENTAS_POR_CLIENTE_TOP`(IN p_limite INT)
+BEGIN
+    -- Obtener top clientes por volumen de compras
+    SELECT 
+        c.nombre AS nombre_cliente,
+        COUNT(f.id_factura) AS total_facturas,
+        COALESCE(SUM(f.total), 0) AS total_ventas
+    FROM 
+        cliente c
+    INNER JOIN 
+        factura f ON c.id_cliente = f.id_cliente
+--    WHERE
+--        c.active = TRUE
+    GROUP BY 
+        c.id_cliente, 
+        c.nombre
+    HAVING 
+        total_facturas > 0
+    ORDER BY 
+        total_ventas DESC
+    LIMIT p_limite;
 END$$
 DELIMITER ;

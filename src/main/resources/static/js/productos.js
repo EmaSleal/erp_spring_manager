@@ -34,6 +34,29 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPagination();
         }, 250); // Debounce de 250ms
     });
+    
+    // Detectar parámetro 'edit' en la URL y abrir modal automáticamente
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+        // Buscar el producto por ID
+        const producto = productos.find(p => p.idProducto == editId);
+        if (producto) {
+            // Abrir modal de edición con los datos del producto
+            openEditModal(
+                producto.idProducto,
+                producto.codigo,
+                producto.descripcion,
+                producto?.presentacion?.idPresentacion,
+                producto.precioInstitucional,
+                producto.precioMayorista,
+                producto.active
+            );
+            
+            // Limpiar el parámetro de la URL sin recargar la página
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }
 });
 
 // ========================================

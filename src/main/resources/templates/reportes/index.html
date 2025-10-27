@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Dashboard de Reportes</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+        <!-- Breadcrumbs -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Reportes</li>
+            </ol>
+        </nav>
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-chart-bar text-primary"></i> Dashboard de Reportes</h2>
+                <p class="text-muted mb-0">Genera y consulta reportes del sistema</p>
+            </div>
+            <div>
+                <span class="badge bg-info fs-6">
+                    <i class="fas fa-calendar-alt"></i> 
+                    <span th:text="${#dates.format(#dates.createNow(), 'dd/MM/yyyy')}"></span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Alertas -->
+        <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i> <span th:text="${message}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle"></i> <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Estadísticas Generales -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-white-50">Total Facturas</h6>
+                                <h2 class="mb-0" th:text="${totalFacturas ?: 0}">0</h2>
+                            </div>
+                            <div class="stats-icon">
+                                <i class="fas fa-file-invoice fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card stats-card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-white-50">Total Clientes</h6>
+                                <h2 class="mb-0" th:text="${totalClientes ?: 0}">0</h2>
+                            </div>
+                            <div class="stats-icon">
+                                <i class="fas fa-users fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card stats-card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-white-50">Total Productos</h6>
+                                <h2 class="mb-0" th:text="${totalProductos ?: 0}">0</h2>
+                            </div>
+                            <div class="stats-icon">
+                                <i class="fas fa-box fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card stats-card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-white-50">Total Usuarios</h6>
+                                <h2 class="mb-0" th:text="${totalUsuarios ?: 0}">0</h2>
+                            </div>
+                            <div class="stats-icon">
+                                <i class="fas fa-user-shield fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tipos de Reportes -->
+        <div class="row">
+            <div class="col-12">
+                <h4 class="mb-3"><i class="fas fa-clipboard-list"></i> Tipos de Reportes Disponibles</h4>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Reporte de Ventas -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card report-card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="report-icon bg-primary bg-opacity-10 text-primary mb-3">
+                            <i class="fas fa-chart-line fa-3x"></i>
+                        </div>
+                        <h5 class="card-title">Reporte de Ventas</h5>
+                        <p class="card-text text-muted">
+                            Analiza tus ventas por período, cliente y estado. Incluye estadísticas de facturación, 
+                            pagos pendientes y entregas.
+                        </p>
+                        <ul class="list-unstyled mb-3">
+                            <li><i class="fas fa-check text-success"></i> Filtros por fecha</li>
+                            <li><i class="fas fa-check text-success"></i> Filtros por cliente</li>
+                            <li><i class="fas fa-check text-success"></i> Estadísticas detalladas</li>
+                            <li><i class="fas fa-check text-success"></i> Exportación a PDF/Excel</li>
+                        </ul>
+                        <a th:href="@{/reportes/ventas}" class="btn btn-primary w-100">
+                            <i class="fas fa-chart-bar"></i> Ver Reporte
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reporte de Clientes -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card report-card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="report-icon bg-success bg-opacity-10 text-success mb-3">
+                            <i class="fas fa-users fa-3x"></i>
+                        </div>
+                        <h5 class="card-title">Reporte de Clientes</h5>
+                        <p class="card-text text-muted">
+                            Obtén información detallada de tus clientes, incluyendo estado, deuda y 
+                            clientes nuevos del mes.
+                        </p>
+                        <ul class="list-unstyled mb-3">
+                            <li><i class="fas fa-check text-success"></i> Clientes activos/inactivos</li>
+                            <li><i class="fas fa-check text-success"></i> Clientes con deuda</li>
+                            <li><i class="fas fa-check text-success"></i> Clientes nuevos</li>
+                            <li><i class="fas fa-check text-success"></i> Ranking de clientes</li>
+                        </ul>
+                        <a th:href="@{/reportes/clientes}" class="btn btn-success w-100">
+                            <i class="fas fa-user-friends"></i> Ver Reporte
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reporte de Productos -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card report-card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="report-icon bg-warning bg-opacity-10 text-warning mb-3">
+                            <i class="fas fa-boxes fa-3x"></i>
+                        </div>
+                        <h5 class="card-title">Reporte de Productos</h5>
+                        <p class="card-text text-muted">
+                            Controla tu inventario, productos con stock bajo, productos más vendidos 
+                            y análisis de presentaciones.
+                        </p>
+                        <ul class="list-unstyled mb-3">
+                            <li><i class="fas fa-check text-success"></i> Stock bajo/sin stock</li>
+                            <li><i class="fas fa-check text-success"></i> Productos sin ventas</li>
+                            <li><i class="fas fa-check text-success"></i> Por presentación</li>
+                            <li><i class="fas fa-check text-success"></i> Precios promedios</li>
+                        </ul>
+                        <a th:href="@{/reportes/productos}" class="btn btn-warning w-100">
+                            <i class="fas fa-box-open"></i> Ver Reporte
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información Adicional -->
+        <div class="row mt-5">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-info-circle text-info"></i> Información sobre Reportes</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6><i class="fas fa-question-circle text-primary"></i> ¿Cómo usar los reportes?</h6>
+                        <ol class="mb-3">
+                            <li>Selecciona el tipo de reporte que deseas generar</li>
+                            <li>Aplica los filtros necesarios (fechas, estado, etc.)</li>
+                            <li>Visualiza los resultados en pantalla</li>
+                            <li>Exporta los datos a PDF o Excel según necesites</li>
+                        </ol>
+
+                        <h6><i class="fas fa-filter text-primary"></i> Filtros Disponibles</h6>
+                        <ul class="mb-3">
+                            <li><strong>Ventas:</strong> Fecha inicio, fecha fin, cliente específico</li>
+                            <li><strong>Clientes:</strong> Estado (activo/inactivo), con deuda</li>
+                            <li><strong>Productos:</strong> Stock bajo, sin ventas</li>
+                        </ul>
+
+                        <h6><i class="fas fa-file-export text-primary"></i> Formatos de Exportación</h6>
+                        <ul class="mb-0">
+                            <li><strong>PDF:</strong> Ideal para impresión y archivo formal</li>
+                            <li><strong>Excel:</strong> Perfecto para análisis adicional y edición</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-lightbulb"></i> Consejos</h5>
+                        <ul class="mb-0">
+                            <li class="mb-2">Genera reportes periódicamente para análisis de tendencias</li>
+                            <li class="mb-2">Usa los filtros para obtener información específica</li>
+                            <li class="mb-2">Exporta los reportes para presentaciones</li>
+                            <li class="mb-0">Compara datos entre diferentes períodos</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-clock text-primary"></i> Acceso Rápido</h6>
+                        <div class="d-grid gap-2">
+                            <a th:href="@{/reportes/ventas}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-chart-line"></i> Ventas del Mes
+                            </a>
+                            <a th:href="@{/reportes/clientes}" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-users"></i> Clientes Nuevos
+                            </a>
+                            <a th:href="@{/reportes/productos}" class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-boxes"></i> Stock Bajo
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos Estadísticos -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <h4 class="mb-3"><i class="fas fa-chart-pie"></i> Gráficos Estadísticos</h4>
+            </div>
+
+            <!-- Gráfico: Ventas por Mes -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-chart-line text-primary"></i> Ventas por Mes
+                        </h5>
+                        <p class="text-muted small">Últimos 12 meses</p>
+                        <canvas id="ventasPorMesChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico: Clientes Nuevos -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-user-plus text-success"></i> Clientes Nuevos por Mes
+                        </h5>
+                        <p class="text-muted small">Últimos 12 meses</p>
+                        <canvas id="clientesNuevosChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico: Productos Más Vendidos -->
+            <div class="col-lg-12 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-trophy text-warning"></i> Top 10 Productos Más Vendidos
+                        </h5>
+                        <p class="text-muted small">Basado en cantidad total vendida</p>
+                        <canvas id="productosMasVendidosChart" style="max-height: 400px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Scripts -->
+    <div th:replace="~{layout :: scripts}"></div>
+    <script th:src="@{/js/reportes.js}"></script>
+    <script>
+        // Auto-ocultar alertas después de 5 segundos
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+
+            // Cargar gráficos
+            cargarGraficoVentasPorMes();
+            cargarGraficoClientesNuevos();
+            cargarGraficoProductosMasVendidos();
+        });
+    </script>
+    </main>
+</body>
+</html>
