@@ -30,7 +30,7 @@ import java.time.LocalDateTime;
 @Table(name = "mensaje_whatsapp", 
        indexes = {
            @Index(name = "idx_telefono_fecha", columnList = "telefono, fechaEnvio"),
-           @Index(name = "idx_factura", columnList = "idFactura"),
+//           @Index(name = "idx_factura", columnList = "idFactura"),
            @Index(name = "idx_estado", columnList = "estado"),
            @Index(name = "idx_tipo", columnList = "tipo"),
            @Index(name = "idx_mensaje_whatsapp", columnList = "idMensajeWhatsapp"),
@@ -65,12 +65,12 @@ public class MensajeWhatsApp {
     @Builder.Default
     private EstadoMensaje estado = EstadoMensaje.PENDIENTE;
     
-    @Column(name = "id_factura")
-    private Long idFactura;
+    // @Column(name = "id_factura")
+    // private Long idFactura;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_factura", insertable = false, updatable = false)
-    private Factura factura;
+    // @ManyToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "id_factura", insertable = false, updatable = false)
+    // private Factura factura;
     
     @Column(name = "id_mensaje_whatsapp", length = 255)
     private String idMensajeWhatsapp;
@@ -151,17 +151,17 @@ public class MensajeWhatsApp {
     /**
      * Verifica si el mensaje está relacionado con una factura
      */
-    public boolean tieneFactura() {
-        return idFactura != null;
-    }
+    // public boolean tieneFactura() {
+    //     return factura != null;
+    // }
     
     /**
      * Obtiene el nombre del cliente desde la factura (si existe)
      */
-    public String getNombreClienteFactura() {
-        if (factura != null && factura.getCliente() != null) {
-            return factura.getCliente().getNombre();
-        }
-        return null;
-    }
+    // public String getNombreClienteFactura() {
+    //     if (factura != null && factura.getCliente() != null) {
+    //         return factura.getCliente().getNombre();
+    //     }
+    //     return null;
+    // }
 }
