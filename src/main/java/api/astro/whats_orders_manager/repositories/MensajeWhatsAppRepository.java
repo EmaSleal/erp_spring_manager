@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.repository;
+package api.astro.whats_orders_manager.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -47,7 +47,9 @@ public interface MensajeWhatsAppRepository extends JpaRepository<MensajeWhatsApp
      * @param idFactura ID de la factura
      * @return Lista de mensajes de la factura
      */
-    List<MensajeWhatsApp> findByIdFacturaOrderByFechaEnvioDesc(Long idFactura);
+    //query
+    // @Query("SELECT m FROM MensajeWhatsApp m WHERE m.factura.idFactura = :idFactura ORDER BY m.fechaEnvio DESC")
+    // List<MensajeWhatsApp> findByIdFacturaOrderByFechaEnvioDesc(Long idFactura);
     
     /**
      * Busca mensajes por estado
@@ -129,5 +131,6 @@ public interface MensajeWhatsAppRepository extends JpaRepository<MensajeWhatsApp
      * @param idFactura ID de la factura
      * @return Lista de mensajes relacionados
      */
-    List<MensajeWhatsApp> findByIdFactura(Long idFactura);
+    // @Query("SELECT m FROM MensajeWhatsApp m WHERE m.factura.idFactura = :idFactura")
+    // List<MensajeWhatsApp> findByIdFactura(Long idFactura);
 }
