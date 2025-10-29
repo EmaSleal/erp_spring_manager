@@ -11,7 +11,7 @@ spring:
   # CONFIGURACIÓN DE BASE DE DATOS
   # ========================================
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    url: ${DB_URL:jdbc:mysql://192.168.100.8:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:password}
     driver-class-name: com.mysql.cj.jdbc.Driver

@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.repository;
+package api.astro.whats_orders_manager.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -107,5 +107,5 @@ public interface PlantillaWhatsAppRepository extends JpaRepository<PlantillaWhat
      * 
      * @return Lista de plantillas ordenadas
      */
-    List<PlantillaWhatsApp> findAllByOrderByFechaCreacionDesc();
+    List<PlantillaWhatsApp> findAllByOrderByCreateDateDesc();
 }
