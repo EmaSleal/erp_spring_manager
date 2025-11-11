@@ -54,6 +54,22 @@ meta:
     verify-token: ${META_WEBHOOK_VERIFY_TOKEN:defaulttoken}
 
 # ========================================
+# CONFIGURACIÓN DE WHATSAPP API
+# ========================================
+whatsapp:
+  api:
+    url: ${META_WHATSAPP_API_URL:https://graph.facebook.com}
+    version: ${META_WHATSAPP_API_VERSION:v18.0}
+  phone-number-id: ${META_WHATSAPP_PHONE_NUMBER_ID:}
+  access-token: ${META_WHATSAPP_ACCESS_TOKEN:}
+
+# ========================================
+# CONFIGURACIÓN DE BASE URL
+# ========================================
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
+# ========================================
 # CONFIGURACIÓN DE LOGGING
 # ========================================
 logging:

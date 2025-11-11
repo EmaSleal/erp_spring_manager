@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Plantillas WhatsApp</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/whatsapp/mensajes}" class="text-decoration-none">
+                            <i class="fab fa-whatsapp me-1"></i>WhatsApp
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-file-alt me-1"></i>Plantillas
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1">
+                        <i class="fas fa-file-alt text-primary me-2"></i>Plantillas WhatsApp
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Gestiona las plantillas aprobadas de WhatsApp Business
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/whatsapp/mensajes}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Mensajes
+                    </a>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearPlantillaModal">
+                        <i class="fas fa-plus me-2"></i>Nueva Plantilla
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <p class="text-muted mb-1 small">Total Plantillas</p>
+                                    <h4 class="mb-0" th:text="${#lists.size(plantillas)}">0</h4>
+                                </div>
+                                <div class="text-secondary">
+                                    <i class="fas fa-layer-group fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <p class="text-muted mb-1 small">Aprobadas</p>
+                                    <h4 class="mb-0 text-success" th:text="${aprobadas}">0</h4>
+                                </div>
+                                <div class="text-success">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <p class="text-muted mb-1 small">Pendientes</p>
+                                    <h4 class="mb-0 text-warning" th:text="${pendientes}">0</h4>
+                                </div>
+                                <div class="text-warning">
+                                    <i class="fas fa-clock fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <p class="text-muted mb-1 small">Activas</p>
+                                    <h4 class="mb-0 text-info" th:text="${activas}">0</h4>
+                                </div>
+                                <div class="text-info">
+                                    <i class="fas fa-toggle-on fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="estadoFilter" class="form-label">Estado Meta</label>
+                            <select id="estadoFilter" class="form-select" onchange="aplicarFiltros()">
+                                <option value="">Todos</option>
+                                <option value="APPROVED" th:selected="${estadoFiltro == 'APPROVED'}">Aprobada</option>
+                                <option value="PENDING" th:selected="${estadoFiltro == 'PENDING'}">Pendiente</option>
+                                <option value="REJECTED" th:selected="${estadoFiltro == 'REJECTED'}">Rechazada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="categoriaFilter" class="form-label">Categoría</label>
+                            <select id="categoriaFilter" class="form-select" onchange="aplicarFiltros()">
+                                <option value="">Todas</option>
+                                <option value="UTILITY" th:selected="${categoriaFiltro == 'UTILITY'}">Transaccional</option>
+                                <option value="MARKETING" th:selected="${categoriaFiltro == 'MARKETING'}">Marketing</option>
+                                <option value="AUTHENTICATION" th:selected="${categoriaFiltro == 'AUTHENTICATION'}">Autenticación</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="buscarNombre" class="form-label">Nombre</label>
+                            <input type="text" id="buscarNombre" class="form-control" placeholder="Buscar...">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-secondary w-100" onclick="limpiarFiltros()">
+                                <i class="fas fa-eraser me-1"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">ID</th>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>Idioma</th>
+                                    <th class="text-center" style="width: 120px;">Estado Meta</th>
+                                    <th class="text-center" style="width: 100px;">Activa</th>
+                                    <th class="text-center" style="width: 150px;">Fecha Creación</th>
+                                    <th class="text-center" style="width: 150px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="plantilla : ${plantillas}">
+                                    <td th:text="${plantilla.idPlantilla}">1</td>
+                                    <td>
+                                        <div class="fw-bold" th:text="${plantilla.nombre}">nombre_plantilla</div>
+                                        <small class="text-muted" th:text="${plantilla.codigoMeta}">codigo_meta</small>
+                                    </td>
+                                    <td>
+                                        <span th:if="${plantilla.categoria == 'UTILITY'}" class="badge bg-info">
+                                            <i class="fas fa-cog me-1"></i>Transaccional
+                                        </span>
+                                        <span th:if="${plantilla.categoria == 'MARKETING'}" class="badge bg-primary">
+                                            <i class="fas fa-bullhorn me-1"></i>Marketing
+                                        </span>
+                                        <span th:if="${plantilla.categoria == 'AUTHENTICATION'}" class="badge bg-warning text-dark">
+                                            <i class="fas fa-key me-1"></i>Autenticación
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary" th:text="${plantilla.idioma}">es_MX</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span th:if="${plantilla.estadoMeta == 'APPROVED'}" class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> Aprobada
+                                        </span>
+                                        <span th:if="${plantilla.estadoMeta == 'PENDING'}" class="badge bg-warning text-dark">
+                                            <i class="fas fa-clock"></i> Pendiente
+                                        </span>
+                                        <span th:if="${plantilla.estadoMeta == 'REJECTED'}" class="badge bg-danger">
+                                            <i class="fas fa-times-circle"></i> Rechazada
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span th:if="${plantilla.activo}" class="badge bg-success">
+                                            <i class="fas fa-toggle-on"></i> Sí
+                                        </span>
+                                        <span th:if="${!plantilla.activo}" class="badge bg-secondary">
+                                            <i class="fas fa-toggle-off"></i> No
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <small th:text="${#dates.format(plantilla.createDate, 'dd/MM/yyyy HH:mm')}">
+                                            01/01/2025 12:00
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <button th:attr="data-id=${plantilla.idPlantilla}" 
+                                                    onclick="verDetallePlantilla(this)"
+                                                    class="btn btn-sm btn-primary"
+                                                    title="Ver Detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button th:if="${plantilla.activo}" 
+                                                    th:attr="data-id=${plantilla.idPlantilla}"
+                                                    onclick="toggleActivar(this, false)"
+                                                    class="btn btn-sm btn-warning"
+                                                    title="Desactivar">
+                                                <i class="fas fa-toggle-off"></i>
+                                            </button>
+                                            <button th:if="${!plantilla.activo}"
+                                                    th:attr="data-id=${plantilla.idPlantilla}"
+                                                    onclick="toggleActivar(this, true)"
+                                                    class="btn btn-sm btn-success"
+                                                    title="Activar">
+                                                <i class="fas fa-toggle-on"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(plantillas)}">
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                        No hay plantillas para mostrar
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Crear Plantilla -->
+    <div class="modal fade" id="crearPlantillaModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus-circle me-2"></i>Nueva Plantilla
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formCrearPlantilla">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nombre" class="form-label">Nombre *</label>
+                                <input type="text" class="form-control" id="nombre" name="nombre" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="codigoMeta" class="form-label">Código Meta *</label>
+                                <input type="text" class="form-control" id="codigoMeta" name="codigoMeta" required>
+                                <small class="text-muted">Nombre de la plantilla en Meta</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="categoria" class="form-label">Categoría *</label>
+                                <select class="form-select" id="categoria" name="categoria" required>
+                                    <option value="UTILITY">Transaccional</option>
+                                    <option value="MARKETING">Marketing</option>
+                                    <option value="AUTHENTICATION">Autenticación</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="idioma" class="form-label">Idioma *</label>
+                                <input type="text" class="form-control" id="idioma" name="idioma" value="es_MX" required>
+                            </div>
+                            <div class="col-12">
+                                <label for="contenido" class="form-label">Contenido *</label>
+                                <textarea class="form-control" id="contenido" name="contenido" rows="4" required></textarea>
+                                <small class="text-muted">Use {{1}}, {{2}}, etc. para parámetros</small>
+                            </div>
+                            <div class="col-12">
+                                <label for="parametros" class="form-label">Parámetros</label>
+                                <input type="text" class="form-control" id="parametros" name="parametros" 
+                                       placeholder="cliente,fecha,total (separados por comas)">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="crearPlantilla()">
+                        <i class="fas fa-save me-1"></i>Crear Plantilla
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle Plantilla -->
+    <div class="modal fade" id="detallePlantillaModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-alt me-2"></i>Detalle de Plantilla
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Nombre</label>
+                            <p class="mb-0 fw-bold" id="detalle_nombre">-</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Código Meta</label>
+                            <p class="mb-0" id="detalle_codigoMeta">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted small">Categoría</label>
+                            <p class="mb-0" id="detalle_categoria">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted small">Estado Meta</label>
+                            <p class="mb-0" id="detalle_estadoMeta">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted small">Activa</label>
+                            <p class="mb-0" id="detalle_activa">-</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="text-muted small">Contenido</label>
+                            <div class="border rounded p-3 bg-light" id="detalle_contenido">-</div>
+                        </div>
+                        <div class="col-12" id="detalle_parametros_container">
+                            <label class="text-muted small">Parámetros</label>
+                            <p class="mb-0" id="detalle_parametros">-</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Fecha Creación</label>
+                            <p class="mb-0" id="detalle_createDate">-</p>
+                        </div>
+                        <div class="col-md-6" id="detalle_fechaAprobacion_container">
+                            <label class="text-muted small">Fecha Aprobación</label>
+                            <p class="mb-0" id="detalle_fechaAprobacion">-</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <div th:replace="~{layout :: scripts}"></div>
+    <script src="/js/common.js"></script>
+    <script src="/js/whatsapp-plantillas.js"></script>
+</body>
+</html>
