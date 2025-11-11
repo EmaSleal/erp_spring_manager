@@ -86,4 +86,11 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
         @Param("fechaInicio") java.sql.Date fechaInicio,
         @Param("fechaFin") java.sql.Date fechaFin
     );
+    
+    /**
+     * Busca todas las facturas de un cliente específico
+     * @param idCliente ID del cliente
+     * @return Lista de facturas del cliente
+     */
+    List<Factura> findByClienteIdCliente(Integer idCliente);
 }

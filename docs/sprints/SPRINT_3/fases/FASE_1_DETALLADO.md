@@ -9,13 +9,30 @@
 
 ---
 
+## ⚠️ CAMBIOS IMPORTANTES
+
+### 🔄 Refactorización: Chats Ligados a Usuario (10 nov 2025)
+**Decisión Técnica:** Los chats de WhatsApp están ligados a **Usuario** (no a Factura/Pedido)
+
+**Razón:** Mejor experiencia de usuario - conversaciones continuas que pueden abarcar múltiples pedidos
+
+**Impacto:**
+- ✅ Modelo `MensajeWhatsApp` usa `idUsuario` en lugar de `idFactura`
+- ✅ Repository actualizado con 4 métodos nuevos para Usuario
+- ✅ Permite historial completo de conversaciones por cliente
+- ⚠️ Requiere script de migración SQL (pendiente)
+
+**Documentación completa:** `docs/sprints/SPRINT_3/decisiones/DECISION_CHATS_LIGADOS_USUARIO.md`
+
+---
+
 ## 🎯 OBJETIVO DE LA FASE
 
 Implementar la integración completa con Meta WhatsApp Business API para enviar y recibir mensajes, incluyendo:
 - Envío de mensajes simples y con plantillas
 - Envío de documentos PDF (facturas)
 - Recepción de webhooks
-- Integración con módulo de facturación
+- Integración con usuarios del sistema
 - Gestión de plantillas desde el sistema
 
 ---
@@ -24,13 +41,13 @@ Implementar la integración completa con Meta WhatsApp Business API para enviar 
 
 ```
 Total subfases: 7
-Completadas: 1/7 (14%)
+Completadas: 2/7 (28%)
 En progreso: 0/7
-Pendientes: 6/7 (86%)
+Pendientes: 5/7 (72%)
 
 Tiempo estimado: 40-50 horas
-Tiempo invertido: 6h
-Tiempo restante: 34-44h
+Tiempo invertido: 10h
+Tiempo restante: 30-40h
 ```
 
 ---
@@ -86,14 +103,20 @@ Tiempo restante: 34-44h
 - [x] Generar getters/setters con Lombok
 
 **Archivos creados:**
-- `src/main/java/api/astro/whats_orders_manager/model/MensajeWhatsApp.java` (140 líneas)
-- `src/main/java/api/astro/whats_orders_manager/model/PlantillaWhatsApp.java` (160 líneas)
+- `src/main/java/api/astro/whats_orders_manager/models/MensajeWhatsApp.java` (140 líneas)
+- `src/main/java/api/astro/whats_orders_manager/models/PlantillaWhatsApp.java` (160 líneas)
 
 **Características implementadas:**
 - Enums: TipoMensaje, EstadoMensaje, CategoriaPlantilla, EstadoMeta
-- Métodos helper: esExitoso(), tieneFactura(), estaListaParaUsar(), etc.
-- Relaciones JPA correctas
+- Métodos helper: esExitoso(), tieneUsuario(), getNombreUsuario(), estaListaParaUsar(), etc.
+- Relaciones JPA correctas (ManyToOne con Usuario)
 - Validaciones con Bean Validation
+- Campos de auditoría (@CreatedDate, @LastModifiedDate, @CreatedBy, @LastModifiedBy)
+
+**⚠️ CAMBIO IMPORTANTE (10 nov 2025):**
+- **Chats ligados a Usuario** (no a Factura/Pedido)
+- Ver: `docs/sprints/SPRINT_3/decisiones/DECISION_CHATS_LIGADOS_USUARIO.md`
+- Justificación: Mejor UX, conversaciones continuas, múltiples pedidos por chat
 
 **Validaciones:**
 - [x] Compilación sin errores
@@ -107,18 +130,23 @@ Tiempo restante: 34-44h
 - [x] Documentar métodos
 
 **Archivos creados:**
-- `src/main/java/api/astro/whats_orders_manager/repository/MensajeWhatsAppRepository.java` (14 métodos)
-- `src/main/java/api/astro/whats_orders_manager/repository/PlantillaWhatsAppRepository.java` (11 métodos)
+- `src/main/java/api/astro/whats_orders_manager/repositories/MensajeWhatsAppRepository.java` (16 métodos)
+- `src/main/java/api/astro/whats_orders_manager/repositories/PlantillaWhatsAppRepository.java` (11 métodos)
 
 **Métodos implementados:**
 - Búsquedas por ID de WhatsApp
-- Búsquedas por teléfono, factura, estado
+- Búsquedas por teléfono, usuario, estado
 - Queries para reintentos
 - Rate limiting
 - Validaciones de existencia
+- **Métodos por Usuario** (10 nov 2025):
+  - `findByIdUsuarioOrderByFechaEnvioDesc()` - Historial completo
+  - `findTop10ByIdUsuarioOrderByFechaEnvioDesc()` - Últimos mensajes
+  - `countByIdUsuarioAndEstado()` - Estadísticas
+  - `findByIdUsuarioAndEstadoOrderByFechaEnvioDesc()` - Filtrado
 
 **Validaciones:**
-- [x] 25 métodos de consulta implementados
+- [x] 27 métodos de consulta implementados
 - [x] Documentación completa
 - [x] Compilación sin errores
 
@@ -132,12 +160,107 @@ Tiempo restante: 34-44h
 
 ---
 
-### 🔲 SUBFASE 1.2: Backend - DTOs (4h)
+### ✅ SUBFASE 1.2: Backend - DTOs (4h)
 
-**Estado:** ⏸️ PENDIENTE  
+**Estado:** ✅ COMPLETADO  
 **Prioridad:** ALTA  
 **Tiempo:** 4 horas  
-**Dependencias:** Subfase 1.1 completada
+**Dependencias:** Subfase 1.1 completada  
+**Fecha completado:** 10 noviembre 2025
+
+#### Tareas Específicas:
+
+##### ✅ 1.2.1 - Crear DTOs de Webhook (2h) - COMPLETADO
+- [x] Crear `MetaWebhookRequest.java`
+- [x] Crear clases internas para estructura anidada (12 clases)
+- [x] Agregar validaciones (@NotNull, Bean Validation)
+- [x] Documentar cada campo
+
+**Archivo creado:** `src/main/java/api/astro/whats_orders_manager/dto/whatsapp/MetaWebhookRequest.java` (220 líneas)
+
+**Características:**
+- 12 clases internas anidadas (Entry, Change, Value, Metadata, Contact, etc.)
+- Estructura completa según documentación Meta
+- Soporte para mensajes entrantes y actualizaciones de estado
+- Jackson annotations para serialización JSON
+
+##### ✅ 1.2.2 - Crear DTOs de Solicitud (1.5h) - COMPLETADO
+- [x] Crear `EnviarMensajeRequest.java`
+- [x] Soporte para múltiples tipos de mensaje
+- [x] Validaciones de formato
+- [x] Clases internas para componentes
+
+**Archivo creado:** `src/main/java/api/astro/whats_orders_manager/dto/whatsapp/EnviarMensajeRequest.java` (160 líneas)
+
+**Características:**
+- Soporte para mensajes de texto, plantillas y documentos
+- 7 clases internas (TextContent, TemplateContent, Component, Parameter, etc.)
+- Validación de formato de teléfono con regex
+- Builder pattern para construcción fácil
+
+##### ✅ 1.2.3 - Crear DTOs de Respuesta (1.5h) - COMPLETADO
+- [x] Crear `EnviarMensajeResponse.java`
+- [x] Crear `MetaApiErrorResponse.java`
+- [x] Métodos helper para verificación de estado
+- [x] Detección de tipos de error
+
+**Archivos creados:**
+- `EnviarMensajeResponse.java` (90 líneas)
+- `MetaApiErrorResponse.java` (90 líneas)
+
+**Características EnviarMensajeResponse:**
+- Estructura según respuesta de Meta API
+- Métodos: `isExitoso()`, `getMessageId()`, `getWaId()`
+- 2 clases internas (Contact, Message)
+
+**Características MetaApiErrorResponse:**
+- Detección de rate limit
+- Detección de número inválido
+- Detección de plantilla inválida
+- Método `getErrorMessage()` centralizado
+
+##### ✅ 1.2.4 - Crear DTOs Internos (1h) - COMPLETADO
+- [x] Crear `WhatsAppMensajeDTO.java`
+- [x] Crear `PlantillaWhatsAppDTO.java`
+- [x] Crear `WebhookValidationDTO.java`
+- [x] Métodos helper útiles
+
+**Archivos creados:**
+- `WhatsAppMensajeDTO.java` (70 líneas)
+- `PlantillaWhatsAppDTO.java` (80 líneas)
+- `WebhookValidationDTO.java` (50 líneas)
+
+**Características WhatsAppMensajeDTO:**
+- DTO interno para transferir mensajes entre capas
+- Incluye datos de usuario (idUsuario, nombreUsuario)
+- Métodos: `esExitoso()`, `esEnviado()`, `esRecibido()`, `esFallido()`, `esPendiente()`
+
+**Características PlantillaWhatsAppDTO:**
+- DTO interno para plantillas
+- Métodos: `estaListaParaUsar()`, `estaAprobada()`, `estaPendiente()`, `estaRechazada()`
+- Gestión de lista de parámetros
+- Método `getNumeroParametros()`
+
+**Características WebhookValidationDTO:**
+- Validación inicial de webhooks (challenge)
+- Verificación de token: `isTokenValid()`
+- Verificación de modo: `isSubscribeMode()`
+
+**Validaciones:**
+- [x] 7 DTOs creados (~760 líneas)
+- [x] 22 clases internas
+- [x] 20+ métodos helper
+- [x] 0 errores de compilación
+- [x] Todas las anotaciones correctas (Jackson, Bean Validation, Lombok)
+
+**Entregables Subfase 1.2:**
+- [x] DTOs de webhook (1 archivo, 12 clases internas)
+- [x] DTOs de request (1 archivo, 7 clases internas)
+- [x] DTOs de response (2 archivos, 3 clases internas)
+- [x] DTOs internos (3 archivos)
+- [x] Validaciones Bean Validation configuradas
+- [x] Documentación JavaDoc completa
+- [x] 0 errores de compilación
 
 #### Tareas Específicas:
 

@@ -309,3 +309,64 @@ function enviarFacturaPorEmail(button) {
         }
     });
 }
+
+// ========================================
+// Enviar por WhatsApp
+// ========================================
+function enviarFacturaPorWhatsApp(button) {
+    const facturaId = button.getAttribute("data-id");
+    const telefono = button.getAttribute("data-telefono");
+    const cliente = button.getAttribute("data-cliente");
+    
+    // Obtener token CSRF
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+    
+    Swal.fire({
+        title: '📱 Enviar por WhatsApp',
+        html: `¿Desea enviar la factura por WhatsApp a:<br><strong>${cliente}</strong><br><small class="text-muted">${telefono}</small>?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#25D366',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fab fa-whatsapp me-1"></i>Enviar',
+        cancelButtonText: 'Cancelar',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            // Crear headers con token CSRF
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            headers[csrfHeader] = csrfToken;
+            
+            return fetch(`/api/whatsapp/facturas/enviar`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    idFactura: parseInt(facturaId)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al enviar por WhatsApp');
+                }
+                return data;
+            })
+            .catch(error => {
+                Swal.showValidationMessage(`Error: ${error.message}`);
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            Swal.fire({
+                icon: 'success',
+                title: '✅ WhatsApp Enviado',
+                html: `La factura ha sido enviada exitosamente a:<br><strong>${cliente}</strong><br><small class="text-muted">${telefono}</small><br><br><span class="badge bg-${result.value.estado === 'PENDIENTE' ? 'warning' : 'success'}">${result.value.estado}</span>`,
+                timer: 4000,
+                showConfirmButton: false
+            });
+        }
+    });
+}

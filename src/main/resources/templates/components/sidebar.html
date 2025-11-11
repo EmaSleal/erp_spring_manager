@@ -89,6 +89,19 @@
             </a>
         </li>
 
+        <!-- WhatsApp -->
+        <li class="menu-item" sec:authorize="hasAnyAuthority('ROLE_ADMIN', 'ROLE_SUPER_ADMIN')">
+            <a th:href="@{/whatsapp/mensajes}" 
+               class="menu-link" 
+               data-module="whatsapp"
+               data-tooltip="WhatsApp">
+                <div class="menu-icon">
+                    <i class="fab fa-whatsapp"></i>
+                </div>
+                <span class="menu-text">WhatsApp</span>
+            </a>
+        </li>
+
         <!-- Divider -->
         <li><div class="menu-divider"></div></li>
 
