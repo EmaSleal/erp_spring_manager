@@ -30,7 +30,7 @@ import java.time.LocalDateTime;
 @Table(name = "mensaje_whatsapp", 
        indexes = {
            @Index(name = "idx_telefono_fecha", columnList = "telefono, fechaEnvio"),
-//           @Index(name = "idx_factura", columnList = "idFactura"),
+           @Index(name = "idx_usuario", columnList = "idUsuario"),
            @Index(name = "idx_estado", columnList = "estado"),
            @Index(name = "idx_tipo", columnList = "tipo"),
            @Index(name = "idx_mensaje_whatsapp", columnList = "idMensajeWhatsapp"),
@@ -65,15 +65,19 @@ public class MensajeWhatsApp {
     @Builder.Default
     private EstadoMensaje estado = EstadoMensaje.PENDIENTE;
     
-    // @Column(name = "id_factura")
-    // private Long idFactura;
+    // Relación con Usuario (el chat está ligado al usuario, no a una factura específica)
+    @Column(name = "id_usuario")
+    private Integer idUsuario;
     
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "id_factura", insertable = false, updatable = false)
-    // private Factura factura;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario", insertable = false, updatable = false)
+    private Usuario usuario;
     
     @Column(name = "id_mensaje_whatsapp", length = 255)
     private String idMensajeWhatsapp;
+    
+    @Column(name = "nombre_plantilla", length = 50)
+    private String nombrePlantilla;
     
     @Column(name = "fecha_envio", nullable = false)
     @Builder.Default
@@ -149,19 +153,19 @@ public class MensajeWhatsApp {
     }
     
     /**
-     * Verifica si el mensaje está relacionado con una factura
+     * Verifica si el mensaje está relacionado con un usuario
      */
-    // public boolean tieneFactura() {
-    //     return factura != null;
-    // }
+    public boolean tieneUsuario() {
+        return usuario != null;
+    }
     
     /**
-     * Obtiene el nombre del cliente desde la factura (si existe)
+     * Obtiene el nombre del usuario asociado al mensaje
      */
-    // public String getNombreClienteFactura() {
-    //     if (factura != null && factura.getCliente() != null) {
-    //         return factura.getCliente().getNombre();
-    //     }
-    //     return null;
-    // }
+    public String getNombreUsuario() {
+        if (usuario != null) {
+            return usuario.getNombre();
+        }
+        return null;
+    }
 }

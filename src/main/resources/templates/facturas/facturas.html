@@ -145,6 +145,14 @@
                                                 sec:authorize="hasAnyRole('ADMIN', 'USER', 'VENDEDOR')">
                                             <i class="fas fa-envelope"></i>
                                         </button>
+                                        <button th:if="${factura.cliente.usuario != null and factura.cliente.usuario.telefono != null}"
+                                                th:attr="data-id=${factura.idFactura}, data-telefono=${factura.cliente.usuario.telefono}, data-cliente=${factura.cliente.nombre}"
+                                                onclick="enviarFacturaPorWhatsApp(this)"
+                                                class="btn btn-sm btn-success me-1"
+                                                title="Enviar por WhatsApp"
+                                                sec:authorize="hasAnyAuthority('ROLE_ADMIN', 'ROLE_SUPER_ADMIN')">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </button>
                                         <a th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
                                            onclick="return confirmarEliminacion(event)"
                                            class="btn btn-sm btn-danger"

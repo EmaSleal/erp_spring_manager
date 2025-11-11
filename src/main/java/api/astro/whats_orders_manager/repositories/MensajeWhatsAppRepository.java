@@ -42,14 +42,22 @@ public interface MensajeWhatsAppRepository extends JpaRepository<MensajeWhatsApp
     List<MensajeWhatsApp> findByTelefonoOrderByFechaEnvioDesc(String telefono);
     
     /**
-     * Busca mensajes relacionados con una factura
+     * Busca mensajes relacionados con un usuario
+     * Útil para ver todo el historial de conversación de un usuario
      * 
-     * @param idFactura ID de la factura
-     * @return Lista de mensajes de la factura
+     * @param idUsuario ID del usuario
+     * @return Lista de mensajes del usuario ordenados por fecha descendente
      */
-    //query
-    // @Query("SELECT m FROM MensajeWhatsApp m WHERE m.factura.idFactura = :idFactura ORDER BY m.fechaEnvio DESC")
-    // List<MensajeWhatsApp> findByIdFacturaOrderByFechaEnvioDesc(Long idFactura);
+    @Query("SELECT m FROM MensajeWhatsApp m WHERE m.usuario.idUsuario = :idUsuario ORDER BY m.fechaEnvio DESC")
+    List<MensajeWhatsApp> findByIdUsuarioOrderByFechaEnvioDesc(@Param("idUsuario") Integer idUsuario);
+    
+    /**
+     * Obtiene los últimos N mensajes de un usuario
+     * 
+     * @param idUsuario ID del usuario
+     * @return Lista de los últimos mensajes del usuario
+     */
+    List<MensajeWhatsApp> findTop10ByIdUsuarioOrderByFechaEnvioDesc(Integer idUsuario);
     
     /**
      * Busca mensajes por estado
@@ -126,11 +134,21 @@ public interface MensajeWhatsAppRepository extends JpaRepository<MensajeWhatsApp
     Long countByEstado(EstadoMensaje estado);
     
     /**
-     * Busca mensajes de una factura específica
+     * Cuenta mensajes de un usuario por estado
+     * Útil para estadísticas personalizadas
      * 
-     * @param idFactura ID de la factura
-     * @return Lista de mensajes relacionados
+     * @param idUsuario ID del usuario
+     * @param estado Estado del mensaje
+     * @return Cantidad de mensajes del usuario en ese estado
      */
-    // @Query("SELECT m FROM MensajeWhatsApp m WHERE m.factura.idFactura = :idFactura")
-    // List<MensajeWhatsApp> findByIdFactura(Long idFactura);
+    Long countByIdUsuarioAndEstado(Integer idUsuario, EstadoMensaje estado);
+    
+    /**
+     * Busca mensajes de un usuario por estado
+     * 
+     * @param idUsuario ID del usuario
+     * @param estado Estado del mensaje
+     * @return Lista de mensajes del usuario en ese estado
+     */
+    List<MensajeWhatsApp> findByIdUsuarioAndEstadoOrderByFechaEnvioDesc(Integer idUsuario, EstadoMensaje estado);
 }
