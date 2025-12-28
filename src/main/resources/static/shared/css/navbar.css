@@ -238,10 +238,12 @@
     z-index: 1001;
 }
 
+/* Dropdown visible cuando tiene clase show */
 .navbar-dropdown.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+    display: block !important;
 }
 
 .dropdown-header {
