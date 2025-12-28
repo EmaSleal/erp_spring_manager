@@ -407,7 +407,7 @@ public class EmailServiceImpl implements EmailService {
      * Usa el template HTML credenciales-usuario.html
      */
     @Override
-    public void enviarCredencialesUsuario(api.astro.whats_orders_manager.models.Usuario usuario, 
+    public void enviarCredencialesUsuario(api.astro.whats_orders_manager.modules.seguridad.model.Usuario usuario, 
                                           String contrasenaPlana, 
                                           String urlLogin) throws MessagingException {
         log.info("📧 Preparando envío de credenciales para usuario: {} ({})", 

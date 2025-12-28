@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.modules.notificacion.model;
 
-import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import jakarta.persistence.*;

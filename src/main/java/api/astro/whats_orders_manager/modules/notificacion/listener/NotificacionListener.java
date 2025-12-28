@@ -1,9 +1,9 @@
 package api.astro.whats_orders_manager.modules.notificacion.listener;
 
 import api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent;
-import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
-import api.astro.whats_orders_manager.repositories.UsuarioRepository;
+import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioRepository;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

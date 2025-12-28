@@ -1,10 +1,10 @@
 package api.astro.whats_orders_manager.modules.cliente.service.impl;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
-import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
-import api.astro.whats_orders_manager.services.UsuarioService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

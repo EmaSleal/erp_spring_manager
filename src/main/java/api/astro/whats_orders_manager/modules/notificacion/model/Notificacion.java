@@ -2,7 +2,7 @@ package api.astro.whats_orders_manager.modules.notificacion.model;
 
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
-import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

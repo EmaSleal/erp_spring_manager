@@ -3,7 +3,7 @@ package api.astro.whats_orders_manager.modules.configuracion.controller;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionNotificaciones;
 import api.astro.whats_orders_manager.models.Empresa;
-import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.schedulers.RecordatorioPagoScheduler;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionNotificacionesService;

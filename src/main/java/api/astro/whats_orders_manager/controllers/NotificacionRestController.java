@@ -2,8 +2,8 @@ package api.astro.whats_orders_manager.controllers;
 
 import api.astro.whats_orders_manager.modules.notificacion.model.Notificacion;
 import api.astro.whats_orders_manager.modules.notificacion.model.PreferenciaNotificacion;
-import api.astro.whats_orders_manager.models.Usuario;
-import api.astro.whats_orders_manager.repositories.UsuarioRepository;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioRepository;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.notificacion.service.PreferenciaNotificacionService;
 import lombok.extern.slf4j.Slf4j;
