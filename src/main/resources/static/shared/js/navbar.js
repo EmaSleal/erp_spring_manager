@@ -31,6 +31,7 @@ class NavbarDropdown {
     init() {
         console.log('[NavbarDropdown] Inicializado correctamente');
         this.trigger.addEventListener('click', (e) => {
+            console.log('[NavbarDropdown] Click detectado en trigger');
             e.stopPropagation();
             this.toggle();
         });
@@ -48,6 +49,7 @@ class NavbarDropdown {
 
     toggle() {
         const isOpen = this.dropdown.classList.contains('show');
+        console.log('[NavbarDropdown] Toggle llamado, isOpen:', isOpen);
         if (isOpen) {
             this.close();
         } else {
@@ -56,11 +58,13 @@ class NavbarDropdown {
     }
 
     open() {
+        console.log('[NavbarDropdown] Abriendo dropdown');
         this.dropdown.classList.add('show');
         this.trigger.classList.add('active');
     }
 
     close() {
+        console.log('[NavbarDropdown] Cerrando dropdown');
         this.dropdown.classList.remove('show');
         this.trigger.classList.remove('active');
     }
