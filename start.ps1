@@ -82,7 +82,7 @@ if ($Monitor) {
 }
 
 if ($Optimized) {
-    mvn spring-boot:run -Dspring-boot.run.profiles=$profile
+    mvn spring-boot:run "-Dspring-boot.run.profiles=$profile"
 } else {
     mvn spring-boot:run
 }
