@@ -14,12 +14,22 @@ class NavbarDropdown {
         this.trigger = document.querySelector(triggerSelector);
         this.dropdown = document.querySelector(dropdownSelector);
         
+        console.log('[NavbarDropdown] Inicializando dropdown:', {
+            triggerSelector,
+            dropdownSelector,
+            triggerFound: !!this.trigger,
+            dropdownFound: !!this.dropdown
+        });
+        
         if (this.trigger && this.dropdown) {
             this.init();
+        } else {
+            console.warn('[NavbarDropdown] No se encontraron los elementos necesarios');
         }
     }
 
     init() {
+        console.log('[NavbarDropdown] Inicializado correctamente');
         this.trigger.addEventListener('click', (e) => {
             e.stopPropagation();
             this.toggle();
@@ -306,6 +316,8 @@ function addBreadcrumb(container, name, path, isActive) {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Navbar] DOM cargado, inicializando componentes...');
+    
     // Inicializar dropdown de usuario
     const userDropdown = new NavbarDropdown('.navbar-user-trigger', '.navbar-dropdown');
 
