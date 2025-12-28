@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.modules.shared.dto;
+package api.astro.whats_orders_manager.shared.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

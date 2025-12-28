@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.controller;
 
-import api.astro.whats_orders_manager.modules.shared.dto.PaginacionDTO;
+import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.seguridad.enums.Permiso;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
@@ -8,12 +8,12 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
-import api.astro.whats_orders_manager.modules.shared.service.EmailService;
+import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
-import api.astro.whats_orders_manager.util.PaginacionUtil;
+import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

@@ -8,7 +8,7 @@ import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
-import api.astro.whats_orders_manager.util.StringUtil;
+import api.astro.whats_orders_manager.shared.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;

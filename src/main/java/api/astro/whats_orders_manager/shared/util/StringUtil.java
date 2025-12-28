@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.util;
+package api.astro.whats_orders_manager.shared.util;
 
 import lombok.extern.slf4j.Slf4j;
 
