@@ -12,7 +12,7 @@ import api.astro.whats_orders_manager.modules.cliente.repository.ClienteReposito
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.notificacion.repository.NotificacionRepository;
 import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioRepository;
-import api.astro.whats_orders_manager.modules.shared.service.EmailService;
+import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.notificacion.service.PlantillaNotificacionService;
 import api.astro.whats_orders_manager.modules.notificacion.service.PreferenciaNotificacionService;

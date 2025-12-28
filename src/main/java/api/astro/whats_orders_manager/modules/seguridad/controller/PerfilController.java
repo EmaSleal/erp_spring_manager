@@ -2,7 +2,7 @@ package api.astro.whats_orders_manager.modules.seguridad.controller;
 
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
-import api.astro.whats_orders_manager.util.StringUtil;
+import api.astro.whats_orders_manager.shared.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;

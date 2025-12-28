@@ -6,7 +6,7 @@ import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.model.ProductoRecord;
 import api.astro.whats_orders_manager.modules.configuracion.service.PresentacionService;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
-import api.astro.whats_orders_manager.util.PaginacionUtil;
+import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

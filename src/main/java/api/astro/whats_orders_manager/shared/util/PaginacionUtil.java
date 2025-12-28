@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.util;
+package api.astro.whats_orders_manager.shared.util;
 
-import api.astro.whats_orders_manager.modules.shared.dto.PaginacionDTO;
+import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.ui.Model;
 

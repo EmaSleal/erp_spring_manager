@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.util;
+package api.astro.whats_orders_manager.shared.util;
 
 import java.security.SecureRandom;
 
