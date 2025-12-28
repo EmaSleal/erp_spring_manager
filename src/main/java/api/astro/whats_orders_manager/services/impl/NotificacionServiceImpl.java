@@ -16,7 +16,7 @@ import api.astro.whats_orders_manager.services.EmailService;
 import api.astro.whats_orders_manager.services.NotificacionService;
 import api.astro.whats_orders_manager.services.PlantillaNotificacionService;
 import api.astro.whats_orders_manager.services.PreferenciaNotificacionService;
-import api.astro.whats_orders_manager.services.WhatsAppService;
+import api.astro.whats_orders_manager.modules.whatsapp.service.WhatsAppService;
 import api.astro.whats_orders_manager.controllers.NotificacionWebSocketController;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

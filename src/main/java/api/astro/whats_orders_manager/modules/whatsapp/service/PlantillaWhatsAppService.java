@@ -1,11 +1,11 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.whatsapp.service;
 
 
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp;
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp.CategoriaPlantilla;
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp.EstadoMeta;
-import api.astro.whats_orders_manager.models.dto.PlantillaWhatsAppDTO;
-import api.astro.whats_orders_manager.repositories.PlantillaWhatsAppRepository;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp.CategoriaPlantilla;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp.EstadoMeta;
+import api.astro.whats_orders_manager.modules.whatsapp.dto.PlantillaWhatsAppDTO;
+import api.astro.whats_orders_manager.modules.whatsapp.repository.PlantillaWhatsAppRepository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;

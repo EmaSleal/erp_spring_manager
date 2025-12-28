@@ -1,7 +1,7 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.whatsapp.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
-import api.astro.whats_orders_manager.models.MensajeWhatsApp;
+import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 
 import lombok.extern.slf4j.Slf4j;

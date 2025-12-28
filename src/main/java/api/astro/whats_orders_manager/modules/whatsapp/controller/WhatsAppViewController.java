@@ -1,15 +1,15 @@
-package api.astro.whats_orders_manager.controllers;
+package api.astro.whats_orders_manager.modules.whatsapp.controller;
 
 
-import api.astro.whats_orders_manager.models.MensajeWhatsApp.EstadoMensaje;
-import api.astro.whats_orders_manager.models.MensajeWhatsApp.TipoMensaje;
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp;
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp.EstadoMeta;
-import api.astro.whats_orders_manager.models.dto.PlantillaWhatsAppDTO;
-import api.astro.whats_orders_manager.models.dto.WhatsAppMensajeDTO;
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp.CategoriaPlantilla;
-import api.astro.whats_orders_manager.services.MensajeWhatsAppService;
-import api.astro.whats_orders_manager.services.PlantillaWhatsAppService;
+import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp.EstadoMensaje;
+import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp.TipoMensaje;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp.EstadoMeta;
+import api.astro.whats_orders_manager.modules.whatsapp.dto.PlantillaWhatsAppDTO;
+import api.astro.whats_orders_manager.modules.whatsapp.dto.WhatsAppMensajeDTO;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp.CategoriaPlantilla;
+import api.astro.whats_orders_manager.modules.whatsapp.service.MensajeWhatsAppService;
+import api.astro.whats_orders_manager.modules.whatsapp.service.PlantillaWhatsAppService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
