@@ -2,9 +2,9 @@ package api.astro.whats_orders_manager.modules.whatsapp.service;
 
 import api.astro.whats_orders_manager.models.dto.whatsapp.MetaWebhookRequest;
 import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp;
-import api.astro.whats_orders_manager.models.WebhookLog;
+import api.astro.whats_orders_manager.modules.whatsapp.model.WebhookLog;
 import api.astro.whats_orders_manager.modules.whatsapp.repository.MensajeWhatsAppRepository;
-import api.astro.whats_orders_manager.repositories.WebhookLogRepository;
+import api.astro.whats_orders_manager.modules.whatsapp.repository.WebhookLogRepository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

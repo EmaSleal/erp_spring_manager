@@ -1,7 +1,8 @@
 package api.astro.whats_orders_manager.models.dto;
 
-import api.astro.whats_orders_manager.models.enums.CategoriaParametro;
-import api.astro.whats_orders_manager.models.enums.TipoDatoParametro;
+
+import api.astro.whats_orders_manager.modules.configuracion.enums.CategoriaParametro;
+import api.astro.whats_orders_manager.modules.configuracion.enums.TipoDatoParametro;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

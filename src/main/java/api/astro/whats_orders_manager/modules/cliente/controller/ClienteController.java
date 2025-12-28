@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.modules.cliente.controller;
 
 import api.astro.whats_orders_manager.models.dto.PaginacionDTO;
-import api.astro.whats_orders_manager.enums.InvoiceType;
+import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.util.PaginacionUtil;

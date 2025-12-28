@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
-import api.astro.whats_orders_manager.models.records.LineaFacturaR;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

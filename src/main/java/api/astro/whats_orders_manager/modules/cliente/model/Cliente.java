@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.modules.cliente.model;
 
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
-import api.astro.whats_orders_manager.enums.InvoiceType;
+import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.proxy.HibernateProxy;

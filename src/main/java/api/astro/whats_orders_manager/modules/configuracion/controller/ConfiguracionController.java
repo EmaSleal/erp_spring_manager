@@ -2,13 +2,13 @@ package api.astro.whats_orders_manager.modules.configuracion.controller;
 
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionNotificaciones;
-import api.astro.whats_orders_manager.models.Empresa;
+import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
-import api.astro.whats_orders_manager.schedulers.RecordatorioPagoScheduler;
+import api.astro.whats_orders_manager.modules.facturacion.scheduler.RecordatorioPagoScheduler;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionNotificacionesService;
 import api.astro.whats_orders_manager.services.EmailService;
-import api.astro.whats_orders_manager.services.EmpresaService;
+import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;

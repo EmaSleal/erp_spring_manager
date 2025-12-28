@@ -6,7 +6,8 @@ import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioReposi
 import api.astro.whats_orders_manager.modules.seguridad.repository.PermisoRepository;
 import api.astro.whats_orders_manager.modules.seguridad.service.PermisoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioPermisoService;
-import api.astro.whats_orders_manager.services.impl.PermisoServiceImpl;
+import api.astro.whats_orders_manager.modules.seguridad.service.impl.PermisoServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
