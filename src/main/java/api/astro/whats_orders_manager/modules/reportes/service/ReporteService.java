@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.reportes.service;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;

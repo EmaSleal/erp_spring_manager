@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.services.impl;
+package api.astro.whats_orders_manager.modules.reportes.service.impl;
 
 import api.astro.whats_orders_manager.config.CacheConfig;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
@@ -7,7 +7,7 @@ import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
-import api.astro.whats_orders_manager.services.ReporteService;
+import api.astro.whats_orders_manager.modules.reportes.service.ReporteService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
