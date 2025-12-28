@@ -123,7 +123,7 @@ function verDetallePlantilla(button) {
         
         // Fechas
         document.getElementById('detalle_createDate').textContent = 
-            data.createDate ? new Date(data.createDate).toLocaleString('es-MX') : '-';
+            data.fechaCreacion ? new Date(data.fechaCreacion).toLocaleString('es-MX') : '-';
         
         // Fecha aprobación (opcional)
         if (data.fechaAprobacion) {
