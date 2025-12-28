@@ -322,8 +322,8 @@ function addBreadcrumb(container, name, path, isActive) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[Navbar] DOM cargado, inicializando componentes...');
     
-    // Inicializar dropdown de usuario
-    const userDropdown = new NavbarDropdown('.navbar-user-trigger', '.navbar-dropdown');
+    // YA NO NECESARIO: Ahora usa Bootstrap dropdown nativo
+    // const userDropdown = new NavbarDropdown('.navbar-user-trigger', '.navbar-dropdown');
 
     // Configurar botón de logout
     const logoutBtn = document.querySelector('.navbar-menu-logout');
@@ -599,8 +599,8 @@ let notificacionesDropdown;
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar dropdown de usuario
-    const userDropdown = new NavbarDropdown('.navbar-user-trigger', '.navbar-dropdown');
+    // YA NO NECESARIO: Ahora usa Bootstrap dropdown nativo
+    // const userDropdown = new NavbarDropdown('.navbar-user-trigger', '.navbar-dropdown');
 
     // ✅ NUEVO: Inicializar dropdown de notificaciones
     notificacionesDropdown = new NotificacionesDropdown();

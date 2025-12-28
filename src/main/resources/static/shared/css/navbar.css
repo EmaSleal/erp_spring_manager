@@ -222,28 +222,14 @@
 /* ============================================================================
    DROPDOWN MENU
    ============================================================================ */
+/* Dropdown Menu - Compatible con Bootstrap */
 .navbar-dropdown {
-    position: absolute;
-    top: calc(100% + var(--spacing-sm));
-    right: 0;
-    min-width: 220px;
-    background-color: white;
-    border-radius: var(--border-radius-md);
+    min-width: 280px !important;
+    margin-top: 8px !important;
+    border: none;
     box-shadow: var(--shadow-xl);
-    overflow: hidden;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all var(--transition-fast);
-    z-index: 1001;
-}
-
-/* Dropdown visible cuando tiene clase show */
-.navbar-dropdown.show {
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: translateY(0) !important;
-    display: block !important;
+    border-radius: var(--border-radius-md);
+    padding: 0;
 }
 
 .dropdown-header {
