@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.models.dto;
 
-import api.astro.whats_orders_manager.models.enums.CanalNotificacion;
-import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

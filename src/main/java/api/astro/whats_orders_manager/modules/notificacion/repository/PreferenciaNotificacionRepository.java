@@ -1,9 +1,9 @@
-package api.astro.whats_orders_manager.repositories;
+package api.astro.whats_orders_manager.modules.notificacion.repository;
 
-import api.astro.whats_orders_manager.models.PreferenciaNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.model.PreferenciaNotificacion;
 import api.astro.whats_orders_manager.models.Usuario;
-import api.astro.whats_orders_manager.models.enums.CanalNotificacion;
-import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
