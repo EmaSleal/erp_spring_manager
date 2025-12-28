@@ -19,7 +19,7 @@ public class WebhookLogController {
     @GetMapping
     public String listarLogs(Model model) {
         model.addAttribute("logs", webhookLogService.findAll());
-        return "webhooklogs/webhooklogs";
+        return "modules/whatsapp/webhooklogs";
     }
 
     // 🔹 Buscar logs por número de teléfono (devuelve JSON)

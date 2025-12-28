@@ -74,12 +74,12 @@ public class PermisosController {
             
             log.info("Matriz de permisos cargada exitosamente desde BD - {} roles", roles.size());
             
-            return "permisos/matriz";
+            return "modules/seguridad/permisos/matriz";
             
         } catch (Exception e) {
             log.error("Error al cargar matriz de permisos: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar la matriz de permisos");
-            return "error/error";
+            return "shared/error/error";
         }
     }
     

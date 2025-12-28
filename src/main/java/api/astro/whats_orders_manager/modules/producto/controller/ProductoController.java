@@ -78,13 +78,13 @@ public class ProductoController {
         
         log.info("Productos cargados: {} de {} total", productosPage.getContent().size(), productosPage.getTotalElements());
         
-        return "productos/productos";
+        return "modules/producto/productos";
     }
 
 //    @GetMapping("/nuevo")
 //    public String nuevoProducto(Model model) {
 //        model.addAttribute("producto", new Producto());
-//        return "productos/form";
+//        return "modules/producto/form";
 //    }
 
     @PostMapping("/guardar")
@@ -104,7 +104,7 @@ public class ProductoController {
         model.addAttribute("producto", producto);
         model.addAttribute("presentaciones", presentaciones);
 
-        return "productos/form";
+        return "modules/producto/form";
     }
 
     @GetMapping("/eliminar/{id}")
@@ -133,7 +133,7 @@ public class ProductoController {
         //log.info("Presentaciones disponibles: {}", presentaciones);
         model.addAttribute("producto", new Producto());
         model.addAttribute("presentaciones", presentaciones);
-        return "productos/form";
+        return "modules/producto/form";
     }
 
     @ModelAttribute("tiposFactura")

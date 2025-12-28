@@ -65,7 +65,7 @@ public class NotificacionViewController {
         // Información del usuario para navbar
         agregarInfoUsuarioAlModelo(model, authentication);
         
-        return "notificaciones/lista";
+        return "modules/notificacion/lista";
     }
 
     /**
@@ -81,7 +81,7 @@ public class NotificacionViewController {
         // Información del usuario para navbar
         agregarInfoUsuarioAlModelo(model, authentication);
         
-        return "notificaciones/preferencias";
+        return "modules/notificacion/preferencias";
     }
 
     /**

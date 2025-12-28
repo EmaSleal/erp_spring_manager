@@ -154,12 +154,12 @@ public class UsuarioAdminController {
             model.addAttribute("totalBloqueados", usuarioService.countByBloqueado(true));
             model.addAttribute("totalAdmins", usuarioService.countByRol("ADMIN"));
             
-            return "usuarios/lista-admin";
+            return "modules/seguridad/usuarios/lista-admin";
             
         } catch (Exception e) {
             log.error("Error al listar usuarios: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar la lista de usuarios");
-            return "usuarios/lista-admin";
+            return "modules/seguridad/usuarios/lista-admin";
         }
     }
 
@@ -177,7 +177,7 @@ public class UsuarioAdminController {
         model.addAttribute("roles", rolesActivos);
         model.addAttribute("modoEdicion", false);
         
-        return "usuarios/form-admin";
+        return "modules/seguridad/usuarios/form-admin";
     }
 
     /**
@@ -206,7 +206,7 @@ public class UsuarioAdminController {
             model.addAttribute("roles", rolesActivos);
             model.addAttribute("modoEdicion", true);
             
-            return "usuarios/form-admin";
+            return "modules/seguridad/usuarios/form-admin";
             
         } catch (Exception e) {
             log.error("Error al cargar usuario para edición: {}", e.getMessage(), e);
@@ -397,7 +397,7 @@ public class UsuarioAdminController {
             
             model.addAttribute("usuario", usuarioDTO);
             
-            return "usuarios/detalle-admin";
+            return "modules/seguridad/usuarios/detalle-admin";
             
         } catch (Exception e) {
             log.error("Error al cargar detalle de usuario: {}", e.getMessage(), e);
@@ -482,7 +482,7 @@ public class UsuarioAdminController {
             model.addAttribute("permisosParaDenegar", permisosParaDenegar);
             model.addAttribute("titulo", "Gestión de Permisos - " + usuario.getNombre());
             
-            return "admin/usuarios/permisos";
+            return "modules/seguridad/admin/usuarios/permisos";
             
         } catch (Exception e) {
             log.error("Error al cargar gestión de permisos: {}", e.getMessage(), e);

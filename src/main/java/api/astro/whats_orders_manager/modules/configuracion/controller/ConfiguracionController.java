@@ -86,7 +86,7 @@ public class ConfiguracionController {
         // Tab activo (por defecto: empresa, o el que se pase por parámetro)
         model.addAttribute("activeTab", tab != null ? tab : "empresa");
         
-        return "configuracion/index";
+        return "modules/configuracion/index";
     }
 
     /**
@@ -113,7 +113,7 @@ public class ConfiguracionController {
         
         model.addAttribute("activeTab", "empresa");
         
-        return "configuracion/index";
+        return "modules/configuracion/index";
     }
 
     /**
@@ -360,7 +360,7 @@ public class ConfiguracionController {
         
         model.addAttribute("activeTab", "facturacion");
         
-        return "configuracion/index";
+        return "modules/configuracion/index";
     }
 
     /**
@@ -456,7 +456,7 @@ public class ConfiguracionController {
         // Tab activo
         model.addAttribute("activeTab", "notificaciones");
         
-        return "configuracion/index";
+        return "modules/configuracion/index";
     }
 
     /**

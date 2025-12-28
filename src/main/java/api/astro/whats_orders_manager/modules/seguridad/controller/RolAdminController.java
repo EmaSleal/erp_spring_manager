@@ -73,12 +73,12 @@ public class RolAdminController {
             model.addAttribute("rolesActivos", rolesActivos);
             model.addAttribute("titulo", "Gestión de Roles");
             
-            return "admin/roles/roles";
+            return "modules/seguridad/admin/roles/roles";
             
         } catch (Exception e) {
             log.error("Error al cargar roles: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar la lista de roles: " + e.getMessage());
-            return "error/error";
+            return "shared/error/error";
         }
     }
     
@@ -98,7 +98,7 @@ public class RolAdminController {
         model.addAttribute("titulo", "Crear Nuevo Rol");
         model.addAttribute("accion", "crear");
         
-        return "admin/roles/formulario";
+        return "modules/seguridad/admin/roles/formulario";
     }
     
     /**
@@ -126,7 +126,7 @@ public class RolAdminController {
         model.addAttribute("titulo", "Editar Rol: " + rol.getNombre());
         model.addAttribute("accion", "editar");
         
-        return "admin/roles/formulario";
+        return "modules/seguridad/admin/roles/formulario";
     }
     
     /**

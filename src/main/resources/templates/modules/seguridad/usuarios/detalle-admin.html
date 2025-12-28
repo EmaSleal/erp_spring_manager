@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Detalle de Usuario</title>
+</head>
+<body>
+    <!-- Estilos personalizados para esta página -->
+    <style>
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            border-radius: 0.5rem;
+            color: white;
+            margin-bottom: 2rem;
+        }
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+            object-fit: cover;
+        }
+        .stat-card {
+            border-left: 4px solid;
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateX(5px);
+        }
+        .activity-item {
+            border-left: 3px solid #dee2e6;
+            padding-left: 1rem;
+            margin-bottom: 1rem;
+        }
+        .activity-item:hover {
+            border-left-color: #667eea;
+            background-color: #f8f9fa;
+        }
+        .badge-level {
+            font-size: 0.7rem;
+            padding: 0.25em 0.5em;
+        }
+    </style>
+
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/admin/usuarios}" class="text-decoration-none">
+                            <i class="fas fa-users me-1"></i>Usuarios
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+                </ol>
+            </nav>
+
+            <!-- Header del Perfil -->
+            <div class="profile-header">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <img th:src="${usuario.avatar != null ? usuario.avatar : '/uploads/avatars/default-avatar.png'}" 
+                             class="profile-avatar" 
+                             alt="Avatar">
+                    </div>
+                    <div class="col">
+                        <h2 class="mb-1" th:text="${usuario.nombre}">Nombre Usuario</h2>
+                        <p class="mb-2">
+                        <span class="badge" 
+                              th:classappend="${usuario.rol == 'ADMIN'} ? 'bg-light text-dark' : 
+                                             (${usuario.rol == 'GERENTE'} ? 'bg-warning text-dark' : 'bg-info')"
+                              th:text="${usuario.rol}">
+                        </span>
+                        <span class="badge ms-2" 
+                              th:classappend="${usuario.badgeEstado}"
+                              th:text="${usuario.estadoDescripcion}">
+                        </span>
+                    </p>
+                    <div class="d-flex gap-3 text-white-50 small">
+                        <div>
+                            <i class="fas fa-phone me-1"></i>
+                            <span th:text="${usuario.telefono}">Teléfono</span>
+                        </div>
+                        <div th:if="${usuario.email}">
+                            <i class="fas fa-envelope me-1"></i>
+                            <span th:text="${usuario.email}">Email</span>
+                        </div>
+                        <div>
+                            <i class="fas fa-calendar me-1"></i>
+                            <span th:text="'Miembro desde ' + ${usuario.fechaCreacionFormateada}">Fecha</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="btn-group-vertical" role="group">
+                        <a th:href="@{/admin/usuarios/editar/{id}(id=${usuario.idUsuario})}" 
+                           class="btn btn-light btn-sm">
+                            <i class="fas fa-edit me-2"></i>Editar
+                        </a>
+                        <a th:href="@{/admin/usuarios/{id}/permisos/gestionar(id=${usuario.idUsuario})}" 
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-key me-2"></i>Permisos
+                        </a>
+                        <button class="btn btn-warning btn-sm" 
+                                th:if="${!usuario.bloqueado}"
+                                onclick="bloquearUsuario()">
+                            <i class="fas fa-lock me-2"></i>Bloquear
+                        </button>
+                        <button class="btn btn-success btn-sm" 
+                                th:if="${usuario.bloqueado}"
+                                onclick="desbloquearUsuario()">
+                            <i class="fas fa-unlock me-2"></i>Desbloquear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Columna Izquierda: Estadísticas e Información -->
+            <div class="col-md-4">
+                <!-- Estadísticas -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-chart-bar text-primary me-2"></i>Estadísticas
+                        </h5>
+                        
+                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: #667eea;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">Total Actividades</small>
+                                    <h4 class="mb-0" th:text="${totalActividades}">0</h4>
+                                </div>
+                                <i class="fas fa-list fa-2x text-primary opacity-25"></i>
+                            </div>
+                        </div>
+
+                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: #28a745;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">Total Logins</small>
+                                    <h4 class="mb-0" th:text="${totalLogins}">0</h4>
+                                </div>
+                                <i class="fas fa-sign-in-alt fa-2x text-success opacity-25"></i>
+                            </div>
+                        </div>
+
+                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: #ffc107;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">Intentos Fallidos</small>
+                                    <h4 class="mb-0" th:text="${usuario.intentosFallidos}">0</h4>
+                                </div>
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning opacity-25"></i>
+                            </div>
+                        </div>
+
+                        <div class="stat-card p-3 bg-light rounded" 
+                             style="border-left-color: #17a2b8;"
+                             th:if="${usuario.cantidadSesionesActivas != null}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">Sesiones Activas</small>
+                                    <h4 class="mb-0" th:text="${usuario.cantidadSesionesActivas}">0</h4>
+                                </div>
+                                <i class="fas fa-desktop fa-2x text-info opacity-25"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información Detallada -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-info-circle text-primary me-2"></i>Información
+                        </h5>
+                        
+                        <table class="table table-sm table-borderless">
+                            <tbody>
+                                <tr>
+                                    <td class="text-muted" width="40%">
+                                        <i class="fas fa-hashtag me-1"></i>ID:
+                                    </td>
+                                    <td th:text="${usuario.idUsuario}">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">
+                                        <i class="fas fa-user-tag me-1"></i>Rol:
+                                    </td>
+                                    <td>
+                                        <span class="badge" 
+                                              th:classappend="${usuario.rol == 'ADMIN'} ? 'bg-danger' : 
+                                                             (${usuario.rol == 'GERENTE'} ? 'bg-warning' : 'bg-info')"
+                                              th:text="${usuario.rol}">
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">
+                                        <i class="fas fa-toggle-on me-1"></i>Estado:
+                                    </td>
+                                    <td>
+                                        <span class="badge" 
+                                              th:classappend="${usuario.badgeEstado}"
+                                              th:text="${usuario.estadoDescripcion}">
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">
+                                        <i class="fas fa-calendar-plus me-1"></i>Creado:
+                                    </td>
+                                    <td th:text="${usuario.fechaCreacionFormateada}">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>Último Acceso:
+                                    </td>
+                                    <td th:text="${usuario.ultimoAccesoFormateado}">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Información de Seguridad -->
+                <div class="card border-0 shadow-sm" th:if="${usuario.bloqueado || usuario.requireCambioPassword}">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">
+                            <i class="fas fa-shield-alt me-2"></i>Seguridad
+                        </h5>
+                        
+                        <div class="alert alert-warning mb-2" th:if="${usuario.bloqueado}">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-lock me-2"></i>Usuario Bloqueado
+                            </h6>
+                            <p class="mb-1" th:text="${usuario.razonBloqueo}">Razón</p>
+                            <small th:text="'Bloqueado el: ' + ${usuario.fechaBloqueo}">Fecha</small>
+                        </div>
+
+                        <div class="alert alert-info mb-0" th:if="${usuario.requireCambioPassword}">
+                            <i class="fas fa-key me-2"></i>
+                            Debe cambiar contraseña en el próximo login
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Actividades -->
+            <div class="col-md-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history text-primary me-2"></i>
+                                Actividad Reciente
+                            </h5>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary active" data-filter="all">
+                                    Todas
+                                </button>
+                                <button type="button" class="btn btn-outline-success" data-filter="LOGIN">
+                                    Logins
+                                </button>
+                                <button type="button" class="btn btn-outline-warning" data-filter="WARNING">
+                                    Críticas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="actividadesContainer">
+                            <div th:if="${#lists.isEmpty(actividades)}" class="text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+                                <p>No hay actividades registradas</p>
+                            </div>
+
+                            <div class="activity-item" 
+                                 th:each="actividad : ${actividades}"
+                                 th:data-tipo="${actividad.tipoActividad}"
+                                 th:data-nivel="${actividad.nivel}">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <div>
+                                        <strong th:text="${actividad.tipoActividad}">TIPO</strong>
+                                        <span class="badge badge-level ms-2"
+                                              th:classappend="${actividad.nivel == 'CRITICAL'} ? 'bg-danger' : 
+                                                             (${actividad.nivel == 'WARNING'} ? 'bg-warning text-dark' : 'bg-info')"
+                                              th:text="${actividad.nivel}">
+                                        </span>
+                                        <span class="badge badge-level ms-1"
+                                              th:classappend="${actividad.resultado == 'SUCCESS'} ? 'bg-success' : 
+                                                             (${actividad.resultado == 'FAILURE'} ? 'bg-danger' : 'bg-secondary')"
+                                              th:text="${actividad.resultado}">
+                                        </span>
+                                    </div>
+                                    <small class="text-muted" th:text="${actividad.fechaActividad}">Fecha</small>
+                                </div>
+                                <p class="mb-1 small" th:text="${actividad.descripcion}">Descripción</p>
+                                <div class="d-flex gap-3 small text-muted">
+                                    <span th:if="${actividad.ipAddress}">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        <span th:text="${actividad.ipAddress}">IP</span>
+                                    </span>
+                                    <span th:if="${actividad.entidad}">
+                                        <i class="fas fa-tag me-1"></i>
+                                        <span th:text="${actividad.entidad + ' #' + actividad.idEntidad}">Entidad</span>
+                                    </span>
+                                </div>
+                                <div th:if="${actividad.errorMensaje}" 
+                                     class="alert alert-danger alert-sm mt-2 mb-0 py-1 px-2 small">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    <span th:text="${actividad.errorMensaje}">Error</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-3" th:if="${totalActividades > 20}">
+                            <button class="btn btn-outline-primary btn-sm" onclick="cargarMasActividades()">
+                                <i class="fas fa-chevron-down me-2"></i>
+                                Ver más actividades
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+    <!-- Fin Main Content -->
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script th:inline="javascript">
+        const idUsuario = /*[[${usuario.idUsuario}]]*/ 0;
+
+        // Filtrar actividades
+        document.querySelectorAll('[data-filter]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                
+                // Actualizar botones activos
+                document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Filtrar items
+                document.querySelectorAll('.activity-item').forEach(item => {
+                    if (filter === 'all') {
+                        item.style.display = 'block';
+                    } else if (filter === 'LOGIN') {
+                        item.style.display = item.getAttribute('data-tipo') === 'LOGIN' ? 'block' : 'none';
+                    } else if (filter === 'WARNING') {
+                        item.style.display = ['WARNING', 'CRITICAL'].includes(item.getAttribute('data-nivel')) ? 'block' : 'none';
+                    }
+                });
+            });
+        });
+
+        // Bloquear usuario
+        function bloquearUsuario() {
+            const razon = prompt('Ingrese la razón del bloqueo:');
+            if (!razon) return;
+            
+            fetch(`/admin/usuarios/api/${idUsuario}/bloquear`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ razon: razon })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Usuario bloqueado exitosamente');
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al bloquear usuario');
+            });
+        }
+
+        // Desbloquear usuario
+        function desbloquearUsuario() {
+            if (!confirm('¿Está seguro de desbloquear este usuario?')) return;
+            
+            fetch(`/admin/usuarios/api/${idUsuario}/desbloquear`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Usuario desbloqueado exitosamente');
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al desbloquear usuario');
+            });
+        }
+
+        // Cargar más actividades (implementar paginación)
+        function cargarMasActividades() {
+            // TODO: Implementar paginación de actividades
+            alert('Función en desarrollo');
+        }
+    </script>
+</body>
+</html>

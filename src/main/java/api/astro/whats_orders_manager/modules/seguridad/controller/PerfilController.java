@@ -74,7 +74,7 @@ public class PerfilController {
             agregarDatosUsuarioAlModelo(model, usuario);
             
             log.info("Usuario {} visualizó su perfil", usuario.getTelefono());
-            return "perfil/ver";
+            return "modules/seguridad/perfil/ver";
             
         } catch (Exception e) {
             log.error("Error al cargar perfil: {}", e.getMessage(), e);
@@ -101,7 +101,7 @@ public class PerfilController {
             agregarDatosUsuarioAlModelo(model, usuario);
             
             log.info("Usuario {} accedió al formulario de edición de perfil", usuario.getTelefono());
-            return "perfil/editar";
+            return "modules/seguridad/perfil/editar";
             
         } catch (Exception e) {
             log.error("Error al cargar formulario de edición: {}", e.getMessage(), e);
