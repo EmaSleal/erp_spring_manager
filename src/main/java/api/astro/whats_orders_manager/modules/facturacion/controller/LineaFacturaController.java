@@ -1,8 +1,8 @@
-package api.astro.whats_orders_manager.controllers;
+package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 
 import api.astro.whats_orders_manager.models.records.LineaFacturaR;
-import api.astro.whats_orders_manager.services.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;

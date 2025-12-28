@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.facturacion.service;
 
-import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 
 import java.util.Optional;
 

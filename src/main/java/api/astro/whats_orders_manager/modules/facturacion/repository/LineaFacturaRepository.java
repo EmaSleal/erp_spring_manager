@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.repositories;
+package api.astro.whats_orders_manager.modules.facturacion.repository;
 
-import api.astro.whats_orders_manager.models.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.models.records.LineaFacturaR;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

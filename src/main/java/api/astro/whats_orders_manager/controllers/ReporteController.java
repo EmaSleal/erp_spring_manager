@@ -1,15 +1,17 @@
 package api.astro.whats_orders_manager.controllers;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
-import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
-import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.models.Usuario;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
-import api.astro.whats_orders_manager.repositories.FacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
+import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.services.*;
 import api.astro.whats_orders_manager.util.ResponseUtil;
 import api.astro.whats_orders_manager.util.StringUtil;

@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.facturacion.service;
 
-import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;

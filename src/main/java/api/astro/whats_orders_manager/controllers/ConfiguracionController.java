@@ -1,11 +1,11 @@
 package api.astro.whats_orders_manager.controllers;
 
-import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.models.ConfiguracionNotificaciones;
 import api.astro.whats_orders_manager.models.Empresa;
 import api.astro.whats_orders_manager.models.Usuario;
 import api.astro.whats_orders_manager.schedulers.RecordatorioPagoScheduler;
-import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
+import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.services.ConfiguracionNotificacionesService;
 import api.astro.whats_orders_manager.services.EmailService;
 import api.astro.whats_orders_manager.services.EmpresaService;
