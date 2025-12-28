@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.cliente.service;
 
-import api.astro.whats_orders_manager.models.Cliente;
+import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;

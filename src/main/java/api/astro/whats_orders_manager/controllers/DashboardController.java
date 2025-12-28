@@ -3,7 +3,7 @@ package api.astro.whats_orders_manager.controllers;
 import api.astro.whats_orders_manager.models.Usuario;
 import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.models.dto.ModuloDTO;
-import api.astro.whats_orders_manager.services.ClienteService;
+import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.services.FacturaService;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.services.UsuarioService;

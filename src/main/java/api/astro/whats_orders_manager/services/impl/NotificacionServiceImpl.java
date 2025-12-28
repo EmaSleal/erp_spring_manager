@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.services.impl;
 
-import api.astro.whats_orders_manager.models.Cliente;
+import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.models.Factura;
 import api.astro.whats_orders_manager.models.Notificacion;
 import api.astro.whats_orders_manager.models.PlantillaNotificacion;
@@ -8,7 +8,7 @@ import api.astro.whats_orders_manager.models.Usuario;
 import api.astro.whats_orders_manager.models.dto.NotificacionDTO;
 import api.astro.whats_orders_manager.models.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
-import api.astro.whats_orders_manager.repositories.ClienteRepository;
+import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.repositories.FacturaRepository;
 import api.astro.whats_orders_manager.repositories.NotificacionRepository;
 import api.astro.whats_orders_manager.repositories.UsuarioRepository;
