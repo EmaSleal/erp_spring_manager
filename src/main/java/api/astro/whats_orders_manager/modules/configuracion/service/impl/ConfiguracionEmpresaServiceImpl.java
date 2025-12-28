@@ -1,8 +1,8 @@
-package api.astro.whats_orders_manager.services.impl;
+package api.astro.whats_orders_manager.modules.configuracion.service.impl;
 
-import api.astro.whats_orders_manager.models.ConfiguracionEmpresa;
-import api.astro.whats_orders_manager.repositories.ConfiguracionEmpresaRepository;
-import api.astro.whats_orders_manager.services.ConfiguracionEmpresaService;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
+import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
+import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.models;
+package api.astro.whats_orders_manager.modules.configuracion.model;
 
 import jakarta.persistence.*;
 import lombok.*;

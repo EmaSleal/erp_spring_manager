@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.configuracion.service;
 
-import api.astro.whats_orders_manager.models.ConfiguracionEmpresa;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 
 import java.util.Optional;
 

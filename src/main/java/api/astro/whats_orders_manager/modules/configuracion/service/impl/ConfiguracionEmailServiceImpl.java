@@ -1,8 +1,8 @@
-package api.astro.whats_orders_manager.services.impl;
+package api.astro.whats_orders_manager.modules.configuracion.service.impl;
 
-import api.astro.whats_orders_manager.models.ConfiguracionEmail;
-import api.astro.whats_orders_manager.repositories.ConfiguracionEmailRepository;
-import api.astro.whats_orders_manager.services.ConfiguracionEmailService;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmail;
+import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmailRepository;
+import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
