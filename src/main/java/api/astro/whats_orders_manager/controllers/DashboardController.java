@@ -5,7 +5,7 @@ import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.models.dto.ModuloDTO;
 import api.astro.whats_orders_manager.services.ClienteService;
 import api.astro.whats_orders_manager.services.FacturaService;
-import api.astro.whats_orders_manager.services.ProductoService;
+import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.services.UsuarioService;
 import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.util.StringUtil;

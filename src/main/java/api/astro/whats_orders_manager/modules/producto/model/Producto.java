@@ -1,5 +1,6 @@
-package api.astro.whats_orders_manager.models;
+package api.astro.whats_orders_manager.modules.producto.model;
 
+import api.astro.whats_orders_manager.models.Presentacion;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;

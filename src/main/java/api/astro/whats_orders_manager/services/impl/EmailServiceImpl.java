@@ -360,7 +360,7 @@ public class EmailServiceImpl implements EmailService {
                     lf.setSubtotal(lr.subtotal());
                     
                     // Crear un producto simplificado con el ID y descripción
-                    var producto = new api.astro.whats_orders_manager.models.Producto();
+                    var producto = new api.astro.whats_orders_manager.modules.producto.model.Producto();
                     producto.setIdProducto(lr.id_producto());
                     producto.setDescripcion(lr.descripcion());
                     lf.setProducto(producto);

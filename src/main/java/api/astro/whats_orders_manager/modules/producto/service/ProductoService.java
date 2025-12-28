@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.producto.service;
 
-import api.astro.whats_orders_manager.models.Producto;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.models.records.ProductoRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

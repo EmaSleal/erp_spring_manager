@@ -1,11 +1,11 @@
-package api.astro.whats_orders_manager.controllers;
+package api.astro.whats_orders_manager.modules.producto.controller;
 
 import api.astro.whats_orders_manager.enums.InvoiceType;
 import api.astro.whats_orders_manager.models.Presentacion;
-import api.astro.whats_orders_manager.models.Producto;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.models.records.ProductoRecord;
 import api.astro.whats_orders_manager.services.PresentacionService;
-import api.astro.whats_orders_manager.services.ProductoService;
+import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.util.PaginacionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

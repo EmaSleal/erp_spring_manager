@@ -1,6 +1,6 @@
-package api.astro.whats_orders_manager.repositories;
+package api.astro.whats_orders_manager.modules.producto.repository;
 
-import api.astro.whats_orders_manager.models.Producto;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.models.records.ProductoRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
