@@ -1,0 +1,188 @@
+# application-optimized.yml
+# Perfil optimizado para reducir consumo de memoria
+# Uso: .\mvnw spring-boot:run -Dspring-boot.run.profiles=optimized
+
+spring:
+  # ========================================
+  # OPTIMIZACIÓN DE BASE DE DATOS
+  # ========================================
+  datasource:
+    # Pool de conexiones HikariCP optimizado
+    hikari:
+      # Reducir número de conexiones
+      maximum-pool-size: 5          # Default: 10
+      minimum-idle: 2                # Default: igual a maximum-pool-size
+      
+      # Timeouts
+      connection-timeout: 20000      # 20 segundos
+      idle-timeout: 300000           # 5 minutos
+      max-lifetime: 1200000          # 20 minutos
+      leak-detection-threshold: 60000 # Detectar leaks de conexiones
+      
+      # Optimizaciones
+      auto-commit: true
+      
+      # Propiedades MySQL optimizadas
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+        useLocalSessionState: true
+        rewriteBatchedStatements: true
+        cacheResultSetMetadata: true
+        cacheServerConfiguration: true
+        elideSetAutoCommits: true
+        maintainTimeStats: false
+  
+  jpa:
+    # Desactivar logs innecesarios
+    show-sql: false
+    
+    properties:
+      hibernate:
+        # Desactivar formateo y comentarios
+        format_sql: false
+        use_sql_comments: false
+        
+        # Optimizar queries
+        jdbc:
+          batch_size: 20              # Procesar en lotes
+          fetch_size: 50              # Reducir fetches grandes
+        
+        # Caché de segundo nivel
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        
+        # Optimizar generación de IDs
+        id:
+          new_generator_mappings: true
+        
+        # Evitar lazy loading fuera de transacción
+        enable_lazy_load_no_trans: false
+        
+        # Optimizar metadata
+        temp:
+          use_jdbc_metadata_defaults: false
+  
+  # ========================================
+  # OPTIMIZACIÓN DE CACHE
+  # ========================================
+  cache:
+    type: caffeine
+    caffeine:
+      spec: >
+        maximumSize=1000,
+        expireAfterWrite=10m,
+        expireAfterAccess=5m,
+        recordStats
+    cache-names:
+      - preferencias
+      - configuracion
+      - usuarios
+      - roles
+  
+  # ========================================
+  # DESACTIVAR DEVTOOLS EN PRODUCCIÓN
+  # ========================================
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+
+# ========================================
+# OPTIMIZACIÓN DEL SERVIDOR TOMCAT
+# ========================================
+server:
+  tomcat:
+    # Thread pool optimizado
+    threads:
+      max: 50                         # Default: 200
+      min-spare: 10                   # Default: 10
+    
+    # Conexiones optimizadas
+    max-connections: 5000             # Default: 10000
+    accept-count: 100                 # Default: 100
+    connection-timeout: 20000         # 20 segundos
+    
+    # Comprimir respuestas HTTP
+    compression:
+      enabled: true
+      mime-types: >
+        text/html,
+        text/xml,
+        text/plain,
+        text/css,
+        text/javascript,
+        application/javascript,
+        application/json,
+        application/xml
+      min-response-size: 1024         # 1 KB
+    
+    # Recursos estáticos
+    resource:
+      cache-period: 31536000          # 1 año en segundos
+  
+  # Compresión a nivel de servidor
+  compression:
+    enabled: true
+
+# ========================================
+# LOGGING OPTIMIZADO
+# ========================================
+logging:
+  level:
+    root: WARN                         # Solo warnings y errores
+    api.astro: INFO                    # Info solo para nuestra app
+    org.springframework: WARN
+    org.hibernate: WARN
+    com.zaxxer.hikari: WARN
+  
+  # Desactivar logs innecesarios
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  
+  # Archivo de logs con rotación
+  file:
+    name: logs/whats-orders-manager.log
+    max-size: 10MB
+    max-history: 7                     # 7 días de historial
+
+# ========================================
+# ACTUATOR (Solo endpoints esenciales)
+# ========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+      base-path: /actuator
+  
+  endpoint:
+    health:
+      show-details: when-authorized
+  
+  metrics:
+    export:
+      simple:
+        enabled: true
+
+# ========================================
+# CONFIGURACIÓN DE APLICACIÓN
+# ========================================
+app:
+  # Configuraciones específicas optimizadas
+  performance:
+    # Tamaño de página por defecto
+    default-page-size: 20
+    max-page-size: 100
+    
+    # Límites de archivos
+    max-upload-size: 5MB
+    
+    # Cache TTL
+    cache-ttl-minutes: 10
