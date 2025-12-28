@@ -1,9 +1,9 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
-import api.astro.whats_orders_manager.events.NotificacionEvent;
+import api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
-import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;

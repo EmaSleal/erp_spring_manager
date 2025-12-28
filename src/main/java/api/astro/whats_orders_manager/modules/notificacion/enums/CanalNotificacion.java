@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.models.enums;
+package api.astro.whats_orders_manager.modules.notificacion.enums;
 
 /**
  * ============================================================================

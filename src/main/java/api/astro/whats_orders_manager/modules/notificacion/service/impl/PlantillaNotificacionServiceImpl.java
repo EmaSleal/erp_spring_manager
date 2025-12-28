@@ -1,10 +1,10 @@
-package api.astro.whats_orders_manager.services.impl;
+package api.astro.whats_orders_manager.modules.notificacion.service.impl;
 
-import api.astro.whats_orders_manager.models.PlantillaNotificacion;
-import api.astro.whats_orders_manager.models.enums.CanalNotificacion;
-import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
-import api.astro.whats_orders_manager.repositories.PlantillaNotificacionRepository;
-import api.astro.whats_orders_manager.services.PlantillaNotificacionService;
+import api.astro.whats_orders_manager.modules.notificacion.model.PlantillaNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.repository.PlantillaNotificacionRepository;
+import api.astro.whats_orders_manager.modules.notificacion.service.PlantillaNotificacionService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

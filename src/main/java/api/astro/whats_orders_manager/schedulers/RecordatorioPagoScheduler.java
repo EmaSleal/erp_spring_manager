@@ -1,8 +1,8 @@
 package api.astro.whats_orders_manager.schedulers;
 
-import api.astro.whats_orders_manager.events.NotificacionEvent;
+import api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
-import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
