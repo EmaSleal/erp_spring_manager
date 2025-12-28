@@ -122,4 +122,14 @@ public interface ReporteService {
      * @return Lista de clientes top
      */
     List<Map<String, Object>> obtenerClientesTop(int limite);
+    
+    // ========================================================================
+    // GESTIÓN DE CACHÉ
+    // ========================================================================
+    
+    /**
+     * Limpia todos los cachés de reportes.
+     * Debe llamarse cuando se crean, modifican o eliminan facturas, clientes o productos.
+     */
+    void limpiarCacheReportes();
 }

@@ -1700,6 +1700,823 @@ BAJA PRIORIDAD (Sprint 4+):
 
 ---
 
-**Última actualización:** 12 de octubre de 2025  
+## 🔧 INTEGRACIÓN DE PARÁMETROS DEL SISTEMA
+
+**Estado:** 📝 Planificado  
+**Prioridad:** Alta  
+**Sprint sugerido:** Sprint 4 - Fase 2  
+**Fecha de solicitud:** 1 de diciembre de 2025
+
+### Descripción
+
+Actualmente el sistema cuenta con **17 parámetros del sistema** almacenados en la tabla `parametro_sistema`, pero **NO se están utilizando en la lógica de negocio**. Los parámetros existen en base de datos y son gestionables desde la UI, pero el código no los consulta ni aplica.
+
+Se requiere **integrar completamente los parámetros** en los módulos correspondientes para que el sistema sea configurable desde la interfaz sin necesidad de modificar código o reiniciar la aplicación.
+
+---
+
+### 📊 Parámetros Actuales y su Aplicación
+
+#### Categoría: GENERAL (4 parámetros)
+
+| Parámetro | Valor Actual | Tipo | Donde Aplicar | Descripción |
+|-----------|--------------|------|---------------|-------------|
+| `APP_NOMBRE` | WhatsApp Orders Manager | STRING | `layout.html`, `navbar`, `login.html`, emails | Nombre de la aplicación mostrado en UI |
+| `APP_VERSION` | 1.0.0 | STRING | `footer`, `/dashboard`, logs | Versión actual del sistema |
+| `TIEMPO_SESION` | 30 | INTEGER | `SecurityConfig.java`, `SessionConfig` | Minutos de inactividad antes de cerrar sesión |
+| `PAGINA_REGISTROS` | 10 | INTEGER | Todos los controladores con paginación | Registros por página en listados |
+
+---
+
+#### Categoría: WHATSAPP (5 parámetros)
+
+| Parámetro | Valor Actual | Tipo | Donde Aplicar | Descripción |
+|-----------|--------------|------|---------------|-------------|
+| `WHATSAPP_ACTIVO` | true | BOOLEAN | `WhatsAppService`, `WhatsAppWebhookController` | Habilitar/deshabilitar módulo completo |
+| `WHATSAPP_RESPUESTA_AUTO` | true | BOOLEAN | `WhatsAppWebhookController`, lógica de respuestas automáticas | Activar respuestas automáticas |
+| `WHATSAPP_MENSAJE_BIENVENIDA` | Hola! Bienvenido a Monrachem... | STRING | `WhatsAppService.enviarMensajeBienvenida()` | Mensaje de bienvenida automático |
+| `WHATSAPP_HORARIO_ACTIVO_INICIO` | 09:00 | STRING | `WhatsAppWebhookController`, validación de horario | Hora de inicio de atención (HH:MM) |
+| `WHATSAPP_HORARIO_ACTIVO_FIN` | 18:00 | STRING | `WhatsAppWebhookController`, validación de horario | Hora de fin de atención (HH:MM) |
+
+---
+
+#### Categoría: FACTURACION (4 parámetros)
+
+| Parámetro | Valor Actual | Tipo | Donde Aplicar | Descripción |
+|-----------|--------------|------|---------------|-------------|
+| `FACTURA_DIAS_VENCIMIENTO` | 30 | INTEGER | `FacturaService.save()`, cálculo de fecha de vencimiento | Días predeterminados para vencimiento |
+| `FACTURA_ALERTA_VENCIMIENTO` | 5 | INTEGER | `FacturaService.obtenerFacturasPorVencer()`, notificaciones | Días antes de vencimiento para enviar alerta |
+| `FACTURA_INCLUIR_LOGO` | true | BOOLEAN | Generación de PDF de factura, templates | Incluir logo de empresa en PDFs |
+| `FACTURA_DESCUENTO_MAXIMO` | 20.00 | DECIMAL | `FacturaService.save()`, validación de descuentos | Porcentaje máximo de descuento permitido |
+
+---
+
+#### Categoría: NOTIFICACIONES (4 parámetros)
+
+| Parámetro | Valor Actual | Tipo | Donde Aplicar | Descripción |
+|-----------|--------------|------|---------------|-------------|
+| `NOTIF_EMAIL_ACTIVO` | true | BOOLEAN | `EmailService`, `NotificacionService` | Habilitar notificaciones por email |
+| `NOTIF_WHATSAPP_ACTIVO` | false | BOOLEAN | `WhatsAppNotificacionService` | Habilitar notificaciones por WhatsApp |
+| `NOTIF_WEB_ACTIVO` | true | BOOLEAN | `NotificacionWebService`, WebSocket | Habilitar notificaciones web en tiempo real |
+| `NOTIF_DIAS_RETENER` | 90 | INTEGER | `NotificacionService.limpiarNotificacionesAntiguas()` | Días para retener notificaciones en el sistema |
+
+---
+
+### 🛠️ Implementación Propuesta
+
+#### 1. Crear Servicio de Configuración Centralizado
+
+```java
+package api.astro.whats_orders_manager.services;
+
+import api.astro.whats_orders_manager.models.ParametroSistema;
+import api.astro.whats_orders_manager.repositories.ParametroSistemaRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+
+/**
+ * Servicio centralizado para obtener parámetros del sistema.
+ * Los valores se cachean para mejorar rendimiento.
+ */
+@Slf4j
+@Service
+public class ConfiguracionService {
+
+    @Autowired
+    private ParametroSistemaRepository parametroRepository;
+
+    /**
+     * Obtiene valor de parámetro como String
+     */
+    @Cacheable(value = "parametros", key = "#clave")
+    public String getValor(String clave) {
+        return parametroRepository.findByClave(clave)
+                .map(ParametroSistema::getValor)
+                .orElse(null);
+    }
+
+    /**
+     * Obtiene valor con fallback si no existe
+     */
+    @Cacheable(value = "parametros", key = "#clave + '_' + #defaultValue")
+    public String getValorOr(String clave, String defaultValue) {
+        return parametroRepository.findByClave(clave)
+                .map(ParametroSistema::getValor)
+                .orElse(defaultValue);
+    }
+
+    /**
+     * Obtiene valor como Integer
+     */
+    public Integer getValorInt(String clave) {
+        String valor = getValor(clave);
+        if (valor == null) return null;
+        try {
+            return Integer.parseInt(valor);
+        } catch (NumberFormatException e) {
+            log.warn("No se pudo convertir parámetro {} a Integer: {}", clave, valor);
+            return null;
+        }
+    }
+
+    /**
+     * Obtiene valor como Integer con fallback
+     */
+    public Integer getValorIntOr(String clave, Integer defaultValue) {
+        Integer valor = getValorInt(clave);
+        return valor != null ? valor : defaultValue;
+    }
+
+    /**
+     * Obtiene valor como BigDecimal
+     */
+    public BigDecimal getValorDecimal(String clave) {
+        String valor = getValor(clave);
+        if (valor == null) return null;
+        try {
+            return new BigDecimal(valor);
+        } catch (NumberFormatException e) {
+            log.warn("No se pudo convertir parámetro {} a BigDecimal: {}", clave, valor);
+            return null;
+        }
+    }
+
+    /**
+     * Obtiene valor como BigDecimal con fallback
+     */
+    public BigDecimal getValorDecimalOr(String clave, BigDecimal defaultValue) {
+        BigDecimal valor = getValorDecimal(clave);
+        return valor != null ? valor : defaultValue;
+    }
+
+    /**
+     * Obtiene valor como Boolean
+     */
+    public Boolean getValorBoolean(String clave) {
+        String valor = getValor(clave);
+        if (valor == null) return null;
+        return "true".equalsIgnoreCase(valor) || "1".equals(valor);
+    }
+
+    /**
+     * Obtiene valor como Boolean con fallback
+     */
+    public Boolean getValorBooleanOr(String clave, Boolean defaultValue) {
+        Boolean valor = getValorBoolean(clave);
+        return valor != null ? valor : defaultValue;
+    }
+
+    /**
+     * Limpia la caché de parámetros (llamar después de actualizar un parámetro)
+     */
+    @CacheEvict(value = "parametros", allEntries = true)
+    public void limpiarCache() {
+        log.info("Caché de parámetros limpiada");
+    }
+}
+```
+
+---
+
+#### 2. Configurar Caché de Spring
+
+```java
+// config/CacheConfig.java
+package api.astro.whats_orders_manager.config;
+
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableCaching
+public class CacheConfig {
+
+    @Bean
+    public CacheManager cacheManager() {
+        return new ConcurrentMapCacheManager("parametros");
+    }
+}
+```
+
+---
+
+#### 3. Aplicar en SecurityConfig (Tiempo de Sesión)
+
+```java
+// config/SecurityConfig.java
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        
+        // Obtener tiempo de sesión del parámetro
+        Integer tiempoSesionMinutos = configuracionService.getValorIntOr("TIEMPO_SESION", 30);
+        int tiempoSesionSegundos = tiempoSesionMinutos * 60;
+        
+        http
+                // ... configuración existente ...
+                
+                // Configuración de sesión
+                .sessionManagement(session -> session
+                        .maximumSessions(1)  // Un usuario solo una sesión
+                        .maxSessionsPreventsLogin(false)  // Nueva sesión expulsa a la anterior
+                        .expiredUrl("/auth/login?expired=true")
+                )
+                .sessionManagement(session -> session
+                        .invalidSessionUrl("/auth/login?invalid=true")
+                        .sessionFixation().migrateSession()
+                        // Aplicar timeout desde parámetro
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                );
+        
+        return http.build();
+    }
+}
+
+// También crear listener para aplicar timeout
+@Component
+public class SessionTimeoutListener implements HttpSessionListener {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Override
+    public void sessionCreated(HttpSessionEvent se) {
+        Integer tiempoSesionMinutos = configuracionService.getValorIntOr("TIEMPO_SESION", 30);
+        se.getSession().setMaxInactiveInterval(tiempoSesionMinutos * 60);
+    }
+}
+```
+
+---
+
+#### 4. Aplicar en Paginación (Registros por Página)
+
+```java
+// controllers/ClienteController.java (y similar en Producto, Factura)
+@Controller
+@RequestMapping("/clientes")
+public class ClienteController {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Autowired
+    private ClienteService clienteService;
+
+    @GetMapping
+    public String listar(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer size,  // Ahora es opcional
+            Model model
+    ) {
+        // Si no se especifica size, usar parámetro del sistema
+        if (size == null || size <= 0) {
+            size = configuracionService.getValorIntOr("PAGINA_REGISTROS", 10);
+        }
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Cliente> clientes = clienteService.findAll(pageable);
+        
+        model.addAttribute("clientes", clientes);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("pageSize", size);
+        
+        return "clientes/clientes";
+    }
+}
+```
+
+---
+
+#### 5. Aplicar en WhatsApp (Horarios y Mensajes)
+
+```java
+// controllers/WhatsAppWebhookController.java
+@RestController
+@RequestMapping("/api/whatsapp/webhook")
+public class WhatsAppWebhookController {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Autowired
+    private WhatsAppService whatsAppService;
+
+    @PostMapping
+    public ResponseEntity<String> handleWebhook(@RequestBody String payload) {
+        
+        // Verificar si WhatsApp está activo
+        Boolean whatsappActivo = configuracionService.getValorBooleanOr("WHATSAPP_ACTIVO", true);
+        if (!whatsappActivo) {
+            log.warn("Webhook recibido pero WhatsApp está desactivado");
+            return ResponseEntity.ok("WhatsApp desactivado");
+        }
+        
+        // Verificar horario de atención
+        if (!estaDentroDeHorario()) {
+            enviarMensajeFueraDeHorario(telefono);
+            return ResponseEntity.ok("Fuera de horario");
+        }
+        
+        // Procesar mensaje...
+        
+        return ResponseEntity.ok("OK");
+    }
+
+    private boolean estaDentroDeHorario() {
+        String horaInicio = configuracionService.getValorOr("WHATSAPP_HORARIO_ACTIVO_INICIO", "00:00");
+        String horaFin = configuracionService.getValorOr("WHATSAPP_HORARIO_ACTIVO_FIN", "23:59");
+        
+        LocalTime ahora = LocalTime.now();
+        LocalTime inicio = LocalTime.parse(horaInicio);
+        LocalTime fin = LocalTime.parse(horaFin);
+        
+        return ahora.isAfter(inicio) && ahora.isBefore(fin);
+    }
+
+    private void enviarMensajeBienvenida(String telefono) {
+        Boolean respuestaAutoActiva = configuracionService.getValorBooleanOr("WHATSAPP_RESPUESTA_AUTO", true);
+        
+        if (respuestaAutoActiva) {
+            String mensajeBienvenida = configuracionService.getValorOr(
+                    "WHATSAPP_MENSAJE_BIENVENIDA",
+                    "Hola! Bienvenido a nuestro sistema."
+            );
+            
+            whatsAppService.enviarMensajeTexto(telefono, mensajeBienvenida, null);
+        }
+    }
+}
+```
+
+---
+
+#### 6. Aplicar en Facturas (Vencimiento y Descuentos)
+
+```java
+// services/FacturaServiceImpl.java
+@Service
+public class FacturaServiceImpl implements FacturaService {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Override
+    @Transactional
+    public Factura save(Factura factura) {
+        
+        // Calcular fecha de vencimiento si no está especificada
+        if (factura.getFechaVencimiento() == null) {
+            Integer diasVencimiento = configuracionService.getValorIntOr("FACTURA_DIAS_VENCIMIENTO", 30);
+            LocalDate fechaVencimiento = factura.getFechaEntrega().plusDays(diasVencimiento);
+            factura.setFechaVencimiento(fechaVencimiento);
+        }
+        
+        // Validar descuento máximo permitido
+        if (factura.getDescuento() != null && factura.getDescuento().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal descuentoMaximo = configuracionService.getValorDecimalOr(
+                    "FACTURA_DESCUENTO_MAXIMO", 
+                    new BigDecimal("20.00")
+            );
+            
+            if (factura.getDescuento().compareTo(descuentoMaximo) > 0) {
+                throw new IllegalArgumentException(
+                        String.format("El descuento no puede ser mayor a %.2f%%", descuentoMaximo)
+                );
+            }
+        }
+        
+        return facturaRepository.save(factura);
+    }
+
+    @Override
+    public List<Factura> obtenerFacturasPorVencer() {
+        Integer diasAlerta = configuracionService.getValorIntOr("FACTURA_ALERTA_VENCIMIENTO", 5);
+        
+        LocalDate hoy = LocalDate.now();
+        LocalDate fechaLimite = hoy.plusDays(diasAlerta);
+        
+        return facturaRepository.findByFechaVencimientoBetweenAndEstadoPago(
+                hoy, fechaLimite, "PENDIENTE"
+        );
+    }
+}
+```
+
+---
+
+#### 7. Aplicar en Notificaciones
+
+```java
+// services/NotificacionServiceImpl.java
+@Service
+public class NotificacionServiceImpl implements NotificacionService {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private WhatsAppService whatsAppService;
+
+    @Override
+    public void enviarNotificacion(String tipo, String mensaje, Usuario destinatario) {
+        
+        // Verificar canales activos
+        Boolean emailActivo = configuracionService.getValorBooleanOr("NOTIF_EMAIL_ACTIVO", true);
+        Boolean whatsappActivo = configuracionService.getValorBooleanOr("NOTIF_WHATSAPP_ACTIVO", false);
+        Boolean webActivo = configuracionService.getValorBooleanOr("NOTIF_WEB_ACTIVO", true);
+        
+        // Enviar por email si está activo
+        if (emailActivo && destinatario.getEmail() != null) {
+            emailService.enviarNotificacion(destinatario.getEmail(), tipo, mensaje);
+        }
+        
+        // Enviar por WhatsApp si está activo
+        if (whatsappActivo && destinatario.getTelefono() != null) {
+            whatsAppService.enviarMensajeTexto(destinatario.getTelefono(), mensaje, null);
+        }
+        
+        // Enviar notificación web si está activo
+        if (webActivo) {
+            enviarNotificacionWeb(destinatario.getId(), tipo, mensaje);
+        }
+    }
+
+    @Scheduled(cron = "0 0 2 * * ?")  // Cada día a las 2 AM
+    public void limpiarNotificacionesAntiguas() {
+        Integer diasRetener = configuracionService.getValorIntOr("NOTIF_DIAS_RETENER", 90);
+        
+        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(diasRetener);
+        
+        int eliminadas = notificacionRepository.deleteByFechaCreacionBefore(fechaLimite);
+        
+        log.info("Limpieza de notificaciones: {} registros eliminados (más de {} días)", 
+                 eliminadas, diasRetener);
+    }
+}
+```
+
+---
+
+#### 8. Aplicar en Templates (Nombre y Versión)
+
+```html
+<!-- templates/layout.html -->
+<head th:fragment="head">
+    <title th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'WhatsApp Orders Manager')}">
+        WhatsApp Orders Manager
+    </title>
+    <!-- ... resto del head ... -->
+</head>
+
+<!-- templates/components/navbar.html -->
+<nav class="navbar">
+    <div class="navbar-brand">
+        <span th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'WhatsApp Orders Manager')}">
+            WhatsApp Orders Manager
+        </span>
+        <small class="text-muted ms-2" 
+               th:text="'v' + ${@configuracionService.getValorOr('APP_VERSION', '1.0.0')}">
+            v1.0.0
+        </small>
+    </div>
+    <!-- ... resto del navbar ... -->
+</nav>
+
+<!-- templates/components/footer.html -->
+<footer class="footer">
+    <div class="container text-center">
+        <p th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'WhatsApp Orders Manager')} + 
+                     ' © 2025 | Versión ' + 
+                     ${@configuracionService.getValorOr('APP_VERSION', '1.0.0')}">
+            WhatsApp Orders Manager © 2025 | Versión 1.0.0
+        </p>
+    </div>
+</footer>
+```
+
+---
+
+#### 9. Aplicar en Generación de PDFs (Logo)
+
+```java
+// services/FacturaPDFService.java
+@Service
+public class FacturaPDFService {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Autowired
+    private ConfiguracionEmpresaService configuracionEmpresaService;
+
+    public byte[] generarPDF(Factura factura) {
+        Document document = new Document();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        
+        try {
+            PdfWriter.getInstance(document, baos);
+            document.open();
+            
+            // Verificar si debe incluir logo
+            Boolean incluirLogo = configuracionService.getValorBooleanOr("FACTURA_INCLUIR_LOGO", true);
+            
+            if (incluirLogo) {
+                ConfiguracionEmpresa empresa = configuracionEmpresaService.obtenerConfiguracionActiva();
+                if (empresa != null && empresa.getLogoUrl() != null) {
+                    // Agregar logo al PDF
+                    Image logo = Image.getInstance(empresa.getLogoUrl());
+                    logo.scaleToFit(150, 50);
+                    document.add(logo);
+                }
+            }
+            
+            // ... resto del contenido del PDF ...
+            
+            document.close();
+        } catch (Exception e) {
+            log.error("Error generando PDF de factura", e);
+        }
+        
+        return baos.toByteArray();
+    }
+}
+```
+
+---
+
+#### 10. Actualizar ParametroSistemaService para Limpiar Caché
+
+```java
+// services/ParametroSistemaServiceImpl.java
+@Service
+public class ParametroSistemaServiceImpl implements ParametroSistemaService {
+
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    @Override
+    @Transactional
+    public ParametroSistema actualizarValor(String clave, String nuevoValor) {
+        ParametroSistema parametro = parametroRepository.findByClave(clave)
+                .orElseThrow(() -> new RuntimeException("Parámetro no encontrado: " + clave));
+        
+        parametro.setValor(nuevoValor);
+        parametro.setUpdateDate(LocalDateTime.now());
+        
+        ParametroSistema actualizado = parametroRepository.save(parametro);
+        
+        // IMPORTANTE: Limpiar caché después de actualizar
+        configuracionService.limpiarCache();
+        
+        log.info("Parámetro actualizado: {} = {} (caché limpiada)", clave, nuevoValor);
+        
+        return actualizado;
+    }
+}
+```
+
+---
+
+### 📁 Archivos a Crear/Modificar
+
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `services/ConfiguracionService.java` | **Crear** | Servicio centralizado para obtener parámetros |
+| `config/CacheConfig.java` | **Crear** | Configuración de caché de Spring |
+| `listeners/SessionTimeoutListener.java` | **Crear** | Listener para aplicar timeout de sesión |
+| `config/SecurityConfig.java` | **Modificar** | Aplicar `TIEMPO_SESION` |
+| `controllers/ClienteController.java` | **Modificar** | Aplicar `PAGINA_REGISTROS` |
+| `controllers/ProductoController.java` | **Modificar** | Aplicar `PAGINA_REGISTROS` |
+| `controllers/FacturaController.java` | **Modificar** | Aplicar `PAGINA_REGISTROS` |
+| `controllers/UsuarioController.java` | **Modificar** | Aplicar `PAGINA_REGISTROS` |
+| `controllers/WhatsAppWebhookController.java` | **Modificar** | Aplicar `WHATSAPP_ACTIVO`, `WHATSAPP_RESPUESTA_AUTO`, `WHATSAPP_MENSAJE_BIENVENIDA`, horarios |
+| `services/WhatsAppService.java` | **Modificar** | Aplicar parámetros de WhatsApp |
+| `services/FacturaServiceImpl.java` | **Modificar** | Aplicar `FACTURA_DIAS_VENCIMIENTO`, `FACTURA_DESCUENTO_MAXIMO`, `FACTURA_ALERTA_VENCIMIENTO` |
+| `services/FacturaPDFService.java` | **Crear/Modificar** | Aplicar `FACTURA_INCLUIR_LOGO` |
+| `services/NotificacionServiceImpl.java` | **Crear/Modificar** | Aplicar `NOTIF_*` parámetros |
+| `services/ParametroSistemaServiceImpl.java` | **Modificar** | Limpiar caché al actualizar |
+| `templates/layout.html` | **Modificar** | Mostrar `APP_NOMBRE` |
+| `templates/components/navbar.html` | **Modificar** | Mostrar `APP_NOMBRE` y `APP_VERSION` |
+| `templates/components/footer.html` | **Modificar** | Mostrar `APP_NOMBRE` y `APP_VERSION` |
+| `templates/auth/login.html` | **Modificar** | Mostrar `APP_NOMBRE` |
+| `pom.xml` | **Modificar** | Agregar dependencia `spring-boot-starter-cache` |
+
+**Total:** 19 archivos (3 nuevos, 16 modificados)
+
+---
+
+### ⏱️ Estimación de Tiempo
+
+| Tarea | Horas |
+|-------|-------|
+| Crear `ConfiguracionService` con caché | 2-3h |
+| Configurar caché de Spring | 1h |
+| Aplicar en SecurityConfig (sesión) | 2-3h |
+| Aplicar en paginación (4 controladores) | 3-4h |
+| Aplicar en WhatsApp (horarios, mensajes) | 4-5h |
+| Aplicar en Facturas (vencimiento, descuentos) | 3-4h |
+| Aplicar en Notificaciones | 3-4h |
+| Aplicar en Templates (nombre, versión) | 2h |
+| Crear servicio PDF con logo condicional | 2-3h |
+| Testing (unitario + integración) | 6-8h |
+| Documentación | 2h |
+| **TOTAL** | **30-39 horas** |
+
+**Estimación:** 4-5 días de desarrollo
+
+---
+
+### ✅ Checklist de Implementación
+
+**Fase 1: Infraestructura**
+- [ ] Crear `ConfiguracionService.java`
+- [ ] Crear `CacheConfig.java`
+- [ ] Agregar dependencia de caché en `pom.xml`
+- [ ] Crear tests unitarios de `ConfiguracionService`
+
+**Fase 2: Parámetros GENERAL**
+- [ ] Aplicar `TIEMPO_SESION` en `SecurityConfig`
+- [ ] Crear `SessionTimeoutListener`
+- [ ] Aplicar `PAGINA_REGISTROS` en `ClienteController`
+- [ ] Aplicar `PAGINA_REGISTROS` en `ProductoController`
+- [ ] Aplicar `PAGINA_REGISTROS` en `FacturaController`
+- [ ] Aplicar `PAGINA_REGISTROS` en `UsuarioController`
+- [ ] Aplicar `APP_NOMBRE` y `APP_VERSION` en templates
+- [ ] Probar cambio de parámetros en UI
+
+**Fase 3: Parámetros WHATSAPP**
+- [ ] Aplicar `WHATSAPP_ACTIVO` en `WhatsAppService`
+- [ ] Aplicar `WHATSAPP_RESPUESTA_AUTO` en webhook
+- [ ] Aplicar `WHATSAPP_MENSAJE_BIENVENIDA` en `WhatsAppService`
+- [ ] Implementar validación de horarios
+- [ ] Aplicar `WHATSAPP_HORARIO_ACTIVO_INICIO/FIN`
+- [ ] Crear mensaje fuera de horario
+- [ ] Probar activación/desactivación de WhatsApp
+
+**Fase 4: Parámetros FACTURACION**
+- [ ] Aplicar `FACTURA_DIAS_VENCIMIENTO` en `FacturaService.save()`
+- [ ] Aplicar `FACTURA_DESCUENTO_MAXIMO` en validación
+- [ ] Aplicar `FACTURA_ALERTA_VENCIMIENTO` en job programado
+- [ ] Crear/Actualizar `FacturaPDFService`
+- [ ] Aplicar `FACTURA_INCLUIR_LOGO` en generación de PDFs
+- [ ] Probar generación de facturas con diferentes configuraciones
+
+**Fase 5: Parámetros NOTIFICACIONES**
+- [ ] Crear/Actualizar `NotificacionService`
+- [ ] Aplicar `NOTIF_EMAIL_ACTIVO`
+- [ ] Aplicar `NOTIF_WHATSAPP_ACTIVO`
+- [ ] Aplicar `NOTIF_WEB_ACTIVO`
+- [ ] Implementar limpieza programada
+- [ ] Aplicar `NOTIF_DIAS_RETENER`
+- [ ] Probar envío de notificaciones
+
+**Fase 6: Integración y Testing**
+- [ ] Actualizar `ParametroSistemaService` para limpiar caché
+- [ ] Verificar actualización en tiempo real
+- [ ] Tests de integración completos
+- [ ] Tests E2E de flujos críticos
+- [ ] Documentar uso de parámetros
+
+---
+
+### 🎯 Beneficios Esperados
+
+✅ **Configuración Dinámica:** Cambiar comportamiento sin reiniciar aplicación  
+✅ **Sin Hardcoding:** Todos los valores configurables desde UI  
+✅ **Administración Sencilla:** Admin puede ajustar parámetros fácilmente  
+✅ **Performance:** Caché reduce consultas a BD  
+✅ **Flexibilidad:** Habilitar/deshabilitar módulos completos  
+✅ **Auditoría:** Historial de cambios en parámetros  
+✅ **Escalabilidad:** Fácil agregar nuevos parámetros  
+
+---
+
+### 📝 Ejemplos de Uso Real
+
+#### Ejemplo 1: Deshabilitar WhatsApp Temporalmente
+
+```
+Administrador:
+1. Va a Configuración → Parámetros
+2. Busca "WHATSAPP_ACTIVO"
+3. Cambia valor de "true" a "false"
+4. Guarda
+
+Resultado:
+✅ Webhook deja de procesar mensajes
+✅ No se envían respuestas automáticas
+✅ Sistema sigue funcionando normalmente
+✅ NO se requiere reiniciar aplicación
+```
+
+#### Ejemplo 2: Cambiar Horario de Atención
+
+```
+Administrador:
+1. Edita "WHATSAPP_HORARIO_ACTIVO_INICIO" → "08:00"
+2. Edita "WHATSAPP_HORARIO_ACTIVO_FIN" → "20:00"
+
+Resultado:
+✅ Mensajes fuera de horario reciben respuesta automática
+✅ "Lo sentimos, nuestro horario de atención es de 08:00 a 20:00"
+✅ Cambio inmediato, sin código
+```
+
+#### Ejemplo 3: Ajustar Descuento Máximo
+
+```
+Administrador:
+1. Edita "FACTURA_DESCUENTO_MAXIMO" → "15.00"
+
+Usuario intentando crear factura:
+- Descuento 10% → ✅ Permitido
+- Descuento 20% → ❌ Rechazado con mensaje:
+  "El descuento no puede ser mayor a 15.00%"
+```
+
+#### Ejemplo 4: Aumentar Registros por Página
+
+```
+Administrador:
+1. Edita "PAGINA_REGISTROS" → "25"
+
+Resultado:
+✅ Todas las tablas (Clientes, Productos, Facturas) 
+   muestran 25 registros en lugar de 10
+✅ Cambio se aplica inmediatamente en siguiente carga
+```
+
+---
+
+### ⚠️ Consideraciones Importantes
+
+1. **Caché:** Al actualizar un parámetro, SIEMPRE limpiar caché
+2. **Validación:** Validar tipos de datos antes de guardar
+3. **Fallback:** Siempre tener valores por defecto
+4. **Logging:** Registrar cambios de parámetros críticos
+5. **Documentación:** Documentar cada parámetro en UI
+6. **Testing:** Probar con valores extremos (null, vacío, negativos)
+7. **Migración:** Asegurar que todos los parámetros existan en BD
+
+---
+
+### 🔮 Mejoras Futuras de este Módulo
+
+**Fase 2: Auditoría de Cambios**
+```sql
+CREATE TABLE auditoria_parametros (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    clave_parametro VARCHAR(100),
+    valor_anterior VARCHAR(1000),
+    valor_nuevo VARCHAR(1000),
+    usuario_id BIGINT,
+    fecha_cambio TIMESTAMP,
+    ip_address VARCHAR(45)
+);
+```
+
+**Fase 3: Validación Avanzada**
+```java
+// Validar rangos, expresiones regulares, dependencias entre parámetros
+@Service
+public class ParametroValidacionService {
+    public void validarCambio(String clave, String nuevoValor) {
+        // Validaciones específicas por parámetro
+    }
+}
+```
+
+**Fase 4: Hot Reload Completo**
+```java
+// Recargar configuración sin reiniciar
+@EventListener(ApplicationReadyEvent.class)
+public void recargarConfiguracion() {
+    // Aplicar parámetros en beans existentes
+}
+```
+
+---
+
+**Última actualización:** 1 de diciembre de 2025  
 **Responsable:** GitHub Copilot Agent  
 **Estado del documento:** 🟢 Activo

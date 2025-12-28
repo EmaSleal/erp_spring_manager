@@ -307,6 +307,32 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Gráfico: Estado de Facturas -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-file-invoice text-info"></i> Estado de Facturas
+                        </h5>
+                        <p class="text-muted small">Distribución por estado de pago</p>
+                        <canvas id="estadoFacturasChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico: Comparativa Ingresos vs Meta -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-balance-scale text-danger"></i> Ingresos vs Meta Promedio
+                        </h5>
+                        <p class="text-muted small">Últimos 6 meses</p>
+                        <canvas id="comparativaIngresosChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     </div>
@@ -329,6 +355,8 @@
             cargarGraficoVentasPorMes();
             cargarGraficoClientesNuevos();
             cargarGraficoProductosMasVendidos();
+            cargarGraficoEstadoFacturas();
+            cargarGraficoComparativaIngresos();
         });
     </script>
     </main>

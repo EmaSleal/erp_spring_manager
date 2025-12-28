@@ -22,7 +22,8 @@
              ==================================================================== -->
         
         <!-- Clientes -->
-        <li class="menu-item">
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_VER')">
             <a th:href="@{/clientes}" 
                class="menu-link" 
                data-module="clientes"
@@ -31,15 +32,12 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <span class="menu-text">Clientes</span>
-                <span class="menu-badge bg-secondary" sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" 
-                      style="font-size: 0.65rem; padding: 2px 6px;">
-                    <i class="bi bi-eye-fill"></i>
-                </span>
             </a>
         </li>
 
         <!-- Productos -->
-        <li class="menu-item">
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_VER')">
             <a th:href="@{/productos}" 
                class="menu-link" 
                data-module="productos"
@@ -48,15 +46,12 @@
                     <i class="fas fa-box"></i>
                 </div>
                 <span class="menu-text">Productos</span>
-                <span class="menu-badge bg-secondary" sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" 
-                      style="font-size: 0.65rem; padding: 2px 6px;">
-                    <i class="bi bi-eye-fill"></i>
-                </span>
             </a>
         </li>
 
         <!-- Facturas -->
-        <li class="menu-item">
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
             <a th:href="@{/facturas}" 
                class="menu-link" 
                data-module="facturas"
@@ -65,19 +60,12 @@
                     <i class="fas fa-file-invoice"></i>
                 </div>
                 <span class="menu-text">Facturas</span>
-                <span class="menu-badge bg-success" sec:authorize="hasRole('VENDEDOR')" 
-                      style="font-size: 0.65rem; padding: 2px 6px;">
-                    <i class="bi bi-plus-circle-fill"></i>
-                </span>
-                <span class="menu-badge bg-secondary" sec:authorize="hasRole('VISUALIZADOR')" 
-                      style="font-size: 0.65rem; padding: 2px 6px;">
-                    <i class="bi bi-eye-fill"></i>
-                </span>
             </a>
         </li>
 
         <!-- Reportes -->
-        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REPORTE_DASHBOARD')">
             <a th:href="@{/reportes}" 
                class="menu-link" 
                data-module="reportes"
@@ -90,7 +78,8 @@
         </li>
 
         <!-- WhatsApp -->
-        <li class="menu-item" sec:authorize="hasAnyAuthority('ROLE_ADMIN', 'ROLE_SUPER_ADMIN')">
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_WHATSAPP')">
             <a th:href="@{/whatsapp/mensajes}" 
                class="menu-link" 
                data-module="whatsapp"
@@ -127,7 +116,7 @@
         </li>
 
         <!-- Inventario -->
-        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+        <li class="menu-item">
             <a href="#" 
                class="menu-link disabled" 
                data-module="inventario"
@@ -141,7 +130,7 @@
         </li>
 
         <!-- Pagos -->
-        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+        <li class="menu-item">
             <a href="#" 
                class="menu-link disabled" 
                data-module="pagos"
@@ -155,7 +144,7 @@
         </li>
 
         <!-- Documentos -->
-        <li class="menu-item" sec:authorize="hasAnyRole('USER', 'ADMIN')">
+        <li class="menu-item">
             <a href="#" 
                class="menu-link disabled" 
                data-module="documentos"
@@ -168,31 +157,79 @@
             </a>
         </li>
 
-        <!-- Divider (solo ADMIN) -->
-        <li sec:authorize="hasRole('ADMIN')">
+        <!-- Divider (solo quien tenga permisos de administración) -->
+        <li sec:authorize="@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name, 
+                           'USUARIO_VER',
+                           'CONFIG_VER')">
             <div class="menu-divider"></div>
         </li>
 
-        <!-- Section Title (solo ADMIN) -->
-        <li sec:authorize="hasRole('ADMIN')">
+        <!-- Section Title (solo quien tenga permisos de administración) -->
+        <li sec:authorize="@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name,
+                           'USUARIO_VER',
+                           'CONFIG_VER')">
             <div class="menu-section-title">Administración</div>
         </li>
 
-        <!-- Usuarios (solo ADMIN) -->
-        <li class="menu-item" sec:authorize="hasRole('ADMIN')">
-            <a th:href="@{/usuarios}" 
+        <!-- Usuarios -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'USUARIO_VER')">
+            <a th:href="@{/admin/usuarios}" 
                class="menu-link" 
                data-module="usuarios"
-               data-tooltip="Usuarios">
+               data-tooltip="Gestión de Usuarios">
                 <div class="menu-icon">
-                    <i class="fas fa-user-cog"></i>
+                    <i class="fas fa-users"></i>
                 </div>
                 <span class="menu-text">Usuarios</span>
             </a>
         </li>
 
-        <!-- Configuración (solo ADMIN) -->
-        <li class="menu-item" sec:authorize="hasRole('ADMIN')">
+        <!-- Gestión de Roles -->
+        <li class="menu-item" 
+            sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/admin/roles}" 
+               class="menu-link" 
+               data-module="roles"
+               data-tooltip="Gestión de Roles">
+                <div class="menu-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <span class="menu-text">Roles</span>
+            </a>
+        </li>
+
+        <!-- Permisos (Matriz) -->
+        <li class="menu-item" 
+            sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/admin/permisos}" 
+               class="menu-link" 
+               data-module="permisos"
+               data-tooltip="Matriz de Permisos">
+                <div class="menu-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <span class="menu-text">Permisos</span>
+            </a>
+        </li>
+
+        <!-- Gestionar Permisos (CRUD Individual) -->
+        <li class="menu-item" 
+            sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/admin/permisos/gestionar}" 
+               class="menu-link" 
+               data-module="permisos-gestionar"
+               data-tooltip="Gestionar Permisos Individuales">
+                <div class="menu-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <span class="menu-text">Gestionar Permisos</span>
+            </a>
+        </li>
+
+        <!-- Configuración -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_VER')">
             <a th:href="@{/configuracion}" 
                class="menu-link" 
                data-module="config"

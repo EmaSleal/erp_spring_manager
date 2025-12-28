@@ -1,7 +1,8 @@
 package api.astro.whats_orders_manager.controllers;
 
-import api.astro.whats_orders_manager.dto.whatsapp.PlantillaWhatsAppDTO;
+
 import api.astro.whats_orders_manager.models.PlantillaWhatsApp;
+import api.astro.whats_orders_manager.models.dto.PlantillaWhatsAppDTO;
 import api.astro.whats_orders_manager.services.PlantillaWhatsAppService;
 
 import lombok.extern.slf4j.Slf4j;

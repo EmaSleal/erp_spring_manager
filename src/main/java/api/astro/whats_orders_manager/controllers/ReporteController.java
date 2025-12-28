@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.controllers;
 
 import api.astro.whats_orders_manager.models.Cliente;
+import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.models.Factura;
 import api.astro.whats_orders_manager.models.Producto;
 import api.astro.whats_orders_manager.models.Usuario;
@@ -65,6 +66,7 @@ public class ReporteController {
     private final UsuarioService usuarioService;
     private final ReporteService reporteService;
     private final ExportService exportService;
+    private final ConfiguracionFacturacionService configuracionFacturacionService;
     private final FacturaRepository facturaRepository;
     private final ClienteRepository clienteRepository;
     private final ProductoRepository productoRepository;
@@ -690,9 +692,190 @@ public class ReporteController {
         }
     }
 
+    /**
+     * API: Estado de Facturas (Pie Chart)
+     * GET /reportes/api/estado-facturas
+     * 
+     * Retorna la distribución de facturas por estado de pago
+     * Usado para gráfica de pie/doughnut
+     */
+    @GetMapping("/api/estado-facturas")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getEstadoFacturas() {
+        log.info("📊 API: Obteniendo estado de facturas");
+        
+        try {
+            List<Factura> todasFacturas = facturaRepository.findAll();
+            
+            // Contar facturas por estado
+            Map<String, Long> estadoCounts = new HashMap<>();
+            estadoCounts.put("Pagadas", 0L);
+            estadoCounts.put("Pendientes", 0L);
+            estadoCounts.put("Vencidas", 0L);
+            
+            LocalDate hoy = LocalDate.now();
+            
+            for (Factura factura : todasFacturas) {
+                if (factura.getFechaPago() != null) {
+                    // Factura pagada
+                    estadoCounts.put("Pagadas", estadoCounts.get("Pagadas") + 1);
+                } else {
+                    // Verificar si está vencida (más de 30 días desde fecha de entrega)
+                    if (factura.getFechaEntrega() != null) {
+                        LocalDate fechaEntrega = factura.getFechaEntrega().toLocalDate();
+                        LocalDate fechaVencimiento = fechaEntrega.plusDays(30);
+                        
+                        if (fechaVencimiento.isBefore(hoy)) {
+                            estadoCounts.put("Vencidas", estadoCounts.get("Vencidas") + 1);
+                        } else {
+                            estadoCounts.put("Pendientes", estadoCounts.get("Pendientes") + 1);
+                        }
+                    } else {
+                        // Sin fecha de entrega, considerar pendiente
+                        estadoCounts.put("Pendientes", estadoCounts.get("Pendientes") + 1);
+                    }
+                }
+            }
+            
+            // Preparar respuesta para Chart.js
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("labels", new ArrayList<>(estadoCounts.keySet()));
+            resultado.put("data", new ArrayList<>(estadoCounts.values()));
+            
+            // Colores para el pie chart
+            List<String> colores = List.of(
+                "#28a745",  // Verde para Pagadas
+                "#ffc107",  // Amarillo para Pendientes
+                "#dc3545"   // Rojo para Vencidas
+            );
+            resultado.put("backgroundColor", colores);
+            
+            log.info("✅ Estado de facturas obtenido - Pagadas: {}, Pendientes: {}, Vencidas: {}", 
+                    estadoCounts.get("Pagadas"), 
+                    estadoCounts.get("Pendientes"), 
+                    estadoCounts.get("Vencidas"));
+            
+            return ResponseEntity.ok(resultado);
+            
+        } catch (Exception e) {
+            log.error("❌ Error al obtener estado de facturas: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * API: Comparativa Ingresos/Gastos (Mixed Chart)
+     * GET /reportes/api/comparativa-ingresos
+     * 
+     * Retorna datos comparativos de ingresos mensuales vs meta/objetivo
+     * Usado para gráfica mixta (barras + línea)
+     */
+    @GetMapping("/api/comparativa-ingresos")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getComparativaIngresos(
+            @RequestParam(required = false, defaultValue = "6") Integer meses
+    ) {
+        log.info("📊 API: Obteniendo comparativa de ingresos (últimos {} meses)", meses);
+        
+        try {
+            Map<String, BigDecimal> ventasPorMes = reporteService.obtenerVentasPorMes(meses);
+            
+            // Preparar datos
+            List<String> labels = new ArrayList<>(ventasPorMes.keySet());
+            List<BigDecimal> ingresos = new ArrayList<>(ventasPorMes.values());
+            
+            // Calcular promedio como meta/objetivo
+            BigDecimal suma = ingresos.stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal promedio = ingresos.isEmpty() ? BigDecimal.ZERO : 
+                suma.divide(BigDecimal.valueOf(ingresos.size()), 2, java.math.RoundingMode.HALF_UP);
+            
+            // Crear línea de meta (valor constante)
+            List<BigDecimal> meta = new ArrayList<>();
+            for (int i = 0; i < ingresos.size(); i++) {
+                meta.add(promedio);
+            }
+            
+            // Calcular porcentaje de cumplimiento
+            List<BigDecimal> cumplimiento = new ArrayList<>();
+            for (BigDecimal ingreso : ingresos) {
+                if (promedio.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal porcentaje = ingreso.multiply(BigDecimal.valueOf(100))
+                        .divide(promedio, 2, java.math.RoundingMode.HALF_UP);
+                    cumplimiento.add(porcentaje);
+                } else {
+                    cumplimiento.add(BigDecimal.ZERO);
+                }
+            }
+            
+            // Preparar respuesta para Chart.js
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("labels", labels);
+            
+            // Dataset 1: Ingresos reales (barras)
+            Map<String, Object> datasetIngresos = new HashMap<>();
+            datasetIngresos.put("label", "Ingresos Reales");
+            datasetIngresos.put("type", "bar");
+            datasetIngresos.put("data", ingresos);
+            datasetIngresos.put("backgroundColor", "#0d6efd");
+            datasetIngresos.put("borderColor", "#0d6efd");
+            
+            // Dataset 2: Meta/Objetivo (línea)
+            Map<String, Object> datasetMeta = new HashMap<>();
+            datasetMeta.put("label", "Meta Promedio");
+            datasetMeta.put("type", "line");
+            datasetMeta.put("data", meta);
+            datasetMeta.put("backgroundColor", "rgba(220, 53, 69, 0.1)");
+            datasetMeta.put("borderColor", "#dc3545");
+            datasetMeta.put("borderWidth", 2);
+            datasetMeta.put("borderDash", List.of(5, 5)); // Línea punteada
+            datasetMeta.put("fill", false);
+            
+            List<Map<String, Object>> datasets = List.of(datasetIngresos, datasetMeta);
+            resultado.put("datasets", datasets);
+            resultado.put("promedio", promedio);
+            resultado.put("cumplimiento", cumplimiento);
+            
+            log.info("✅ Comparativa de ingresos obtenida - Promedio: {}, Meses: {}", 
+                    promedio, meses);
+            
+            return ResponseEntity.ok(resultado);
+            
+        } catch (Exception e) {
+            log.error("❌ Error al obtener comparativa de ingresos: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // ============================================================================
     // MÉTODOS AUXILIARES
     // ============================================================================
+    
+    /**
+     * Obtiene el símbolo de moneda configurado en el sistema.
+     * 
+     * @return Símbolo de moneda (₡, $, etc.) según configuración
+     */
+    private String obtenerSimboloMoneda() {
+        try {
+            Optional<ConfiguracionFacturacion> config = configuracionFacturacionService.getConfiguracionActiva();
+            if (config.isPresent()) {
+                String moneda = config.get().getMoneda();
+                if (moneda != null) {
+                    return switch (moneda.toUpperCase()) {
+                        case "CRC" -> "₡";
+                        case "USD" -> "$";
+                        case "MXN" -> "$";
+                        case "EUR" -> "€";
+                        default -> moneda + " ";
+                    };
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error al obtener símbolo de moneda, usando predeterminado: {}", e.getMessage());
+        }
+        return "₡"; // Colones por defecto (Costa Rica)
+    }
     
     /**
      * Carga los datos del usuario actual en el modelo.
@@ -719,5 +902,9 @@ public class ReporteController {
                 log.warn("Usuario no encontrado con teléfono: {}", telefono);
             }
         }
+        
+        // Agregar símbolo de moneda a todas las vistas
+        model.addAttribute("simboloMoneda", obtenerSimboloMoneda());
     }
 }
+

@@ -1,12 +1,15 @@
 package api.astro.whats_orders_manager.services.impl;
 
+import api.astro.whats_orders_manager.events.NotificacionEvent;
 import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.repositories.FacturaRepository;
 import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.services.FacturaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +36,9 @@ public class FacturaServiceImpl implements FacturaService {
     
     @Autowired
     private ConfiguracionFacturacionService configuracionFacturacionService;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -116,6 +122,9 @@ public class FacturaServiceImpl implements FacturaService {
             // El número se puede ajustar manualmente si es necesario
         }
         
+        // ✅ NUEVO: Publicar evento de factura generada
+        publicarEventoFacturaGenerada(facturaGuardada);
+        
         return facturaGuardada;
     }
 
@@ -177,5 +186,42 @@ public class FacturaServiceImpl implements FacturaService {
     public String getPreviewNumeroFactura() {
         log.debug("Generando preview de número de factura");
         return configuracionFacturacionService.generarSiguienteNumeroFactura();
+    }
+    
+    /**
+     * Publica evento de factura generada para notificaciones
+     * 
+     * @param factura Factura recién creada
+     */
+    private void publicarEventoFacturaGenerada(Factura factura) {
+        try {
+            // Determinar destinatario (empresa o cliente)
+            var usuario = factura.getCliente() != null && factura.getCliente().getUsuario() != null
+                ? factura.getCliente().getUsuario()
+                : null;
+            
+            if (usuario != null) {
+                eventPublisher.publishEvent(
+                    NotificacionEvent.builder(this)
+                        .tipo(TipoNotificacion.FACTURA_CREADA)
+                        .usuario(usuario)
+                        .titulo("Nueva Factura Generada")
+                        .mensaje("Se ha generado la factura " + factura.getNumeroFactura() + 
+                                " por un total de " + factura.getTotal())
+                        .urlAccion("/facturas/detalle/" + factura.getIdFactura())
+                        .textoBoton("Ver Factura")
+                        .agregarDato("idFactura", factura.getIdFactura())
+                        .agregarDato("numeroFactura", factura.getNumeroFactura())
+                        .agregarDato("total", factura.getTotal())
+                        .build()
+                );
+                log.info("📢 Evento de factura generada publicado: {}", factura.getNumeroFactura());
+            } else {
+                log.warn("⚠️ No se pudo publicar evento: factura sin cliente/usuario asociado");
+            }
+        } catch (Exception e) {
+            log.error("❌ Error al publicar evento de factura generada: {}", e.getMessage());
+            // No lanzar excepción para no afectar la creación de la factura
+        }
     }
 }

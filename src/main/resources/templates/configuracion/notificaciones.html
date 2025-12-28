@@ -21,7 +21,7 @@
           method="post">
         
         <input type="hidden" th:field="*{idConfiguracion}">
-        <input type="hidden" th:field="*{activo}">
+        <input type="hidden" id="activoNotificaciones" name="activo" th:value="*{activo}">
         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
 
         <div class="row">

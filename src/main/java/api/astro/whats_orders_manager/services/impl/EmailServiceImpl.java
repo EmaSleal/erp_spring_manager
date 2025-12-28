@@ -3,9 +3,11 @@ package api.astro.whats_orders_manager.services.impl;
 import api.astro.whats_orders_manager.models.Factura;
 import api.astro.whats_orders_manager.models.Cliente;
 import api.astro.whats_orders_manager.models.LineaFactura;
+import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.services.EmailService;
 import api.astro.whats_orders_manager.services.EmpresaService;
 import api.astro.whats_orders_manager.services.LineaFacturaService;
+import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +54,9 @@ public class EmailServiceImpl implements EmailService {
 
     @Autowired
     private LineaFacturaService lineaFacturaService;
+
+    @Autowired
+    private ConfiguracionFacturacionService configuracionFacturacionService;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -369,10 +374,14 @@ public class EmailServiceImpl implements EmailService {
             // Obtener información de la empresa
             var empresa = empresaService.getEmpresaPrincipal();
             
+            // Obtener símbolo de moneda
+            String simboloMoneda = obtenerSimboloMoneda();
+            
             // Crear contexto de Thymeleaf
             Context context = new Context();
             context.setVariable("factura", factura);
             context.setVariable("empresa", empresa);
+            context.setVariable("simboloMoneda", simboloMoneda);
             
             // Procesar el template
             String htmlContent = templateEngine.process("email/factura", context);
@@ -471,6 +480,9 @@ public class EmailServiceImpl implements EmailService {
                 java.time.LocalDate.now()
             );
 
+            // Obtener símbolo de moneda
+            String simboloMoneda = obtenerSimboloMoneda();
+
             // Preparar contexto para el template
             Context context = new Context();
             context.setVariable("empresa", empresa);
@@ -479,6 +491,7 @@ public class EmailServiceImpl implements EmailService {
             context.setVariable("lineas", lineas);
             context.setVariable("diasRetraso", diasRetraso);
             context.setVariable("fechaActual", java.time.LocalDate.now());
+            context.setVariable("simboloMoneda", simboloMoneda);
 
             // Procesar template
             String htmlContent = templateEngine.process("email/recordatorio-pago", context);
@@ -498,5 +511,30 @@ public class EmailServiceImpl implements EmailService {
                 factura.getNumeroFactura(), e.getMessage());
             throw new MessagingException("Error al enviar recordatorio de pago: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Obtiene el símbolo de moneda desde la configuración de facturación
+     * @return Símbolo de moneda (₡, $, €, etc.)
+     */
+    private String obtenerSimboloMoneda() {
+        try {
+            var config = configuracionFacturacionService.getConfiguracionActiva();
+            if (config.isPresent()) {
+                String moneda = config.get().getMoneda();
+                if (moneda != null) {
+                    return switch (moneda.toUpperCase()) {
+                        case "CRC" -> "₡";
+                        case "USD" -> "$";
+                        case "MXN" -> "$";
+                        case "EUR" -> "€";
+                        default -> moneda + " ";
+                    };
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error al obtener símbolo de moneda, usando predeterminado: {}", e.getMessage());
+        }
+        return "₡"; // Colones por defecto
     }
 }

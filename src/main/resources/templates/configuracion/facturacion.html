@@ -3,20 +3,319 @@
 
 <!-- ============================================================================
      FRAGMENT: Formulario de Configuración de Facturación
-     WhatsApp Orders Manager - Sprint 2 - Fase 2
+     WhatsApp Orders Manager - Sprint 4 - Modernizado
      ============================================================================ -->
 
 <body>
     <!-- Fragment: Formulario de Configuración de Facturación -->
     <div th:fragment="facturacionForm">
-        
-        <div class="row">
-            <div class="col-lg-8">
-                <form th:action="@{/configuracion/facturacion/guardar}" 
-                      th:object="${configuracion}" 
-                      method="post"
-                      id="formConfiguracionFacturacion"
-                      novalidate>
+
+        <!-- Alert container -->
+        <div id="alert-facturacion-container"></div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary bg-gradient text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-file-invoice me-2"></i>
+                        <strong>Configuración de Facturación</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <form id="form-facturacion">
+
+                    <!-- ID oculto -->
+                    <input type="hidden" id="idConfiguracionFacturacion" name="idConfiguracion">
+
+                    <!-- Sección: Numeración de Facturas -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-hashtag text-primary me-2"></i>
+                                Numeración de Facturas
+                            </h5>
+                        </div>
+
+                        <!-- Serie de Factura -->
+                        <div class="col-md-6 mb-3">
+                            <label for="serieFactura" class="form-label">
+                                <i class="fas fa-tag me-1"></i> Serie de Factura
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="serieFactura"
+                                   name="serieFactura"
+                                   placeholder="Ej: F001, B001"
+                                   maxlength="10"
+                                   required>
+                            <div class="form-text">Identificador de la serie (máx. 10 caracteres)</div>
+                        </div>
+
+                        <!-- Prefijo -->
+                        <div class="col-md-6 mb-3">
+                            <label for="prefijoFactura" class="form-label">
+                                <i class="fas fa-align-left me-1"></i> Prefijo (Opcional)
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="prefijoFactura"
+                                   name="prefijoFactura"
+                                   placeholder="Ej: FAC, INV"
+                                   maxlength="10">
+                            <div class="form-text">Prefijo adicional para el número</div>
+                        </div>
+
+                        <!-- Número Inicial -->
+                        <div class="col-md-6 mb-3">
+                            <label for="numeroInicial" class="form-label">
+                                <i class="fas fa-sort-numeric-down me-1"></i> Número Inicial
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="numeroInicial"
+                                   name="numeroInicial"
+                                   min="1"
+                                   value="1"
+                                   required>
+                            <div class="form-text">Primer número de factura (mínimo 1)</div>
+                        </div>
+
+                        <!-- Número Actual -->
+                        <div class="col-md-6 mb-3">
+                            <label for="numeroActual" class="form-label">
+                                <i class="fas fa-sort-numeric-up me-1"></i> Número Actual
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="numeroActual"
+                                   name="numeroActual"
+                                   min="1"
+                                   value="1"
+                                   required>
+                            <div class="form-text">Próximo número que se asignará</div>
+                        </div>
+
+                        <!-- Formato de Número -->
+                        <div class="col-12 mb-3">
+                            <label for="formatoNumero" class="form-label">
+                                <i class="fas fa-code me-1"></i> Formato de Número
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="formatoNumero"
+                                   name="formatoNumero"
+                                   placeholder="{serie}-{numero}"
+                                   value="{serie}-{numero}"
+                                   required>
+                            <div class="form-text">
+                                Placeholders: <code>{serie}</code>, <code>{prefijo}</code>, <code>{numero}</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Impuestos -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-percent text-success me-2"></i>
+                                Configuración de Impuestos
+                            </h5>
+                        </div>
+
+                        <!-- IGV/IVA -->
+                        <div class="col-md-6 mb-3">
+                            <label for="igv" class="form-label">
+                                <i class="fas fa-percentage me-1"></i> IGV / IVA (%)
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="igv"
+                                       name="igv"
+                                       step="0.01"
+                                       min="0"
+                                       max="100"
+                                       value="18"
+                                       required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Porcentaje de impuesto (Ej: 18 para Perú)</div>
+                        </div>
+
+                        <!-- Incluir IGV en Precio -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label d-block">
+                                <i class="fas fa-calculator me-1"></i> Cálculo de Precio
+                            </label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="incluirIgvEnPrecio"
+                                       name="incluirIgvEnPrecio">
+                                <label class="form-check-label" for="incluirIgvEnPrecio">
+                                    Precio incluye IGV
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Activado: Precio = Base + IGV<br>
+                                Desactivado: IGV se calcula sobre el precio
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Moneda -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-money-bill text-info me-2"></i>
+                                Configuración de Moneda
+                            </h5>
+                        </div>
+
+                        <!-- Código de Moneda -->
+                        <div class="col-md-4 mb-3">
+                            <label for="moneda" class="form-label">
+                                <i class="fas fa-coins me-1"></i> Código ISO 4217
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control text-uppercase" 
+                                   id="moneda"
+                                   name="moneda"
+                                   placeholder="PEN, USD, EUR"
+                                   maxlength="3"
+                                   value="PEN"
+                                   pattern="[A-Z]{3}"
+                                   required>
+                            <div class="form-text">3 letras (Ej: PEN, USD, MXN)</div>
+                        </div>
+
+                        <!-- Símbolo de Moneda -->
+                        <div class="col-md-4 mb-3">
+                            <label for="simboloMoneda" class="form-label">
+                                <i class="fas fa-dollar-sign me-1"></i> Símbolo
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="simboloMoneda"
+                                   name="simboloMoneda"
+                                   placeholder="S/, $, €"
+                                   maxlength="5"
+                                   value="S/"
+                                   required>
+                            <div class="form-text">Símbolo a mostrar</div>
+                        </div>
+
+                        <!-- Decimales -->
+                        <div class="col-md-4 mb-3">
+                            <label for="decimales" class="form-label">
+                                <i class="fas fa-sort-numeric-down-alt me-1"></i> Decimales
+                                <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" 
+                                    id="decimales"
+                                    name="decimales"
+                                    required>
+                                <option value="0">0 decimales (S/ 100)</option>
+                                <option value="2" selected>2 decimales (S/ 100.00)</option>
+                                <option value="3">3 decimales (S/ 100.000)</option>
+                                <option value="4">4 decimales (S/ 100.0000)</option>
+                            </select>
+                            <div class="form-text">Precisión de los montos</div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Términos y Condiciones -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-file-contract text-warning me-2"></i>
+                                Información Adicional
+                            </h5>
+                        </div>
+
+                        <!-- Términos y Condiciones -->
+                        <div class="col-12 mb-3">
+                            <label for="terminosCondiciones" class="form-label">
+                                <i class="fas fa-scroll me-1"></i> Términos y Condiciones
+                            </label>
+                            <textarea class="form-control" 
+                                      id="terminosCondiciones"
+                                      name="terminosCondiciones"
+                                      rows="4"
+                                      maxlength="5000"
+                                      placeholder="Ingrese los términos y condiciones que aparecerán en las facturas..."></textarea>
+                            <div class="form-text">Texto en la parte inferior de facturas (máx. 5000 caracteres)</div>
+                        </div>
+
+                        <!-- Nota de Pie de Página -->
+                        <div class="col-12 mb-3">
+                            <label for="notaPiePagina" class="form-label">
+                                <i class="fas fa-sticky-note me-1"></i> Nota de Pie de Página
+                            </label>
+                            <textarea class="form-control" 
+                                      id="notaPiePagina"
+                                      name="notaPiePagina"
+                                      rows="2"
+                                      maxlength="500"
+                                      placeholder="Gracias por su compra..."></textarea>
+                            <div class="form-text">Nota breve al final de la factura (máx. 500 caracteres)</div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Estado -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="activoFacturacion"
+                                       name="activo"
+                                       checked>
+                                <label class="form-check-label" for="activoFacturacion">
+                                    <i class="fas fa-toggle-on me-1"></i>
+                                    <strong>Configuración Activa</strong>
+                                </label>
+                            </div>
+                            <div class="form-text">Solo puede haber una configuración activa a la vez</div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-end pt-3 border-top">
+                                <button type="button" 
+                                        class="btn btn-secondary me-2" 
+                                        id="btn-cancelar-facturacion">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cancelar
+                                </button>
+                                <button type="submit" 
+                                        class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    Guardar Configuración
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
                     
                     <!-- ID oculto -->
                     <input type="hidden" th:field="*{id}" />

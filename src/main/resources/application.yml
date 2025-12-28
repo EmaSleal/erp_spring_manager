@@ -20,11 +20,11 @@ spring:
     database-platform: org.hibernate.dialect.MySQL8Dialect
     hibernate:
       ddl-auto: update
-    show-sql: false  # Controlado por logging.level.org.hibernate.SQL
+    show-sql: false  # Desactivado para no mostrar queries
     properties:
       hibernate:
-        format_sql: true
-        use_sql_comments: true
+        format_sql: false
+        use_sql_comments: false
   
   # ========================================
   # CONFIGURACIÓN DE EMAIL
@@ -80,21 +80,21 @@ logging:
     api.astro.whats_orders_manager: INFO
     api.astro.whats_orders_manager.controllers: INFO
     api.astro.whats_orders_manager.services: INFO
-    api.astro.whats_orders_manager.repositories: DEBUG
+    api.astro.whats_orders_manager.repositories: INFO
     
-    # Hibernate SQL (queries)
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.hibernate.orm.jdbc.bind: TRACE
+    # Hibernate SQL (queries) - DESACTIVADO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.hibernate.orm.jdbc.bind: WARN
     
     # Spring Framework
     org.springframework.web: INFO
     org.springframework.security: INFO
     org.springframework.web.servlet.mvc.method.annotation: INFO
     
-    # Transacciones de base de datos
-    org.springframework.jdbc.core: DEBUG
-    org.springframework.transaction: DEBUG
+    # Transacciones de base de datos - DESACTIVADO
+    org.springframework.jdbc.core: WARN
+    org.springframework.transaction: INFO
     
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

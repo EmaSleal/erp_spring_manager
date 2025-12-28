@@ -295,7 +295,7 @@
             <!-- Amount Due -->
             <div class="amount-due">
                 <p>Monto Total a Pagar</p>
-                <div class="amount" th:text="${'$' + #numbers.formatDecimal(factura.total, 1, 2)}">$1,160.00</div>
+                <div class="amount" th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 1,160.00</div>
             </div>
 
             <!-- Due Date -->
@@ -325,18 +325,18 @@
                 
                 <div class="summary-row">
                     <span class="summary-label">Subtotal:</span>
-                    <span class="summary-value" th:text="${'$' + #numbers.formatDecimal(factura.subtotal, 1, 2)}">$1,000.00</span>
+                    <span class="summary-value" th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.subtotal, 1, 2)}">₡ 1,000.00</span>
                 </div>
                 
                 <div class="summary-row">
                     <span class="summary-label" th:text="'IVA (' + ${factura.iva} + '%):'" >IVA (16%):</span>
-                    <span class="summary-value" th:text="${'$' + #numbers.formatDecimal(factura.montoIva, 1, 2)}">$160.00</span>
+                    <span class="summary-value" th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.montoIva, 1, 2)}">₡ 160.00</span>
                 </div>
                 
                 <div class="summary-row" style="border-top: 2px solid #ffc107; padding-top: 15px; margin-top: 10px;">
                     <span class="summary-label" style="font-size: 18px; color: #ffc107;">TOTAL:</span>
                     <span class="summary-value" style="font-size: 18px; font-weight: 700; color: #ffc107;" 
-                          th:text="${'$' + #numbers.formatDecimal(factura.total, 1, 2)}">$1,160.00</span>
+                          th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 1,160.00</span>
                 </div>
             </div>
 

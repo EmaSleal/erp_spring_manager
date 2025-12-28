@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.services.impl;
 
+import api.astro.whats_orders_manager.config.CacheConfig;
 import api.astro.whats_orders_manager.models.Cliente;
 import api.astro.whats_orders_manager.models.Factura;
 import api.astro.whats_orders_manager.models.Producto;
@@ -9,6 +10,8 @@ import api.astro.whats_orders_manager.repositories.ProductoRepository;
 import api.astro.whats_orders_manager.services.ReporteService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,8 +60,11 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_REPORTES, 
+               key = "'ventas_' + #fechaInicio + '_' + #fechaFin + '_' + #clienteId",
+               unless = "#result == null || #result.isEmpty()")
     public List<Factura> generarReporteVentas(LocalDate fechaInicio, LocalDate fechaFin, Integer clienteId) {
-        log.info("Generando reporte de ventas - Inicio: {}, Fin: {}, Cliente: {}", 
+        log.info("🔍 Generando reporte de ventas - Inicio: {}, Fin: {}, Cliente: {}", 
                  fechaInicio, fechaFin, clienteId);
         
         // Obtener todas las facturas
@@ -98,8 +104,11 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_ESTADISTICAS,
+               key = "'estadisticas_ventas_' + #facturas.size()",
+               unless = "#result == null || #result.isEmpty()")
     public Map<String, Object> calcularEstadisticasVentas(List<Factura> facturas) {
-        log.debug("Calculando estadísticas de ventas para {} facturas", facturas.size());
+        log.debug("📊 Calculando estadísticas de ventas para {} facturas", facturas.size());
         
         Map<String, Object> estadisticas = new HashMap<>();
         
@@ -155,8 +164,11 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_REPORTES,
+               key = "'clientes_' + #activo + '_' + #conDeuda",
+               unless = "#result == null || #result.isEmpty()")
     public List<Cliente> generarReporteClientes(Boolean activo, Boolean conDeuda) {
-        log.info("Generando reporte de clientes - Activo: {}, ConDeuda: {}", activo, conDeuda);
+        log.info("🔍 Generando reporte de clientes - Activo: {}, ConDeuda: {}", activo, conDeuda);
         
         // Obtener todos los clientes
         List<Cliente> clientes = clienteRepository.findAll();
@@ -237,8 +249,11 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_REPORTES,
+               key = "'productos_' + #stockBajo + '_' + #sinVentas",
+               unless = "#result == null || #result.isEmpty()")
     public List<Producto> generarReporteProductos(Boolean stockBajo, Boolean sinVentas) {
-        log.info("Generando reporte de productos - StockBajo: {}, SinVentas: {}", 
+        log.info("🔍 Generando reporte de productos - StockBajo: {}, SinVentas: {}", 
                  stockBajo, sinVentas);
         
         // Obtener todos los productos
@@ -329,8 +344,11 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_GRAFICAS,
+               key = "'productos_mas_vendidos_' + #limite",
+               unless = "#result == null || #result.isEmpty()")
     public List<Map<String, Object>> obtenerProductosMasVendidos(int limite) {
-        log.info("Obteniendo los {} productos más vendidos", limite);
+        log.info("📊 Obteniendo los {} productos más vendidos", limite);
         
         // TODO: Implementar cuando se tenga acceso a LineaFactura
         // Por ahora, retornar lista vacía
@@ -342,6 +360,9 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_GRAFICAS,
+               key = "'ventas_por_mes_' + #meses",
+               unless = "#result == null || #result.isEmpty()")
     public Map<String, BigDecimal> obtenerVentasPorMes(int meses) {
         log.info("Obteniendo ventas por mes de los últimos {} meses", meses);
         
@@ -386,8 +407,11 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_GRAFICAS,
+               key = "'clientes_top_' + #limite",
+               unless = "#result == null || #result.isEmpty()")
     public List<Map<String, Object>> obtenerClientesTop(int limite) {
-        log.info("Obteniendo los {} mejores clientes", limite);
+        log.info("📊 Obteniendo los {} mejores clientes", limite);
         
         List<Map<String, Object>> clientesTop = new ArrayList<>();
         
@@ -432,6 +456,20 @@ public class ReporteServiceImpl implements ReporteService {
         
         log.debug("Clientes top obtenidos: {}", clientesTop.size());
         return clientesTop;
+    }
+
+    // ========================================================================
+    // GESTIÓN DE CACHÉ
+    // ========================================================================
+
+    @Override
+    @CacheEvict(value = {
+        CacheConfig.CACHE_REPORTES,
+        CacheConfig.CACHE_ESTADISTICAS,
+        CacheConfig.CACHE_GRAFICAS
+    }, allEntries = true)
+    public void limpiarCacheReportes() {
+        log.info("🧹 Limpiando caché de reportes manualmente");
     }
 
     // ========================================================================
