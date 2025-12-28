@@ -33,19 +33,14 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="h3 mb-1"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Gestión de Facturas</h2>
-                    <p class="text-muted mb-0">
-                        Administra las facturas y pedidos de tus clientes
-                        <span sec:authorize="hasRole('VISUALIZADOR')" class="badge bg-secondary ms-2">
-                            <i class="bi bi-eye-fill me-1"></i>Solo lectura
-                        </span>
-                    </p>
+                    <p class="text-muted mb-0">Administra las facturas y pedidos de tus clientes</p>
                 </div>
                 <div class="d-flex gap-2">
                     <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
                     </a>
                     <button type="button" class="btn btn-success" onclick="openNuevaFacturaModal()" 
-                            sec:authorize="hasAnyRole('ADMIN', 'USER', 'VENDEDOR')">
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
                         <i class="fas fa-plus me-2"></i>Nueva Factura
                     </button>
                 </div>
@@ -113,7 +108,7 @@
                                         <small class="text-muted">ID: <span th:text="${factura.cliente.idCliente}">123</span></small>
                                     </td>
                                     <td class="text-end">
-                                        <span class="fw-bold" th:text="${'$' + #numbers.formatDecimal(factura.total, 1, 2)}">$0.00</span>
+                                        <span class="fw-bold" th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</span>
                                     </td>
                                     <td class="text-center">
                                         <span th:if="${factura.entregado}" class="badge bg-success">
@@ -134,7 +129,7 @@
                                         <a th:href="@{/facturas/editar/{id}(id=${factura.idFactura})}"
                                            class="btn btn-sm btn-warning me-1"
                                            title="Editar"
-                                           sec:authorize="hasAnyRole('ADMIN', 'USER', 'VENDEDOR')">
+                                           sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <button th:if="${factura.cliente.email != null and factura.cliente.email != ''}"
@@ -142,7 +137,7 @@
                                                 onclick="enviarFacturaPorEmail(this)"
                                                 class="btn btn-sm btn-info me-1"
                                                 title="Enviar por Email"
-                                                sec:authorize="hasAnyRole('ADMIN', 'USER', 'VENDEDOR')">
+                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ENVIAR')">
                                             <i class="fas fa-envelope"></i>
                                         </button>
                                         <button th:if="${factura.cliente.usuario != null and factura.cliente.usuario.telefono != null}"
@@ -150,21 +145,16 @@
                                                 onclick="enviarFacturaPorWhatsApp(this)"
                                                 class="btn btn-sm btn-success me-1"
                                                 title="Enviar por WhatsApp"
-                                                sec:authorize="hasAnyAuthority('ROLE_ADMIN', 'ROLE_SUPER_ADMIN')">
+                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_WHATSAPP')">
                                             <i class="fab fa-whatsapp"></i>
                                         </button>
                                         <a th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
                                            onclick="return confirmarEliminacion(event)"
                                            class="btn btn-sm btn-danger"
                                            title="Eliminar"
-                                           sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                                           sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
                                             <i class="fas fa-trash"></i>
                                         </a>
-                                        <!-- Badge para usuarios de solo lectura -->
-                                        <span sec:authorize="hasRole('VISUALIZADOR')" 
-                                              class="badge bg-secondary">
-                                            <i class="bi bi-eye-fill"></i> Solo lectura
-                                        </span>
                                     </td>
                                 </tr>
                             </tbody>

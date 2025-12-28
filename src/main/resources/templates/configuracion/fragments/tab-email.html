@@ -1,0 +1,352 @@
+<!-- Fragment: Formulario de Configuración de Email/SMTP -->
+<div th:fragment="emailForm" xmlns:th="http://www.thymeleaf.org">
+    
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary bg-gradient text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-envelope me-2"></i>
+                    <strong>Configuración de Email y SMTP</strong>
+                </div>
+                <div>
+                    <span class="badge bg-light text-primary" id="estado-email">
+                        <i class="fas fa-circle"></i> Cargando...
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <!-- Alert de estado de configuración -->
+            <div id="alert-email-container"></div>
+
+            <form id="form-email">
+                
+                <!-- Sección: Servidor SMTP -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-server text-primary me-2"></i>
+                            Servidor SMTP
+                        </h5>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="smtp-host" class="form-label">
+                                <i class="fas fa-network-wired me-1"></i> Host SMTP
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="smtp-host" 
+                                   name="smtpHost"
+                                   placeholder="smtp.gmail.com" 
+                                   required>
+                            <div class="form-text">Dirección del servidor SMTP</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="smtp-port" class="form-label">
+                                <i class="fas fa-hashtag me-1"></i> Puerto
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="smtp-port" 
+                                   name="smtpPort"
+                                   placeholder="587" 
+                                   min="1" 
+                                   max="65535"
+                                   required>
+                            <div class="form-text">Puerto SMTP (25, 465, 587)</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="smtp-usuario" class="form-label">
+                                <i class="fas fa-user me-1"></i> Usuario SMTP
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="smtp-usuario" 
+                                   name="smtpUsuario"
+                                   placeholder="usuario@dominio.com" 
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="smtp-password" class="form-label">
+                                <i class="fas fa-key me-1"></i> Contraseña SMTP
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="smtp-password" 
+                                       name="smtpPassword"
+                                       placeholder="••••••••" 
+                                       required>
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        id="toggle-password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Contraseña o token de aplicación</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección: Seguridad -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-shield-alt text-success me-2"></i>
+                            Opciones de Seguridad
+                        </h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="smtp-auth" 
+                                   name="smtpAuth"
+                                   checked>
+                            <label class="form-check-label" for="smtp-auth">
+                                <i class="fas fa-lock me-1"></i> Requiere Autenticación
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="smtp-ssl" 
+                                   name="smtpSsl">
+                            <label class="form-check-label" for="smtp-ssl">
+                                <i class="fas fa-shield-virus me-1"></i> Usar SSL
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="smtp-tls" 
+                                   name="smtpTls"
+                                   checked>
+                            <label class="form-check-label" for="smtp-tls">
+                                <i class="fas fa-certificate me-1"></i> Usar TLS/STARTTLS
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección: Remitente -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-paper-plane text-info me-2"></i>
+                            Información del Remitente
+                        </h5>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="email-remitente" class="form-label">
+                                <i class="fas fa-at me-1"></i> Email Remitente
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email-remitente" 
+                                   name="emailRemitente"
+                                   placeholder="noreply@miempresa.com" 
+                                   required>
+                            <div class="form-text">Dirección que aparecerá como remitente</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="nombre-remitente" class="form-label">
+                                <i class="fas fa-signature me-1"></i> Nombre del Remitente
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="nombre-remitente" 
+                                   name="nombreRemitente"
+                                   placeholder="Mi Empresa - Sistema de Facturación">
+                            <div class="form-text">Nombre visible en los emails</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección: Configuración Avanzada -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-cogs text-warning me-2"></i>
+                            Configuración Avanzada
+                        </h5>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="timeout" class="form-label">
+                                <i class="fas fa-clock me-1"></i> Timeout (ms)
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="timeout" 
+                                   name="timeout"
+                                   placeholder="5000" 
+                                   min="1000"
+                                   value="5000">
+                            <div class="form-text">Tiempo máximo de espera (milisegundos)</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="charset" class="form-label">
+                                <i class="fas fa-font me-1"></i> Codificación
+                            </label>
+                            <select class="form-select" id="charset" name="charset">
+                                <option value="UTF-8" selected>UTF-8</option>
+                                <option value="ISO-8859-1">ISO-8859-1</option>
+                                <option value="US-ASCII">US-ASCII</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="activoEmail" 
+                                   name="activo"
+                                   checked>
+                            <label class="form-check-label" for="activoEmail">
+                                <i class="fas fa-toggle-on me-1"></i> 
+                                <strong>Configuración Activa</strong>
+                                <span class="text-muted ms-2">(Permitir envío de emails)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección: Información de Pruebas -->
+                <div class="row mb-4" id="info-pruebas" style="display: none;">
+                    <div class="col-12">
+                        <div class="alert alert-info mb-0">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-info-circle fa-2x me-3"></i>
+                                <div class="flex-grow-1">
+                                    <strong>Última Prueba:</strong>
+                                    <span id="fecha-ultimo-test"></span>
+                                    <br>
+                                    <strong>Resultado:</strong>
+                                    <span id="resultado-ultimo-test"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <div>
+                                <button type="button" 
+                                        class="btn btn-outline-info" 
+                                        id="btn-probar-email">
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    Enviar Email de Prueba
+                                </button>
+                                <button type="button" 
+                                        class="btn btn-outline-secondary" 
+                                        id="btn-validar-config">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Validar Configuración
+                                </button>
+                            </div>
+                            <div>
+                                <button type="button" 
+                                        class="btn btn-secondary" 
+                                        id="btn-cancelar-email">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cancelar
+                                </button>
+                                <button type="submit" 
+                                        class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    Guardar Configuración
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Prueba de Email -->
+    <div class="modal fade" id="modal-prueba-email" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Enviar Email de Prueba
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Nota:</strong> Guarda la configuración antes de realizar la prueba.
+                    </div>
+                    <form id="form-prueba-email">
+                        <div class="mb-3">
+                            <label for="email-destino" class="form-label">
+                                <i class="fas fa-envelope me-1"></i> Email de Destino
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email-destino" 
+                                   name="emailDestino"
+                                   placeholder="admin@miempresa.com" 
+                                   required>
+                            <div class="form-text">Se enviará un correo de prueba a esta dirección</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-info" id="btn-enviar-prueba">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Enviar Prueba
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

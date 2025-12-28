@@ -1,0 +1,229 @@
+/**
+ * whatsapp.css
+ * Estilos para las vistas de WhatsApp
+ * WhatsApp Orders Manager
+ */
+
+/* ============================================================================
+   CHAT CONTAINER - Estilo WhatsApp
+   ============================================================================ */
+.chat-container {
+    background-color: #e5ddd5;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1c4b3' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    min-height: calc(100vh - 350px);
+    max-height: calc(100vh - 350px);
+    padding: 20px;
+    border-radius: 8px;
+    overflow-y: auto;
+    position: relative;
+}
+
+/* ============================================================================
+   MESSAGE BUBBLES - Burbujas de mensaje
+   ============================================================================ */
+.message-bubble {
+    max-width: 65%;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    position: relative;
+    word-wrap: break-word;
+    animation: fadeIn 0.3s ease-in;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-enviado {
+    background-color: #d9fdd3;
+    margin-left: auto;
+    text-align: right;
+    border-bottom-right-radius: 0;
+}
+
+.message-recibido {
+    background-color: #fff;
+    margin-right: auto;
+    text-align: left;
+    border-bottom-left-radius: 0;
+}
+
+.message-content {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #303030;
+    margin-bottom: 4px;
+}
+
+.message-meta {
+    font-size: 11px;
+    color: #667781;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.message-recibido .message-meta {
+    justify-content: flex-start;
+}
+
+/* ============================================================================
+   STATUS ICONS - Iconos de estado
+   ============================================================================ */
+.status-icon {
+    font-size: 12px;
+}
+
+.status-PENDIENTE {
+    color: #999;
+}
+
+.status-ENVIADO {
+    color: #999;
+}
+
+.status-ENTREGADO {
+    color: #53bdeb;
+}
+
+.status-LEIDO {
+    color: #53bdeb;
+}
+
+.status-FALLIDO {
+    color: #f44336;
+}
+
+/* ============================================================================
+   DATE DIVIDER - Divisores de fecha
+   ============================================================================ */
+.date-divider {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.date-divider span {
+    background-color: #fff;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #667781;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   CONVERSATION HEADER - Cabecera de conversación
+   ============================================================================ */
+.conversation-header {
+    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+}
+
+.conversation-header .avatar {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+/* ============================================================================
+   CONVERSATION CARDS - Tarjetas de conversación
+   ============================================================================ */
+.conversacion-item {
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+.conversacion-item:hover {
+    background-color: #f8f9fa !important;
+    border-left-color: #25d366;
+    transform: translateX(5px);
+}
+
+.conversacion-item .avatar {
+    width: 55px;
+    height: 55px;
+    background-color: #25d366;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+/* ============================================================================
+   EMPTY STATE - Estado vacío
+   ============================================================================ */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #667781;
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+/* ============================================================================
+   RESPONSIVE - Adaptaciones móviles
+   ============================================================================ */
+@media (max-width: 768px) {
+    .chat-container {
+        min-height: calc(100vh - 400px);
+        max-height: calc(100vh - 400px);
+        padding: 15px;
+    }
+    
+    .message-bubble {
+        max-width: 80%;
+    }
+    
+    .conversation-header {
+        padding: 15px;
+    }
+    
+    .conversation-header .avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+    
+    .conversacion-item .avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .message-bubble {
+        max-width: 85%;
+        font-size: 13px;
+    }
+    
+    .message-meta {
+        font-size: 10px;
+    }
+}

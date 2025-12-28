@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.controllers;
 
-import api.astro.whats_orders_manager.dto.EstadisticasUsuariosDTO;
-import api.astro.whats_orders_manager.dto.PaginacionDTO;
+import api.astro.whats_orders_manager.models.dto.EstadisticasUsuariosDTO;
+import api.astro.whats_orders_manager.models.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.models.Usuario;
 import api.astro.whats_orders_manager.services.UsuarioService;
 import api.astro.whats_orders_manager.services.EmailService;

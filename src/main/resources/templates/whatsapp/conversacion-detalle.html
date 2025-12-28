@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title th:text="'Conversación con ' + ${nombreUsuario}">Conversación</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+    
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li class="breadcrumb-item"><a th:href="@{/whatsapp/mensajes}"><i class="fab fa-whatsapp"></i> Conversaciones</a></li>
+            <li class="breadcrumb-item active" aria-current="page" th:text="${nombreUsuario}">Usuario</li>
+        </ol>
+    </nav>
+
+    <!-- Header de la conversación -->
+    <div class="conversation-header">
+        <div class="d-flex align-items-center">
+            <div class="avatar me-3">
+                <i class="fab fa-whatsapp"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h4 class="mb-1" th:text="${nombreUsuario}">Nombre Usuario</h4>
+                <p class="mb-0 opacity-75">
+                    <i class="fas fa-phone-alt me-1"></i>
+                    <span th:text="${telefono}">+52 123 456 7890</span>
+                </p>
+            </div>
+            <div>
+                <a href="/whatsapp/mensajes" class="btn btn-light">
+                    <i class="fas fa-arrow-left me-1"></i> Volver
+                </a>
+                <button class="btn btn-light ms-2" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="row mb-3" th:if="${mensajes != null && !mensajes.isEmpty()}">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-comments fa-2x text-primary mb-2"></i>
+                    <h5 class="mb-0" th:text="${#lists.size(mensajes)}">0</h5>
+                    <small class="text-muted">Total Mensajes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-arrow-up fa-2x text-success mb-2"></i>
+                    <h5 class="mb-0" th:text="${mensajesEnviados}">0</h5>
+                    <small class="text-muted">Enviados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-arrow-down fa-2x text-info mb-2"></i>
+                    <h5 class="mb-0" th:text="${mensajesRecibidos}">0</h5>
+                    <small class="text-muted">Recibidos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-alt fa-2x text-warning mb-2"></i>
+                    <h5 class="mb-0" th:text="${#temporals.format(primerMensaje, 'dd/MM/yyyy')}">01/01/2024</h5>
+                    <small class="text-muted">Primer Contacto</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de mensajes -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="chat-container" th:if="${mensajes != null && !mensajes.isEmpty()}">
+                <!-- Iteración de mensajes agrupados por fecha -->
+                <th:block th:each="msg, iterStat : ${mensajes}">
+                    <!-- Divisor de fecha (mostrar si es el primer mensaje o cambió la fecha) -->
+                    <div class="date-divider" 
+                         th:if="${iterStat.first || !#temporals.format(msg.fechaEnvio, 'dd/MM/yyyy').equals(#temporals.format(mensajes[iterStat.index - 1].fechaEnvio, 'dd/MM/yyyy'))}">
+                        <span th:text="${#temporals.format(msg.fechaEnvio, 'EEEE, dd/MM/yyyy')}">Lunes, 01/01/2024</span>
+                    </div>
+                    
+                    <!-- Burbuja de mensaje -->
+                    <div class="d-flex" th:classappend="${msg.tipo == 'ENVIADO' ? 'justify-content-end' : 'justify-content-start'}">
+                        <div class="message-bubble" th:classappend="${msg.tipo == 'ENVIADO' ? 'message-enviado' : 'message-recibido'}">
+                            <!-- Plantilla usada (si existe) -->
+                            <div th:if="${msg.nombrePlantilla != null && !msg.nombrePlantilla.isEmpty()}" 
+                                 class="badge bg-secondary mb-1" style="font-size: 10px;">
+                                <i class="fas fa-file-alt me-1"></i>
+                                <span th:text="${msg.nombrePlantilla}">Plantilla</span>
+                            </div>
+                            
+                            <!-- Contenido del mensaje -->
+                            <div class="message-content" th:text="${msg.mensaje}">
+                                Contenido del mensaje aquí
+                            </div>
+                            
+                            <!-- Metadata (hora y estado) -->
+                            <div class="message-meta">
+                                <span th:text="${#temporals.format(msg.fechaEnvio, 'HH:mm')}">12:00</span>
+                                
+                                <!-- Iconos de estado (solo para mensajes enviados) -->
+                                <span th:if="${msg.tipo == 'ENVIADO'}" th:class="'status-icon status-' + ${msg.estado}">
+                                    <i th:if="${msg.estado == 'PENDIENTE'}" class="fas fa-clock" title="Pendiente"></i>
+                                    <i th:if="${msg.estado == 'ENVIADO'}" class="fas fa-check" title="Enviado"></i>
+                                    <i th:if="${msg.estado == 'ENTREGADO'}" class="fas fa-check-double" title="Entregado"></i>
+                                    <i th:if="${msg.estado == 'LEIDO'}" class="fas fa-check-double" title="Leído" style="color: #53bdeb;"></i>
+                                    <i th:if="${msg.estado == 'FALLIDO'}" class="fas fa-exclamation-triangle" title="Fallido"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </th:block>
+            </div>
+            
+            <!-- Estado vacío -->
+            <div class="empty-state" th:if="${mensajes == null || mensajes.isEmpty()}">
+                <i class="fas fa-inbox"></i>
+                <h5 class="mt-3">No hay mensajes en esta conversación</h5>
+                <p class="text-muted">Envía tu primer mensaje para comenzar</p>
+                <a href="/whatsapp/enviar" class="btn btn-success mt-3">
+                    <i class="fas fa-paper-plane me-2"></i>Enviar Mensaje
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón flotante para responder -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11" th:if="${mensajes != null && !mensajes.isEmpty()}">
+        <a th:href="@{/whatsapp/enviar(telefono=${telefono})}" class="btn btn-success btn-lg rounded-circle shadow" 
+           style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;"
+           title="Responder">
+            <i class="fas fa-reply fa-lg"></i>
+        </a>
+    </div>
+    
+        </div><!-- Cierre container-fluid -->
+    </main><!-- Cierre main-content -->
+
+    <!-- Scripts -->
+    <div th:replace="~{layout :: scripts}"></div>
+    <script th:src="@{/js/common.js}"></script>
+    <script>
+        // Auto-scroll al último mensaje
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.querySelector('.chat-container');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>

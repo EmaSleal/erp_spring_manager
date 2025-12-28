@@ -1,15 +1,18 @@
 package api.astro.whats_orders_manager.controllers;
 
-import api.astro.whats_orders_manager.dto.PaginacionDTO;
+import api.astro.whats_orders_manager.models.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.enums.InvoiceType;
+import api.astro.whats_orders_manager.enums.Permiso;
 import api.astro.whats_orders_manager.models.Cliente;
 import api.astro.whats_orders_manager.models.Factura;
 import api.astro.whats_orders_manager.models.Producto;
+import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.services.ClienteService;
 import api.astro.whats_orders_manager.services.EmailService;
 import api.astro.whats_orders_manager.services.FacturaService;
 import api.astro.whats_orders_manager.services.LineaFacturaService;
 import api.astro.whats_orders_manager.services.ProductoService;
+import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -45,11 +49,13 @@ public class FacturaController {
     private final ProductoService productoService;
     private final LineaFacturaService lineaFacturaService;
     private final EmailService emailService;
+    private final ConfiguracionFacturacionService configuracionFacturacionService;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
      */
     @GetMapping
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
     public String listarFacturas(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -80,6 +86,7 @@ public class FacturaController {
             // Agregar datos adicionales para la vista
             model.addAttribute("clientes", clienteService.findAll());
             model.addAttribute("tiposFactura", InvoiceType.values());
+            model.addAttribute("simboloMoneda", obtenerSimboloMoneda());
             
             // Agregar rol del usuario para controlar permisos en la vista
             agregarRolUsuario(model, authentication);
@@ -100,8 +107,9 @@ public class FacturaController {
      * Obtiene el detalle de una factura (API REST)
      */
     @GetMapping("/detalle/{id}")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
     @ResponseBody
-    public ResponseEntity<Factura> obtenerDetalleFactura(@PathVariable Integer id) {
+    public ResponseEntity<Factura> obtenerDetalleFactura(@PathVariable Integer id, Authentication authentication) {
         log.info("Obteniendo detalle de factura ID: {}", id);
         
         try {
@@ -122,7 +130,8 @@ public class FacturaController {
      * Muestra el formulario para crear una nueva factura
      */
     @GetMapping("/nuevo")
-    public String nuevaFactura(Model model) {
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')")
+    public String nuevaFactura(Model model, Authentication authentication) {
         log.info("Mostrando formulario de nueva factura");
         model.addAttribute("factura", new Factura());
         return "facturas/form";
@@ -141,8 +150,9 @@ public class FacturaController {
      * Nota: Las fechas se manejan automáticamente por @EntityListeners en la entidad
      */
     @PostMapping("/guardar")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')")
     @ResponseBody
-    public ResponseEntity<Factura> guardarFactura(@RequestBody Factura factura) {
+    public ResponseEntity<Factura> guardarFactura(@RequestBody Factura factura, Authentication authentication) {
         log.info("Guardando nueva factura");
         
         try {
@@ -160,9 +170,11 @@ public class FacturaController {
      * Elimina una factura por su ID
      */
     @GetMapping("/eliminar/{id}")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')")
     public String eliminarFactura(
             @PathVariable Integer id,
-            RedirectAttributes redirectAttributes
+            RedirectAttributes redirectAttributes,
+            Authentication authentication
     ) {
         log.info("Intentando eliminar factura ID: {}", id);
         
@@ -201,10 +213,12 @@ public class FacturaController {
      * Muestra el formulario para editar una factura existente
      */
     @GetMapping("/editar/{idFactura}")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')")
     public String editarFactura(
             @PathVariable Integer idFactura,
             Model model,
-            RedirectAttributes redirectAttributes
+            RedirectAttributes redirectAttributes,
+            Authentication authentication
     ) {
         log.info("Editando factura ID: {}", idFactura);
         
@@ -350,5 +364,30 @@ public class FacturaController {
             model.addAttribute("userRole", userRole);
             log.debug("Rol de usuario agregado al modelo: {}", userRole);
         }
+    }
+
+    /**
+     * Obtiene el símbolo de moneda desde la configuración de facturación
+     * @return Símbolo de moneda (₡, $, €, etc.)
+     */
+    private String obtenerSimboloMoneda() {
+        try {
+            var config = configuracionFacturacionService.getConfiguracionActiva();
+            if (config.isPresent()) {
+                String moneda = config.get().getMoneda();
+                if (moneda != null) {
+                    return switch (moneda.toUpperCase()) {
+                        case "CRC" -> "₡";
+                        case "USD" -> "$";
+                        case "MXN" -> "$";
+                        case "EUR" -> "€";
+                        default -> moneda + " ";
+                    };
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error al obtener símbolo de moneda, usando predeterminado: {}", e.getMessage());
+        }
+        return "₡"; // Colones por defecto
     }
 }

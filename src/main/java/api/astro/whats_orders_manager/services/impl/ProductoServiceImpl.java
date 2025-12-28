@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.services.impl;
 
 import api.astro.whats_orders_manager.models.Producto;
-import api.astro.whats_orders_manager.models.ProductoRecord;
+import api.astro.whats_orders_manager.models.records.ProductoRecord;
 import api.astro.whats_orders_manager.repositories.ProductoRepository;
 import api.astro.whats_orders_manager.services.ProductoService;
 import jakarta.transaction.Transactional;

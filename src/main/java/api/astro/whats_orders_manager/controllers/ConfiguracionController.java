@@ -27,15 +27,14 @@ import java.util.Optional;
 /**
  * Controlador para la gestión de Configuración del Sistema
  * Maneja toda la configuración de la empresa, facturación, notificaciones, etc.
- * Solo accesible por usuarios con rol ADMIN.
+ * Solo accesible por usuarios con permisos de configuración.
  * 
  * @author Astro Dev Team
- * @version 2.0 - Sprint 2 - Fase 2
+ * @version 3.0 - Sprint 4 - Con permisos granulares
  * @since Sprint 2
  */
 @Controller
 @RequestMapping("/configuracion")
-@PreAuthorize("hasRole('ADMIN')")
 @Slf4j
 public class ConfiguracionController {
 
@@ -61,7 +60,8 @@ public class ConfiguracionController {
      * GET /configuracion
      */
     @GetMapping
-    public String index(@RequestParam(required = false) String tab, Model model, HttpSession session) {
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_VER')")
+    public String index(@RequestParam(required = false) String tab, Model model, HttpSession session, org.springframework.security.core.Authentication authentication) {
         log.info("Accediendo a página de configuración - Tab: {}", tab != null ? tab : "empresa");
         
         // Obtener datos del usuario logueado
@@ -122,11 +122,13 @@ public class ConfiguracionController {
      * POST /configuracion/empresa/guardar
      */
     @PostMapping("/empresa/guardar")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_EMPRESA')")
     public String guardarEmpresa(
             @Valid @ModelAttribute("empresa") Empresa empresa,
             BindingResult result,
             HttpSession session,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            org.springframework.security.core.Authentication authentication) {
         
         log.info("Guardando datos de empresa: {}", empresa.getNombreEmpresa());
         

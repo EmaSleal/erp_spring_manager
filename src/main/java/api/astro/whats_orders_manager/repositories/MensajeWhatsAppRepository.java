@@ -25,6 +25,13 @@ import java.util.Optional;
 public interface MensajeWhatsAppRepository extends JpaRepository<MensajeWhatsApp, Long> {
     
     /**
+     * Obtiene todos los mensajes ordenados por fecha de envío descendente
+     * 
+     * @return Lista de todos los mensajes ordenados
+     */
+    List<MensajeWhatsApp> findAllByOrderByFechaEnvioDesc();
+    
+    /**
      * Busca un mensaje por su ID de WhatsApp (wamid.xxx)
      * Útil para actualizar estados mediante webhooks
      * 
@@ -115,6 +122,15 @@ public interface MensajeWhatsAppRepository extends JpaRepository<MensajeWhatsApp
      * @return Lista de los últimos 10 mensajes
      */
     List<MensajeWhatsApp> findTop10ByTelefonoOrderByFechaEnvioDesc(String telefono);
+    
+    /**
+     * Busca TODOS los mensajes de un teléfono específico
+     * Ordenados del más antiguo al más reciente (para vista de conversación)
+     * 
+     * @param telefono Número de teléfono
+     * @return Lista de todos los mensajes ordenados cronológicamente
+     */
+    List<MensajeWhatsApp> findByTelefonoOrderByFechaEnvioAsc(String telefono);
     
     /**
      * Busca mensajes por tipo (ENVIADO o RECIBIDO)

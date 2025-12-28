@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Notificaciones</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-bell me-1"></i>Notificaciones
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <div>
+                    <h2 class="h3 mb-1">
+                        <i class="fas fa-bell text-primary me-2"></i>
+                        Mis Notificaciones
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Mantente al tanto de todas tus actividades
+                        <span class="badge bg-primary ms-2" th:if="${contadorNoLeidas > 0}">
+                            <span th:text="${contadorNoLeidas}">0</span> sin leer
+                        </span>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/notificaciones/preferencias}" class="btn btn-outline-secondary">
+                        <i class="fas fa-cog me-2"></i>Preferencias
+                    </a>
+                    <button id="marcarTodasLeidas" class="btn btn-outline-primary" th:if="${contadorNoLeidas > 0}">
+                        <i class="fas fa-check-double me-2"></i>Marcar todas como leídas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-filter me-1"></i>Filtrar por tipo
+                            </label>
+                            <select id="filtroTipo" class="form-select">
+                                <option value="">Todos los tipos</option>
+                                <option value="FACTURA_CREADA">Factura Creada</option>
+                                <option value="FACTURA_VENCIDA">Factura Vencida</option>
+                                <option value="FACTURA_PROXIMA_VENCER">Próxima a Vencer</option>
+                                <option value="PAGO_RECIBIDO">Pago Recibido</option>
+                                <option value="SISTEMA">Sistema</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-eye me-1"></i>Estado
+                            </label>
+                            <select id="filtroEstado" class="form-select">
+                                <option value="">Todas</option>
+                                <option value="false" selected>No leídas</option>
+                                <option value="true">Leídas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button id="btnAplicarFiltros" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Notificaciones -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div id="notificacionesContainer" class="notifications-list-page">
+                        <!-- JavaScript cargará las notificaciones aquí -->
+                        <div class="notifications-loading-page">
+                            <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
+                            <p class="text-muted">Cargando notificaciones...</p>
+                        </div>
+                    </div>
+
+                    <!-- Paginación -->
+                    <div class="d-flex justify-content-between align-items-center p-3 border-top" id="paginacionContainer" style="display: none !important;">
+                        <div class="text-muted">
+                            Mostrando <span id="paginacionInfo">0-0 de 0</span> notificaciones
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0" id="paginacion">
+                                <!-- JavaScript generará los botones aquí -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Confirmación (para marcar todas como leídas) -->
+    <div class="modal fade" id="confirmarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-check-double me-2"></i>
+                        Confirmar Acción
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas marcar todas las notificaciones como leídas?</p>
+                    <p class="text-muted mb-0">Esta acción no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmarMarcarTodas">
+                        <i class="fas fa-check me-2"></i>Sí, marcar todas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts adicionales -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        // Configuración de CSRF para peticiones AJAX
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+        /*]]>*/
+    </script>
+    <script th:src="@{/js/notificaciones.js}"></script>
+
+    <style>
+        /* Estilos específicos para la página de notificaciones */
+        .notifications-list-page {
+            min-height: 400px;
+        }
+
+        .notifications-loading-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+        }
+
+        .notification-item-page {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .notification-item-page:hover {
+            background-color: var(--background-hover);
+        }
+
+        .notification-item-page:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item-page.unread {
+            background-color: rgba(33, 150, 243, 0.05);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .notification-icon-page {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .notification-icon-page.type-factura-creada {
+            background-color: rgba(76, 175, 80, 0.1);
+            color: var(--success-color);
+        }
+
+        .notification-icon-page.type-factura-vencida {
+            background-color: rgba(244, 67, 54, 0.1);
+            color: var(--error-color);
+        }
+
+        .notification-icon-page.type-factura-proxima-vencer {
+            background-color: rgba(255, 152, 0, 0.1);
+            color: var(--warning-color);
+        }
+
+        .notification-icon-page.type-pago-recibido {
+            background-color: rgba(33, 150, 243, 0.1);
+            color: var(--info-color);
+        }
+
+        .notification-icon-page.type-sistema {
+            background-color: rgba(156, 39, 176, 0.1);
+            color: #9c27b0;
+        }
+
+        .notification-content-page {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notification-header-page {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .notification-title-page {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .notification-message-page {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .notification-footer-page {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .notification-time-page {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-notification-action {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .notifications-empty-page {
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .notifications-empty-page i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: var(--border-color);
+        }
+
+        /* Badge de tipo */
+        .badge-type {
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Avatar circle */
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+    </style>
+</body>
+</html>

@@ -50,12 +50,12 @@
                                class="form-control" 
                                id="telefono" 
                                th:field="*{usuario.telefono}" 
-                               placeholder="Ej: 5551234567" 
-                               pattern="[0-9]{10}" 
+                               placeholder="Ej: 55512345" 
+                               pattern="[0-9]{8}" 
                                required>
-                        <div class="form-text">10 dígitos sin espacios ni guiones</div>
+                        <div class="form-text">8 dígitos sin espacios ni guiones</div>
                         <div class="invalid-feedback">
-                            Por favor ingrese un teléfono válido de 10 dígitos.
+                            Por favor ingrese un teléfono válido de 8 dígitos.
                         </div>
                     </div>
 

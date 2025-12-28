@@ -111,7 +111,7 @@
                 <div class="col-md-3 col-6">
                     <div class="stats-item">
                         <span class="stats-value text-money">
-                            S/ <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas ?: 0, 1, 2)}">0.00</span>
+                            <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas ?: 0, 1, 2)}">0.00</span>
                         </span>
                         <span class="stats-label">Total Ventas</span>
                     </div>
@@ -119,7 +119,7 @@
                 <div class="col-md-3 col-6">
                     <div class="stats-item">
                         <span class="stats-value text-money">
-                            S/ <span th:text="${#numbers.formatDecimal(estadisticas.ticketPromedio ?: 0, 1, 2)}">0.00</span>
+                            <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.ticketPromedio ?: 0, 1, 2)}">0.00</span>
                         </span>
                         <span class="stats-label">Ticket Promedio</span>
                     </div>
@@ -142,7 +142,7 @@
                 <div class="col-md-3 col-6">
                     <div class="stats-item">
                         <span class="stats-value text-money">
-                            S/ <span th:text="${#numbers.formatDecimal(estadisticas.totalPagado ?: 0, 1, 2)}">0.00</span>
+                            <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.totalPagado ?: 0, 1, 2)}">0.00</span>
                         </span>
                         <span class="stats-label">Total Pagado</span>
                     </div>
@@ -150,7 +150,7 @@
                 <div class="col-md-3 col-6">
                     <div class="stats-item">
                         <span class="stats-value text-money">
-                            S/ <span th:text="${#numbers.formatDecimal(estadisticas.totalPendiente ?: 0, 1, 2)}">0.00</span>
+                            <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.totalPendiente ?: 0, 1, 2)}">0.00</span>
                         </span>
                         <span class="stats-label">Por Cobrar</span>
                     </div>
@@ -201,15 +201,15 @@
                                 <td>
                                     <span th:text="${factura.cliente?.nombre}">Cliente</span>
                                 </td>
-                                <td class="text-end text-money">
-                                    S/ <span th:text="${#numbers.formatDecimal(factura.subtotal ?: 0, 1, 2)}">0.00</span>
-                                </td>
-                                <td class="text-end text-money">
-                                    S/ <span th:text="${#numbers.formatDecimal(factura.igv ?: 0, 1, 2)}">0.00</span>
+                                <td class="text-end">
+                                    <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(factura.subtotal ?: 0, 1, 2)}">0.00</span>
                                 </td>
                                 <td class="text-end">
-                                    <strong class="text-money">
-                                        S/ <span th:text="${#numbers.formatDecimal(factura.total ?: 0, 1, 2)}">0.00</span>
+                                    <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(factura.igv ?: 0, 1, 2)}">0.00</span>
+                                </td>
+                                <td class="text-end">
+                                    <strong class="text-success">
+                                        <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(factura.total ?: 0, 1, 2)}">0.00</span>
                                     </strong>
                                 </td>
                                 <td class="text-center">
@@ -241,13 +241,13 @@
                             <tr class="totals-row">
                                 <td colspan="4" class="text-end"><strong>TOTALES:</strong></td>
                                 <td class="text-end text-money">
-                                    <strong>S/ <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas - estadisticas.totalVentas * 0.18 / 1.18 ?: 0, 1, 2)}">0.00</span></strong>
+                                    <strong><span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas - estadisticas.totalVentas * 0.18 / 1.18 ?: 0, 1, 2)}">0.00</span></strong>
                                 </td>
                                 <td class="text-end text-money">
-                                    <strong>S/ <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas * 0.18 / 1.18 ?: 0, 1, 2)}">0.00</span></strong>
+                                    <strong><span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas * 0.18 / 1.18 ?: 0, 1, 2)}">0.00</span></strong>
                                 </td>
                                 <td class="text-end text-money">
-                                    <strong>S/ <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas ?: 0, 1, 2)}">0.00</span></strong>
+                                    <strong><span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.totalVentas ?: 0, 1, 2)}">0.00</span></strong>
                                 </td>
                                 <td colspan="3"></td>
                             </tr>
@@ -333,6 +333,14 @@
 
     <!-- Scripts -->
     <div th:replace="~{layout :: scripts}"></div>
+    
+    <!-- Variable global de moneda para reportes.js -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        window.simboloMoneda = /*[[${simboloMoneda ?: '₡'}]]*/ '₡';
+        /*]]*/
+    </script>
+    
     <script th:src="@{/js/reportes.js}"></script>
     <script th:inline="javascript">
         /*<![CDATA[*/
@@ -436,6 +444,9 @@
             const ctx = document.getElementById('ventasChart');
             if (!ctx) return;
 
+            // Símbolo de moneda desde Thymeleaf
+            const simboloMoneda = /*[[${simboloMoneda ?: '₡'}]]*/ '₡';
+
             // Datos de ventas (Thymeleaf inline)
             const facturas = /*[[${facturas}]]*/ [];
             
@@ -465,7 +476,7 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Ventas (S/)',
+                        label: `Ventas (${simboloMoneda})`,
                         data: data,
                         backgroundColor: gradient,
                         borderColor: '#0d6efd',
@@ -493,7 +504,7 @@
                             cornerRadius: 8,
                             callbacks: {
                                 label: function(context) {
-                                    return 'Ventas: S/ ' + context.parsed.y.toLocaleString('es-PE', {
+                                    return `Ventas: ${simboloMoneda} ` + context.parsed.y.toLocaleString('es-CR', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
                                     });
@@ -506,7 +517,7 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return 'S/ ' + value.toLocaleString('es-PE');
+                                    return `${simboloMoneda} ` + value.toLocaleString('es-CR');
                                 }
                             }
                         }

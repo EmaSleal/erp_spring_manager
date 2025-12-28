@@ -104,7 +104,7 @@
                 <div class="col-md-3">
                     <div class="stats-item">
                         <span class="stats-value text-money">
-                            S/ <span th:text="${#numbers.formatDecimal(estadisticas.precioPromedioMayorista ?: 0, 1, 2)}">0.00</span>
+                            <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(estadisticas.precioPromedioMayorista ?: 0, 1, 2)}">0.00</span>
                         </span>
                         <span class="stats-label">Precio Promedio</span>
                     </div>
@@ -146,10 +146,10 @@
                                           th:text="${producto.presentacion.nombre}">Presentación</span>
                                 </td>
                                 <td class="text-end text-money">
-                                    S/ <span th:text="${#numbers.formatDecimal(producto.precioMayorista ?: 0, 1, 2)}">0.00</span>
+                                    <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(producto.precioMayorista ?: 0, 1, 2)}">0.00</span>
                                 </td>
                                 <td class="text-end text-money">
-                                    S/ <span th:text="${#numbers.formatDecimal(producto.precioInstitucional ?: 0, 1, 2)}">0.00</span>
+                                    <span th:text="${simboloMoneda ?: '₡'}">₡</span> <span th:text="${#numbers.formatDecimal(producto.precioInstitucional ?: 0, 1, 2)}">0.00</span>
                                 </td>
                                 <td class="text-center">
                                     <span th:if="${producto.active}" class="badge badge-estado badge-activo">

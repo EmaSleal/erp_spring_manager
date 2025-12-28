@@ -83,7 +83,7 @@ function renderizarGraficoVentasPorMes(data) {
         data: {
             labels: data.labels,
             datasets: [{
-                label: 'Ventas (S/)',
+                label: `Ventas (${window.simboloMoneda || '₡'})`,
                 data: data.data,
                 backgroundColor: gradient,
                 borderColor: COLORS.primary,
@@ -125,7 +125,7 @@ function renderizarGraficoVentasPorMes(data) {
                     },
                     callbacks: {
                         label: function(context) {
-                            return 'Ventas: S/ ' + context.parsed.y.toLocaleString('es-PE', {
+                            return `Ventas: ${window.simboloMoneda || '₡'} ` + context.parsed.y.toLocaleString('es-CR', {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2
                             });
@@ -138,7 +138,7 @@ function renderizarGraficoVentasPorMes(data) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return 'S/ ' + value.toLocaleString('es-PE');
+                            return `${window.simboloMoneda || '₡'} ` + value.toLocaleString('es-CR');
                         },
                         font: {
                             size: 11
@@ -402,6 +402,223 @@ function renderizarGraficoProductosMasVendidos(data) {
 }
 
 // ============================================================================
+// GRÁFICO 4: ESTADO DE FACTURAS (PIE CHART)
+// ============================================================================
+
+/**
+ * Carga y renderiza el gráfico de estado de facturas (pie/doughnut)
+ */
+function cargarGraficoEstadoFacturas() {
+    fetch('/reportes/api/estado-facturas')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al cargar datos de estado de facturas');
+            }
+            return response.json();
+        })
+        .then(data => {
+            renderizarGraficoEstadoFacturas(data);
+        })
+        .catch(error => {
+            console.error('Error al cargar gráfico de estado de facturas:', error);
+            mostrarErrorGrafico('estadoFacturasChart', 'Error al cargar estado de facturas');
+        });
+}
+
+/**
+ * Renderiza el gráfico de estado de facturas
+ * @param {Object} data - Datos con labels, data y backgroundColor
+ */
+function renderizarGraficoEstadoFacturas(data) {
+    const ctx = document.getElementById('estadoFacturasChart');
+    if (!ctx) {
+        console.error('Canvas estadoFacturasChart no encontrado');
+        return;
+    }
+
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.data,
+                backgroundColor: data.backgroundColor || [
+                    COLORS.success,  // Verde para Pagadas
+                    COLORS.warning,  // Amarillo para Pendientes
+                    COLORS.danger    // Rojo para Vencidas
+                ],
+                borderColor: '#fff',
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Estado de Facturas',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Gráfico de estado de facturas renderizado');
+}
+
+// ============================================================================
+// GRÁFICO 5: COMPARATIVA INGRESOS (MIXED CHART)
+// ============================================================================
+
+/**
+ * Carga y renderiza el gráfico comparativo de ingresos (barras + línea)
+ */
+function cargarGraficoComparativaIngresos() {
+    fetch('/reportes/api/comparativa-ingresos?meses=6')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al cargar datos de comparativa de ingresos');
+            }
+            return response.json();
+        })
+        .then(data => {
+            renderizarGraficoComparativaIngresos(data);
+        })
+        .catch(error => {
+            console.error('Error al cargar gráfico comparativo:', error);
+            mostrarErrorGrafico('comparativaIngresosChart', 'Error al cargar comparativa');
+        });
+}
+
+/**
+ * Renderiza el gráfico comparativo de ingresos
+ * @param {Object} data - Datos con labels, datasets, promedio y cumplimiento
+ */
+function renderizarGraficoComparativaIngresos(data) {
+    const ctx = document.getElementById('comparativaIngresosChart');
+    if (!ctx) {
+        console.error('Canvas comparativaIngresosChart no encontrado');
+        return;
+    }
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: data.datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Ingresos vs Meta Promedio',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += `${window.simboloMoneda || '₡'} ` + context.parsed.y.toLocaleString('es-CR', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                });
+                            }
+                            
+                            // Agregar porcentaje de cumplimiento si es el dataset de ingresos
+                            if (context.datasetIndex === 0 && data.cumplimiento && data.cumplimiento[context.dataIndex]) {
+                                const porcentaje = data.cumplimiento[context.dataIndex];
+                                label += ` (${porcentaje}% de la meta)`;
+                            }
+                            
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return `${window.simboloMoneda || '₡'} ` + value.toLocaleString('es-CR');
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Gráfico comparativo de ingresos renderizado');
+}
+
+// ============================================================================
 // FUNCIONES AUXILIARES
 // ============================================================================
 
@@ -434,6 +651,8 @@ function actualizarGraficos() {
     cargarGraficoVentasPorMes();
     cargarGraficoClientesNuevos();
     cargarGraficoProductosMasVendidos();
+    cargarGraficoEstadoFacturas();
+    cargarGraficoComparativaIngresos();
 }
 
 // ============================================================================
@@ -444,6 +663,8 @@ function actualizarGraficos() {
 window.cargarGraficoVentasPorMes = cargarGraficoVentasPorMes;
 window.cargarGraficoClientesNuevos = cargarGraficoClientesNuevos;
 window.cargarGraficoProductosMasVendidos = cargarGraficoProductosMasVendidos;
+window.cargarGraficoEstadoFacturas = cargarGraficoEstadoFacturas;
+window.cargarGraficoComparativaIngresos = cargarGraficoComparativaIngresos;
 window.actualizarGraficos = actualizarGraficos;
 
 console.log('reportes.js cargado correctamente');
