@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.modules.seguridad.controller;
 
-import api.astro.whats_orders_manager.models.dto.UsuarioAdminDTO;
+import api.astro.whats_orders_manager.modules.seguridad.dto.UsuarioAdminDTO;
 import api.astro.whats_orders_manager.modules.seguridad.model.Permiso;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.model.UsuarioPermiso;

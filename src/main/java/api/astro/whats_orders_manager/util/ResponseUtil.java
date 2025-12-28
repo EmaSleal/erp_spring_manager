@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.util;
 
-import api.astro.whats_orders_manager.models.dto.ResponseDTO;
+import api.astro.whats_orders_manager.modules.shared.dto.ResponseDTO;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

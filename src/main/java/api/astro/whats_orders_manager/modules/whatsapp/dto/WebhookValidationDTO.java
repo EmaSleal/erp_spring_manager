@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.models.dto;
+package api.astro.whats_orders_manager.modules.whatsapp.dto;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

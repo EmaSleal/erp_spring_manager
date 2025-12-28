@@ -15,7 +15,7 @@ import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.reportes.service.ReporteService;
-import api.astro.whats_orders_manager.services.*;
+import api.astro.whats_orders_manager.modules.shared.service.EmailService;
 import api.astro.whats_orders_manager.util.ResponseUtil;
 import api.astro.whats_orders_manager.util.StringUtil;
 import lombok.RequiredArgsConstructor;

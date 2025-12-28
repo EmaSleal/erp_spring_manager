@@ -1,10 +1,10 @@
 package api.astro.whats_orders_manager.modules.seguridad.controller;
 
-import api.astro.whats_orders_manager.models.dto.EstadisticasUsuariosDTO;
-import api.astro.whats_orders_manager.models.dto.PaginacionDTO;
+import api.astro.whats_orders_manager.modules.seguridad.dto.EstadisticasUsuariosDTO;
+import api.astro.whats_orders_manager.modules.shared.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
-import api.astro.whats_orders_manager.services.EmailService;
+import api.astro.whats_orders_manager.modules.shared.service.EmailService;
 import api.astro.whats_orders_manager.util.PaginacionUtil;
 import api.astro.whats_orders_manager.util.PasswordUtil;
 import api.astro.whats_orders_manager.util.ResponseUtil;
