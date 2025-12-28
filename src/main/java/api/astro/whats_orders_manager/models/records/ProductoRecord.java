@@ -4,7 +4,7 @@ package api.astro.whats_orders_manager.models.records;
 
 import java.math.BigDecimal;
 
-import api.astro.whats_orders_manager.models.Producto;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 
 public record ProductoRecord(
         Integer id_producto,
