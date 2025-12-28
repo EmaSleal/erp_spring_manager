@@ -18,17 +18,18 @@ import java.time.format.DateTimeFormatter;
  * - Exposición segura de datos de usuario
  * - Información adicional para administradores
  * - Conversión bidireccional Usuario <-> DTO
- * - Exclusión de información sensible (password)
+ * - Password solo para formularios (no incluida en fromEntity)
  * 
  * Casos de uso:
  * - API REST de gestión de usuarios
  * - Listado de usuarios en panel admin
- * - Creación/edición de usuarios
+ * - Creación/edición de usuarios (incluye password)
  * - Reporte de actividad de usuarios
  * 
- * @version 1.0
+ * @version 1.1
  * @since Sprint 4 - Fase 4
  * @date 22/12/2025
+ * @updated 28/12/2025 - Agregado campo password para formularios
  * ============================================================================
  */
 @Data
@@ -63,6 +64,12 @@ public class UsuarioAdminDTO {
     private String nombreBloqueadoPor; // Nombre del admin que bloqueó
     
     // ==================== SEGURIDAD ====================
+    
+    /**
+     * Password del usuario (solo para formularios de creación/edición)
+     * No se incluye en fromEntity() por seguridad
+     */
+    private String password;
     
     private Boolean requireCambioPassword;
     private Timestamp fechaExpiracionPassword;
