@@ -1,12 +1,12 @@
 package api.astro.whats_orders_manager.controllers;
 
-import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.models.dto.ModuloDTO;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
-import api.astro.whats_orders_manager.services.UsuarioService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.util.StringUtil;
 import lombok.RequiredArgsConstructor;

@@ -1,11 +1,11 @@
 package api.whatsordersmanager.service;
 
-import api.astro.whats_orders_manager.models.Usuario;
-import api.astro.whats_orders_manager.enums.Permiso;
-import api.astro.whats_orders_manager.repositories.UsuarioRepository;
-import api.astro.whats_orders_manager.repositories.PermisoRepository;
-import api.astro.whats_orders_manager.services.PermisoService;
-import api.astro.whats_orders_manager.services.UsuarioPermisoService;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.enums.Permiso;
+import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioRepository;
+import api.astro.whats_orders_manager.modules.seguridad.repository.PermisoRepository;
+import api.astro.whats_orders_manager.modules.seguridad.service.PermisoService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioPermisoService;
 import api.astro.whats_orders_manager.services.impl.PermisoServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

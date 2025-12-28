@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.models.dto;
 
-import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import lombok.*;
 
 import java.sql.Timestamp;

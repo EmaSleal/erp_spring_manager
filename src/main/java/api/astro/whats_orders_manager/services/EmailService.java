@@ -89,7 +89,7 @@ public interface EmailService {
      * @param urlLogin URL del sistema para login
      * @throws MessagingException Si hay error al enviar
      */
-    void enviarCredencialesUsuario(api.astro.whats_orders_manager.models.Usuario usuario, String contrasenaPlana, String urlLogin) throws MessagingException;
+    void enviarCredencialesUsuario(api.astro.whats_orders_manager.modules.seguridad.model.Usuario usuario, String contrasenaPlana, String urlLogin) throws MessagingException;
 
     /**
      * Envía un recordatorio de pago al cliente de una factura vencida

@@ -1,9 +1,9 @@
 package api.astro.whats_orders_manager.services.impl;
 
-import api.astro.whats_orders_manager.models.Usuario;
-import api.astro.whats_orders_manager.repositories.UsuarioRepository;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioRepository;
 
-import api.astro.whats_orders_manager.services.UsuarioService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
