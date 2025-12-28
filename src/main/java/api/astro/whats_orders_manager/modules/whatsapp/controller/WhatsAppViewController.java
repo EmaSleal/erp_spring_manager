@@ -72,14 +72,14 @@ public class WhatsAppViewController {
             log.info("Se encontraron {} conversaciones", conversaciones.size());
             model.addAttribute("conversaciones", conversaciones);
             
-            return "whatsapp/mensajes";
+            return "modules/whatsapp/mensajes";
             
         } catch (Exception e) {
             log.error("Error al cargar vista de conversaciones", e);
             model.addAttribute("error", "Error al cargar conversaciones: " + e.getMessage());
             model.addAttribute("conversaciones", new java.util.ArrayList<>());
             model.addAttribute("estadisticas", new MensajeWhatsAppService.EstadisticasMensajes(0L, 0L, 0L, 0L, 0L));
-            return "whatsapp/mensajes";
+            return "modules/whatsapp/mensajes";
         }
     }
     
@@ -124,7 +124,7 @@ public class WhatsAppViewController {
                 model.addAttribute("primerMensaje", mensajes.get(mensajes.size() - 1).getFechaEnvio());
             }
             
-            return "whatsapp/conversacion-detalle";
+            return "modules/whatsapp/conversacion-detalle";
             
         } catch (Exception e) {
             log.error("Error al cargar conversación", e);
@@ -182,12 +182,12 @@ public class WhatsAppViewController {
             model.addAttribute("estadoFiltro", estado);
             model.addAttribute("categoriaFiltro", categoria);
             
-            return "whatsapp/plantillas";
+            return "modules/whatsapp/plantillas";
             
         } catch (Exception e) {
             log.error("Error al cargar vista de plantillas", e);
             model.addAttribute("error", "Error al cargar plantillas: " + e.getMessage());
-            return "whatsapp/plantillas";
+            return "modules/whatsapp/plantillas";
         }
     }
     
@@ -203,7 +203,7 @@ public class WhatsAppViewController {
             PlantillaWhatsApp plantilla = plantillaService.obtenerPorId(id)
                     .orElseThrow(() -> new RuntimeException("Plantilla no encontrada"));
             model.addAttribute("plantilla", plantilla);
-            return "whatsapp/plantilla-detalle";
+            return "modules/whatsapp/plantilla-detalle";
             
         } catch (Exception e) {
             log.error("Error al cargar detalle de plantilla", e);
@@ -228,12 +228,12 @@ public class WhatsAppViewController {
             model.addAttribute("estadisticas", stats);
             model.addAttribute("idUsuario", idUsuario);
             
-            return "whatsapp/historial";
+            return "modules/whatsapp/historial";
             
         } catch (Exception e) {
             log.error("Error al cargar historial de usuario", e);
             model.addAttribute("error", "Error al cargar historial: " + e.getMessage());
-            return "whatsapp/historial";
+            return "modules/whatsapp/historial";
         }
     }
 }

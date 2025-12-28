@@ -94,12 +94,12 @@ public class FacturaController {
             log.info("Facturas cargadas: {} de {} total", 
                     facturasPage.getContent().size(), facturasPage.getTotalElements());
             
-            return "facturas/facturas";
+            return "modules/facturacion/facturas";
             
         } catch (Exception e) {
             log.error("Error al listar facturas: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar las facturas");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 
@@ -134,7 +134,7 @@ public class FacturaController {
     public String nuevaFactura(Model model, Authentication authentication) {
         log.info("Mostrando formulario de nueva factura");
         model.addAttribute("factura", new Factura());
-        return "facturas/form";
+        return "modules/facturacion/form";
     }
 
     /**
@@ -233,7 +233,7 @@ public class FacturaController {
             }
             
             model.addAttribute("factura", facturaOptional.get());
-            return "facturas/form";
+            return "modules/facturacion/form";
             
         } catch (Exception e) {
             log.error("Error al cargar factura para edición: {}", e.getMessage(), e);
@@ -259,12 +259,12 @@ public class FacturaController {
             model.addAttribute("clientes", clientes);
             model.addAttribute("productos", productos);
             
-            return "facturas/add-form";
+            return "modules/facturacion/add-form";
             
         } catch (Exception e) {
             log.error("Error al cargar formulario de nueva factura: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar el formulario");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 

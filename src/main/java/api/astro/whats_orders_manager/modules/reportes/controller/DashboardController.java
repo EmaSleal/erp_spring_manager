@@ -82,12 +82,12 @@ public class DashboardController {
             model.addAttribute("title", "Dashboard");
 
             log.info("Dashboard cargado exitosamente para usuario: {}", usuario.getNombre());
-            return "dashboard/dashboard";
+            return "modules/presentacion/dashboard/dashboard";
             
         } catch (Exception e) {
             log.error("Error al cargar dashboard: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar el dashboard");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 

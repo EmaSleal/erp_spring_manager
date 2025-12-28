@@ -96,12 +96,12 @@ public class UsuarioController {
             log.info("Mostrando {} usuarios de un total de {}", 
                     paginacion.getContenido().size(), usuariosFiltrados.size());
             
-            return "usuarios/usuarios";
+            return "modules/seguridad/usuarios/usuarios";
             
         } catch (Exception e) {
             log.error("Error al listar usuarios: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar los usuarios");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 
@@ -125,12 +125,12 @@ public class UsuarioController {
             model.addAttribute("esNuevo", true);
             model.addAttribute("titulo", "Nuevo Usuario");
             
-            return "usuarios/form";
+            return "modules/seguridad/usuarios/form";
             
         } catch (Exception e) {
             log.error("Error al cargar formulario de nuevo usuario: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar el formulario");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 
@@ -168,7 +168,7 @@ public class UsuarioController {
             model.addAttribute("esNuevo", false);
             model.addAttribute("titulo", "Editar Usuario");
             
-            return "usuarios/form";
+            return "modules/seguridad/usuarios/form";
             
         } catch (Exception e) {
             log.error("Error al cargar formulario de edición: {}", e.getMessage(), e);
@@ -202,7 +202,7 @@ public class UsuarioController {
             model.addAttribute("esNuevo", esNuevo);
             model.addAttribute("titulo", esNuevo ? "Nuevo Usuario" : "Editar Usuario");
             agregarDatosUsuarioAlModelo(model, session);
-            return "usuarios/form";
+            return "modules/seguridad/usuarios/form";
         }
         
         try {

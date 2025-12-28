@@ -103,12 +103,12 @@ public class PermisoAdminController {
             log.info("Permisos cargados exitosamente: {} de {} totales", 
                     permisosFiltrados.size(), totalPermisos);
             
-            return "admin/permisos/gestionar";
+            return "modules/seguridad/admin/permisos/gestionar";
             
         } catch (Exception e) {
             log.error("Error al listar permisos: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar la lista de permisos");
-            return "error/error";
+            return "shared/error/error";
         }
     }
     
@@ -135,7 +135,7 @@ public class PermisoAdminController {
             model.addAttribute("permiso", permisoOpt.get());
             model.addAttribute("esEdicion", true);
             
-            return "admin/permisos/editar";
+            return "modules/seguridad/admin/permisos/editar";
             
         } catch (Exception e) {
             log.error("Error al cargar formulario de edición: {}", e.getMessage(), e);

@@ -41,7 +41,7 @@ public class AuthController {
     @GetMapping("/login")
     public String login() {
         log.debug("Acceso a página de login");
-        return "auth/login"; // Redirige a la vista login.html en templates/auth/
+        return "modules/seguridad/auth/login"; // Redirige a la vista login.html en templates/auth/
     }
 
     @PostMapping("/login")
@@ -73,7 +73,7 @@ public class AuthController {
     public String showRegistrationForm(Model model) {
         log.debug("Acceso a formulario de registro");
         model.addAttribute("usuario", new Usuario());
-        return "auth/register"; // Redirige a la vista register.html en templates/auth/
+        return "modules/seguridad/auth/register"; // Redirige a la vista register.html en templates/auth/
     }
 
     @PostMapping("/register")

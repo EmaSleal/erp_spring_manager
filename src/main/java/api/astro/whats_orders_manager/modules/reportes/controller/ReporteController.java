@@ -110,12 +110,12 @@ public class ReporteController {
             log.info("Dashboard cargado - Clientes: {}, Productos: {}, Facturas: {}, Usuarios: {}", 
                      totalClientes, totalProductos, totalFacturas, totalUsuarios);
             
-            return "reportes/index";
+            return "modules/reportes/index";
             
         } catch (Exception e) {
             log.error("Error al cargar dashboard de reportes: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar las estadísticas");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 
@@ -161,12 +161,12 @@ public class ReporteController {
             model.addAttribute("clienteId", clienteId);
             
             log.info("Reporte de ventas generado exitosamente - {} facturas", facturas.size());
-            return "reportes/ventas";
+            return "modules/reportes/ventas";
             
         } catch (Exception e) {
             log.error("Error al generar reporte de ventas: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al generar el reporte");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 
@@ -208,12 +208,12 @@ public class ReporteController {
             model.addAttribute("conDeuda", conDeuda);
             
             log.info("Reporte de clientes generado - {} clientes", clientes.size());
-            return "reportes/clientes";
+            return "modules/reportes/clientes";
             
         } catch (Exception e) {
             log.error("Error al generar reporte de clientes: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al generar el reporte");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 
@@ -255,12 +255,12 @@ public class ReporteController {
             model.addAttribute("sinVentas", sinVentas);
             
             log.info("Reporte de productos generado - {} productos", productos.size());
-            return "reportes/productos";
+            return "modules/reportes/productos";
             
         } catch (Exception e) {
             log.error("Error al generar reporte de productos: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al generar el reporte");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 

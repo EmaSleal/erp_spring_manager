@@ -76,12 +76,12 @@ public class ClienteController {
             log.info("Clientes cargados: {} de {} total", 
                     clientesPage.getContent().size(), clientesPage.getTotalElements());
             
-            return "clientes/clientes";
+            return "modules/cliente/clientes";
             
         } catch (Exception e) {
             log.error("Error al listar clientes: {}", e.getMessage(), e);
             model.addAttribute("error", "Error al cargar la lista de clientes");
-            return "error/error";
+            return "shared/error/error";
         }
     }
 
@@ -93,7 +93,7 @@ public class ClienteController {
     public String nuevoCliente(Model model, Authentication authentication) {
         log.info("Mostrando formulario de nuevo cliente");
         model.addAttribute("cliente", new Cliente());
-        return "clientes/form";
+        return "modules/cliente/form";
     }
 
     /**
@@ -121,7 +121,7 @@ public class ClienteController {
         // Validaciones básicas del formulario
         if (result.hasErrors()) {
             log.warn("Errores de validación al guardar cliente");
-            return "clientes/form";
+            return "modules/cliente/form";
         }
         
         try {
@@ -174,7 +174,7 @@ public class ClienteController {
             }
             
             model.addAttribute("cliente", cliente.get());
-            return "clientes/form";
+            return "modules/cliente/form";
             
         } catch (Exception e) {
             log.error("Error al cargar cliente para edición: {}", e.getMessage(), e);
