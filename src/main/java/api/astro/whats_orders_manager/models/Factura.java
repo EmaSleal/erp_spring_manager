@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.models;
 
+import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.enums.InvoiceType;
 import jakarta.persistence.*;
 import lombok.*;

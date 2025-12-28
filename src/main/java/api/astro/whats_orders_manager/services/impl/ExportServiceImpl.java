@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.services.impl;
 
-import api.astro.whats_orders_manager.models.Cliente;
+import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.models.Empresa;
 import api.astro.whats_orders_manager.models.Factura;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
