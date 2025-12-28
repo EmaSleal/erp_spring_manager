@@ -5,7 +5,7 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.services.EmailService;
-import api.astro.whats_orders_manager.services.EmpresaService;
+import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import jakarta.mail.MessagingException;

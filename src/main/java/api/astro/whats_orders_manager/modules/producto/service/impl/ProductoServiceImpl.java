@@ -1,10 +1,10 @@
 package api.astro.whats_orders_manager.modules.producto.service.impl;
 
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
-import api.astro.whats_orders_manager.models.records.ProductoRecord;
+import api.astro.whats_orders_manager.modules.producto.model.ProductoRecord;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
-import api.astro.whats_orders_manager.services.impl.UserDetailsServiceImpl;
+import api.astro.whats_orders_manager.modules.seguridad.service.impl.UserDetailsServiceImpl;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
