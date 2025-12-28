@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.services.impl;
 
 import api.astro.whats_orders_manager.models.LineaFactura;
-import api.astro.whats_orders_manager.models.LineaFacturaR;
+import api.astro.whats_orders_manager.models.records.LineaFacturaR;
 import api.astro.whats_orders_manager.repositories.LineaFacturaRepository;
 import api.astro.whats_orders_manager.services.LineaFacturaService;
 import jakarta.transaction.Transactional;

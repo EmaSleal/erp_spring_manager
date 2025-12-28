@@ -305,4 +305,28 @@ public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFactura
         log.debug("Buscando configuración por serie: {}", serie);
         return configuracionRepository.findBySerieFactura(serie);
     }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "configuracionFacturacion", allEntries = true)
+    public ConfiguracionFacturacion saveOrUpdate(ConfiguracionFacturacion configuracion) {
+        log.debug("Guardando o actualizando configuración de facturación");
+        
+        // Validar datos primero
+        validarConfiguracion(configuracion);
+        
+        ConfiguracionFacturacion resultado;
+        
+        if (configuracion.getId() != null && configuracion.getId() > 0) {
+            // Actualizar configuración existente
+            log.info("Actualizando configuración existente con ID: {}", configuracion.getId());
+            resultado = update(configuracion);
+        } else {
+            // Crear nueva configuración
+            log.info("Creando nueva configuración de facturación");
+            resultado = save(configuracion);
+        }
+        
+        return resultado;
+    }
 }

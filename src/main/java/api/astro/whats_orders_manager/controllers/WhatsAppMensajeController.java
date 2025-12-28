@@ -1,7 +1,8 @@
 package api.astro.whats_orders_manager.controllers;
 
-import api.astro.whats_orders_manager.dto.whatsapp.WhatsAppMensajeDTO;
+
 import api.astro.whats_orders_manager.models.MensajeWhatsApp;
+import api.astro.whats_orders_manager.models.dto.WhatsAppMensajeDTO;
 import api.astro.whats_orders_manager.services.MensajeWhatsAppService;
 import api.astro.whats_orders_manager.services.WhatsAppService;
 

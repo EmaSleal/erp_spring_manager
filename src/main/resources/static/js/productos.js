@@ -227,17 +227,15 @@ function renderTable() {
                 <button class="btn btn-sm btn-warning me-1" 
                         onclick="openEditModal(${producto.idProducto}, '${producto.codigo}', '${producto.descripcion}', ${producto?.presentacion?.idPresentacion}, ${producto.precioInstitucional}, ${producto.precioMayorista}, ${producto.active})"
                         title="Editar"
-                        style="${(typeof userRole !== 'undefined' && (userRole === 'ROLE_VENDEDOR' || userRole === 'ROLE_VISUALIZADOR')) ? 'display:none;' : ''}">
+                        style="${(typeof permisos !== 'undefined' && !permisos.editar) ? 'display:none;' : ''}">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" 
                         onclick="eliminarProducto(${producto.idProducto}, '${producto.descripcion}')"
                         title="Eliminar"
-                        style="${(typeof userRole !== 'undefined' && (userRole === 'ROLE_VENDEDOR' || userRole === 'ROLE_VISUALIZADOR')) ? 'display:none;' : ''}">
+                        style="${(typeof permisos !== 'undefined' && !permisos.eliminar) ? 'display:none;' : ''}">
                     <i class="fas fa-trash"></i>
                 </button>
-                ${(typeof userRole !== 'undefined' && (userRole === 'ROLE_VENDEDOR' || userRole === 'ROLE_VISUALIZADOR')) ? 
-                    '<span class="badge bg-secondary"><i class="bi bi-eye-fill"></i> Solo lectura</span>' : ''}
             </td>
         `;
         tbody.appendChild(row);

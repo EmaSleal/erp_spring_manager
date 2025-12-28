@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.controllers;
 
-import api.astro.whats_orders_manager.dto.whatsapp.MetaWebhookRequest;
-import api.astro.whats_orders_manager.dto.whatsapp.WebhookValidationDTO;
+import api.astro.whats_orders_manager.models.dto.whatsapp.MetaWebhookRequest;
+import api.astro.whats_orders_manager.models.dto.WebhookValidationDTO;
 import api.astro.whats_orders_manager.services.WebhookWhatsAppService;
 
 import lombok.extern.slf4j.Slf4j;

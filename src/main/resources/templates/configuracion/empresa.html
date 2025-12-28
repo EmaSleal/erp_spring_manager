@@ -5,290 +5,311 @@
 <!-- Fragment: Formulario de Empresa -->
 <div th:fragment="empresaForm">
 
-    <form th:action="@{/configuracion/empresa/guardar}" 
-          th:object="${empresa}" 
-          method="post" 
-          class="needs-validation" 
-          novalidate>
+    <!-- Alert container -->
+    <div id="alert-empresa-container"></div>
 
-        <!-- ID oculto (para updates) -->
-        <input type="hidden" th:field="*{idEmpresa}">
-
-        <!-- Información Básica -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h5 class="border-bottom pb-2 mb-3">
-                    <i class="fas fa-info-circle text-primary me-2"></i>
-                    Información Básica
-                </h5>
-            </div>
-
-            <!-- Nombre de la Empresa -->
-            <div class="col-md-6 mb-3">
-                <label for="nombreEmpresa" class="form-label">
-                    Nombre de la Empresa <span class="text-danger">*</span>
-                </label>
-                <input type="text" 
-                       class="form-control" 
-                       id="nombreEmpresa" 
-                       th:field="*{nombreEmpresa}"
-                       placeholder="Ej: Mi Empresa S.A.C."
-                       maxlength="200"
-                       required>
-                <div class="invalid-feedback">
-                    Por favor ingresa el nombre de la empresa.
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary bg-gradient text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-building me-2"></i>
+                    <strong>Configuración de la Empresa</strong>
                 </div>
-                <small class="form-text text-muted">Razón social o nombre legal</small>
             </div>
-
-            <!-- Nombre Comercial -->
-            <div class="col-md-6 mb-3">
-                <label for="nombreComercial" class="form-label">
-                    Nombre Comercial
-                </label>
-                <input type="text" 
-                       class="form-control" 
-                       id="nombreComercial" 
-                       th:field="*{nombreComercial}"
-                       placeholder="Ej: Mi Empresa"
-                       maxlength="200">
-                <small class="form-text text-muted">Nombre con el que se conoce tu empresa (opcional)</small>
-            </div>
-
-            <!-- RUC -->
-            <div class="col-md-6 mb-3">
-                <label for="ruc" class="form-label">
-                    RUC / NIT / CUIT
-                </label>
-                <input type="text" 
-                       class="form-control" 
-                       id="ruc" 
-                       th:field="*{ruc}"
-                       placeholder="Ej: 20123456789"
-                       maxlength="20">
-                <small class="form-text text-muted">Número de identificación tributaria</small>
-            </div>
-
-            <!-- Teléfono -->
-            <div class="col-md-6 mb-3">
-                <label for="telefono" class="form-label">
-                    Teléfono
-                </label>
-                <input type="tel" 
-                       class="form-control" 
-                       id="telefono" 
-                       th:field="*{telefono}"
-                       placeholder="Ej: +51 999 999 999"
-                       maxlength="20">
-                <small class="form-text text-muted">Teléfono de contacto principal</small>
-            </div>
-
-            <!-- Email -->
-            <div class="col-md-6 mb-3">
-                <label for="email" class="form-label">
-                    Email
-                </label>
-                <input type="email" 
-                       class="form-control" 
-                       id="email" 
-                       th:field="*{email}"
-                       placeholder="Ej: contacto@miempresa.com"
-                       maxlength="100">
-                <div class="invalid-feedback">
-                    Por favor ingresa un email válido.
-                </div>
-                <small class="form-text text-muted">Email de contacto principal</small>
-            </div>
-
-            <!-- Sitio Web -->
-            <div class="col-md-6 mb-3">
-                <label for="sitioWeb" class="form-label">
-                    Sitio Web
-                </label>
-                <input type="url" 
-                       class="form-control" 
-                       id="sitioWeb" 
-                       th:field="*{sitioWeb}"
-                       placeholder="Ej: https://www.miempresa.com"
-                       maxlength="200">
-                <small class="form-text text-muted">URL de tu sitio web (opcional)</small>
-            </div>
-
-            <!-- Dirección -->
-            <div class="col-12 mb-3">
-                <label for="direccion" class="form-label">
-                    Dirección Fiscal
-                </label>
-                <textarea class="form-control" 
-                          id="direccion" 
-                          th:field="*{direccion}"
-                          rows="2"
-                          placeholder="Ej: Av. Principal 123, Lima, Perú"
-                          maxlength="300"></textarea>
-                <small class="form-text text-muted">Dirección fiscal de la empresa</small>
-            </div>
-
         </div>
 
-        <!-- Recursos Visuales -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h5 class="border-bottom pb-2 mb-3">
-                    <i class="fas fa-image text-primary me-2"></i>
-                    Recursos Visuales
-                </h5>
-            </div>
+        <div class="card-body">
+            <form id="form-empresa">
 
-            <!-- Logo -->
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Logo de la Empresa</label>
-                
-                <!-- Preview del Logo -->
-                <div class="logo-preview-container mb-3">
-                    <div th:if="${empresa.logo != null and empresa.logo != ''}" class="logo-preview">
-                        <img th:src="@{'/uploads/empresa/' + ${empresa.logo}}" 
-                             alt="Logo" 
-                             class="img-thumbnail"
-                             id="logoPreview">
-                        <div class="logo-actions mt-2">
+                <!-- ID oculto (para updates) -->
+                <input type="hidden" id="idConfiguracionEmpresa" name="idConfiguracion">
+
+                <!-- Información Legal -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-briefcase text-primary me-2"></i>
+                            Información Legal
+                        </h5>
+                    </div>
+
+                    <!-- Razón Social -->
+                    <div class="col-md-6 mb-3">
+                        <label for="razonSocial" class="form-label">
+                            <i class="fas fa-building me-1"></i> Razón Social
+                            <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="razonSocial" 
+                               name="razonSocial"
+                               placeholder="Mi Empresa S.A.C."
+                               maxlength="200"
+                               required>
+                        <div class="form-text">Nombre legal de la empresa</div>
+                    </div>
+
+                    <!-- Nombre Comercial -->
+                    <div class="col-md-6 mb-3">
+                        <label for="nombreComercial" class="form-label">
+                            <i class="fas fa-store me-1"></i> Nombre Comercial
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="nombreComercial" 
+                               name="nombreComercial"
+                               placeholder="Mi Empresa"
+                               maxlength="200">
+                        <div class="form-text">Nombre con el que opera públicamente</div>
+                    </div>
+
+                    <!-- RUC/NIT -->
+                    <div class="col-md-4 mb-3">
+                        <label for="rfc" class="form-label">
+                            <i class="fas fa-id-card me-1"></i> RUC / RFC / NIT
+                            <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="rfc" 
+                               name="rfc"
+                               placeholder="20123456789"
+                               maxlength="20"
+                               required>
+                        <div class="form-text">Registro fiscal</div>
+                    </div>
+
+                    <!-- Régimen Fiscal -->
+                    <div class="col-md-8 mb-3">
+                        <label for="regimenFiscal" class="form-label">
+                            <i class="fas fa-balance-scale me-1"></i> Régimen Fiscal
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="regimenFiscal" 
+                               name="regimenFiscal"
+                               placeholder="Régimen General, RUS, etc."
+                               maxlength="100">
+                        <div class="form-text">Tipo de régimen tributario</div>
+                    </div>
+                </div>
+
+                <!-- Dirección Fiscal -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-map-marker-alt text-success me-2"></i>
+                            Dirección Fiscal
+                        </h5>
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label for="direccionCalle" class="form-label">
+                            <i class="fas fa-road me-1"></i> Calle
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionCalle" 
+                               name="direccionCalle"
+                               placeholder="Av. Principal 123"
+                               maxlength="200">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionCiudad" class="form-label">
+                            <i class="fas fa-city me-1"></i> Ciudad
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionCiudad" 
+                               name="direccionCiudad"
+                               placeholder="Lima"
+                               maxlength="100">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionEstado" class="form-label">
+                            <i class="fas fa-map me-1"></i> Estado/Provincia
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionEstado" 
+                               name="direccionEstado"
+                               placeholder="Lima"
+                               maxlength="100">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionCodigoPostal" class="form-label">
+                            <i class="fas fa-mail-bulk me-1"></i> Código Postal
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionCodigoPostal" 
+                               name="direccionCodigoPostal"
+                               placeholder="15001"
+                               maxlength="10">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionPais" class="form-label">
+                            <i class="fas fa-flag me-1"></i> País
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionPais" 
+                               name="direccionPais"
+                               placeholder="Perú"
+                               maxlength="100">
+                    </div>
+                </div>
+
+                <!-- Información de Contacto -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-phone text-info me-2"></i>
+                            Información de Contacto
+                        </h5>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="telefono" class="form-label">
+                            <i class="fas fa-phone me-1"></i> Teléfono
+                        </label>
+                        <input type="tel" 
+                               class="form-control" 
+                               id="telefono" 
+                               name="telefono"
+                               placeholder="+51 999 999 999"
+                               maxlength="20">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">
+                            <i class="fas fa-envelope me-1"></i> Email
+                        </label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="email" 
+                               name="email"
+                               placeholder="contacto@miempresa.com"
+                               maxlength="100">
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label for="sitioWeb" class="form-label">
+                            <i class="fas fa-globe me-1"></i> Sitio Web
+                        </label>
+                        <input type="url" 
+                               class="form-control" 
+                               id="sitioWeb" 
+                               name="sitioWeb"
+                               placeholder="https://www.miempresa.com"
+                               maxlength="200">
+                    </div>
+                </div>
+
+                <!-- Recursos Visuales -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-palette text-warning me-2"></i>
+                            Recursos Visuales
+                        </h5>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="logoUrl" class="form-label">
+                            <i class="fas fa-image me-1"></i> URL del Logo
+                        </label>
+                        <input type="url" 
+                               class="form-control" 
+                               id="logoUrl" 
+                               name="logoUrl"
+                               placeholder="https://ejemplo.com/logo.png"
+                               maxlength="500">
+                        <div class="form-text">URL pública de tu logo</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="faviconUrl" class="form-label">
+                            <i class="fas fa-bookmark me-1"></i> URL del Favicon
+                        </label>
+                        <input type="url" 
+                               class="form-control" 
+                               id="faviconUrl" 
+                               name="faviconUrl"
+                               placeholder="https://ejemplo.com/favicon.ico"
+                               maxlength="500">
+                        <div class="form-text">URL pública de tu favicon (32x32px)</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="colorPrimario" class="form-label">
+                            <i class="fas fa-fill-drip me-1"></i> Color Primario
+                        </label>
+                        <div class="input-group">
+                            <input type="color" 
+                                   class="form-control form-control-color" 
+                                   id="colorPrimario" 
+                                   name="colorPrimario"
+                                   value="#007bff"
+                                   title="Seleccionar color primario">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="colorPrimarioText"
+                                   value="#007bff"
+                                   maxlength="7"
+                                   readonly>
+                        </div>
+                        <div class="form-text">Color principal de tu marca</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="colorSecundario" class="form-label">
+                            <i class="fas fa-fill me-1"></i> Color Secundario
+                        </label>
+                        <div class="input-group">
+                            <input type="color" 
+                                   class="form-control form-control-color" 
+                                   id="colorSecundario" 
+                                   name="colorSecundario"
+                                   value="#6c757d"
+                                   title="Seleccionar color secundario">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="colorSecundarioText"
+                                   value="#6c757d"
+                                   maxlength="7"
+                                   readonly>
+                        </div>
+                        <div class="form-text">Color secundario de tu marca</div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end pt-3 border-top">
                             <button type="button" 
-                                    class="btn btn-sm btn-danger" 
-                                    onclick="confirmarEliminarLogo()">
-                                <i class="fas fa-trash"></i> Eliminar
+                                    class="btn btn-secondary me-2" 
+                                    id="btn-cancelar-empresa">
+                                <i class="fas fa-times me-2"></i>
+                                Cancelar
+                            </button>
+                            <button type="submit" 
+                                    class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                Guardar Configuración
                             </button>
                         </div>
                     </div>
-                    <div th:unless="${empresa.logo != null and empresa.logo != ''}" 
-                         class="logo-preview-empty text-center p-4 border rounded bg-light">
-                        <i class="fas fa-image fa-3x text-muted mb-2"></i>
-                        <p class="text-muted mb-0">Sin logo</p>
-                        <img id="logoPreview" style="display: none;" class="img-thumbnail mt-3">
-                    </div>
                 </div>
 
-                <!-- Upload de Logo -->
-                <div class="input-group">
-                    <input type="file" 
-                           class="form-control" 
-                           id="logoInput" 
-                           accept=".png,.jpg,.jpeg,.svg"
-                           onchange="previewLogo(event)">
-                    <button type="button" 
-                            class="btn btn-primary" 
-                            onclick="subirLogo()"
-                            th:disabled="${empresa.idEmpresa == null}">
-                        <i class="fas fa-upload"></i> Subir
-                    </button>
-                </div>
-                <small class="form-text text-muted">
-                    Formatos: PNG, JPG, SVG. Tamaño máximo: 2MB
-                </small>
-                <div th:if="${empresa.idEmpresa == null}" class="alert alert-info mt-2 small">
-                    <i class="fas fa-info-circle"></i> Guarda primero los datos de la empresa para poder subir el logo.
-                </div>
-            </div>
-
-            <!-- Favicon -->
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Favicon</label>
-                
-                <!-- Preview del Favicon -->
-                <div class="favicon-preview-container mb-3">
-                    <div th:if="${empresa.favicon != null and empresa.favicon != ''}" class="favicon-preview">
-                        <img th:src="@{'/uploads/empresa/' + ${empresa.favicon}}" 
-                             alt="Favicon" 
-                             class="favicon-img"
-                             id="faviconPreview">
-                        <div class="favicon-actions mt-2">
-                            <button type="button" 
-                                    class="btn btn-sm btn-danger" 
-                                    onclick="confirmarEliminarFavicon()">
-                                <i class="fas fa-trash"></i> Eliminar
-                            </button>
-                        </div>
-                    </div>
-                    <div th:unless="${empresa.favicon != null and empresa.favicon != ''}" 
-                         class="favicon-preview-empty text-center p-4 border rounded bg-light">
-                        <i class="fas fa-bookmark fa-3x text-muted mb-2"></i>
-                        <p class="text-muted mb-0">Sin favicon</p>
-                        <img id="faviconPreview" style="display: none;" class="favicon-img mt-3">
-                    </div>
-                </div>
-
-                <!-- Upload de Favicon -->
-                <div class="input-group">
-                    <input type="file" 
-                           class="form-control" 
-                           id="faviconInput" 
-                           accept=".png,.jpg,.jpeg,.ico"
-                           onchange="previewFavicon(event)">
-                    <button type="button" 
-                            class="btn btn-primary" 
-                            onclick="subirFavicon()"
-                            th:disabled="${empresa.idEmpresa == null}">
-                        <i class="fas fa-upload"></i> Subir
-                    </button>
-                </div>
-                <small class="form-text text-muted">
-                    Formatos: PNG, ICO. Tamaño máximo: 2MB. Recomendado: 32x32 px
-                </small>
-                <div th:if="${empresa.idEmpresa == null}" class="alert alert-info mt-2 small">
-                    <i class="fas fa-info-circle"></i> Guarda primero los datos de la empresa para poder subir el favicon.
-                </div>
-            </div>
-
+            </form>
         </div>
-
-        <!-- Estado -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" 
-                           type="checkbox" 
-                           id="activo" 
-                           th:field="*{activo}"
-                           checked>
-                    <label class="form-check-label" for="activo">
-                        Empresa Activa
-                    </label>
-                </div>
-                <small class="form-text text-muted">
-                    Solo puede existir una empresa activa en el sistema
-                </small>
-            </div>
-        </div>
-
-        <!-- Botones de Acción -->
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-end gap-2">
-                    <button type="button" class="btn btn-secondary" onclick="limpiarFormulario()">
-                        <i class="fas fa-eraser"></i> Limpiar
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> 
-                        <span th:text="${empresa.idEmpresa != null ? 'Actualizar' : 'Guardar'}">Guardar</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-    </form>
-
-    <!-- Formularios ocultos para eliminar logo/favicon -->
-    <form th:action="@{/configuracion/empresa/eliminar-logo}" 
-          method="post" 
-          id="formEliminarLogo" 
-          style="display: none;">
-        <input type="hidden" name="empresaId" th:value="${empresa.idEmpresa}">
-    </form>
-
-    <form th:action="@{/configuracion/empresa/eliminar-favicon}" 
-          method="post" 
-          id="formEliminarFavicon" 
-          style="display: none;">
-        <input type="hidden" name="empresaId" th:value="${empresa.idEmpresa}">
-    </form>
+    </div>
 
 </div>
 

@@ -33,18 +33,14 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="h3 mb-1"><i class="fas fa-box text-warning me-2"></i>Gestión de Productos</h2>
-                    <p class="text-muted mb-0">
-                        Administra tu catálogo de productos
-                        <span sec:authorize="hasAnyRole('VENDEDOR', 'VISUALIZADOR')" class="badge bg-secondary ms-2">
-                            <i class="bi bi-eye-fill me-1"></i>Solo lectura
-                        </span>
-                    </p>
+                    <p class="text-muted mb-0">Administra tu catálogo de productos</p>
                 </div>
                 <div class="d-flex gap-2">
                     <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
                     </a>
-                    <button type="button" class="btn btn-success" onclick="openAddModal()" sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                    <button type="button" class="btn btn-success" onclick="openAddModal()" 
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')">
                         <i class="fas fa-plus me-2"></i>Agregar Producto
                     </button>
                 </div>
@@ -157,7 +153,11 @@
     <!-- JSON embebido para uso en JS -->
     <script th:inline="javascript">
         const productos = /*[[${productos}]]*/ [];
-        const userRole = /*[[${#authentication.principal.authorities[0].authority}]]*/ 'ROLE_USER';
+        // Permisos del usuario actual
+        const permisos = {
+            editar: /*[[${@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_EDITAR')}]]*/ false,
+            eliminar: /*[[${@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_ELIMINAR')}]]*/ false
+        };
     </script>
     
     <!-- JavaScript específico de página -->

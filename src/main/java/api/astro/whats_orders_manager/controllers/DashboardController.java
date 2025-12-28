@@ -1,11 +1,13 @@
 package api.astro.whats_orders_manager.controllers;
 
 import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.models.dto.ModuloDTO;
 import api.astro.whats_orders_manager.services.ClienteService;
 import api.astro.whats_orders_manager.services.FacturaService;
 import api.astro.whats_orders_manager.services.ProductoService;
 import api.astro.whats_orders_manager.services.UsuarioService;
+import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +49,7 @@ public class DashboardController {
     private final ProductoService productoService;
     private final FacturaService facturaService;
     private final UsuarioService usuarioService;
+    private final ConfiguracionFacturacionService configuracionFacturacionService;
 
     /**
      * Muestra el dashboard principal con estadísticas y módulos disponibles
@@ -103,6 +106,7 @@ public class DashboardController {
         model.addAttribute("totalProductos", totalProductos);
         model.addAttribute("facturasHoy", facturasHoy);
         model.addAttribute("totalPendiente", totalPendiente != null ? totalPendiente : BigDecimal.ZERO);
+        model.addAttribute("simboloMoneda", obtenerSimboloMoneda());
         
         log.debug("Estadísticas cargadas - Clientes: {}, Productos: {}, Facturas hoy: {}", 
                 totalClientes, totalProductos, facturasHoy);
@@ -267,5 +271,30 @@ public class DashboardController {
             boolean visible
     ) {
         return new ModuloDTO(titulo, descripcion, icono, color, url, implementado, visible);
+    }
+
+    /**
+     * Obtiene el símbolo de moneda desde la configuración de facturación
+     * @return Símbolo de moneda (₡, $, €, etc.)
+     */
+    private String obtenerSimboloMoneda() {
+        try {
+            var config = configuracionFacturacionService.getConfiguracionActiva();
+            if (config.isPresent()) {
+                String moneda = config.get().getMoneda();
+                if (moneda != null) {
+                    return switch (moneda.toUpperCase()) {
+                        case "CRC" -> "₡";
+                        case "USD" -> "$";
+                        case "MXN" -> "$";
+                        case "EUR" -> "€";
+                        default -> moneda + " ";
+                    };
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error al obtener símbolo de moneda, usando predeterminado: {}", e.getMessage());
+        }
+        return "₡"; // Colones por defecto
     }
 }

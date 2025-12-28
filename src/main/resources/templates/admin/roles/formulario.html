@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{layout :: head}">
+    <title>Formulario de Rol</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/admin/usuarios}" class="text-decoration-none">
+                            <i class="fas fa-users me-1"></i>Administración
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/admin/roles}" class="text-decoration-none">
+                            <i class="fas fa-user-shield me-1"></i>Roles
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        [[${titulo}]]
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1">
+                        <i class="fas fa-user-shield text-primary me-2"></i>
+                        [[${titulo}]]
+                    </h2>
+                    <p class="text-muted mb-0">Complete los datos del rol y seleccione los permisos</p>
+                </div>
+                <div>
+                    <a th:href="@{/admin/roles}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver
+                    </a>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error: [[${param.error[0]}]]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Formulario -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <form th:action="${accion == 'crear'} ? @{/admin/roles/crear} : @{/admin/roles/actualizar/{id}(id=${rol?.idRol})}" 
+                          method="post" id="formRol">
+                          
+                        <div class="row">
+                            <!-- Código del Rol -->
+                            <div class="col-md-4 mb-3">
+                                <label for="codigo" class="form-label">
+                                    Código del Rol <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="codigo" 
+                                       name="codigo" 
+                                           th:value="${rol?.codigo}"
+                                           th:readonly="${accion == 'editar'}"
+                                           required
+                                           pattern="[A-Z_]+"
+                                           placeholder="Ej: SUPERVISOR"
+                                           maxlength="50">
+                                    <div class="form-text">Solo letras mayúsculas y guiones bajos</div>
+                                </div>
+
+                                <!-- Nombre del Rol -->
+                                <div class="col-md-8 mb-3">
+                                    <label for="nombre" class="form-label">
+                                        Nombre del Rol <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="nombre" 
+                                           name="nombre" 
+                                           th:value="${rol?.nombre}"
+                                           required
+                                           placeholder="Ej: Supervisor de Ventas"
+                                           maxlength="100">
+                                </div>
+
+                                <!-- Descripción -->
+                                <div class="col-12 mb-3">
+                                    <label for="descripcion" class="form-label">Descripción</label>
+                                    <textarea class="form-control" 
+                                              id="descripcion" 
+                                              name="descripcion" 
+                                              rows="3"
+                                              placeholder="Descripción del rol y sus responsabilidades"
+                                              th:text="${rol?.descripcion}"></textarea>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <!-- Permisos -->
+                            <h5 class="mb-3">
+                                <i class="fas fa-key me-2"></i>
+                                Permisos del Rol
+                            </h5>
+
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-primary" onclick="seleccionarTodos()">
+                                            <i class="fas fa-check-double"></i> Seleccionar Todos
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="deseleccionarTodos()">
+                                            <i class="fas fa-times"></i> Deseleccionar Todos
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion" id="accordionPermisos">
+                                <div th:each="entry, iterStat : ${permisosPorCategoria}" class="accordion-item">
+                                    <h2 class="accordion-header" th:id="'heading' + ${iterStat.index}">
+                                        <button class="accordion-button" 
+                                                type="button" 
+                                                data-bs-toggle="collapse" 
+                                                th:data-bs-target="'#collapse' + ${iterStat.index}"
+                                                th:class="${iterStat.index == 0} ? 'accordion-button' : 'accordion-button collapsed'">
+                                            <i class="fas fa-folder-open me-2"></i>
+                                            <strong th:text="${entry.key}">Categoría</strong>
+                                            <span class="badge bg-primary ms-2" th:text="${#lists.size(entry.value)}">0</span>
+                                        </button>
+                                    </h2>
+                                    <div th:id="'collapse' + ${iterStat.index}" 
+                                         class="accordion-collapse collapse"
+                                         th:class="${iterStat.index == 0} ? 'accordion-collapse collapse show' : 'accordion-collapse collapse'"
+                                         th:data-bs-parent="'#accordionPermisos'">
+                                        <div class="accordion-body">
+                                            <div class="row">
+                                                <div th:each="permiso : ${entry.value}" class="col-md-6 mb-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input permiso-checkbox" 
+                                                               type="checkbox" 
+                                                               name="permisos" 
+                                                               th:value="${permiso.idPermiso}"
+                                                               th:id="'permiso_' + ${permiso.idPermiso}"
+                                                               th:checked="${accion == 'editar' && #lists.contains(idsPermisosAsignados, permiso.idPermiso)}">
+                                                        <label class="form-check-label" th:for="'permiso_' + ${permiso.idPermiso}">
+                                                            <strong th:text="${permiso.nombre}">Permiso</strong>
+                                                            <span th:if="${permiso.esCritico}" class="badge bg-danger ms-1">Crítico</span>
+                                                            <br>
+                                                            <small class="text-muted" th:text="${permiso.codigo}">CODIGO</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <!-- Resumen de Permisos Seleccionados -->
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Permisos seleccionados:</strong>
+                                <span id="contadorPermisos">0</span>
+                            </div>
+
+                            <!-- Botones -->
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a th:href="@{/admin/roles}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    <span th:text="${accion == 'crear'} ? 'Crear Rol' : 'Actualizar Rol'">Guardar</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+    
+    <script>
+        // Actualizar contador de permisos seleccionados
+        function actualizarContador() {
+            const checkboxes = document.querySelectorAll('.permiso-checkbox:checked');
+            document.getElementById('contadorPermisos').textContent = checkboxes.length;
+        }
+        
+        // Seleccionar todos los permisos
+        function seleccionarTodos() {
+            document.querySelectorAll('.permiso-checkbox').forEach(cb => {
+                cb.checked = true;
+            });
+            actualizarContador();
+        }
+        
+        // Deseleccionar todos los permisos
+        function deseleccionarTodos() {
+            document.querySelectorAll('.permiso-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            actualizarContador();
+        }
+        
+        // Escuchar cambios en checkboxes
+        document.addEventListener('DOMContentLoaded', function() {
+            // Actualizar contador inicial
+            actualizarContador();
+            
+            // Escuchar cambios
+            document.querySelectorAll('.permiso-checkbox').forEach(cb => {
+                cb.addEventListener('change', actualizarContador);
+            });
+            
+            // Convertir código a mayúsculas automáticamente
+            const codigoInput = document.getElementById('codigo');
+            if (codigoInput && !codigoInput.readOnly) {
+                codigoInput.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase().replace(/[^A-Z_]/g, '');
+                });
+            }
+        });
+        
+        // Validación antes de enviar
+        document.getElementById('formRol').addEventListener('submit', function(e) {
+            const checkboxes = document.querySelectorAll('.permiso-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                e.preventDefault();
+                alert('Debe seleccionar al menos un permiso para el rol');
+                return false;
+            }
+            
+            return true;
+        });
+    </script>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div th:replace="~{components/footer :: footer}"></div>
+</body>
+</html>

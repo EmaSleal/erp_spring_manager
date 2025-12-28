@@ -363,6 +363,301 @@
 }
 
 /* ============================================================================
+   NOTIFICACIONES - Badge y Dropdown
+   ============================================================================ */
+.navbar-notifications {
+    position: relative;
+    margin-right: var(--spacing-md);
+}
+
+.navbar-notifications-trigger {
+    position: relative;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.3rem;
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.navbar-notifications-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-notifications-trigger.active {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Badge de contador */
+.notifications-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: var(--error-color);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 5px;
+    border-radius: 10px;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Dropdown de notificaciones */
+.navbar-notifications-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 380px;
+    max-width: 90vw;
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all var(--transition-medium);
+    z-index: 1100;
+    overflow: hidden;
+}
+
+.navbar-notifications-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Header del dropdown */
+.notifications-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+}
+
+.notifications-dropdown-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.btn-preferences {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.btn-preferences:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+/* Lista de notificaciones */
+.notifications-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notifications-loading {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.notifications-loading i {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-sm);
+    color: var(--primary-color);
+}
+
+.notifications-empty {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.notifications-empty i {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-md);
+    color: var(--border-color);
+}
+
+.notifications-empty p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Item de notificación */
+.notification-item {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color var(--transition-fast);
+    cursor: pointer;
+    display: flex;
+    gap: var(--spacing-sm);
+    position: relative;
+}
+
+.notification-item:hover {
+    background-color: var(--background-hover);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item.unread {
+    background-color: rgba(33, 150, 243, 0.05);
+}
+
+.notification-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    background-color: var(--primary-color);
+    border-radius: 0 4px 4px 0;
+}
+
+/* Icono de la notificación */
+.notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.notification-icon.type-factura-creada {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: var(--success-color);
+}
+
+.notification-icon.type-factura-vencida {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--error-color);
+}
+
+.notification-icon.type-factura-proxima-vencer {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: var(--warning-color);
+}
+
+.notification-icon.type-pago-recibido {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: var(--info-color);
+}
+
+.notification-icon.type-sistema {
+    background-color: rgba(156, 39, 176, 0.1);
+    color: #9c27b0;
+}
+
+/* Contenido de la notificación */
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notification-message {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Footer del dropdown */
+.notifications-dropdown-footer {
+    padding: var(--spacing-sm);
+    background-color: var(--background-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-ver-todas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.btn-ver-todas:hover {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+/* ============================================================================
    RESPONSIVE - TABLET
    ============================================================================ */
 @media (min-width: 768px) {

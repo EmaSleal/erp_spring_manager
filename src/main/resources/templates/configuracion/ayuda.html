@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayuda - Configuración del Sistema</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/all.min.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .help-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0d6efd;
+        }
+        
+        .help-section h3 {
+            color: #0d6efd;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .help-section h4 {
+            color: #495057;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .help-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .help-list li {
+            padding: 0.5rem 0;
+            padding-left: 2rem;
+            position: relative;
+        }
+        
+        .help-list li:before {
+            content: "\f058";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: #198754;
+        }
+        
+        .alert-help {
+            background: #e7f3ff;
+            border-left: 4px solid #0dcaf0;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .alert-help i {
+            color: #0dcaf0;
+            margin-right: 0.5rem;
+        }
+        
+        .code-example {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+        
+        .table-help {
+            font-size: 0.9rem;
+        }
+        
+        .table-help th {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .badge-category {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <!-- Sidebar -->
+    <aside th:replace="~{fragments/layout :: sidebar}"></aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/}"><i class="fas fa-home"></i> Inicio</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/configuracion}"><i class="fas fa-cog"></i> Configuración</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Ayuda</li>
+                </ol>
+            </nav>
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-2">
+                        <i class="fas fa-question-circle text-primary"></i>
+                        Centro de Ayuda - Configuración
+                    </h1>
+                    <p class="text-muted">Guía completa para configurar tu sistema</p>
+                </div>
+                <div>
+                    <a th:href="@{/configuracion}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3"><i class="fas fa-link"></i> Accesos Rápidos</h5>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="#empresa" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-building"></i> Empresa
+                                </a>
+                                <a href="#facturacion" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-file-invoice"></i> Facturación
+                                </a>
+                                <a href="#email" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-envelope"></i> Email
+                                </a>
+                                <a href="#parametros" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-sliders-h"></i> Parámetros
+                                </a>
+                                <a href="#faq" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-question"></i> Preguntas Frecuentes
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 1: CONFIGURACIÓN DE EMPRESA -->
+            <div id="empresa" class="help-section">
+                <h3><i class="fas fa-building"></i> 1. Configuración de Empresa</h3>
+                
+                <h4>¿Qué es?</h4>
+                <p>
+                    La configuración de empresa almacena los datos principales de tu negocio que aparecerán 
+                    en facturas, reportes y comunicaciones oficiales.
+                </p>
+
+                <h4>Campos Requeridos:</h4>
+                <ul class="help-list">
+                    <li><strong>Razón Social:</strong> Nombre legal completo de la empresa (mínimo 3 caracteres)</li>
+                    <li><strong>RUC/NIT:</strong> Número de identificación tributaria (11 caracteres para Perú)</li>
+                    <li><strong>Dirección:</strong> Dirección fiscal de la empresa</li>
+                    <li><strong>Teléfono:</strong> Número de contacto principal</li>
+                    <li><strong>Email:</strong> Correo electrónico corporativo</li>
+                </ul>
+
+                <h4>Campos Opcionales:</h4>
+                <ul class="help-list">
+                    <li><strong>Nombre Comercial:</strong> Nombre con el que se conoce tu negocio</li>
+                    <li><strong>Logo:</strong> URL de la imagen del logo (aparecerá en facturas)</li>
+                    <li><strong>Sitio Web:</strong> Dirección de tu página web</li>
+                    <li><strong>Representante Legal:</strong> Nombre del gerente o propietario</li>
+                    <li><strong>Régimen Tributario:</strong> RUS, RER, Régimen General, etc.</li>
+                </ul>
+
+                <div class="alert-help">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Importante:</strong> Esta información aparecerá en todas las facturas generadas. 
+                    Asegúrate de que los datos sean correctos antes de emitir documentos.
+                </div>
+
+                <h4>Ejemplo de Logo URL:</h4>
+                <div class="code-example">
+                    https://miempresa.com/images/logo.png<br>
+                    /images/logo-empresa.jpg
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: CONFIGURACIÓN DE FACTURACIÓN -->
+            <div id="facturacion" class="help-section">
+                <h3><i class="fas fa-file-invoice"></i> 2. Configuración de Facturación</h3>
+                
+                <h4>¿Qué es?</h4>
+                <p>
+                    Controla cómo se generan y formatean las facturas en tu sistema, incluyendo numeración, 
+                    impuestos y moneda.
+                </p>
+
+                <h4>Numeración de Facturas:</h4>
+                <table class="table table-help table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Campo</th>
+                            <th>Descripción</th>
+                            <th>Ejemplo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Serie</strong></td>
+                            <td>Código de serie de la factura</td>
+                            <td>F001, FV01, B001</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Número Inicial</strong></td>
+                            <td>Desde qué número empezar</td>
+                            <td>1, 1000</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Prefijo</strong></td>
+                            <td>Texto antes del número (opcional)</td>
+                            <td>FAC-, INV-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Formato</strong></td>
+                            <td>Estructura del número completo</td>
+                            <td>{serie}-{numero}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Resultado de Numeración:</h4>
+                <div class="code-example">
+                    Serie: F001<br>
+                    Número: 00025<br>
+                    Formato: {serie}-{numero}<br>
+                    <strong>Resultado: F001-00025</strong>
+                </div>
+
+                <h4>Configuración de Impuestos (IGV/IVA):</h4>
+                <ul class="help-list">
+                    <li><strong>Porcentaje IGV:</strong> Tasa de impuesto (18% para Perú, 19% para Colombia)</li>
+                    <li><strong>Incluir IGV en precio:</strong> 
+                        <ul>
+                            <li>✅ Activado: El precio del producto YA incluye el IGV</li>
+                            <li>❌ Desactivado: El IGV se suma al precio base</li>
+                        </ul>
+                    </li>
+                    <li><strong>Decimales:</strong> Cantidad de decimales en montos (normalmente 2)</li>
+                </ul>
+
+                <h4>Configuración de Moneda:</h4>
+                <table class="table table-help table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Moneda</th>
+                            <th>Código ISO</th>
+                            <th>Símbolo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Sol Peruano</td>
+                            <td>PEN</td>
+                            <td>S/</td>
+                        </tr>
+                        <tr>
+                            <td>Dólar Americano</td>
+                            <td>USD</td>
+                            <td>$</td>
+                        </tr>
+                        <tr>
+                            <td>Euro</td>
+                            <td>EUR</td>
+                            <td>€</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="alert-help">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Precaución:</strong> No modifiques la numeración o serie si ya tienes facturas 
+                    emitidas. Esto podría causar duplicados o problemas legales.
+                </div>
+
+                <h4>Términos y Condiciones:</h4>
+                <p>
+                    Puedes agregar texto que aparecerá al final de cada factura. Por ejemplo:
+                </p>
+                <div class="code-example">
+                    - El pago se debe realizar dentro de los 30 días.<br>
+                    - No se aceptan devoluciones después de 7 días.<br>
+                    - Banco: BCP - Cuenta: 193-1234567890<br>
+                    - Gracias por su compra.
+                </div>
+            </div>
+
+            <!-- SECCIÓN 3: CONFIGURACIÓN DE EMAIL -->
+            <div id="email" class="help-section">
+                <h3><i class="fas fa-envelope"></i> 3. Configuración de Email (SMTP)</h3>
+                
+                <h4>¿Qué es?</h4>
+                <p>
+                    Configura el servidor de correo para enviar facturas, notificaciones y reportes 
+                    automáticamente a tus clientes.
+                </p>
+
+                <h4>Proveedores SMTP Comunes:</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5><i class="fab fa-google"></i> Gmail</h5>
+                        <table class="table table-help table-sm table-bordered">
+                            <tr>
+                                <td><strong>Servidor:</strong></td>
+                                <td>smtp.gmail.com</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Puerto:</strong></td>
+                                <td>587 (TLS) o 465 (SSL)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Seguridad:</strong></td>
+                                <td>TLS o SSL</td>
+                            </tr>
+                        </table>
+                        <div class="alert alert-warning alert-sm">
+                            <small>
+                                <strong>Nota:</strong> Debes activar "Contraseñas de aplicación" en tu cuenta de Google.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5><i class="fab fa-microsoft"></i> Outlook</h5>
+                        <table class="table table-help table-sm table-bordered">
+                            <tr>
+                                <td><strong>Servidor:</strong></td>
+                                <td>smtp.office365.com</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Puerto:</strong></td>
+                                <td>587</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Seguridad:</strong></td>
+                                <td>TLS</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <h4>Campos de Configuración:</h4>
+                <ul class="help-list">
+                    <li><strong>Servidor SMTP:</strong> Dirección del servidor de correo (ej: smtp.gmail.com)</li>
+                    <li><strong>Puerto:</strong> Normalmente 587 (TLS) o 465 (SSL)</li>
+                    <li><strong>Usuario:</strong> Tu dirección de correo completa</li>
+                    <li><strong>Contraseña:</strong> Contraseña o contraseña de aplicación</li>
+                    <li><strong>Email Remitente:</strong> Email que aparecerá como remitente</li>
+                    <li><strong>Nombre Remitente:</strong> Nombre que aparecerá (ej: "Mi Empresa SAC")</li>
+                </ul>
+
+                <div class="alert-help">
+                    <i class="fas fa-shield-alt"></i>
+                    <strong>Seguridad:</strong> La contraseña se almacena encriptada. Nunca se mostrará 
+                    en texto plano por seguridad.
+                </div>
+
+                <h4>Probar Configuración:</h4>
+                <p>
+                    Usa el botón "Enviar Email de Prueba" para verificar que tu configuración funciona correctamente. 
+                    El sistema enviará un correo de prueba a la dirección configurada.
+                </p>
+
+                <div class="code-example">
+                    <strong>Email de Prueba:</strong><br>
+                    Para: tu-email@ejemplo.com<br>
+                    Asunto: Prueba de Configuración SMTP<br>
+                    Contenido: Mensaje de prueba con fecha y hora
+                </div>
+            </div>
+
+            <!-- SECCIÓN 4: PARÁMETROS DEL SISTEMA -->
+            <div id="parametros" class="help-section">
+                <h3><i class="fas fa-sliders-h"></i> 4. Parámetros del Sistema</h3>
+                
+                <h4>¿Qué son?</h4>
+                <p>
+                    Los parámetros del sistema son valores configurables que controlan el comportamiento 
+                    de diferentes módulos sin necesidad de programación.
+                </p>
+
+                <h4>Categorías de Parámetros:</h4>
+                
+                <div class="accordion" id="accordionParametros">
+                    <!-- GENERAL -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGeneral">
+                                <span class="badge badge-category bg-primary me-2">GENERAL</span>
+                                Parámetros Generales del Sistema
+                            </button>
+                        </h2>
+                        <div id="collapseGeneral" class="accordion-collapse collapse show" data-bs-parent="#accordionParametros">
+                            <div class="accordion-body">
+                                <table class="table table-help table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Parámetro</th>
+                                            <th>Descripción</th>
+                                            <th>Valor Ejemplo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>APP_NOMBRE</strong></td>
+                                            <td>Nombre de la aplicación</td>
+                                            <td>WhatsApp Orders Manager</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>APP_VERSION</strong></td>
+                                            <td>Versión actual del sistema</td>
+                                            <td>1.0.0</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>TIEMPO_SESION</strong></td>
+                                            <td>Tiempo de inactividad antes de cerrar sesión (minutos)</td>
+                                            <td>30</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>PAGINA_REGISTROS</strong></td>
+                                            <td>Cantidad de registros por página en listados</td>
+                                            <td>10</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WHATSAPP -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWhatsapp">
+                                <span class="badge badge-category bg-success me-2">WHATSAPP</span>
+                                Integración de WhatsApp
+                            </button>
+                        </h2>
+                        <div id="collapseWhatsapp" class="accordion-collapse collapse" data-bs-parent="#accordionParametros">
+                            <div class="accordion-body">
+                                <table class="table table-help table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Parámetro</th>
+                                            <th>Descripción</th>
+                                            <th>Valor Ejemplo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>WHATSAPP_ACTIVO</strong></td>
+                                            <td>Habilitar o deshabilitar módulo de WhatsApp</td>
+                                            <td>true / false</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>WHATSAPP_RESPUESTA_AUTO</strong></td>
+                                            <td>Activar respuestas automáticas</td>
+                                            <td>true / false</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>WHATSAPP_MENSAJE_BIENVENIDA</strong></td>
+                                            <td>Mensaje automático de bienvenida</td>
+                                            <td>¡Hola! Bienvenido a [empresa]</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>WHATSAPP_HORARIO_ACTIVO_INICIO</strong></td>
+                                            <td>Hora de inicio de atención</td>
+                                            <td>09:00</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>WHATSAPP_HORARIO_ACTIVO_FIN</strong></td>
+                                            <td>Hora de fin de atención</td>
+                                            <td>18:00</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FACTURACIÓN -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFacturacion">
+                                <span class="badge badge-category bg-warning text-dark me-2">FACTURACIÓN</span>
+                                Configuración de Facturación
+                            </button>
+                        </h2>
+                        <div id="collapseFacturacion" class="accordion-collapse collapse" data-bs-parent="#accordionParametros">
+                            <div class="accordion-body">
+                                <table class="table table-help table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Parámetro</th>
+                                            <th>Descripción</th>
+                                            <th>Valor Ejemplo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>FACTURA_DIAS_VENCIMIENTO</strong></td>
+                                            <td>Días hasta el vencimiento de una factura</td>
+                                            <td>30</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>FACTURA_ALERTA_VENCIMIENTO</strong></td>
+                                            <td>Días de anticipación para alertas</td>
+                                            <td>5</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>FACTURA_INCLUIR_LOGO</strong></td>
+                                            <td>Incluir logo de empresa en PDFs</td>
+                                            <td>true / false</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>FACTURA_DESCUENTO_MAXIMO</strong></td>
+                                            <td>Porcentaje máximo de descuento permitido</td>
+                                            <td>20.00</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOTIFICACIONES -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNotificaciones">
+                                <span class="badge badge-category bg-info me-2">NOTIFICACIONES</span>
+                                Sistema de Notificaciones
+                            </button>
+                        </h2>
+                        <div id="collapseNotificaciones" class="accordion-collapse collapse" data-bs-parent="#accordionParametros">
+                            <div class="accordion-body">
+                                <table class="table table-help table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Parámetro</th>
+                                            <th>Descripción</th>
+                                            <th>Valor Ejemplo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>NOTIF_EMAIL_ACTIVO</strong></td>
+                                            <td>Habilitar notificaciones por email</td>
+                                            <td>true / false</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>NOTIF_WHATSAPP_ACTIVO</strong></td>
+                                            <td>Habilitar notificaciones por WhatsApp</td>
+                                            <td>true / false</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>NOTIF_WEB_ACTIVO</strong></td>
+                                            <td>Habilitar notificaciones web en tiempo real</td>
+                                            <td>true / false</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>NOTIF_DIAS_RETENER</strong></td>
+                                            <td>Días para retener notificaciones antes de eliminar</td>
+                                            <td>90</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert-help mt-3">
+                    <i class="fas fa-lightbulb"></i>
+                    <strong>Tip:</strong> Puedes filtrar parámetros por categoría o buscar por clave para 
+                    encontrar rápidamente lo que necesitas.
+                </div>
+            </div>
+
+            <!-- SECCIÓN 5: PREGUNTAS FRECUENTES -->
+            <div id="faq" class="help-section">
+                <h3><i class="fas fa-question"></i> 5. Preguntas Frecuentes (FAQ)</h3>
+                
+                <div class="accordion" id="accordionFAQ">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                ¿Puedo cambiar la numeración de facturas después de emitir algunas?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#accordionFAQ">
+                            <div class="accordion-body">
+                                <strong>Respuesta:</strong> No se recomienda. Cambiar la numeración puede causar 
+                                duplicados y problemas legales. Si necesitas una nueva serie, contacta con soporte.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                ¿Cómo obtengo una contraseña de aplicación para Gmail?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
+                            <div class="accordion-body">
+                                <strong>Pasos:</strong>
+                                <ol>
+                                    <li>Activa la verificación en 2 pasos en tu cuenta de Google</li>
+                                    <li>Ve a <a href="https://myaccount.google.com/apppasswords" target="_blank">https://myaccount.google.com/apppasswords</a></li>
+                                    <li>Selecciona "Correo" y "Otro (nombre personalizado)"</li>
+                                    <li>Escribe "ERP Sistema" y genera la contraseña</li>
+                                    <li>Copia la contraseña de 16 caracteres y úsala en la configuración</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                ¿Qué hago si el email de prueba no llega?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
+                            <div class="accordion-body">
+                                <strong>Soluciones:</strong>
+                                <ul>
+                                    <li>Revisa la carpeta de spam/correo no deseado</li>
+                                    <li>Verifica que el servidor SMTP y puerto sean correctos</li>
+                                    <li>Confirma que la contraseña sea correcta (usa contraseña de aplicación)</li>
+                                    <li>Verifica que tu proveedor de email permita SMTP</li>
+                                    <li>Revisa los logs del sistema para más detalles del error</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                ¿Puedo usar múltiples monedas?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
+                            <div class="accordion-body">
+                                <strong>Respuesta:</strong> Actualmente el sistema soporta una moneda principal 
+                                configurada en "Configuración de Facturación". Para manejar múltiples monedas, 
+                                deberás cambiar la configuración según la transacción o contactar con soporte 
+                                para módulos avanzados.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                ¿Cómo restauro los parámetros por defecto?
+                            </button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
+                            <div class="accordion-body">
+                                <strong>Respuesta:</strong> El sistema tiene valores por defecto para todos los 
+                                parámetros. Si modificaste un parámetro y quieres restaurarlo:
+                                <ol>
+                                    <li>Ve a la sección "Parámetros del Sistema"</li>
+                                    <li>Busca el parámetro que deseas restaurar</li>
+                                    <li>Haz clic en "Editar"</li>
+                                    <li>Consulta la documentación para el valor por defecto</li>
+                                    <li>O contacta con soporte para que te ayude</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 6: CONTACTO DE SOPORTE -->
+            <div class="help-section">
+                <h3><i class="fas fa-headset"></i> 6. Soporte Técnico</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-envelope fa-3x text-primary mb-3"></i>
+                                <h5>Email</h5>
+                                <p class="text-muted">Envíanos un correo</p>
+                                <a href="mailto:soporte@tuempresa.com" class="btn btn-primary">
+                                    soporte@tuempresa.com
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fab fa-whatsapp fa-3x text-success mb-3"></i>
+                                <h5>WhatsApp</h5>
+                                <p class="text-muted">Chatea con nosotros</p>
+                                <a href="https://wa.me/51999999999" target="_blank" class="btn btn-success">
+                                    <i class="fab fa-whatsapp"></i> +51 999 999 999
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-clock"></i>
+                    <strong>Horario de Atención:</strong> Lunes a Viernes de 9:00 AM a 6:00 PM
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script th:src="@{/js/jquery-3.6.0.min.js}"></script>
+    <script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+    <script th:src="@{/js/script.js}"></script>
+</body>
+</html>

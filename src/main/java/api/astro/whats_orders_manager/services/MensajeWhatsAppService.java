@@ -1,9 +1,10 @@
 package api.astro.whats_orders_manager.services;
 
-import api.astro.whats_orders_manager.dto.whatsapp.WhatsAppMensajeDTO;
+
 import api.astro.whats_orders_manager.models.MensajeWhatsApp;
 import api.astro.whats_orders_manager.models.MensajeWhatsApp.EstadoMensaje;
 import api.astro.whats_orders_manager.models.MensajeWhatsApp.TipoMensaje;
+import api.astro.whats_orders_manager.models.dto.WhatsAppMensajeDTO;
 import api.astro.whats_orders_manager.repositories.MensajeWhatsAppRepository;
 
 import lombok.extern.slf4j.Slf4j;
@@ -82,8 +83,15 @@ public class MensajeWhatsAppService {
      * @param telefono Número de teléfono
      * @return Lista de últimos 10 mensajes
      */
+    /**
+     * Obtiene los mensajes recientes de un teléfono
+     * Ordenados del más antiguo al más reciente (para vista de conversación)
+     * 
+     * @param telefono Número de teléfono a buscar
+     * @return Lista de mensajes ordenados cronológicamente
+     */
     public List<WhatsAppMensajeDTO> obtenerMensajesRecientes(String telefono) {
-        List<MensajeWhatsApp> mensajes = mensajeRepository.findTop10ByTelefonoOrderByFechaEnvioDesc(telefono);
+        List<MensajeWhatsApp> mensajes = mensajeRepository.findByTelefonoOrderByFechaEnvioAsc(telefono);
         return convertirADTOs(mensajes);
     }
     
@@ -93,8 +101,53 @@ public class MensajeWhatsAppService {
      * @return Lista de todos los mensajes
      */
     public List<WhatsAppMensajeDTO> obtenerTodos() {
-        List<MensajeWhatsApp> mensajes = mensajeRepository.findAll();
+        List<MensajeWhatsApp> mensajes = mensajeRepository.findAllByOrderByFechaEnvioDesc();
         return convertirADTOs(mensajes);
+    }
+    
+    /**
+     * Obtiene conversaciones agrupadas por teléfono
+     * Cada conversación incluye el último mensaje, contador de mensajes y no leídos
+     * 
+     * @return Lista de conversaciones
+     */
+    public List<Conversacion> obtenerConversaciones() {
+        List<MensajeWhatsApp> todosMensajes = mensajeRepository.findAllByOrderByFechaEnvioDesc();
+        
+        // Agrupar mensajes por teléfono
+        java.util.Map<String, List<MensajeWhatsApp>> mensajesPorTelefono = todosMensajes.stream()
+                .collect(Collectors.groupingBy(MensajeWhatsApp::getTelefono));
+        
+        // Crear conversaciones
+        return mensajesPorTelefono.entrySet().stream()
+                .map(entry -> {
+                    String telefono = entry.getKey();
+                    List<MensajeWhatsApp> mensajes = entry.getValue();
+                    
+                    // Obtener último mensaje
+                    MensajeWhatsApp ultimoMensaje = mensajes.stream()
+                            .max(java.util.Comparator.comparing(MensajeWhatsApp::getFechaEnvio))
+                            .orElse(mensajes.get(0));
+                    
+                    // Contar no leídos (mensajes recibidos que no están en estado LEIDO)
+                    long noLeidos = mensajes.stream()
+                            .filter(m -> m.getTipo() == TipoMensaje.RECIBIDO)
+                            .filter(m -> m.getEstado() != EstadoMensaje.LEIDO)
+                            .count();
+                    
+                    return new Conversacion(
+                            telefono,
+                            ultimoMensaje.getNombreUsuario(),
+                            ultimoMensaje.getMensaje(),
+                            ultimoMensaje.getFechaEnvio(),
+                            mensajes.size(),
+                            (int) noLeidos,
+                            ultimoMensaje.getTipo(),
+                            ultimoMensaje.getEstado()
+                    );
+                })
+                .sorted(java.util.Comparator.comparing(Conversacion::getUltimaFecha).reversed())
+                .collect(Collectors.toList());
     }
     
     /**
@@ -352,6 +405,73 @@ public class MensajeWhatsAppService {
             long total = getTotal();
             if (total == 0) return 0.0;
             return ((double) (enviados + entregados + leidos) / total) * 100.0;
+        }
+    }
+    
+    // ========================================
+    // CLASE INTERNA - CONVERSACIÓN
+    // ========================================
+    
+    /**
+     * Clase para representar una conversación agrupada por teléfono
+     */
+    public static class Conversacion {
+        private final String telefono;
+        private final String nombreUsuario;
+        private final String ultimoMensaje;
+        private final LocalDateTime ultimaFecha;
+        private final int totalMensajes;
+        private final int noLeidos;
+        private final TipoMensaje ultimoTipo;
+        private final EstadoMensaje ultimoEstado;
+        
+        public Conversacion(String telefono, String nombreUsuario, String ultimoMensaje, 
+                          LocalDateTime ultimaFecha, int totalMensajes, int noLeidos,
+                          TipoMensaje ultimoTipo, EstadoMensaje ultimoEstado) {
+            this.telefono = telefono;
+            this.nombreUsuario = nombreUsuario;
+            this.ultimoMensaje = ultimoMensaje;
+            this.ultimaFecha = ultimaFecha;
+            this.totalMensajes = totalMensajes;
+            this.noLeidos = noLeidos;
+            this.ultimoTipo = ultimoTipo;
+            this.ultimoEstado = ultimoEstado;
+        }
+        
+        public String getTelefono() {
+            return telefono;
+        }
+        
+        public String getNombreUsuario() {
+            return nombreUsuario != null ? nombreUsuario : telefono;
+        }
+        
+        public String getUltimoMensaje() {
+            return ultimoMensaje;
+        }
+        
+        public LocalDateTime getUltimaFecha() {
+            return ultimaFecha;
+        }
+        
+        public int getTotalMensajes() {
+            return totalMensajes;
+        }
+        
+        public int getNoLeidos() {
+            return noLeidos;
+        }
+        
+        public TipoMensaje getUltimoTipo() {
+            return ultimoTipo;
+        }
+        
+        public EstadoMensaje getUltimoEstado() {
+            return ultimoEstado;
+        }
+        
+        public boolean tieneNoLeidos() {
+            return noLeidos > 0;
         }
     }
 }

@@ -120,4 +120,17 @@ public interface ConfiguracionFacturacionService {
      * @return Optional con la configuración si existe
      */
     Optional<ConfiguracionFacturacion> findBySerieFactura(String serie);
+    
+    /**
+     * Guarda o actualiza una configuración de facturación según tenga o no ID.
+     * Si la configuración tiene ID, se actualiza; si no, se crea una nueva.
+     * 
+     * Este método abstrae la lógica de decisión entre save() y update().
+     * 
+     * @param configuracion Configuración a guardar o actualizar
+     * @return Configuración guardada/actualizada
+     * @throws IllegalArgumentException si los datos son inválidos
+     * @throws IllegalStateException si ya existe una configuración activa (solo para nuevas)
+     */
+    ConfiguracionFacturacion saveOrUpdate(ConfiguracionFacturacion configuracion);
 }
