@@ -1,11 +1,11 @@
-package api.astro.whats_orders_manager.repositories;
+package api.astro.whats_orders_manager.modules.whatsapp.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp;
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp.CategoriaPlantilla;
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp.EstadoMeta;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp.CategoriaPlantilla;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp.EstadoMeta;
 
 import java.util.List;
 import java.util.Optional;

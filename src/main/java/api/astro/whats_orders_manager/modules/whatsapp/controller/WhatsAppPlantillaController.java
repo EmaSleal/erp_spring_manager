@@ -1,9 +1,9 @@
-package api.astro.whats_orders_manager.controllers;
+package api.astro.whats_orders_manager.modules.whatsapp.controller;
 
 
-import api.astro.whats_orders_manager.models.PlantillaWhatsApp;
-import api.astro.whats_orders_manager.models.dto.PlantillaWhatsAppDTO;
-import api.astro.whats_orders_manager.services.PlantillaWhatsAppService;
+import api.astro.whats_orders_manager.modules.whatsapp.model.PlantillaWhatsApp;
+import api.astro.whats_orders_manager.modules.whatsapp.dto.PlantillaWhatsAppDTO;
+import api.astro.whats_orders_manager.modules.whatsapp.service.PlantillaWhatsAppService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

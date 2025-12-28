@@ -1,8 +1,8 @@
-package api.astro.whats_orders_manager.controllers;
+package api.astro.whats_orders_manager.modules.whatsapp.controller;
 
 import api.astro.whats_orders_manager.models.dto.whatsapp.MetaWebhookRequest;
 import api.astro.whats_orders_manager.models.dto.WebhookValidationDTO;
-import api.astro.whats_orders_manager.services.WebhookWhatsAppService;
+import api.astro.whats_orders_manager.modules.whatsapp.service.WebhookWhatsAppService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

@@ -1,5 +1,6 @@
-package api.astro.whats_orders_manager.models;
+package api.astro.whats_orders_manager.modules.whatsapp.model;
 
+import api.astro.whats_orders_manager.models.Usuario;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;

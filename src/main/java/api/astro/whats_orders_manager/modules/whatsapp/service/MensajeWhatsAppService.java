@@ -1,11 +1,11 @@
-package api.astro.whats_orders_manager.services;
+package api.astro.whats_orders_manager.modules.whatsapp.service;
 
 
-import api.astro.whats_orders_manager.models.MensajeWhatsApp;
-import api.astro.whats_orders_manager.models.MensajeWhatsApp.EstadoMensaje;
-import api.astro.whats_orders_manager.models.MensajeWhatsApp.TipoMensaje;
-import api.astro.whats_orders_manager.models.dto.WhatsAppMensajeDTO;
-import api.astro.whats_orders_manager.repositories.MensajeWhatsAppRepository;
+import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp;
+import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp.EstadoMensaje;
+import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp.TipoMensaje;
+import api.astro.whats_orders_manager.modules.whatsapp.dto.WhatsAppMensajeDTO;
+import api.astro.whats_orders_manager.modules.whatsapp.repository.MensajeWhatsAppRepository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
