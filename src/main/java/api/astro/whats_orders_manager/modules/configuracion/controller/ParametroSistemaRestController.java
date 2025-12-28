@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.modules.configuracion.controller;
 
 import api.astro.whats_orders_manager.modules.configuracion.model.ParametroSistema;
-import api.astro.whats_orders_manager.models.dto.ParametroSistemaDTO;
+import api.astro.whats_orders_manager.modules.configuracion.dto.ParametroSistemaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.enums.CategoriaParametro;
 
 import api.astro.whats_orders_manager.modules.configuracion.service.ParametroSistemaService;

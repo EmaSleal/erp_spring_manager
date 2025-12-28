@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.modules.notificacion.controller;
 
-import api.astro.whats_orders_manager.models.dto.NotificacionDTO;
+import api.astro.whats_orders_manager.modules.notificacion.dto.NotificacionDTO;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

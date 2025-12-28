@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.controllers;
+package api.astro.whats_orders_manager.modules.shared.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;

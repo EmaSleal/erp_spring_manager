@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.models.dto;
+package api.astro.whats_orders_manager.modules.notificacion.dto;
 
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;

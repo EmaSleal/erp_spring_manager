@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.modules.whatsapp.service;
 
-import api.astro.whats_orders_manager.models.dto.whatsapp.MetaWebhookRequest;
+import api.astro.whats_orders_manager.modules.whatsapp.dto.MetaWebhookRequest;
 import api.astro.whats_orders_manager.modules.whatsapp.model.MensajeWhatsApp;
 import api.astro.whats_orders_manager.modules.whatsapp.model.WebhookLog;
 import api.astro.whats_orders_manager.modules.whatsapp.repository.MensajeWhatsAppRepository;

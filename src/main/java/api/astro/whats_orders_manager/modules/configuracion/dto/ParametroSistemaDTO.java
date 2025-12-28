@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.models.dto;
+package api.astro.whats_orders_manager.modules.configuracion.dto;
 
 
 import api.astro.whats_orders_manager.modules.configuracion.enums.CategoriaParametro;

@@ -7,7 +7,7 @@ import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.facturacion.scheduler.RecordatorioPagoScheduler;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionNotificacionesService;
-import api.astro.whats_orders_manager.services.EmailService;
+import api.astro.whats_orders_manager.modules.shared.service.EmailService;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;

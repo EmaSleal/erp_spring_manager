@@ -2,7 +2,7 @@ package api.astro.whats_orders_manager.modules.notificacion.service;
 
 import api.astro.whats_orders_manager.modules.notificacion.model.Notificacion;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
-import api.astro.whats_orders_manager.models.dto.NotificacionDTO;
+import api.astro.whats_orders_manager.modules.notificacion.dto.NotificacionDTO;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import org.springframework.data.domain.Page;

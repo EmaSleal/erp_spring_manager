@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.controllers;
+package api.astro.whats_orders_manager.modules.shared.controller;
 
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.stereotype.Controller;
