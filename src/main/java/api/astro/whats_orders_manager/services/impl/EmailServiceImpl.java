@@ -1,13 +1,13 @@
 package api.astro.whats_orders_manager.services.impl;
 
-import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
-import api.astro.whats_orders_manager.models.LineaFactura;
-import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.services.EmailService;
 import api.astro.whats_orders_manager.services.EmpresaService;
-import api.astro.whats_orders_manager.services.LineaFacturaService;
-import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
+import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;

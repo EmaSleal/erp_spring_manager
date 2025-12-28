@@ -2,7 +2,7 @@ package api.astro.whats_orders_manager.services.impl;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.models.Empresa;
-import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.services.EmpresaService;
 import api.astro.whats_orders_manager.services.ExportService;

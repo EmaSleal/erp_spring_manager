@@ -1,9 +1,9 @@
-package api.astro.whats_orders_manager.services.impl;
+package api.astro.whats_orders_manager.modules.facturacion.service;
 
-import api.astro.whats_orders_manager.models.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.models.records.LineaFacturaR;
-import api.astro.whats_orders_manager.repositories.LineaFacturaRepository;
-import api.astro.whats_orders_manager.services.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
+import api.astro.whats_orders_manager.services.impl.UserDetailsServiceImpl;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

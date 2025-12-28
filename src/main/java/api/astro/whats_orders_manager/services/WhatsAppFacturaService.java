@@ -1,8 +1,8 @@
 package api.astro.whats_orders_manager.services;
 
-import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.models.MensajeWhatsApp;
-import api.astro.whats_orders_manager.repositories.FacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

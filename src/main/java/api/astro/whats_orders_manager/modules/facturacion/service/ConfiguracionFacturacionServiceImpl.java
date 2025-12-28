@@ -1,8 +1,7 @@
-package api.astro.whats_orders_manager.services.impl;
+package api.astro.whats_orders_manager.modules.facturacion.service;
 
-import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
-import api.astro.whats_orders_manager.repositories.ConfiguracionFacturacionRepository;
-import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
+import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.facturacion.repository.ConfiguracionFacturacionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;

@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.services;
 
-import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import jakarta.mail.MessagingException;
 
 /**

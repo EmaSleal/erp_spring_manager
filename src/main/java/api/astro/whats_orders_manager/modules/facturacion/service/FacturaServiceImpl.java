@@ -1,12 +1,10 @@
-package api.astro.whats_orders_manager.services.impl;
+package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.events.NotificacionEvent;
-import api.astro.whats_orders_manager.models.ConfiguracionFacturacion;
-import api.astro.whats_orders_manager.models.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
-import api.astro.whats_orders_manager.repositories.FacturaRepository;
-import api.astro.whats_orders_manager.services.ConfiguracionFacturacionService;
-import api.astro.whats_orders_manager.services.FacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;

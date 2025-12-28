@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.models;
+package api.astro.whats_orders_manager.modules.facturacion.model;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.enums.InvoiceType;
