@@ -76,6 +76,8 @@ class NavbarDropdown {
 
 async function handleLogout(event) {
     event.preventDefault();
+    console.log('[Navbar] handleLogout llamado');
+    console.log('[Navbar] AppUtils disponible:', typeof AppUtils !== 'undefined');
     
     const confirmed = await AppUtils.showConfirmDialog(
         '¿Cerrar sesión?',
@@ -327,8 +329,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Configurar botón de logout
     const logoutBtn = document.querySelector('.navbar-menu-logout');
+    console.log('[Navbar] Botón logout encontrado:', logoutBtn);
     if (logoutBtn) {
+        console.log('[Navbar] Agregando event listener al botón logout');
         logoutBtn.addEventListener('click', handleLogout);
+    } else {
+        console.error('[Navbar] No se encontró el botón de logout');
     }
 
     // Actualizar breadcrumbs
