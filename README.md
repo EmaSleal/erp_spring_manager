@@ -369,9 +369,6 @@ whats_orders_manager/
 │   ├── sprints/                     # Documentación sprints
 │   └── base de datos/               # Scripts SQL
 │
-├── uploads/                         # Archivos subidos (logos, favicons)
-│   └── empresa/                     # Imágenes de empresa
-│
 ├── pom.xml                          # Dependencias Maven
 └── README.md                        # Este archivo
 ```
@@ -424,7 +421,8 @@ Toda la documentación del proyecto se encuentra en la carpeta **`/docs/`**
 
 #### 📘 Documentos Principales:
 - **`COMPONENTES.md`** - Guía completa de componentes reutilizables
-- **`ALMACENAMIENTO_IMAGENES.md`** - Documentación de almacenamiento de imágenes (avatares, logos)
+- **`ALMACENAMIENTO_IMAGENES.md`** - Documentación de almacenamiento de imágenes (avatares, logos, favicons)
+  - ⚠️ **Nota:** El directorio `uploads/` no está configurado como recurso estático. Ver documento para detalles.
 - **`sprints/INDICE_MAESTRO.md`** - Índice de toda la documentación de sprints
 - **`planificacion/PLAN_MAESTRO.txt`** - Plan completo del proyecto
 - **`planificacion/DECISIONES_TECNICAS.txt`** - Decisiones arquitectónicas

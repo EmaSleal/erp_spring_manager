@@ -95,6 +95,9 @@ Para servir archivos desde `uploads/`, se necesitaría:
 2. Crear un controlador que sirva los archivos, O
 3. Mover los archivos a `src/main/resources/static/`
 
+**Comportamiento actual:**
+Si un usuario intenta acceder a `http://localhost:8080/uploads/empresa/logo_xxx.png`, recibirá un **error 404 (Not Found)** porque Spring Boot no está configurado para servir archivos desde ese directorio.
+
 **Código sugerido para mapear uploads como recurso estático:**
 ```java
 @Configuration
@@ -210,5 +213,5 @@ app:
 
 ---
 
-**Fecha de creación**: 2026-01-06  
+**Fecha de creación**: 2025-01-06  
 **Versión**: 1.0
