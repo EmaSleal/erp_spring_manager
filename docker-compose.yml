@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: whats_orders_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: facturas_monrachem
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Opcional: Montar scripts de inicialización
+      - ./docs/base de datos:/docker-entrypoint-initdb.d:ro
+    networks:
+      - app-network
+    # NO exponemos puerto al host (solo accesible internamente)
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Aplicación Spring Boot
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whats_orders_app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      # Configuración de Base de Datos (apunta al contenedor MySQL)
+      DB_URL: jdbc:mysql://mysql:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      
+      # Configuración de Email (mantener las del application.yml)
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: 587
+      EMAIL_USERNAME: manusl2908@gmail.com
+      EMAIL_PASSWORD: "syzm qsxg mmiw hdsn"
+      
+      # Configuración de WhatsApp (ajustar según necesidad)
+      WHATSAPP_API_URL: ${WHATSAPP_API_URL:-https://graph.facebook.com/v17.0}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      
+      # Configuración de Java
+      JAVA_OPTS: "-Xmx1024m -Xms512m"
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      # Puerto externo 9090 -> Puerto interno 8080
+      - "9090:8080"
+    networks:
+      - app-network
+    volumes:
+      # Persistencia de logs (opcional)
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
