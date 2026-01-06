@@ -1,0 +1,52 @@
+# Archivos y directorios a ignorar en el build de Docker
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Logs
+logs/
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Documentación (no necesaria en el contenedor)
+docs/
+*.md
+!README.md
+
+# Scripts PowerShell
+*.ps1
+
+# Archivos de configuración local
+.env
+.env.local
+application-local.yml
+load-env.ps1
+
+# Archivos temporales
+*.tmp
+*.bak
+*.backup
