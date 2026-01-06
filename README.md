@@ -346,7 +346,8 @@ whats_orders_manager/
 │   │       ├── static/
 │   │       │   ├── css/             # Estilos personalizados
 │   │       │   ├── js/              # JavaScript
-│   │       │   └── images/          # Imágenes y avatares
+│   │       │   └── images/          # Imágenes estáticas
+│   │       │       └── avatars/     # Avatares de usuario
 │   │       │
 │   │       ├── templates/           # Vistas Thymeleaf
 │   │       │   ├── auth/            # Login, registro
@@ -363,9 +364,13 @@ whats_orders_manager/
 │
 ├── docs/                            # Documentación completa
 │   ├── COMPONENTES.md               # Guía de componentes
+│   ├── ALMACENAMIENTO_IMAGENES.md   # Documentación almacenamiento de imágenes
 │   ├── planificacion/               # Planes y decisiones
 │   ├── sprints/                     # Documentación sprints
 │   └── base de datos/               # Scripts SQL
+│
+├── uploads/                         # Archivos subidos (logos, favicons)
+│   └── empresa/                     # Imágenes de empresa
 │
 ├── pom.xml                          # Dependencias Maven
 └── README.md                        # Este archivo
@@ -419,6 +424,7 @@ Toda la documentación del proyecto se encuentra en la carpeta **`/docs/`**
 
 #### 📘 Documentos Principales:
 - **`COMPONENTES.md`** - Guía completa de componentes reutilizables
+- **`ALMACENAMIENTO_IMAGENES.md`** - Documentación de almacenamiento de imágenes (avatares, logos)
 - **`sprints/INDICE_MAESTRO.md`** - Índice de toda la documentación de sprints
 - **`planificacion/PLAN_MAESTRO.txt`** - Plan completo del proyecto
 - **`planificacion/DECISIONES_TECNICAS.txt`** - Decisiones arquitectónicas
