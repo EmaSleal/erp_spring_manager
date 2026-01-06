@@ -96,7 +96,7 @@ Para servir archivos desde `uploads/`, se necesitaría:
 3. Mover los archivos a `src/main/resources/static/`
 
 **Comportamiento actual:**
-Si un usuario intenta acceder a `http://localhost:8080/uploads/empresa/logo_xxx.png`, recibirá un **error 404 (Not Found)** porque Spring Boot no está configurado para servir archivos desde ese directorio.
+Si un usuario intenta acceder a `http://localhost:8080/uploads/empresa/logo_a1b2c3d4-e5f6-7890-abcd-ef1234567890.png`, recibirá un **error 404 (Not Found)** porque Spring Boot no está configurado para servir archivos desde ese directorio.
 
 **Código sugerido para mapear uploads como recurso estático:**
 ```java
@@ -118,9 +118,9 @@ public class WebConfig implements WebMvcConfigurer {
 
 | Tipo de Imagen | Directorio Físico | URL Pública | Controlador/Servicio |
 |----------------|-------------------|-------------|----------------------|
-| Avatar Usuario | `src/main/resources/static/images/avatars/` | `/images/avatars/{filename}` | `PerfilController` |
-| Logo Empresa | `uploads/empresa/` | **No mapeado** | `EmpresaServiceImpl` |
-| Favicon Empresa | `uploads/empresa/` | **No mapeado** | `EmpresaServiceImpl` |
+| Avatar de Usuario | `src/main/resources/static/images/avatars/` | `/images/avatars/{filename}` | `PerfilController` |
+| Logo de Empresa | `uploads/empresa/` | **No mapeado** | `EmpresaServiceImpl` |
+| Favicon de Empresa | `uploads/empresa/` | **No mapeado** | `EmpresaServiceImpl` |
 
 ## 🛠️ Métodos Principales
 
@@ -213,5 +213,5 @@ app:
 
 ---
 
-**Fecha de creación**: 2025-01-06  
+**Fecha de creación**: 6 de enero de 2025  
 **Versión**: 1.0
