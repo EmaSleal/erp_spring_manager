@@ -78,6 +78,30 @@
                             Por favor seleccione el tipo de cliente.
                         </div>
                     </div>
+
+                    <!-- Facturación Electrónica -->
+                    <div class="mb-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           role="switch"
+                                           id="requiereFacturaElectronica" 
+                                           th:field="*{requiereFacturaElectronica}"
+                                           checked>
+                                    <label class="form-check-label" for="requiereFacturaElectronica">
+                                        <i class="bi bi-file-earmark-text text-primary me-1"></i>
+                                        <strong>Requiere Facturación Electrónica</strong>
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Si está activado, las facturas de este cliente se enviarán a Hacienda CR
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 </form>
             </div>
 

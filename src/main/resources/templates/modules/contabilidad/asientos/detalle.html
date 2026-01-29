@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Detalle Asiento</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/contabilidad}">Contabilidad</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/contabilidad/asientos}">Asientos Contables</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+                </ol>
+            </nav>
+            
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-book text-primary"></i>
+                        Asiento <span th:text="${asiento.numero}">ASI-001</span>
+                    </h1>
+                    <p class="text-muted" th:text="${asiento.concepto}">Concepto del asiento</p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary me-2" 
+                            onclick="window.location.href='/contabilidad/asientos'">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </button>
+                    <button type="button" class="btn btn-primary" 
+                            th:if="${asiento.puedeModificarse}"
+                            th:onclick="|window.location.href='/contabilidad/asientos/' + ${asiento.idAsiento} + '/editar'|"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button type="button" class="btn btn-success" 
+                            th:if="${asiento.puedeContabilizarse}"
+                            onclick="contabilizarAsiento()"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_CONTABILIZAR')">
+                        <i class="fas fa-check"></i> Contabilizar
+                    </button>
+                    <button type="button" class="btn btn-danger" 
+                            th:if="${asiento.estado.name() == 'CONTABILIZADO'}"
+                            onclick="anularAsiento()"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_ANULAR')">
+                        <i class="fas fa-ban"></i> Anular
+                    </button>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- Información General -->
+                <div class="col-md-8">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-info-circle text-primary me-2"></i>Información General</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <th class="text-muted" style="width: 40%;">Número:</th>
+                                            <td><strong th:text="${asiento.numero}">ASI-001</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-muted">Fecha:</th>
+                                            <td th:text="${#temporals.format(asiento.fecha, 'dd/MM/yyyy')}">01/01/2024</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-muted">Tipo:</th>
+                                            <td>
+                                                <span class="badge" 
+                                                      th:classappend="${asiento.tipo.name() == 'MANUAL' ? 'bg-primary' : 
+                                                                      (asiento.tipo.name() == 'AUTOMATICO_FACTURA' ? 'bg-info' : 
+                                                                      (asiento.tipo.name() == 'AUTOMATICO_PAGO' ? 'bg-success' : 
+                                                                      (asiento.tipo.name() == 'AJUSTE' ? 'bg-warning' : 'bg-secondary')))}"
+                                                      th:text="${asiento.tipo.descripcion}">Manual</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-muted">Estado:</th>
+                                            <td>
+                                                <span class="badge" 
+                                                      th:classappend="${asiento.estado.name() == 'CONTABILIZADO' ? 'bg-success' : 
+                                                                      (asiento.estado.name() == 'BORRADOR' ? 'bg-warning' : 'bg-danger')}"
+                                                      th:text="${asiento.estado.descripcion}">Borrador</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-sm table-borderless">
+                                        <tr th:if="${asiento.facturaId != null}">
+                                            <th class="text-muted" style="width: 40%;">Factura:</th>
+                                            <td>
+                                                <a th:href="@{/facturas/{id}(id=${asiento.facturaId})}"
+                                                   th:text="${asiento.facturaNumero}">FAC-001</a>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${asiento.pagoId != null}">
+                                            <th class="text-muted">Pago:</th>
+                                            <td>
+                                                <a th:href="@{/pagos/{id}(id=${asiento.pagoId})}"
+                                                   th:text="${asiento.pagoReferencia}">PAG-001</a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-muted">Cuadrado:</th>
+                                            <td>
+                                                <span th:if="${asiento.estaCuadrado}" class="text-success">
+                                                    <i class="fas fa-check-circle"></i> Sí
+                                                </span>
+                                                <span th:unless="${asiento.estaCuadrado}" class="text-danger">
+                                                    <i class="fas fa-times-circle"></i> No
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Totales -->
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-calculator text-primary me-2"></i>Totales</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr>
+                                    <th class="text-muted">Total Debe:</th>
+                                    <td class="text-end">
+                                        <span class="fs-5 fw-bold text-primary" 
+                                              th:text="${#numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Total Haber:</th>
+                                    <td class="text-end">
+                                        <span class="fs-5 fw-bold text-success" 
+                                              th:text="${#numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    </td>
+                                </tr>
+                                <tr th:if="${asiento.diferencia != 0}" class="border-top">
+                                    <th class="text-muted">Diferencia:</th>
+                                    <td class="text-end">
+                                        <span class="fs-5 fw-bold text-danger" 
+                                              th:text="${#numbers.formatDecimal(asiento.diferencia, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detalles del Asiento -->
+                <div class="col-md-12">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-list text-primary me-2"></i>Movimientos Contables</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 15%;">Cuenta</th>
+                                            <th style="width: 30%;">Nombre Cuenta</th>
+                                            <th style="width: 30%;">Concepto</th>
+                                            <th style="width: 12%;" class="text-end">Debe</th>
+                                            <th style="width: 12%;" class="text-end">Haber</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="detalle : ${asiento.detalles}">
+                                            <td>
+                                                <code th:text="${detalle.cuentaCodigo}">1.1.01</code>
+                                            </td>
+                                            <td th:text="${detalle.cuentaNombre}">Nombre de la cuenta</td>
+                                            <td>
+                                                <span th:text="${detalle.descripcion}" class="text-muted">Concepto del movimiento</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <span th:if="${detalle.debe != null && detalle.debe > 0}" 
+                                                      class="text-primary fw-semibold"
+                                                      th:text="'$' + ${#numbers.formatDecimal(detalle.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                                <span th:unless="${detalle.debe != null && detalle.debe > 0}" class="text-muted">-</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <span th:if="${detalle.haber != null && detalle.haber > 0}" 
+                                                      class="text-success fw-semibold"
+                                                      th:text="'$' + ${#numbers.formatDecimal(detalle.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                                <span th:unless="${detalle.haber != null && detalle.haber > 0}" class="text-muted">-</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr class="fw-bold">
+                                            <td colspan="3" class="text-end">TOTALES:</td>
+                                            <td class="text-end text-primary" 
+                                                th:text="'$' + ${#numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                            <td class="text-end text-success" 
+                                                th:text="'$' + ${#numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Auditoría -->
+                <div class="col-md-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-history text-primary me-2"></i>Información de Auditoría</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Creado por:</strong> Usuario ID #<span th:text="${asiento.creadoPor}">1</span></p>
+                                    <p class="mb-0 text-muted" th:if="${asiento.fechaCreacion != null}">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        <span th:text="${#temporals.format(asiento.fechaCreacion, 'dd/MM/yyyy')}">01/01/2024</span>
+                                    </p>
+                                </div>
+                                <div class="col-md-6" th:if="${asiento.modificadoPor != null}">
+                                    <p class="mb-1"><strong>Última modificación por:</strong> Usuario ID #<span th:text="${asiento.modificadoPor}">1</span></p>
+                                    <p class="mb-0 text-muted" th:if="${asiento.fechaModificacion != null}">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        <span th:text="${#temporals.format(asiento.fechaModificacion, 'dd/MM/yyyy')}">01/01/2024</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    
+    <!-- Script específico -->
+    <script th:src="@{/modules/contabilidad/js/asientos.js}"></script>
+    <script th:inline="javascript">
+        const asientoId = /*[[${asiento.idAsiento}]]*/ 0;
+    </script>
+</body>
+</html>

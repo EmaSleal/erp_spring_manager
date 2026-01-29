@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- ============================================================================
+     RESPONSIVE TABLE COMPONENT - Tabla que se convierte en tarjetas en móvil
+     WhatsApp Orders Manager
+     ============================================================================
+     
+     USO:
+     1. Incluir CSS: <link rel="stylesheet" th:href="@{/shared/css/responsive-table.css}">
+     2. Usar fragmento en tu página
+     
+     EJEMPLO BÁSICO:
+     <div th:replace="~{shared/components/responsive-table :: table(
+         items=${usuarios},
+         tableId='usuariosTable',
+         columns=${columns},
+         cardConfig=${cardConfig}
+     )}"></div>
+     
+     ============================================================================ -->
+
+<!-- ============================================================================
+     FRAGMENTO: Wrapper completo (tabla + vista móvil)
+     ============================================================================ -->
+<div th:fragment="responsive-wrapper(items, tableId, emptyMessage)">
+    <div class="responsive-table-container">
+        <!-- DESKTOP: Tabla (se oculta en móvil) -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" th:id="${tableId}">
+                <thead class="table-light">
+                    <!-- El contenido del thead se define en la página que usa el fragmento -->
+                    <th:block th:insert="~{::tableHeader}" />
+                </thead>
+                <tbody>
+                    <!-- Mensaje vacío -->
+                    <tr th:if="${items.isEmpty()}">
+                        <th:block th:insert="~{::emptyTableRow}" />
+                    </tr>
+                    <!-- Filas de datos -->
+                    <th:block th:insert="~{::tableRows}" />
+                </tbody>
+            </table>
+        </div>
+
+        <!-- MÓVIL: Vista de tarjetas (se oculta en desktop) -->
+        <div class="mobile-card-view">
+            <!-- Mensaje vacío -->
+            <div th:if="${items.isEmpty()}" class="mobile-card-empty">
+                <i class="bi bi-inbox"></i>
+                <p th:text="${emptyMessage ?: 'No hay elementos para mostrar'}">No hay elementos</p>
+            </div>
+            
+            <!-- Tarjetas -->
+            <th:block th:insert="~{::mobileCards}" />
+        </div>
+    </div>
+</div>
+
+</html>

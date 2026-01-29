@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
@@ -26,4 +27,10 @@ public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
      */
     @Query(value = "CALL sp_obtener_top_clientes(:limite)", nativeQuery = true)
     List<Object[]> obtenerTopClientes(@Param("limite") int limite);
+
+    // Listar todos los clientes ordenados por nombre
+    List<Cliente> findAllByOrderByNombreAsc();
+           
+    //findById
+    Optional<Cliente> findByIdCliente(Integer idCliente);
 }

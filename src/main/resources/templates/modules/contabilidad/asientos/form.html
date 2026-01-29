@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title th:text="${esEdicion ? 'Editar Asiento' : 'Nuevo Asiento'}">Asiento Contable</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/contabilidad}">Contabilidad</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/contabilidad/asientos}">Asientos Contables</a></li>
+                    <li class="breadcrumb-item active" aria-current="page" th:text="${esEdicion ? 'Editar' : 'Nuevo'}">Nuevo</li>
+                </ol>
+            </nav>
+            
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-book text-primary"></i>
+                        <span th:text="${esEdicion ? 'Editar Asiento' : 'Nuevo Asiento'}">Nuevo Asiento</span>
+                    </h1>
+                    <p class="text-muted">Complete la información del asiento contable</p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary" onclick="window.location.href='/contabilidad/asientos'">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Formulario -->
+            <form id="formAsiento" onsubmit="return false;">
+                <input type="hidden" id="idAsiento" th:value="${asiento?.idAsiento}">
+                
+                <div class="row">
+                    <!-- Información General -->
+                    <div class="col-md-12">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0"><i class="fas fa-info-circle text-primary me-2"></i>Información General</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label for="txtNumero" class="form-label">Número</label>
+                                        <input type="text" class="form-control" id="txtNumero" 
+                                               th:value="${asiento?.numero}" readonly>
+                                        <small class="text-muted">Se generará automáticamente</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="dtFecha" class="form-label">Fecha <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control" id="dtFecha" required
+                                               th:value="${asiento?.fecha ?: fechaActual}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="selTipo" class="form-label">Tipo <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="selTipo" required>
+                                            <option value="">Seleccione...</option>
+                                            <option th:each="tipo : ${tiposAsiento}" 
+                                                    th:value="${tipo.name()}" 
+                                                    th:text="${tipo.descripcion}"
+                                                    th:selected="${asiento?.tipo == tipo}">Tipo</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Estado</label>
+                                        <input type="text" class="form-control" readonly
+                                               th:value="${asiento?.estado?.descripcion ?: 'BORRADOR'}">
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="txtConcepto" class="form-label">Concepto <span class="text-danger">*</span></label>
+                                        <textarea class="form-control" id="txtConcepto" rows="2" required
+                                                  maxlength="500" placeholder="Describa el asiento contable..."
+                                                  th:text="${asiento?.concepto}"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Detalles del Asiento -->
+                    <div class="col-md-12">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="fas fa-list text-primary me-2"></i>Detalles del Asiento</h5>
+                                    <button type="button" class="btn btn-sm btn-success" onclick="agregarDetalle()">
+                                        <i class="fas fa-plus"></i> Agregar Línea
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle" id="tablaDetalles">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 30%;">Cuenta <span class="text-danger">*</span></th>
+                                                <th style="width: 30%;">Concepto</th>
+                                                <th style="width: 15%;" class="text-end">Debe</th>
+                                                <th style="width: 15%;" class="text-end">Haber</th>
+                                                <th style="width: 10%;" class="text-center">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bodyDetalles">
+                                            <!-- Las filas se agregarán dinámicamente -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-light fw-bold">
+                                                <td colspan="2" class="text-end">TOTALES:</td>
+                                                <td class="text-end" id="totalDebe"><span th:text="${simboloMoneda ?: '₡'}">$</span>0.00</td>
+                                                <td class="text-end" id="totalHaber"><span th:text="${simboloMoneda ?: '₡'}">$</span>0.00</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr id="rowDiferencia" style="display: none;">
+                                                <td colspan="2" class="text-end">DIFERENCIA:</td>
+                                                <td colspan="2" class="text-end text-danger fw-bold" id="diferencia"><span th:text="${simboloMoneda ?: '₡'}">$</span>0.00</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                
+                                <!-- Alerta de cuadre -->
+                                <div id="alertaCuadre" class="alert alert-info mt-3" style="display: none;">
+                                    <i class="fas fa-info-circle"></i>
+                                    El asiento debe estar cuadrado (Debe = Haber) para poder contabilizarlo.
+                                </div>
+                                
+                                <div id="alertaExito" class="alert alert-success mt-3" style="display: none;">
+                                    <i class="fas fa-check-circle"></i>
+                                    El asiento está cuadrado y listo para guardar.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de Acción -->
+                    <div class="col-md-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-secondary" 
+                                            onclick="window.location.href='/contabilidad/asientos'">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                    <div>
+                                        <button type="button" class="btn btn-outline-primary me-2" onclick="guardarAsiento(false)">
+                                            <i class="fas fa-save"></i> Guardar Borrador
+                                        </button>
+                                        <button type="button" class="btn btn-primary" onclick="guardarAsiento(true)" id="btnGuardarContabilizar">
+                                            <i class="fas fa-check"></i> Guardar y Contabilizar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    
+    <!-- Script específico -->
+    <script th:src="@{/modules/contabilidad/js/asientos.js}"></script>
+</body>
+</html>

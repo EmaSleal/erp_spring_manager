@@ -1,6 +1,8 @@
 package api.astro.whats_orders_manager.modules.facturacion.model;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPagoFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,6 +14,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -77,8 +81,162 @@ public class Factura {
     @Column(name = "descripcion")
     private String descripcion;
 
+    /**
+     * Relación con los pagos aplicados a esta factura.
+     * Una factura puede tener múltiples pagos parciales.
+     */
+    @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private List<Pago> pagos = new ArrayList<>();
+    
+    /**
+     * Relación con el comprobante electrónico de Hacienda (CR).
+     * Una factura puede tener un solo comprobante electrónico.
+     */
+    @OneToOne(mappedBy = "factura", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    private ComprobanteElectronico comprobanteElectronico;
+    
+    /**
+     * Estado de pago calculado basado en los pagos aplicados.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estadoPago", length = 20)
+    private EstadoPagoFactura estadoPago = EstadoPagoFactura.PENDIENTE;
+    
+    /**
+     * Fecha de vencimiento de pago (opcional).
+     */
+    @Column(name = "fechaVencimiento")
+    private Date fechaVencimiento;
+
     @Transient
     private List<LineaFactura> lineas;
+    
+    // ==================== MÉTODOS DE NEGOCIO - PAGOS ====================
+    
+    /**
+     * Calcula el total de pagos válidos aplicados a la factura.
+     * Solo considera pagos en estado CONFIRMADO o CONCILIADO.
+     * 
+     * @return Total pagado
+     */
+    @Transient
+    public BigDecimal calcularTotalPagado() {
+        if (pagos == null || pagos.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        
+        return pagos.stream()
+            .filter(Pago::esValido)
+            .map(Pago::getMonto)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    /**
+     * Calcula el saldo pendiente de pago.
+     * 
+     * @return Saldo pendiente (total - pagos válidos)
+     */
+    @Transient
+    public BigDecimal calcularSaldoPendiente() {
+        BigDecimal totalPagado = calcularTotalPagado();
+        return total != null ? total.subtract(totalPagado) : BigDecimal.ZERO;
+    }
+    
+    /**
+     * Actualiza el estado de pago de la factura basado en los pagos aplicados.
+     * Este método debe llamarse cada vez que se registra un nuevo pago.
+     */
+    public void actualizarEstadoPago() {
+        if (total == null || total.compareTo(BigDecimal.ZERO) == 0) {
+            this.estadoPago = EstadoPagoFactura.PENDIENTE;
+            return;
+        }
+        
+        BigDecimal totalPagado = calcularTotalPagado();
+        BigDecimal saldoPendiente = total.subtract(totalPagado);
+        
+        // Verificar si está vencida
+        if (fechaVencimiento != null) {
+            LocalDate hoy = LocalDate.now();
+            LocalDate vencimiento = fechaVencimiento.toLocalDate();
+            
+            if (vencimiento.isBefore(hoy) && saldoPendiente.compareTo(BigDecimal.ZERO) > 0) {
+                this.estadoPago = EstadoPagoFactura.VENCIDO;
+                return;
+            }
+        }
+        
+        // Determinar estado según monto pagado
+        if (saldoPendiente.compareTo(BigDecimal.ZERO) == 0) {
+            this.estadoPago = EstadoPagoFactura.PAGADO_TOTAL;
+        } else if (totalPagado.compareTo(BigDecimal.ZERO) > 0) {
+            this.estadoPago = EstadoPagoFactura.PAGADO_PARCIAL;
+        } else {
+            this.estadoPago = EstadoPagoFactura.PENDIENTE;
+        }
+    }
+    
+    /**
+     * Agrega un pago a la factura y actualiza el estado.
+     * 
+     * @param pago Pago a agregar
+     */
+    public void agregarPago(Pago pago) {
+        if (pagos == null) {
+            pagos = new ArrayList<>();
+        }
+        pagos.add(pago);
+        pago.setFactura(this);
+        actualizarEstadoPago();
+    }
+    
+    /**
+     * Elimina un pago de la factura y actualiza el estado.
+     * 
+     * @param pago Pago a eliminar
+     */
+    public void eliminarPago(Pago pago) {
+        if (pagos != null) {
+            pagos.remove(pago);
+            pago.setFactura(null);
+            actualizarEstadoPago();
+        }
+    }
+    
+    /**
+     * Verifica si la factura está completamente pagada.
+     * 
+     * @return true si el estado es PAGADO_TOTAL
+     */
+    @Transient
+    public boolean estaPagada() {
+        return estadoPago != null && estadoPago.estaPagada();
+    }
+    
+    /**
+     * Verifica si la factura tiene saldo pendiente.
+     * 
+     * @return true si tiene saldo pendiente
+     */
+    @Transient
+    public boolean tieneSaldoPendiente() {
+        return estadoPago != null && estadoPago.tieneSaldoPendiente();
+    }
 
 
+    //metodo getFechaEmision
+    public LocalDate getFechaEmision() {
+        return this.createDate != null ? this.createDate.toLocalDateTime().toLocalDate() : null;
+    }
+
+    //metodo getImpuesto
+    public BigDecimal getImpuesto() {
+        return this.igv;
+    }
+
+    public void marcarComoPagada() {
+        this.estadoPago = EstadoPagoFactura.PAGADO_TOTAL;
+    }
 }

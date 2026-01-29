@@ -15,8 +15,8 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid py-4">
-            <!-- Breadcrumbs -->
-            <nav aria-label="breadcrumb" class="mb-3">
+            <!-- Breadcrumbs (oculto en móvil) -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item">
                         <a th:href="@{/dashboard}" class="text-decoration-none">
@@ -30,18 +30,25 @@
             </nav>
 
             <!-- Header Section -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 mb-1"><i class="fas fa-users text-primary me-2"></i>Gestión de Clientes</h2>
-                    <p class="text-muted mb-0">Administra tu base de clientes</p>
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-users text-primary me-2"></i>
+                        <span class="d-none d-md-inline">Gestión de </span>Clientes
+                    </h2>
+                    <p class="page-subtitle d-none d-md-block">Administra tu base de clientes</p>
                 </div>
-                <div class="d-flex gap-2">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
+                <div class="page-header-actions">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-md-inline ms-2">Volver a Dashboard</span>
                     </a>
                     <button id="open-modal" class="btn btn-primary" 
-                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR')">
-                        <i class="fas fa-plus me-2"></i>Agregar Cliente
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR')"
+                            data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo cliente">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline ms-2">Agregar Cliente</span>
                     </button>
                 </div>
             </div>
@@ -49,54 +56,171 @@
             <!-- Table Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 data-table">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width: 80px;">ID</th>
-                                    <th>Nombre / Tipo</th>
-                                    <th class="text-center" style="width: 200px;">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="cliente : ${clientes}">
-                                    <td class="text-center fw-bold" th:text="${cliente.idCliente}"></td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar-circle bg-primary text-white me-3">
-                                                <span th:text="${#strings.substring(cliente.nombre, 0, 2).toUpperCase()}">CL</span>
+                    
+                    <!-- ============================================
+                         CONTENEDOR RESPONSIVE
+                         ============================================ -->
+                    <div class="responsive-table-container">
+                        
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" style="width: 80px;">ID</th>
+                                        <th>Nombre / Tipo</th>
+                                        <th class="text-center d-none d-lg-table-cell" style="width: 150px;">
+                                            <i class="bi bi-file-earmark-text me-1"></i>FE
+                                        </th>
+                                        <th class="text-center" style="width: 200px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="cliente : ${clientes}">
+                                        <td class="text-center fw-bold" th:text="${cliente.idCliente}"></td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle bg-primary text-white me-3">
+                                                    <span th:text="${#strings.substring(cliente.nombre, 0, 2).toUpperCase()}">CL</span>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold" th:text="${cliente.nombre}"></div>
+                                                    <small class="text-muted">
+                                                        <span class="badge bg-light text-dark" th:text="${cliente.tipoCliente}"></span>
+                                                    </small>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <div class="fw-semibold" th:text="${cliente.nombre}"></div>
-                                                <small class="text-muted">
-                                                    <span class="badge bg-light text-dark" th:text="${cliente.tipoCliente}"></span>
-                                                </small>
+                                        </td>
+                                        <td class="text-center d-none d-lg-table-cell">
+                                            <span th:if="${cliente.requiereFacturaElectronica == true}" 
+                                                  class="badge bg-success"
+                                                  data-bs-toggle="tooltip" 
+                                                  title="Requiere Facturación Electrónica">
+                                                <i class="bi bi-check-circle-fill me-1"></i>Sí
+                                            </span>
+                                            <span th:if="${cliente.requiereFacturaElectronica == false}" 
+                                                  class="badge bg-secondary"
+                                                  data-bs-toggle="tooltip" 
+                                                  title="No requiere Facturación Electrónica">
+                                                <i class="bi bi-x-circle-fill me-1"></i>No
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
+                                                        class="btn btn-sm btn-warning"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </button>
+                                                <a th:href="@{/clientes/eliminar/{id}(id=${cliente.idCliente})}"
+                                                   onclick="return confirm('¿Seguro que deseas eliminar este cliente?');"
+                                                   class="btn btn-sm btn-danger"
+                                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_ELIMINAR')">
+                                                    <i class="fas fa-trash"></i> Eliminar
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- MÓVIL: Vista de tarjetas -->
+                        <div class="mobile-card-view">
+                            <!-- Mensaje vacío -->
+                            <div th:if="${#lists.isEmpty(clientes)}" class="mobile-card-empty">
+                                <i class="bi bi-inbox"></i>
+                                <p>No hay clientes registrados</p>
+                            </div>
+                            
+                            <!-- Tarjetas de clientes -->
+                            <div th:each="cliente : ${clientes}" 
+                                 class="mobile-card card-primary">
+                                
+                                <!-- Header con avatar y nombre -->
+                                <div class="mobile-card-header">
+                                    <div class="mobile-card-avatar">
+                                        <div class="avatar-circle bg-primary">
+                                            <span th:text="${#strings.substring(cliente.nombre, 0, 2).toUpperCase()}">CL</span>
+                                        </div>
+                                        <div class="mobile-card-avatar-info">
+                                            <div class="mobile-card-avatar-name" th:text="${cliente.nombre}">Nombre Cliente</div>
+                                            <div class="mobile-card-avatar-subtitle">
+                                                <span class="badge bg-light text-dark" th:text="${cliente.tipoCliente}">Tipo</span>
                                             </div>
                                         </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group" role="group">
-                                            <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}')|"
-                                                    class="btn btn-sm btn-warning"
-                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
-                                                <i class="fas fa-edit"></i> Editar
-                                            </button>
-                                            <a th:href="@{/clientes/eliminar/{id}(id=${cliente.idCliente})}"
-                                               onclick="return confirm('¿Seguro que deseas eliminar este cliente?');"
-                                               class="btn btn-sm btn-danger"
-                                               sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_ELIMINAR')">
-                                                <i class="fas fa-trash"></i> Eliminar
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                    </div>
+                                    <span class="badge bg-primary" th:text="'#' + ${cliente.idCliente}">ID</span>
+                                </div>
+
+                                <!-- Body con información -->
+                                <div class="mobile-card-body">
+                                    <!-- ID -->
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">ID Cliente</span>
+                                        <span class="mobile-card-value">
+                                            <strong th:text="${cliente.idCliente}">1</strong>
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Teléfono -->
+                                    <div class="mobile-card-row" th:if="${cliente.usuario?.telefono}">
+                                        <span class="mobile-card-label">Teléfono</span>
+                                        <span class="mobile-card-value">
+                                            <i class="bi bi-phone me-1"></i>
+                                            <span th:text="${cliente.usuario.telefono}">999999999</span>
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Tipo Cliente -->
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Tipo</span>
+                                        <span class="mobile-card-value">
+                                            <span class="badge bg-info" th:text="${cliente.tipoCliente}">Tipo</span>
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Facturación Electrónica -->
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">
+                                            <i class="bi bi-file-earmark-text me-1"></i>Fact. Electrónica
+                                        </span>
+                                        <span class="mobile-card-value">
+                                            <span th:if="${cliente.requiereFacturaElectronica == true}" 
+                                                  class="badge bg-success">
+                                                <i class="bi bi-check-circle-fill me-1"></i>Sí
+                                            </span>
+                                            <span th:if="${cliente.requiereFacturaElectronica == false}" 
+                                                  class="badge bg-secondary">
+                                                <i class="bi bi-x-circle-fill me-1"></i>No
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Footer con acciones -->
+                                <div class="mobile-card-footer mobile-card-actions">
+                                    <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
+                                            class="btn btn-sm btn-warning"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
+                                        <i class="fas fa-edit me-1"></i> Editar
+                                    </button>
+                                    <a th:href="@{/clientes/eliminar/{id}(id=${cliente.idCliente})}"
+                                       onclick="return confirm('¿Seguro que deseas eliminar este cliente?');"
+                                       class="btn btn-sm btn-danger"
+                                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_ELIMINAR')">
+                                        <i class="fas fa-trash me-1"></i> Eliminar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
+                    <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                        <div class="text-muted">
+                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
+                        <div class="text-muted text-center text-md-start">
                             Mostrando <span th:text="${#lists.size(clientes)}"></span> de 
                             <span th:text="${totalItems}"></span> clientes
                         </div>

@@ -42,6 +42,13 @@ public class Cliente {
     @Column(name = "email", length = 100)
     private String email; // Email del cliente para facturas y comunicaciones
 
+    //identifiacion
+    @Column(name = "identificacion", length = 20, unique = true)
+    private String identificacion;
+
+    @Column(name = "requiere_factura_electronica")
+    private Boolean requiereFacturaElectronica = true; // Default: sí requiere facturación electrónica
+
     @CreatedDate
     @Column(name = "createDate", updatable = false)
     private Timestamp createDate;

@@ -225,15 +225,15 @@ public class UsuarioAdminDTO {
      */
     public String getBadgeEstado() {
         if (estaBloqueado()) {
-            return "danger"; // Rojo
+            return "bg-danger"; // Rojo
         }
         if (!estaActivo()) {
-            return "secondary"; // Gris
+            return "bg-secondary"; // Gris
         }
         if (this.requireCambioPassword != null && this.requireCambioPassword) {
-            return "warning"; // Amarillo
+            return "bg-warning"; // Amarillo
         }
-        return "success"; // Verde
+        return "bg-success"; // Verde
     }
 
     /**

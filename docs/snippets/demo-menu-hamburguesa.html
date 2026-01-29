@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Menú Hamburguesa Responsive</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Navbar */
+        .navbar {
+            height: 60px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .navbar h1 {
+            font-size: 1.25rem;
+            color: #1976D2;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            width: 250px;
+            height: calc(100vh - 60px);
+            background: white;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            z-index: 999;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .sidebar-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .menu-item {
+            margin: 0;
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .menu-link:hover {
+            background: #f5f5f5;
+        }
+
+        .menu-link.active {
+            background: rgba(25, 118, 210, 0.1);
+            color: #1976D2;
+            font-weight: 600;
+            border-left: 4px solid #1976D2;
+        }
+
+        .menu-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 250px;
+            margin-top: 60px;
+            padding: 2rem;
+            transition: margin-left 0.3s ease;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            color: #1976D2;
+            margin-bottom: 1rem;
+        }
+
+        .card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #1976D2;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            margin: 0.25rem;
+        }
+
+        /* Overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 60px);
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Botón Hamburguesa */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1976D2 0%, #0d47a1 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 1001;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .sidebar-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(25, 118, 210, 0.5), 0 3px 6px rgba(0, 0, 0, 0.25);
+        }
+
+        .sidebar-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .sidebar-toggle i {
+            font-size: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 767px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .sidebar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .navbar h1 {
+                font-size: 1rem;
+            }
+        }
+
+        /* Instrucciones */
+        .instructions {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            max-width: 280px;
+            z-index: 1002;
+        }
+
+        .instructions h3 {
+            font-size: 0.875rem;
+            color: #1976D2;
+            margin-bottom: 0.5rem;
+        }
+
+        .instructions p {
+            font-size: 0.75rem;
+            color: #666;
+            margin: 0.25rem 0;
+        }
+
+        @media (max-width: 767px) {
+            .instructions {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <h1><i class="fas fa-file-invoice me-2"></i> Sistema de Facturación - Demo Responsive</h1>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">Menú Principal</div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="#" class="menu-link active">
+                    <div class="menu-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <span class="menu-text">Dashboard</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <div class="menu-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <span class="menu-text">Clientes</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <div class="menu-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <span class="menu-text">Productos</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <div class="menu-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <span class="menu-text">Facturas</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <div class="menu-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <span class="menu-text">Reportes</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <div class="menu-icon">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <span class="menu-text">WhatsApp</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <div class="menu-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <span class="menu-text">Configuración</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Botón Hamburguesa -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Instrucciones -->
+        <div class="instructions">
+            <h3><i class="fas fa-mobile-alt me-1"></i> Prueba Responsive</h3>
+            <p><strong>Desktop:</strong> Sidebar visible</p>
+            <p><strong>Móvil:</strong> Usa el botón 🍔 abajo a la derecha</p>
+            <p><em>Reduce el ancho de la ventana para probar</em></p>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-rocket me-2"></i> Menú Hamburguesa Responsive</h2>
+            <p>
+                Este es un demo del sistema de navegación responsive implementado en el proyecto.
+                El sidebar se adapta automáticamente según el tamaño de la pantalla.
+            </p>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-desktop me-2"></i> Modo Desktop (> 768px)</h2>
+            <p>
+                En pantallas grandes, el sidebar es visible permanentemente en el lado izquierdo.
+                Proporciona acceso rápido a todos los módulos del sistema.
+            </p>
+            <div class="mt-3">
+                <span class="badge">✓ Sidebar visible</span>
+                <span class="badge">✓ Sin botón hamburguesa</span>
+                <span class="badge">✓ Navegación directa</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-mobile-alt me-2"></i> Modo Móvil (≤ 767px)</h2>
+            <p>
+                En dispositivos móviles, el sidebar está oculto por defecto para maximizar el espacio de contenido.
+                Aparece un botón flotante en la esquina inferior derecha.
+            </p>
+            <div class="mt-3">
+                <span class="badge">✓ Botón hamburguesa flotante</span>
+                <span class="badge">✓ Sidebar deslizable</span>
+                <span class="badge">✓ Overlay de cierre</span>
+                <span class="badge">✓ Auto-cierre al navegar</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-magic me-2"></i> Características</h2>
+            <p><strong>✨ Transiciones suaves:</strong> Animaciones fluidas al abrir/cerrar</p>
+            <p><strong>🎨 Diseño moderno:</strong> Gradientes y sombras elevadas</p>
+            <p><strong>♿ Accesible:</strong> Compatible con lectores de pantalla</p>
+            <p><strong>📱 Touch-friendly:</strong> Botones grandes para móvil</p>
+            <p><strong>🚀 Rendimiento:</strong> CSS puro, sin frameworks pesados</p>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-info-circle me-2"></i> Cómo Probar</h2>
+            <p><strong>Opción 1 - DevTools:</strong></p>
+            <p>1. Presiona F12 para abrir las herramientas de desarrollo</p>
+            <p>2. Presiona Ctrl+Shift+M para activar el modo responsive</p>
+            <p>3. Selecciona un dispositivo móvil de la lista</p>
+            <p>4. Observa el botón hamburguesa en la esquina inferior derecha</p>
+            <br>
+            <p><strong>Opción 2 - Redimensionar:</strong></p>
+            <p>1. Reduce el ancho de la ventana del navegador</p>
+            <p>2. Cuando sea menor a 768px, aparecerá el botón hamburguesa</p>
+            <p>3. Click en el botón para abrir/cerrar el menú</p>
+        </div>
+    </main>
+
+    <script>
+        // Sidebar toggle functionality
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const menuLinks = document.querySelectorAll('.menu-link');
+
+        // Toggle sidebar
+        sidebarToggle.addEventListener('click', () => {
+            const isOpen = sidebar.classList.contains('show');
+            if (isOpen) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+
+        // Close sidebar when clicking overlay
+        sidebarOverlay.addEventListener('click', () => {
+            closeSidebar();
+        });
+
+        // Close sidebar when clicking a menu link (mobile)
+        menuLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (window.innerWidth <= 767) {
+                    closeSidebar();
+                }
+                
+                // Remove active class from all links
+                menuLinks.forEach(l => l.classList.remove('active'));
+                // Add active class to clicked link
+                link.classList.add('active');
+            });
+        });
+
+        function openSidebar() {
+            sidebar.classList.add('show');
+            sidebarOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        // Handle window resize
+        let isMobile = window.innerWidth <= 767;
+        window.addEventListener('resize', () => {
+            const wasMobile = isMobile;
+            isMobile = window.innerWidth <= 767;
+
+            if (wasMobile !== isMobile) {
+                if (!isMobile) {
+                    // Changed to desktop
+                    closeSidebar();
+                }
+            }
+        });
+
+        // Rotate hamburger icon when sidebar is open
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    const icon = sidebarToggle.querySelector('i');
+                    if (sidebar.classList.contains('show')) {
+                        icon.style.transform = 'rotate(90deg)';
+                    } else {
+                        icon.style.transform = 'rotate(0deg)';
+                    }
+                }
+            });
+        });
+
+        observer.observe(sidebar, { attributes: true });
+    </script>
+</body>
+</html>

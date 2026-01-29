@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Reportes Contables</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/contabilidad}">Contabilidad</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Reportes</li>
+                </ol>
+            </nav>
+            
+            <!-- Header -->
+            <div class="mb-4">
+                <h1 class="h3 mb-1"><i class="fas fa-chart-line text-primary"></i> Reportes Contables</h1>
+                <p class="text-muted">Estados financieros y reportes del sistema contable</p>
+            </div>
+            
+            <!-- Reportes Disponibles -->
+            <div class="row g-4">
+                <!-- Libro Mayor -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 hover-shadow">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                                    <i class="fas fa-book fa-2x text-primary"></i>
+                                </div>
+                                <h5 class="card-title mb-0">Libro Mayor</h5>
+                            </div>
+                            <p class="card-text text-muted">
+                                Detalle de todos los movimientos de una cuenta específica en un período de tiempo.
+                            </p>
+                            <button type="button" class="btn btn-outline-primary w-100" 
+                                    onclick="abrirLibroMayor()">
+                                <i class="fas fa-search"></i> Consultar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Balance de Comprobación -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 hover-shadow">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3">
+                                    <i class="fas fa-balance-scale fa-2x text-success"></i>
+                                </div>
+                                <h5 class="card-title mb-0">Balance de Comprobación</h5>
+                            </div>
+                            <p class="card-text text-muted">
+                                Resumen de saldos de todas las cuentas contables en un período determinado.
+                            </p>
+                            <a th:href="@{/contabilidad/reportes/balance-comprobacion(fechaInicio=${fechaInicio},fechaFin=${fechaFin})}" 
+                               class="btn btn-outline-success w-100">
+                                <i class="fas fa-file-alt"></i> Generar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Balance General -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 hover-shadow">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                                    <i class="fas fa-chart-pie fa-2x text-info"></i>
+                                </div>
+                                <h5 class="card-title mb-0">Balance General</h5>
+                            </div>
+                            <p class="card-text text-muted">
+                                Estado de situación financiera mostrando activos, pasivos y patrimonio.
+                            </p>
+                            <button type="button" class="btn btn-outline-info w-100" 
+                                    onclick="abrirBalanceGeneral()">
+                                <i class="fas fa-file-invoice"></i> Generar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Estado de Resultados -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 hover-shadow">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
+                                    <i class="fas fa-chart-bar fa-2x text-warning"></i>
+                                </div>
+                                <h5 class="card-title mb-0">Estado de Resultados</h5>
+                            </div>
+                            <p class="card-text text-muted">
+                                Resumen de ingresos, costos y gastos mostrando la utilidad del período.
+                            </p>
+                            <a th:href="@{/contabilidad/reportes/estado-resultados(fechaInicio=${fechaInicio},fechaFin=${fechaFin})}" 
+                               class="btn btn-outline-warning w-100">
+                                <i class="fas fa-chart-line"></i> Generar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Análisis de Cuentas -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 hover-shadow">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-danger bg-opacity-10 p-3 rounded-circle me-3">
+                                    <i class="fas fa-search-dollar fa-2x text-danger"></i>
+                                </div>
+                                <h5 class="card-title mb-0">Análisis de Cuentas</h5>
+                            </div>
+                            <p class="card-text text-muted">
+                                Análisis detallado de movimientos y tendencias de cuentas específicas.
+                            </p>
+                            <button type="button" class="btn btn-outline-danger w-100" disabled>
+                                <i class="fas fa-chart-area"></i> Próximamente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Flujo de Efectivo -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 hover-shadow">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-secondary bg-opacity-10 p-3 rounded-circle me-3">
+                                    <i class="fas fa-money-bill-wave fa-2x text-secondary"></i>
+                                </div>
+                                <h5 class="card-title mb-0">Flujo de Efectivo</h5>
+                            </div>
+                            <p class="card-text text-muted">
+                                Estado de flujo de efectivo mostrando entradas y salidas de dinero.
+                            </p>
+                            <button type="button" class="btn btn-outline-secondary w-100" disabled>
+                                <i class="fas fa-file-invoice-dollar"></i> Próximamente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Período de Consulta -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt text-primary me-2"></i>Período de Consulta</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="dtFechaInicio" class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" id="dtFechaInicio" 
+                                   th:value="${fechaInicio}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dtFechaFin" class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" id="dtFechaFin" 
+                                   th:value="${fechaFin}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label d-block">&nbsp;</label>
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-outline-secondary" onclick="establecerPeriodo('mes')">
+                                    Este Mes
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="establecerPeriodo('trimestre')">
+                                    Trimestre
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="establecerPeriodo('ano')">
+                                    Este Año
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Libro Mayor -->
+    <div class="modal fade" id="modalLibroMayor" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Consultar Libro Mayor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="selCuentaLibroMayor" class="form-label">Cuenta Contable <span class="text-danger">*</span></label>
+                        <select class="form-select" id="selCuentaLibroMayor" required>
+                            <option value="">Seleccione una cuenta...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="generarLibroMayor()">Generar Reporte</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Balance General -->
+    <div class="modal fade" id="modalBalanceGeneral" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Generar Balance General</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="dtFechaBalanceGeneral" class="form-label">Fecha de Corte <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="dtFechaBalanceGeneral" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        El balance general muestra la situación financiera a una fecha específica.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="generarBalanceGeneral()">Generar Reporte</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    
+    <!-- Script específico -->
+    <script th:src="@{/modules/contabilidad/js/reportes.js}"></script>
+    
+    <style>
+        .hover-shadow {
+            transition: all 0.3s ease;
+        }
+        .hover-shadow:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Pagos</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs (oculto en móvil) -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/facturas}" class="text-decoration-none">
+                            <i class="fas fa-file-invoice-dollar me-1 text-white"></i>Facturas
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-money-bill-wave me-1"></i>Pagos
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-money-bill-wave text-success me-2"></i>
+                        <span class="d-none d-md-inline">Gestión de </span>Pagos
+                    </h2>
+                    <p class="page-subtitle d-none d-md-block">Administra los pagos aplicados a facturas</p>
+                </div>
+                <div class="page-header-actions">
+                    <a th:href="@{/facturas}" class="btn btn-outline-secondary" 
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver a Facturas">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-md-inline ms-2">Volver a Facturas</span>
+                    </a>
+                    <a th:href="@{/pagos/reporte-caja}" class="btn btn-info"
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REPORTE_CAJA')"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver reporte de caja">
+                        <i class="fas fa-chart-line text-white"></i>
+                        <span class="d-none d-sm-inline ms-2">Reporte de Caja</span>
+                    </a>
+                    <a th:href="@{/pagos/nuevo}" class="btn btn-primary" 
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Registrar nuevo pago">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline ms-2">Registrar Pago</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-2">Ingresos del Día</h6>
+                                    <h3 class="mb-0 text-white" th:text="'₡ ' + ${#numbers.formatDecimal(ingresosDia ?: 0, 1, 2)}">₡ 0.00</h3>
+                                </div>
+                                <div class="text-white-50">
+                                    <i class="fas fa-cash-register fa-3x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-2">Pagos Registrados Hoy</h6>
+                                    <h3 class="mb-0 text-white" th:text="${cantidadPagosDia ?: 0}">0</h3>
+                                </div>
+                                <div class="text-white-50">
+                                    <i class="fas fa-receipt fa-3x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <form th:action="@{/pagos}" method="get" id="filterForm">
+                        <input type="hidden" name="page" th:value="${currentPage}">
+                        <input type="hidden" name="size" th:value="${pageSize}">
+                        <input type="hidden" name="sortBy" th:value="${sortBy}">
+                        <input type="hidden" name="sortDir" th:value="${sortDir}">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="estadoFilter" class="form-label">Estado del Pago</label>
+                                <select name="estado" id="estadoFilter" class="form-select">
+                                    <option value="">Todos los estados</option>
+                                    <option th:each="estado : ${estadosPago}" 
+                                            th:value="${estado}" 
+                                            th:text="${estado.descripcion}"
+                                            th:selected="${estado == estadoSeleccionado}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="metodoPagoFilter" class="form-label">Método de Pago</label>
+                                <select name="metodoPago" id="metodoPagoFilter" class="form-select">
+                                    <option value="">Todos los métodos</option>
+                                    <option th:each="metodo : ${metodosPago}" 
+                                            th:value="${metodo}" 
+                                            th:text="${metodo.descripcion}"
+                                            th:selected="${metodo == metodoPagoSeleccionado}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end gap-2">
+                                <button type="submit" class="btn btn-primary flex-fill">
+                                    <i class="fas fa-filter me-1"></i>Filtrar
+                                </button>
+                                <a th:href="@{/pagos}" class="btn btn-secondary flex-fill">
+                                    <i class="fas fa-eraser me-1"></i>Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    
+                    <!-- ============================================
+                         CONTENEDOR RESPONSIVE
+                         ============================================ -->
+                    <div class="responsive-table-container">
+                        
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 140px;">Número</th>
+                                    <th style="width: 150px;">Factura</th>
+                                    <th>Cliente</th>
+                                    <th class="text-center" style="width: 110px;">Tipo</th>
+                                    <th class="text-end" style="width: 120px;">Monto</th>
+                                    <th class="text-center" style="width: 120px;">Método</th>
+                                    <th class="text-center" style="width: 120px;">Estado</th>
+                                    <th class="text-center" style="width: 130px;">Fecha</th>
+                                    <th class="text-center" style="width: 200px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="pago : ${pagos}">
+                                    <td>
+                                        <div class="fw-bold text-primary" th:text="${pago.numeroPago}">PAG-20260119-0001</div>
+                                        <small class="text-muted">ID: <span th:text="${pago.idPago}">1</span></small>
+                                    </td>
+                                    <td>
+                                        <div th:if="${pago.idFactura != null}">
+                                            <button th:attr="data-factura-id=${pago.idFactura}"
+                                                    onclick="verDetalleFactura(this)"
+                                                    class="btn btn-link btn-sm p-0 text-start">
+                                                <div class="fw-semibold text-primary" th:text="${pago.numeroFactura}">F001-00001</div>
+                                                <small class="text-muted">ID: <span th:text="${pago.idFactura}">123</span></small>
+                                            </button>
+                                        </div>
+                                        <div th:if="${pago.idFactura == null}">
+                                            <span class="badge bg-warning text-dark">Sin asignar</span>
+                                            <small class="text-muted d-block">Adelanto</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold" th:text="${pago.nombreCliente}">Cliente</div>
+                                        <small class="text-muted" th:if="${pago.saldoPendiente != null && pago.saldoPendiente > 0}">
+                                            Saldo: <span class="fw-bold text-danger" th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">₡ 0.00</span>
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info" th:text="${pago.tipoPagoDescripcion}">Total</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
+                                        <div th:if="${pago.referenciaBancaria != null}">
+                                            <small class="text-muted">Ref: <span th:text="${pago.referenciaBancaria}"></span></small>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span th:if="${pago.estado.name() == 'CONFIRMADO'}" class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i><span th:text="${pago.estadoDescripcion}">Confirmado</span>
+                                        </span>
+                                        <span th:if="${pago.estado.name() == 'CONCILIADO'}" class="badge bg-primary">
+                                            <i class="fas fa-check-double me-1"></i><span th:text="${pago.estadoDescripcion}">Conciliado</span>
+                                        </span>
+                                        <span th:if="${pago.estado.name() == 'PENDIENTE'}" class="badge bg-warning text-dark">
+                                            <i class="fas fa-clock me-1"></i><span th:text="${pago.estadoDescripcion}">Pendiente</span>
+                                        </span>
+                                        <span th:if="${pago.estado.name() == 'RECHAZADO'}" class="badge bg-danger">
+                                            <i class="fas fa-times me-1"></i><span th:text="${pago.estadoDescripcion}">Rechazado</span>
+                                        </span>
+                                        <span th:if="${pago.estado.name() == 'ANULADO'}" class="badge bg-dark">
+                                            <i class="fas fa-ban me-1"></i><span th:text="${pago.estadoDescripcion}">Anulado</span>
+                                        </span>
+                                    </td>
+                                    <td class="text-center" th:text="${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a th:href="@{/pagos/{id}(id=${pago.idPago})}"
+                                               class="btn btn-sm btn-primary"
+                                               title="Ver Detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button th:if="${pago.estado.name() == 'CONFIRMADO' and !pago.conciliado and !pago.estaAnulado()}"
+                                                    th:attr="onclick=|conciliarPago(${pago.idPago})|"
+                                                    class="btn btn-sm btn-info"
+                                                    title="Conciliar"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
+                                                <i class="fas fa-check-double"></i>
+                                            </button>
+                                            <button th:if="${pago.puedeEditarse() and !pago.estaAnulado()}"
+                                                    th:attr="onclick=|anularPago(${pago.idPago})|"
+                                                    class="btn btn-sm btn-warning"
+                                                    title="Anular"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ANULAR')">
+                                                <i class="fas fa-ban"></i>
+                                            </button>
+                                            <button th:if="${pago.puedeEliminarse()}"
+                                                    th:attr="onclick=|eliminarPago(${pago.idPago})|"
+                                                    class="btn btn-sm btn-danger"
+                                                    title="Eliminar"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ELIMINAR')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(pagos)}">
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                        No se encontraron pagos registrados
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- MÓVIL: Vista de tarjetas -->
+                    <div class="mobile-card-view">
+                        <div th:each="pago : ${pagos}" class="mobile-card"
+                             th:classappend="${pago.estado.name() == 'CONFIRMADO'} ? 'card-success' : (${pago.estado.name() == 'PENDIENTE'} ? 'card-warning' : 'card-secondary')">
+                            
+                            <!-- Header -->
+                            <div class="mobile-card-header">
+                                <div class="mobile-card-avatar">
+                                    <div class="avatar-circle"
+                                         th:classappend="${pago.estado.name() == 'CONFIRMADO'} ? 'bg-success' : (${pago.estado.name() == 'PENDIENTE'} ? 'bg-warning' : 'bg-secondary')">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </div>
+                                    <div class="mobile-card-avatar-info">
+                                        <div class="mobile-card-avatar-name" th:text="${pago.numeroPago}">PAG-20260119-0001</div>
+                                        <div class="mobile-card-avatar-subtitle">
+                                            <span th:text="${pago.nombreCliente}">Cliente</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="badge"
+                                      th:classappend="${pago.estado.name() == 'CONFIRMADO'} ? 'bg-success' : 
+                                                      (${pago.estado.name() == 'CONCILIADO'} ? 'bg-primary' : 
+                                                      (${pago.estado.name() == 'PENDIENTE'} ? 'bg-warning' : 
+                                                      (${pago.estado.name() == 'RECHAZADO'} ? 'bg-danger' : 'bg-dark')))">
+                                    <i class="bi"
+                                       th:classappend="${pago.estado.name() == 'CONFIRMADO'} ? 'bi-check-circle-fill' : 
+                                                       (${pago.estado.name() == 'CONCILIADO'} ? 'bi-check-all' : 
+                                                       (${pago.estado.name() == 'PENDIENTE'} ? 'bi-clock-fill' : 
+                                                       (${pago.estado.name() == 'RECHAZADO'} ? 'bi-x-circle-fill' : 'bi-slash-circle-fill')))"></i>
+                                    <span th:text="${pago.estadoDescripcion}">Estado</span>
+                                </span>
+                            </div>
+
+                            <!-- Body -->
+                            <div class="mobile-card-body">
+                                <!-- Factura -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">Factura</span>
+                                    <span class="mobile-card-value">
+                                        <button th:if="${pago.idFactura != null}" 
+                                                th:attr="data-factura-id=${pago.idFactura}"
+                                                onclick="verDetalleFactura(this)"
+                                                class="btn btn-link btn-sm p-0 text-primary">
+                                            <i class="fas fa-file-invoice me-1"></i>
+                                            <span th:text="${pago.numeroFactura}">F001-00001</span>
+                                        </button>
+                                        <span th:if="${pago.idFactura == null}" class="badge bg-warning text-dark">Adelanto</span>
+                                    </span>
+                                </div>
+                                
+                                <!-- Tipo -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">Tipo</span>
+                                    <span class="mobile-card-value">
+                                        <span class="badge bg-info" th:text="${pago.tipoPagoDescripcion}">Total</span>
+                                    </span>
+                                </div>
+                                
+                                <!-- Monto -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">Monto</span>
+                                    <span class="mobile-card-value">
+                                        <strong class="text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
+                                    </span>
+                                </div>
+                                
+                                <!-- Método -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">Método</span>
+                                    <span class="mobile-card-value">
+                                        <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
+                                    </span>
+                                </div>
+                                
+                                <!-- Fecha -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">Fecha</span>
+                                    <span class="mobile-card-value" th:text="${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</span>
+                                </div>
+                                
+                                <!-- Saldo pendiente (si existe) -->
+                                <div class="mobile-card-row" th:if="${pago.saldoPendiente != null && pago.saldoPendiente > 0}">
+                                    <span class="mobile-card-label">Saldo</span>
+                                    <span class="mobile-card-value">
+                                        <strong class="text-danger" th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">₡ 0.00</strong>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Footer con acciones -->
+                            <div class="mobile-card-footer mobile-card-actions">
+                                <a th:href="@{/pagos/{id}(id=${pago.idPago})}"
+                                   class="btn btn-sm btn-primary"
+                                   title="Ver Detalle">
+                                    <i class="fas fa-eye me-1"></i> Ver
+                                </a>
+                                <button th:if="${pago.estado.name() == 'CONFIRMADO' and !pago.conciliado and !pago.estaAnulado()}"
+                                        th:attr="onclick=|conciliarPago(${pago.idPago})|"
+                                        class="btn btn-sm btn-info"
+                                        title="Conciliar"
+                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
+                                    <i class="fas fa-check-double me-1"></i> Conciliar
+                                </button>
+                                <button th:if="${pago.puedeEditarse() and !pago.estaAnulado()}"
+                                        th:attr="onclick=|anularPago(${pago.idPago})|"
+                                        class="btn btn-sm btn-warning"
+                                        title="Anular"
+                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ANULAR')">
+                                    <i class="fas fa-ban me-1"></i> Anular
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Mensaje vacío -->
+                        <div th:if="${#lists.isEmpty(pagos)}" class="mobile-card-empty">
+                            <i class="bi bi-inbox"></i>
+                            <p>No se encontraron pagos registrados</p>
+                        </div>
+                    </div>
+                    
+                    </div>
+                    <!-- Fin contenedor responsive -->
+
+                    <!-- Paginación -->
+                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
+                        <div class="text-muted text-center text-md-start">
+                            Mostrando <span th:text="${#lists.size(pagos)}"></span> de 
+                            <span th:text="${totalItems}"></span> pagos
+                        </div>
+                        <nav aria-label="Paginación de pagos">
+                            <ul class="pagination mb-0">
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/pagos(page=0, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/pagos(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item" 
+                                    th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
+                                    th:if="${pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2}"
+                                    th:classappend="${pageNumber == currentPage} ? 'active'">
+                                    <a class="page-link" 
+                                       th:href="@{/pagos(page=${pageNumber}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                                       th:text="${pageNumber + 1}">1</a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/pagos(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/pagos(page=${totalPages - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+
+    <!-- Modal de Detalle de Factura (compartido) -->
+    <div th:replace="~{shared/components/facturas-modal :: facturaModal}"></div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    
+    <!-- Script de facturas para modal (ANTES de cargar facturas.js) -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const USER_ROLE = /*[[${userRole}]]*/ 'USER';
+        const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
+        /*]]>*/
+    </script>
+    
+    <!-- JavaScript específico de facturas (para modal) -->
+    <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
+    
+    <!-- JavaScript específico de página -->
+    <script th:src="@{/modules/facturacion/js/pagos.js}"></script>
+</body>
+</html>

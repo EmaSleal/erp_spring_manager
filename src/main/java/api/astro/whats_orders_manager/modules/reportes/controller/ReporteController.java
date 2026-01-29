@@ -13,9 +13,9 @@ import api.astro.whats_orders_manager.modules.producto.repository.ProductoReposi
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
-import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.reportes.service.ReporteService;
 import api.astro.whats_orders_manager.shared.service.EmailService;
+import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.shared.util.ResponseUtil;
 import api.astro.whats_orders_manager.shared.util.StringUtil;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +73,7 @@ public class ReporteController {
     private final UsuarioService usuarioService;
     private final ReporteService reporteService;
     private final ExportService exportService;
-    private final ConfiguracionFacturacionService configuracionFacturacionService;
+    private final MonedaService monedaService;
     private final FacturaRepository facturaRepository;
     private final ClienteRepository clienteRepository;
     private final ProductoRepository productoRepository;
@@ -859,32 +859,6 @@ public class ReporteController {
     // ============================================================================
     
     /**
-     * Obtiene el símbolo de moneda configurado en el sistema.
-     * 
-     * @return Símbolo de moneda (₡, $, etc.) según configuración
-     */
-    private String obtenerSimboloMoneda() {
-        try {
-            Optional<ConfiguracionFacturacion> config = configuracionFacturacionService.getConfiguracionActiva();
-            if (config.isPresent()) {
-                String moneda = config.get().getMoneda();
-                if (moneda != null) {
-                    return switch (moneda.toUpperCase()) {
-                        case "CRC" -> "₡";
-                        case "USD" -> "$";
-                        case "MXN" -> "$";
-                        case "EUR" -> "€";
-                        default -> moneda + " ";
-                    };
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error al obtener símbolo de moneda, usando predeterminado: {}", e.getMessage());
-        }
-        return "₡"; // Colones por defecto (Costa Rica)
-    }
-    
-    /**
      * Carga los datos del usuario actual en el modelo.
      * 
      * @param model Modelo de datos
@@ -911,7 +885,7 @@ public class ReporteController {
         }
         
         // Agregar símbolo de moneda a todas las vistas
-        model.addAttribute("simboloMoneda", obtenerSimboloMoneda());
+        model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
     }
 }
 

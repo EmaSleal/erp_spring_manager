@@ -10,6 +10,9 @@ import api.astro.whats_orders_manager.modules.seguridad.service.RolService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioPermisoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
+import api.astro.whats_orders_manager.shared.service.EmailService;
+import api.astro.whats_orders_manager.shared.util.PasswordUtil;
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -68,6 +72,8 @@ public class UsuarioAdminController {
     private final PermisoService permisoService;
     private final PermisoRepository permisoRepository;
     private final RolService rolService;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     // ==================== VISTAS ====================
 
@@ -1096,6 +1102,93 @@ public class UsuarioAdminController {
         }
     }
 
+    /**
+     * API: Resetea la contraseña de un usuario y genera una nueva aleatoria
+     * 
+     * POST /admin/usuarios/api/{id}/reset-password
+     */
+    @PostMapping("/api/{id}/reset-password")
+    @ResponseBody
+    public ResponseEntity<?> resetPassword(@PathVariable Integer id) {
+        log.info("Reseteando contraseña del usuario ID: {}", id);
+        
+        try {
+            Usuario usuario = usuarioService.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+            
+            // Generar contraseña aleatoria
+            String nuevaPassword = generarPasswordAleatoria();
+            
+            // Encriptar y guardar
+            usuario.setPassword(passwordEncoder.encode(nuevaPassword));
+            usuarioService.save(usuario);
+            
+            log.info("✅ Contraseña reseteada exitosamente para usuario ID: {}", id);
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "password", nuevaPassword,
+                    "message", "Contraseña reseteada exitosamente"
+            ));
+            
+        } catch (Exception e) {
+            log.error("Error al resetear contraseña: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al resetear la contraseña. Por favor intente nuevamente."));
+        }
+    }
+
+    /**
+     * API: Reenvía las credenciales de un usuario por email
+     * Genera una nueva contraseña temporal y la envía por email
+     * 
+     * POST /admin/usuarios/api/{id}/reenviar-credenciales
+     */
+    @PostMapping("/api/{id}/reenviar-credenciales")
+    @ResponseBody
+    public ResponseEntity<?> reenviarCredenciales(@PathVariable Integer id) {
+        log.info("Reenviando credenciales del usuario ID: {}", id);
+        
+        try {
+            Usuario usuario = usuarioService.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+            
+            // Validar que el usuario tenga email
+            if (usuario.getEmail() == null || usuario.getEmail().isBlank()) {
+                log.warn("El usuario {} no tiene email configurado", usuario.getNombre());
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "El usuario no tiene email configurado"));
+            }
+            
+            // Generar nueva contraseña temporal
+            String nuevaPassword = generarPasswordAleatoria();
+            
+            // Encriptar y guardar
+            usuario.setPassword(passwordEncoder.encode(nuevaPassword));
+            usuarioService.save(usuario);
+            
+            // Enviar credenciales por email
+            String urlLogin = "http://localhost:8080/auth/login"; // TODO: Mover a configuración
+            emailService.enviarCredencialesUsuario(usuario, nuevaPassword, urlLogin);
+            
+            log.info("✅ Credenciales reenviadas exitosamente a: {}", usuario.getEmail());
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Credenciales enviadas exitosamente a " + usuario.getEmail()
+            ));
+            
+        } catch (MessagingException e) {
+            log.error("❌ Error al enviar credenciales por email: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al enviar el email. Por favor intente nuevamente."));
+        } catch (Exception e) {
+            log.error("❌ Error al reenviar credenciales: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al reenviar credenciales. Por favor intente nuevamente."));
+        }
+    }
+
     // ==================== MÉTODOS AUXILIARES ====================
 
     /**
@@ -1116,6 +1209,14 @@ public class UsuarioAdminController {
     }
 
     /**
+     * Genera una contraseña aleatoria segura
+     * Delegado a PasswordUtil para reutilización
+     */
+    private String generarPasswordAleatoria() {
+        return PasswordUtil.generarPasswordAleatoria();
+    }
+
+    /**
      * Guarda un archivo de avatar y retorna la URL
      */
     private String guardarAvatar(MultipartFile file) throws IOException {
@@ -1124,7 +1225,7 @@ public class UsuarioAdminController {
         }
 
         // Crear directorio si no existe
-        String uploadDir = "src/main/resources/static/uploads/avatars";
+        String uploadDir = "src/main/resources/static/images/avatars";
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -1142,7 +1243,7 @@ public class UsuarioAdminController {
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
         // Retornar URL relativa
-        return "/uploads/avatars/" + filename;
+        return "/images/avatars/" + filename;
     }
     
     /**

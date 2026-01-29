@@ -189,6 +189,197 @@ async function fetchWithCsrf(url, options = {}) {
     }
 }
 
+/**
+ * Realizar una petición HTTP con manejo completo de estados
+ * @param {Object} config - Configuración de la petición
+ * @param {string} config.url - URL del endpoint
+ * @param {string} config.method - Método HTTP (GET, POST, PUT, DELETE)
+ * @param {Object} config.data - Datos a enviar (opcional)
+ * @param {boolean} config.showLoading - Mostrar loading (default: true)
+ * @param {string} config.successMessage - Mensaje de éxito (opcional)
+ * @param {string} config.errorMessage - Mensaje de error personalizado (opcional)
+ * @param {Function} config.onSuccess - Callback en caso de éxito (opcional)
+ * @param {Function} config.onError - Callback en caso de error (opcional)
+ * @param {boolean} config.reloadOnSuccess - Recargar página en éxito (default: false)
+ * @param {string} config.redirectOnSuccess - URL para redirigir en éxito (opcional)
+ * @returns {Promise<Object>} - Respuesta del servidor
+ */
+async function httpRequest(config) {
+    const {
+        url,
+        method = 'GET',
+        data = null,
+        showLoading: shouldShowLoading = true,
+        successMessage = null,
+        errorMessage = null,
+        onSuccess = null,
+        onError = null,
+        reloadOnSuccess = false,
+        redirectOnSuccess = null
+    } = config;
+
+    // Mostrar loading si está habilitado
+    if (shouldShowLoading) {
+        showLoading();
+    }
+
+    try {
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': APP_CONFIG.csrf.token
+            }
+        };
+
+        // Agregar body si hay datos y no es GET
+        if (data && method !== 'GET') {
+            options.body = JSON.stringify(data);
+        }
+
+        const response = await fetch(url, options);
+        const result = await response.json();
+
+        // Ocultar loading
+        if (shouldShowLoading) {
+            hideLoading();
+        }
+
+        // Verificar si hay un error HTTP o un campo 'error' en la respuesta
+        if (!response.ok || result.error) {
+            // Manejar error del servidor
+            const errorMsg = errorMessage || result.error || result.message || 'Error en la operación';
+            showToast('error', errorMsg);
+
+            if (onError) {
+                await onError(result);
+            }
+
+            throw new Error(errorMsg);
+        }
+
+        // Verificar si la respuesta fue exitosa (success=true o no tiene error)
+        if (result.success !== false) {
+            // Mostrar mensaje de éxito si se proporcionó
+            if (successMessage) {
+                showToast('success', successMessage);
+            } else if (result.message) {
+                showToast('success', result.message);
+            }
+
+            // Ejecutar callback de éxito si existe
+            if (onSuccess) {
+                await onSuccess(result);
+            }
+
+            // Recargar página si se solicitó
+            if (reloadOnSuccess) {
+                setTimeout(() => location.reload(), 1500);
+            }
+
+            // Redirigir si se proporcionó URL
+            if (redirectOnSuccess) {
+                setTimeout(() => window.location.href = redirectOnSuccess, 1500);
+            }
+
+            return result;
+        } else {
+            // Manejar error del servidor
+            const errorMsg = errorMessage || result.message || 'Error en la operación';
+            showToast('error', errorMsg);
+
+            if (onError) {
+                await onError(result);
+            }
+
+            return result;
+        }
+    } catch (error) {
+        // Ocultar loading en caso de error
+        if (shouldShowLoading) {
+            hideLoading();
+        }
+
+        console.error('HTTP Request error:', error);
+        const errorMsg = errorMessage || 'Error al comunicarse con el servidor';
+        showToast('error', errorMsg);
+
+        if (onError) {
+            await onError(error);
+        }
+
+        throw error;
+    }
+}
+
+/**
+ * Realizar petición GET
+ * @param {string} url - URL del endpoint
+ * @param {Object} options - Opciones adicionales
+ * @returns {Promise<Object>}
+ */
+async function httpGet(url, options = {}) {
+    return httpRequest({ url, method: 'GET', ...options });
+}
+
+/**
+ * Realizar petición POST
+ * @param {string} url - URL del endpoint
+ * @param {Object} data - Datos a enviar
+ * @param {Object} options - Opciones adicionales
+ * @returns {Promise<Object>}
+ */
+async function httpPost(url, data, options = {}) {
+    return httpRequest({ url, method: 'POST', data, ...options });
+}
+
+/**
+ * Realizar petición PUT
+ * @param {string} url - URL del endpoint
+ * @param {Object} data - Datos a enviar
+ * @param {Object} options - Opciones adicionales
+ * @returns {Promise<Object>}
+ */
+async function httpPut(url, data = null, options = {}) {
+    return httpRequest({ url, method: 'PUT', data, ...options });
+}
+
+/**
+ * Realizar petición DELETE
+ * @param {string} url - URL del endpoint
+ * @param {Object} options - Opciones adicionales
+ * @returns {Promise<Object>}
+ */
+async function httpDelete(url, options = {}) {
+    return httpRequest({ url, method: 'DELETE', ...options });
+}
+
+/**
+ * Realizar petición DELETE con confirmación previa
+ * @param {string} url - URL del endpoint
+ * @param {Object} confirmConfig - Configuración de confirmación
+ * @param {string} confirmConfig.title - Título de confirmación
+ * @param {string} confirmConfig.text - Texto de confirmación
+ * @param {string} confirmConfig.confirmButtonText - Texto del botón
+ * @param {Object} options - Opciones adicionales
+ * @returns {Promise<Object|null>}
+ */
+async function httpDeleteWithConfirm(url, confirmConfig = {}, options = {}) {
+    const {
+        title = '¿Eliminar?',
+        text = 'Esta acción no se puede deshacer',
+        confirmButtonText = 'Sí, eliminar'
+    } = confirmConfig;
+
+    const confirmed = await showConfirmDialog(title, text, confirmButtonText);
+    
+    if (!confirmed) {
+        return null;
+    }
+
+    return httpDelete(url, options);
+}
+
 // ============================================================================
 // MANEJO DE FORMULARIOS
 // ============================================================================
@@ -388,5 +579,11 @@ window.AppUtils = {
     initTableSearch,
     initTableSort,
     getInitials,
-    getAvatarColor
+    getAvatarColor,
+    httpRequest,
+    httpGet,
+    httpPost,
+    httpPut,
+    httpDelete,
+    httpDeleteWithConfirm
 };

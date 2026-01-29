@@ -7,7 +7,8 @@
      WhatsApp Orders Manager
      ============================================================================ -->
 
-<aside th:fragment="sidebar" class="sidebar" id="sidebar">
+<div th:fragment="sidebar">
+<aside class="sidebar" id="sidebar">
     
     <!-- Header del Sidebar -->
     <div class="sidebar-header">
@@ -60,6 +61,20 @@
                     <i class="fas fa-file-invoice"></i>
                 </div>
                 <span class="menu-text">Facturas</span>
+            </a>
+        </li>
+
+        <!-- Contabilidad -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_VER')">
+            <a th:href="@{/contabilidad}" 
+               class="menu-link" 
+               data-module="contabilidad"
+               data-tooltip="Contabilidad">
+                <div class="menu-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <span class="menu-text">Contabilidad</span>
             </a>
         </li>
 
@@ -244,10 +259,16 @@
     </ul>
 
     <!-- Botón de Collapse (Desktop) -->
-    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn">
-        <i class="fas fa-chevron-left"></i>
-    </button>
+    <div class="sidebar-collapse-container">
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+    </div>
 
 </aside>
+
+<!-- Overlay para cerrar sidebar en móvil -->
+<div class="sidebar-overlay"></div>
+</div>
 
 </html>
