@@ -93,4 +93,12 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
      * @return Lista de facturas del cliente
      */
     List<Factura> findByClienteIdCliente(Integer idCliente);
+
+
+    //findById
+    Optional<Factura> findByIdFactura(Integer idFactura);
+
+    //findByClienteId(idCliente)
+    @Query("SELECT f FROM Factura f WHERE f.cliente.idCliente = :idCliente")
+    Optional<List<Factura>> findByClienteId(@Param("idCliente") Integer idCliente);
 }

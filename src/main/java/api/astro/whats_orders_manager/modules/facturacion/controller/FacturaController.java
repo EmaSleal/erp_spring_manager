@@ -1,18 +1,26 @@
 package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
+import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.seguridad.enums.Permiso;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
+import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.shared.service.EmailService;
+import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
-import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +36,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,7 +44,7 @@ import java.util.Optional;
  * Controlador para la gestión de Facturas
  * Maneja las operaciones CRUD y funcionalidades relacionadas con facturas
  * 
- * @version 3.1 - Refactorizado con DTOs y Utils
+ * @version 3.2 - Agregada integración con módulo de pagos
  * @since 26/10/2025
  */
 @Controller
@@ -48,8 +57,10 @@ public class FacturaController {
     private final ClienteService clienteService;
     private final ProductoService productoService;
     private final LineaFacturaService lineaFacturaService;
+    private final PagoService pagoService;
     private final EmailService emailService;
-    private final ConfiguracionFacturacionService configuracionFacturacionService;
+    private final MonedaService monedaService;
+    private final FacturaMapper facturaMapper;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -86,7 +97,7 @@ public class FacturaController {
             // Agregar datos adicionales para la vista
             model.addAttribute("clientes", clienteService.findAll());
             model.addAttribute("tiposFactura", InvoiceType.values());
-            model.addAttribute("simboloMoneda", obtenerSimboloMoneda());
+            model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
             
             // Agregar rol del usuario para controlar permisos en la vista
             agregarRolUsuario(model, authentication);
@@ -109,16 +120,41 @@ public class FacturaController {
     @GetMapping("/detalle/{id}")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
     @ResponseBody
-    public ResponseEntity<Factura> obtenerDetalleFactura(@PathVariable Integer id, Authentication authentication) {
+    public ResponseEntity<FacturaDetalleDTO> obtenerDetalleFactura(@PathVariable Integer id, Authentication authentication) {
         log.info("Obteniendo detalle de factura ID: {}", id);
         
         try {
-            Optional<Factura> factura = facturaService.findById(id);
-            return factura.map(ResponseEntity::ok)
-                    .orElseGet(() -> {
-                        log.warn("Factura no encontrada con ID: {}", id);
-                        return ResponseEntity.notFound().build();
-                    });
+            Optional<Factura> facturaOpt = facturaService.findById(id);
+            
+            if (facturaOpt.isEmpty()) {
+                log.warn("Factura no encontrada con ID: {}", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            Factura factura = facturaOpt.get();
+            
+            // Cargar las líneas de factura (están marcadas como @Transient)
+            List<LineaFactura> lineas = lineaFacturaService.findLineasByFacturaId(id)
+                    .stream()
+                    .map(lineaR -> {
+                        LineaFactura linea = new LineaFactura();
+                        linea.setIdLineaFactura(lineaR.id_linea_factura());
+                        linea.setNumeroLinea(lineaR.numero_linea());
+                        linea.setCantidad(lineaR.cantidad());
+                        linea.setPrecioUnitario(lineaR.precioUnitario());
+                        linea.setSubtotal(lineaR.subtotal());
+                        Producto producto = new Producto();
+                        producto.setIdProducto(lineaR.id_producto());
+                        producto.setDescripcion(lineaR.descripcion());
+                        linea.setProducto(producto);
+                        return linea;
+                    })
+                    .toList();
+                    
+
+            factura.setLineas(lineas);
+            
+            return ResponseEntity.ok(facturaMapper.toDetalleDTO(factura));
                     
         } catch (Exception e) {
             log.error("Error al obtener factura: {}", e.getMessage(), e);
@@ -349,6 +385,128 @@ public class FacturaController {
         }
     }
 
+    // ==================== ENDPOINTS DE PAGOS ====================
+    
+    /**
+     * Obtiene los pagos de una factura específica (API REST).
+     */
+    @GetMapping("/{idFactura}/pagos")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')")
+    @ResponseBody
+    public ResponseEntity<List<PagoDTO>> obtenerPagosPorFactura(
+            @PathVariable Integer idFactura,
+            Authentication authentication
+    ) {
+        log.info("Obteniendo pagos de la factura ID: {}", idFactura);
+        
+        try {
+            List<Pago> pagos = pagoService.findByFacturaId(idFactura);
+            List<PagoDTO> pagosDTOs = PagoMapper.toDTOList(pagos);
+            
+            return ResponseEntity.ok(pagosDTOs);
+            
+        } catch (Exception e) {
+            log.error("Error al obtener pagos de factura: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Calcula el total pagado de una factura (API REST).
+     */
+    @GetMapping("/{idFactura}/total-pagado")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')")
+    @ResponseBody
+    public ResponseEntity<BigDecimal> obtenerTotalPagado(
+            @PathVariable Integer idFactura,
+            Authentication authentication
+    ) {
+        log.info("Calculando total pagado de la factura ID: {}", idFactura);
+        
+        try {
+            BigDecimal totalPagado = pagoService.calcularTotalPagadoPorFactura(idFactura);
+            return ResponseEntity.ok(totalPagado);
+            
+        } catch (Exception e) {
+            log.error("Error al calcular total pagado: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Calcula el saldo pendiente de una factura (API REST).
+     */
+    @GetMapping("/{idFactura}/saldo-pendiente")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
+    @ResponseBody
+    public ResponseEntity<BigDecimal> obtenerSaldoPendiente(
+            @PathVariable Integer idFactura,
+            Authentication authentication
+    ) {
+        log.info("Calculando saldo pendiente de la factura ID: {}", idFactura);
+        
+        try {
+            Optional<Factura> facturaOpt = facturaService.findById(idFactura);
+            
+            if (facturaOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Factura factura = facturaOpt.get();
+            BigDecimal saldoPendiente = factura.calcularSaldoPendiente();
+            
+            return ResponseEntity.ok(saldoPendiente);
+            
+        } catch (Exception e) {
+            log.error("Error al calcular saldo pendiente: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * API REST: Obtiene las facturas pendientes de un cliente
+     * @param idCliente ID del cliente
+     * @return Lista de facturas con saldo pendiente
+     */
+    @GetMapping("/api/cliente/{idCliente}")
+    @ResponseBody
+    public ResponseEntity<List<java.util.Map<String, Object>>> obtenerFacturasPorCliente(@PathVariable Integer idCliente) {
+        try {
+            log.info("Obteniendo facturas del cliente ID: {}", idCliente);
+            
+            // Obtener todas las facturas del cliente
+            Optional<List<Factura>> facturasOpt = facturaService.findByClienteId(idCliente);
+            
+            // Si no hay facturas, devolver lista vacía
+            if (facturasOpt.isEmpty()) {
+                log.info("Cliente {} no tiene facturas", idCliente);
+                return ResponseEntity.ok(List.of());
+            }
+            
+            List<Factura> facturas = facturasOpt.get();
+            
+            // Filtrar solo las que tienen saldo pendiente
+            List<java.util.Map<String, Object>> facturasDTO = facturas.stream()
+                .filter(f -> f.calcularSaldoPendiente().compareTo(BigDecimal.ZERO) > 0)
+                .map(f -> {
+                    java.util.Map<String, Object> dto = new java.util.HashMap<>();
+                    dto.put("idFactura", f.getIdFactura());
+                    dto.put("numeroFactura", f.getNumeroFactura());
+                    dto.put("totalFactura", f.getTotal());
+                    dto.put("saldoPendiente", f.calcularSaldoPendiente());
+                    return dto;
+                })
+                .toList();
+            
+            log.info("Encontradas {} facturas con saldo pendiente para cliente {}", facturasDTO.size(), idCliente);
+            return ResponseEntity.ok(facturasDTO);
+            
+        } catch (Exception e) {
+            log.error("Error al obtener facturas del cliente {}: {}", idCliente, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // ==================== MÉTODOS PRIVADOS AUXILIARES ====================
 
 
@@ -370,24 +528,5 @@ public class FacturaController {
      * Obtiene el símbolo de moneda desde la configuración de facturación
      * @return Símbolo de moneda (₡, $, €, etc.)
      */
-    private String obtenerSimboloMoneda() {
-        try {
-            var config = configuracionFacturacionService.getConfiguracionActiva();
-            if (config.isPresent()) {
-                String moneda = config.get().getMoneda();
-                if (moneda != null) {
-                    return switch (moneda.toUpperCase()) {
-                        case "CRC" -> "₡";
-                        case "USD" -> "$";
-                        case "MXN" -> "$";
-                        case "EUR" -> "€";
-                        default -> moneda + " ";
-                    };
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error al obtener símbolo de moneda, usando predeterminado: {}", e.getMessage());
-        }
-        return "₡"; // Colones por defecto
-    }
+  
 }

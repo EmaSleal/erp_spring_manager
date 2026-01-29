@@ -78,6 +78,27 @@ public enum Permiso {
     USUARIO_VER_ACTIVIDAD("Ver actividad", "Ver registro de actividades de usuarios"),
     USUARIO_RESETEAR_PASSWORD("Resetear contraseña", "Forzar cambio de contraseña"),
     
+    // ==================== PAGOS ====================
+    
+    PAGO_VER("Ver pagos", "Visualizar listado y detalle de pagos"),
+    PAGO_CREAR("Crear pagos", "Registrar nuevos pagos de clientes"),
+    PAGO_EDITAR("Editar pagos", "Modificar pagos pendientes"),
+    PAGO_ELIMINAR("Eliminar pagos", "Eliminar pagos en borrador"),
+    PAGO_CONFIRMAR("Confirmar pagos", "Confirmar pagos y generar asiento contable"),
+    PAGO_ANULAR("Anular pagos", "Anular pagos confirmados (operación crítica)"),
+    PAGO_CONCILIAR("Conciliar pagos", "Marcar pagos como conciliados"),
+    PAGO_ESTADO_CUENTA("Estado de cuenta", "Ver estado de cuenta de clientes"),
+    
+    // ==================== CONTABILIDAD ====================
+    
+    CONTABILIDAD_VER("Ver contabilidad", "Visualizar plan de cuentas y asientos contables"),
+    CONTABILIDAD_CREAR("Crear registros contables", "Crear cuentas contables y asientos en borrador"),
+    CONTABILIDAD_EDITAR("Editar contabilidad", "Modificar cuentas y asientos en borrador"),
+    CONTABILIDAD_ELIMINAR("Eliminar registros contables", "Eliminar cuentas sin movimientos y asientos en borrador"),
+    CONTABILIDAD_CONTABILIZAR("Contabilizar asientos", "Cambiar asientos de borrador a contabilizado"),
+    CONTABILIDAD_ANULAR("Anular asientos", "Anular asientos contabilizados (operación crítica)"),
+    CONTABILIDAD_REPORTES("Reportes contables", "Ver reportes financieros: Balance, Estado de Resultados, Libro Mayor"),
+    
     // ==================== AUDITORÍA ====================
     
     AUDITORIA_VER("Ver auditoría", "Acceso al registro de auditoría"),
@@ -113,6 +134,8 @@ public enum Permiso {
         if (name.startsWith("FACTURA_")) return "Facturación";
         if (name.startsWith("CLIENTE_")) return "Clientes";
         if (name.startsWith("PRODUCTO_")) return "Productos";
+        if (name.startsWith("PAGO_")) return "Pagos";
+        if (name.startsWith("CONTABILIDAD_")) return "Contabilidad";
         if (name.startsWith("REPORTE_")) return "Reportes";
         if (name.startsWith("CONFIG_")) return "Configuración";
         if (name.startsWith("NOTIFICACION_")) return "Notificaciones";
@@ -131,6 +154,9 @@ public enum Permiso {
                this.name().startsWith("AUDITORIA_") ||
                this == CONFIG_EDITAR_EMPRESA ||
                this == FACTURA_ELIMINAR ||
-               this == FACTURA_ANULAR;
+               this == FACTURA_ANULAR ||
+               this == PAGO_ANULAR ||
+               this == CONTABILIDAD_ELIMINAR ||
+               this == CONTABILIDAD_ANULAR;
     }
 }

@@ -52,18 +52,30 @@ document.getElementById('open-modal')?.addEventListener('click', function () {
     document.getElementById('clienteForm').reset();
     document.getElementById('idCliente').value = '';
     
+    // Establecer valor por defecto para Facturación Electrónica
+    const requiereFECheckbox = document.getElementById('requiereFacturaElectronica');
+    if (requiereFECheckbox) {
+        requiereFECheckbox.checked = true; // Por defecto: SÍ requiere
+    }
+    
     if (clienteModal) {
         clienteModal.show();
     }
 });
 
 // Abrir modal para editar cliente existente
-function openEditModal(clienteId, nombre, telefono, tipoCliente) {
+function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFacturaElectronica) {
     document.getElementById('modal-title').innerText = 'Editar Cliente';
     document.getElementById('idCliente').value = clienteId;
     document.getElementById('nombre').value = nombre;
     document.getElementById('telefono').value = telefono || '';
     document.getElementById('tipoCliente').value = tipoCliente || '';
+    
+    // Establecer checkbox de Facturación Electrónica
+    const requiereFECheckbox = document.getElementById('requiereFacturaElectronica');
+    if (requiereFECheckbox) {
+        requiereFECheckbox.checked = requiereFacturaElectronica === true || requiereFacturaElectronica === 'true';
+    }
     
     if (clienteModal) {
         clienteModal.show();

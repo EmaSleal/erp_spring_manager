@@ -204,6 +204,7 @@ function renderTable() {
     const end = start + rowsPerPage;
     const paginatedItems = filtered.slice(start, end);
 
+    // Renderizar tabla desktop
     const tbody = document.getElementById('productosBody');
     tbody.innerHTML = '';
 
@@ -241,7 +242,102 @@ function renderTable() {
         tbody.appendChild(row);
     });
 
+    // Renderizar tarjetas móviles
+    renderMobileCards(paginatedItems);
+
     renderPagination();
+}
+
+// ========================================
+// Renderizar Tarjetas Móviles
+// ========================================
+function renderMobileCards(items) {
+    const cardsContainer = document.getElementById('productosCards');
+    cardsContainer.innerHTML = '';
+
+    // Mensaje vacío
+    if (items.length === 0) {
+        cardsContainer.innerHTML = `
+            <div class="mobile-card-empty">
+                <i class="bi bi-inbox"></i>
+                <p>No se encontraron productos</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Crear tarjetas
+    items.forEach(producto => {
+        const card = document.createElement('div');
+        card.className = `mobile-card ${producto.active ? 'card-success' : 'card-secondary'}`;
+        
+        card.innerHTML = `
+            <!-- Header -->
+            <div class="mobile-card-header">
+                <div class="mobile-card-avatar">
+                    <div class="avatar-circle ${producto.active ? 'bg-success' : 'bg-secondary'}">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="mobile-card-avatar-info">
+                        <div class="mobile-card-avatar-name">${producto.descripcion}</div>
+                        <div class="mobile-card-avatar-subtitle">
+                            <span class="badge bg-secondary">${producto.codigo}</span>
+                        </div>
+                    </div>
+                </div>
+                <span class="badge ${producto.active ? 'bg-success' : 'bg-secondary'}">
+                    ${producto.active ? '<i class="bi bi-check-circle-fill me-1"></i>Activo' : '<i class="bi bi-x-circle-fill me-1"></i>Inactivo'}
+                </span>
+            </div>
+
+            <!-- Body -->
+            <div class="mobile-card-body">
+                <!-- ID -->
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">ID</span>
+                    <span class="mobile-card-value"><strong>${producto.idProducto}</strong></span>
+                </div>
+                
+                <!-- Presentación -->
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">Presentación</span>
+                    <span class="mobile-card-value">${producto?.presentacion?.nombre || 'N/A'}</span>
+                </div>
+                
+                <!-- Precio Institucional -->
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">P. Institucional</span>
+                    <span class="mobile-card-value">
+                        <strong class="text-success">$${parseFloat(producto.precioInstitucional).toFixed(2)}</strong>
+                    </span>
+                </div>
+                
+                <!-- Precio Mayorista -->
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">P. Mayorista</span>
+                    <span class="mobile-card-value">
+                        <strong class="text-primary">$${parseFloat(producto.precioMayorista).toFixed(2)}</strong>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Footer con acciones -->
+            <div class="mobile-card-footer mobile-card-actions">
+                <button class="btn btn-sm btn-warning" 
+                        onclick="openEditModal(${producto.idProducto}, '${producto.codigo}', '${producto.descripcion}', ${producto?.presentacion?.idPresentacion}, ${producto.precioInstitucional}, ${producto.precioMayorista}, ${producto.active})"
+                        style="${(typeof permisos !== 'undefined' && !permisos.editar) ? 'display:none;' : ''}">
+                    <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-danger" 
+                        onclick="eliminarProducto(${producto.idProducto}, '${producto.descripcion}')"
+                        style="${(typeof permisos !== 'undefined' && !permisos.eliminar) ? 'display:none;' : ''}">
+                    <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+            </div>
+        `;
+        
+        cardsContainer.appendChild(card);
+    });
 }
 
 function renderPagination() {

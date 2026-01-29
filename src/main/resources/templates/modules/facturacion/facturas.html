@@ -6,6 +6,9 @@
     <title>Facturas</title>
 </head>
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/facturacion/css/facturacion-electronica.css}">
+    
     <!-- Navbar -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 
@@ -15,8 +18,8 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid py-4">
-            <!-- Breadcrumbs -->
-            <nav aria-label="breadcrumb" class="mb-3">
+            <!-- Breadcrumbs (oculto en móvil) -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item">
                         <a th:href="@{/dashboard}" class="text-decoration-none">
@@ -30,19 +33,72 @@
             </nav>
 
             <!-- Header Section -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 mb-1"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Gestión de Facturas</h2>
-                    <p class="text-muted mb-0">Administra las facturas y pedidos de tus clientes</p>
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-file-invoice-dollar text-primary me-2"></i>
+                        <span class="d-none d-md-inline">Gestión de </span>Facturas
+                    </h2>
+                    <p class="page-subtitle d-none d-md-block">Administra las facturas y pedidos de tus clientes</p>
                 </div>
-                <div class="d-flex gap-2">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
+                <div class="page-header-actions">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-md-inline ms-2">Volver a Dashboard</span>
                     </a>
-                    <button type="button" class="btn btn-success" onclick="openNuevaFacturaModal()" 
-                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
-                        <i class="fas fa-plus me-2"></i>Nueva Factura
+                    <a th:href="@{/pagos}" class="btn btn-success"
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ir a gestión de pagos">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span class="d-none d-sm-inline ms-2">Gestión de Pagos</span>
+                    </a>
+                    <button type="button" class="btn btn-primary" onclick="openNuevaFacturaModal()" 
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')"
+                            data-bs-toggle="tooltip" data-bs-placement="bottom" title="Crear nueva factura">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline ms-2">Nueva Factura</span>
                     </button>
+                </div>
+            </div>
+            
+            <!-- Módulos de Facturación Electrónica -->
+            <div class="row g-3 mb-4" sec:authorize="hasAnyRole('ADMIN', 'USER')">
+                <div class="col-md-6">
+                    <a th:href="@{/facturas/comprobantes}" class="text-decoration-none">
+                        <div class="card border-0 shadow-sm h-100 hover-lift">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="icon-wrapper me-3">
+                                    <i class="fas fa-file-invoice fa-2x text-primary"></i>
+                                </div>
+                                <div>
+                                    <h5 class="card-title mb-1">Comprobantes Electrónicos</h5>
+                                    <p class="card-text text-muted mb-0">Gestión de facturación electrónica CR</p>
+                                </div>
+                                <div class="ms-auto">
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a th:href="@{/facturas/configuracion-hacienda}" class="text-decoration-none">
+                        <div class="card border-0 shadow-sm h-100 hover-lift">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="icon-wrapper me-3">
+                                    <i class="fas fa-cog fa-2x text-info"></i>
+                                </div>
+                                <div>
+                                    <h5 class="card-title mb-1">Configuración Hacienda</h5>
+                                    <p class="card-text text-muted mb-0">Configuración de credenciales y API</p>
+                                </div>
+                                <div class="ms-auto">
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
                 </div>
             </div>
 
@@ -50,20 +106,32 @@
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label for="startDate" class="form-label">Fecha Inicio</label>
                             <input type="date" id="startDate" class="form-control">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label for="endDate" class="form-label">Fecha Fin</label>
                             <input type="date" id="endDate" class="form-control">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label for="statusFilter" class="form-label">Estado</label>
                             <select id="statusFilter" class="form-select">
                                 <option value="">Todos</option>
                                 <option value="entregado">Entregado</option>
                                 <option value="pendiente">Pendiente</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="estadoFEFilter" class="form-label">Estado FE</label>
+                            <select id="estadoFEFilter" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="sin_fe">Sin FE</option>
+                                <option value="ACEPTADO">Aceptado</option>
+                                <option value="RECHAZADO">Rechazado</option>
+                                <option value="ENVIADO">Enviado</option>
+                                <option value="PROCESANDO">Procesando</option>
+                                <option value="ERROR">Error</option>
                             </select>
                         </div>
                         <div class="col-md-3 d-flex align-items-end gap-2">
@@ -81,8 +149,15 @@
             <!-- Table Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 data-table">
+                    
+                    <!-- ============================================
+                         CONTENEDOR RESPONSIVE
+                         ============================================ -->
+                    <div class="responsive-table-container">
+                        
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 data-table">
                             <thead>
                                 <tr>
                                     <th class="text-center" style="width: 60px;">ID</th>
@@ -90,6 +165,7 @@
                                     <th>Cliente</th>
                                     <th class="text-end" style="width: 120px;">Total</th>
                                     <th class="text-center" style="width: 120px;">Estado</th>
+                                    <th class="text-center" style="width: 140px;">Estado FE</th>
                                     <th class="text-center" style="width: 130px;">Fecha Entrega</th>
                                     <th class="text-center" style="width: 180px;">Acciones</th>
                                 </tr>
@@ -118,36 +194,80 @@
                                             <i class="fas fa-clock me-1"></i>Pendiente
                                         </span>
                                     </td>
+                                    <!-- Estado Facturación Electrónica -->
+                                    <td class="text-center">
+                                        <span th:if="${factura.comprobanteElectronico}" 
+                                              th:class="${'badge bg-' + factura.comprobanteElectronico.estado.color}"
+                                              th:title="${factura.comprobanteElectronico.mensajeRespuesta ?: 'Sin mensaje'}"
+                                              data-bs-toggle="tooltip"
+                                              data-bs-html="true">
+                                            <i th:class="${factura.comprobanteElectronico.estado.icono + ' me-1'}"></i>
+                                            <span th:text="${factura.comprobanteElectronico.estado.descripcion}">Estado</span>
+                                        </span>
+                                        
+                                        <span th:unless="${factura.comprobanteElectronico}" 
+                                              class="badge bg-secondary"
+                                              title="No enviado a Hacienda"
+                                              data-bs-toggle="tooltip">
+                                            <i class="bi bi-dash-circle me-1"></i>Sin FE
+                                        </span>
+                                        
+                                        <a th:if="${factura.comprobanteElectronico}"
+                                           th:href="@{/facturas/comprobantes(id=${factura.comprobanteElectronico.id})}"
+                                           class="ms-2 text-primary"
+                                           title="Ver comprobante electrónico"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </td>
                                     <td class="text-center" th:text="${#dates.format(factura.fechaEntrega, 'dd/MM/yyyy')}">01/01/2025</td>
                                     <td class="text-center">
-                                        <button th:attr="data-id=${factura.idFactura}" 
-                                                onclick="openModal(this)"
-                                                class="btn btn-sm btn-primary me-1"
-                                                title="Ver Detalle">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <a th:href="@{/facturas/editar/{id}(id=${factura.idFactura})}"
-                                           class="btn btn-sm btn-warning me-1"
-                                           title="Editar"
-                                           sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <button th:if="${factura.cliente.email != null and factura.cliente.email != ''}"
-                                                th:attr="data-id=${factura.idFactura}, data-email=${factura.cliente.email}"
-                                                onclick="enviarFacturaPorEmail(this)"
-                                                class="btn btn-sm btn-info me-1"
-                                                title="Enviar por Email"
-                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ENVIAR')">
-                                            <i class="fas fa-envelope"></i>
-                                        </button>
-                                        <button th:if="${factura.cliente.usuario != null and factura.cliente.usuario.telefono != null}"
-                                                th:attr="data-id=${factura.idFactura}, data-telefono=${factura.cliente.usuario.telefono}, data-cliente=${factura.cliente.nombre}"
-                                                onclick="enviarFacturaPorWhatsApp(this)"
-                                                class="btn btn-sm btn-success me-1"
-                                                title="Enviar por WhatsApp"
-                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_WHATSAPP')">
-                                            <i class="fab fa-whatsapp"></i>
-                                        </button>
+                                        <div class="btn-group" role="group">
+                                            <button th:attr="data-id=${factura.idFactura}" 
+                                                    onclick="openModal(this)"
+                                                    class="btn btn-sm btn-primary"
+                                                    title="Ver Detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <a th:href="@{/pagos/nuevo(idFactura=${factura.idFactura})}"
+                                               class="btn btn-sm btn-success"
+                                               title="Registrar Pago"
+                                               sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')">
+                                                <i class="fas fa-dollar-sign"></i>
+                                            </a>
+                                            <a th:href="@{/facturas/editar/{id}(id=${factura.idFactura})}"
+                                               class="btn btn-sm btn-warning"
+                                               title="Editar"
+                                               sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                        <div class="btn-group ms-1" role="group">
+                                            <!-- Botón Enviar a Hacienda (solo si NO tiene comprobante) -->
+                                            <button th:unless="${factura.comprobanteElectronico}"
+                                                    th:attr="data-id=${factura.idFactura}"
+                                                    onclick="enviarAHacienda(this)"
+                                                    class="btn btn-sm btn-outline-primary"
+                                                    title="Enviar a Hacienda (Facturación Electrónica)"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
+                                                <i class="bi bi-file-earmark-check"></i>
+                                            </button>
+                                            <button th:if="${factura.cliente.email != null and factura.cliente.email != ''}"
+                                                    th:attr="data-id=${factura.idFactura}, data-email=${factura.cliente.email}"
+                                                    onclick="enviarFacturaPorEmail(this)"
+                                                    class="btn btn-sm btn-info"
+                                                    title="Enviar por Email"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ENVIAR')">
+                                                <i class="fas fa-envelope"></i>
+                                            </button>
+                                            <button th:if="${factura.cliente.usuario != null and factura.cliente.usuario.telefono != null}"
+                                                    th:attr="data-id=${factura.idFactura}, data-telefono=${factura.cliente.usuario.telefono}, data-cliente=${factura.cliente.nombre}"
+                                                    onclick="enviarFacturaPorWhatsApp(this)"
+                                                    class="btn btn-sm btn-success"
+                                                    title="Enviar por WhatsApp"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_WHATSAPP')">
+                                                <i class="fab fa-whatsapp"></i>
+                                            </button>
                                         <a th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
                                            onclick="return confirmarEliminacion(event)"
                                            class="btn btn-sm btn-danger"
@@ -161,9 +281,88 @@
                         </table>
                     </div>
 
+                    <!-- MÓVIL: Vista de tarjetas -->
+                    <div class="mobile-card-view">
+                        <div th:each="factura : ${facturas}" class="mobile-card" th:classappend="${factura.entregado} ? 'card-success' : 'card-warning'">
+                            
+                            <!-- Header -->
+                            <div class="mobile-card-header">
+                                <div class="mobile-card-avatar">
+                                    <div class="avatar-circle" th:classappend="${factura.entregado} ? 'bg-success' : 'bg-warning'">
+                                        <i class="fas fa-file-invoice"></i>
+                                    </div>
+                                    <div class="mobile-card-avatar-info">
+                                        <div class="mobile-card-avatar-name" th:text="${factura.numeroFactura}">F001-00001</div>
+                                        <div class="mobile-card-avatar-subtitle">
+                                            <span th:text="${factura.cliente.nombre}">Cliente</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="badge" th:classappend="${factura.entregado} ? 'bg-success' : 'bg-warning'">
+                                    <i class="bi" th:classappend="${factura.entregado} ? 'bi-check-circle-fill' : 'bi-clock-fill'"></i>
+                                    <span th:text="${factura.entregado} ? 'Entregado' : 'Pendiente'">Estado</span>
+                                </span>
+                            </div>
+
+                            <!-- Body -->
+                            <div class="mobile-card-body">
+                                <!-- ID -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">ID</span>
+                                    <span class="mobile-card-value"><strong th:text="${factura.idFactura}">1</strong></span>
+                                </div>
+                                
+                                <!-- Serie -->
+                                <div class="mobile-card-row" th:if="${factura.serie != null}">
+                                    <span class="mobile-card-label">Serie</span>
+                                    <span class="mobile-card-value" th:text="${factura.serie}">F001</span>
+                                </div>
+                                
+                                <!-- Total -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">Total</span>
+                                    <span class="mobile-card-value">
+                                        <strong class="text-success" th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</strong>
+                                    </span>
+                                </div>
+                                
+                                <!-- Fecha Entrega -->
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">Fecha Entrega</span>
+                                    <span class="mobile-card-value" th:text="${#dates.format(factura.fechaEntrega, 'dd/MM/yyyy')}">01/01/2025</span>
+                                </div>
+                            </div>
+
+                            <!-- Footer con acciones -->
+                            <div class="mobile-card-footer mobile-card-actions">
+                                <button th:attr="data-id=${factura.idFactura}" 
+                                        onclick="openModal(this)"
+                                        class="btn btn-sm btn-primary"
+                                        title="Ver Detalle">
+                                    <i class="fas fa-eye me-1"></i> Ver
+                                </button>
+                                <a th:href="@{/pagos/nuevo(idFactura=${factura.idFactura})}"
+                                   class="btn btn-sm btn-success"
+                                   title="Registrar Pago"
+                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')">
+                                    <i class="fas fa-dollar-sign me-1"></i> Pago
+                                </a>
+                                <a th:href="@{/facturas/editar/{id}(id=${factura.idFactura})}"
+                                   class="btn btn-sm btn-warning"
+                                   title="Editar"
+                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
+                                    <i class="fas fa-edit me-1"></i> Editar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- Fin contenedor responsive -->
+
                     <!-- Paginación -->
-                    <div th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                        <div class="text-muted">
+                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
+                        <div class="text-muted text-center text-md-start">
                             Mostrando <span th:text="${#lists.size(facturas)}"></span> de 
                             <span th:text="${totalItems}"></span> facturas
                         </div>
@@ -218,124 +417,8 @@
         </div>
     </main>
 
-    <!-- Modal de Detalle de Factura -->
-    <div class="modal fade" id="facturaModal" tabindex="-1" aria-labelledby="facturaModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <!-- Modal Header -->
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title text-white" id="facturaModalLabel">
-                        <i class="fas fa-file-invoice me-2"></i>
-                        Detalle de Factura
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <!-- Modal Body -->
-                <div class="modal-body">
-                    <div class="row">
-                        <!-- Datos Generales -->
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-primary fw-bold mb-3">
-                                <i class="fas fa-info-circle me-2"></i>Información General
-                            </h6>
-                            <div class="list-group list-group-flush">
-                                <div class="list-group-item px-0">
-                                    <strong>ID Factura:</strong> <span id="modal-idFactura" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-file-invoice text-primary me-1"></i>N° Factura:</strong> 
-                                    <span id="modal-numeroFactura" class="text-muted fw-bold">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-hashtag text-primary me-1"></i>Serie:</strong> 
-                                    <span id="modal-serie" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong>Fecha de Creación:</strong> <span id="modal-createDate" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong>Última Actualización:</strong> <span id="modal-updateDate" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-calendar text-primary me-1"></i>Fecha de Entrega:</strong> 
-                                    <span id="modal-fechaEntrega" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-money-check-alt text-primary me-1"></i>Fecha Límite de Pago:</strong> 
-                                    <span id="modal-fechaPago" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong>Estado:</strong> <span id="modal-entregado" class="badge">-</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Datos del Cliente -->
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-primary fw-bold mb-3">
-                                <i class="fas fa-user me-2"></i>Datos del Cliente
-                            </h6>
-                            <div class="list-group list-group-flush">
-                                <div class="list-group-item px-0">
-                                    <strong>ID Cliente:</strong> <span id="modal-idCliente" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong>Nombre:</strong> <span id="modal-cliente" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong>Usuario Registro:</strong> <span id="modal-usuario" class="text-muted">-</span>
-                                </div>
-                                <div class="list-group-item px-0">
-                                    <strong>Fecha de Registro:</strong> <span id="modal-fechaRegistro" class="text-muted">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tabla de Productos -->
-                    <div class="mt-4">
-                        <h6 class="text-primary fw-bold mb-3">
-                            <i class="fas fa-box me-2"></i>Productos
-                        </h6>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th class="text-center">Cantidad</th>
-                                        <th class="text-end">Precio</th>
-                                        <th class="text-end">Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="modal-productos">
-                                    <!-- Se llena dinámicamente con JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Total -->
-                    <div class="d-flex justify-content-end mt-3">
-                        <h5 class="mb-0">
-                            <strong>Total: </strong>
-                            <span id="modal-total" class="text-success">$0.00</span>
-                        </h5>
-                    </div>
-
-                    <!-- Botones adicionales -->
-                    <div id="modal-buttons" class="mt-3"></div>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Cerrar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- llamo al componente de modal de factura -->
+    <div th:replace="~{shared/components/facturas-modal :: facturaModal}"></div>
 
     <!-- Modal de Nueva Factura -->
     <div th:replace="~{modules/facturacion/add-form :: nueva-factura-modal}"></div>
@@ -350,8 +433,42 @@
         /*]]>*/
     </script>
     
-    <!-- JavaScript específico de página -->
-    <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
-    <script th:src="@{/modules/facturacion/js/editar-factura.js}"></script>
-</body>
+    <!-- Función para enviar factura a Hacienda -->
+    <script>
+        function enviarAHacienda(button) {
+            const facturaId = button.getAttribute('data-id');
+            
+            if (!confirm('¿Está seguro de enviar esta factura a Hacienda como comprobante electrónico?')) {
+                return;
+            }
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="spinner-border spinner-border-sm"></i>';
+            
+            fetch(`/api/facturas/comprobantes/procesar/${facturaId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    window.location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-file-earmark-check"></i>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error al enviar a Hacienda');
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-file-earmark-check"></i>';
+            });
+        }
+    </script>
+    
 </html>

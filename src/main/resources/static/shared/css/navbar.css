@@ -26,6 +26,40 @@
 }
 
 /* ============================================================================
+   BOTÓN HAMBURGUESA (Solo Móvil)
+   ============================================================================ */
+.navbar-hamburger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius-md);
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-right: var(--spacing-md);
+}
+
+.navbar-hamburger:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.navbar-hamburger:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 767px) {
+    .navbar-hamburger {
+        display: flex;
+    }
+}
+
+/* ============================================================================
    SECCIÓN IZQUIERDA - Logo y Nombre
    ============================================================================ */
 .navbar-left {

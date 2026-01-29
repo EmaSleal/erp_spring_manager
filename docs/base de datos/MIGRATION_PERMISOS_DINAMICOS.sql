@@ -11,16 +11,19 @@
 -- =====================================================
 -- RESUMEN DE ROLES Y PERMISOS
 -- =====================================================
--- Total de Permisos: 48
+-- Total de Permisos: 48 (base) + 7 (pagos Sprint 5.1) + 7 (contabilidad Sprint 5.2) = 62
 -- Total de Roles: 6
 --
--- Distribución de permisos por rol:
+-- Distribución de permisos por rol (BASE - sin Sprint 5):
 -- 1. ADMIN:        48 permisos (TODOS - Acceso total al sistema)
 -- 2. GERENTE:      30 permisos (Gestión completa de operaciones)
 -- 3. VENDEDOR:     15 permisos (Operaciones básicas de venta)
 -- 4. USER:         10 permisos (Usuario básico con permisos limitados)
 -- 5. VISUALIZADOR:  8 permisos (Solo lectura y exportación)
 -- 6. CLIENTE:       3 permisos (Acceso externo solo a facturas propias)
+--
+-- NOTA: Para permisos de PAGOS ejecutar: MIGRATION_PAGOS_PERMISOS.sql
+-- NOTA: Para permisos de CONTABILIDAD ejecutar: MIGRATION_CONTABILIDAD_PERMISOS.sql
 -- =====================================================
 
 -- =====================================================
@@ -384,19 +387,25 @@ ORDER BY r.nombre, u.nombre;
 -- 6. Se recomienda hacer un backup completo de la base de datos antes de ejecutar
 --
 -- ROLES DISPONIBLES:
--- - ADMIN:        Administradores del sistema (48 permisos)
--- - GERENTE:      Gerentes de área (30 permisos)
--- - VENDEDOR:     Personal de ventas (15 permisos)
--- - USER:         Usuarios básicos (10 permisos)
--- - VISUALIZADOR: Solo lectura (8 permisos)
--- - CLIENTE:      Clientes externos (3 permisos)
+-- - ADMIN:        Administradores del sistema (48 base + 7 pagos + 7 contabilidad = 62 permisos)
+-- - GERENTE:      Gerentes de área (30 base + 5 pagos + 5 contabilidad = 40 permisos)
+-- - VENDEDOR:     Personal de ventas (15 base + 2 pagos + 2 contabilidad = 19 permisos)
+-- - USER:         Usuarios básicos (10 permisos - sin cambios)
+-- - VISUALIZADOR: Solo lectura (8 base + 2 pagos + 2 contabilidad = 12 permisos)
+-- - CLIENTE:      Clientes externos (3 permisos - sin cambios)
 --
--- PERMISOS CRÍTICOS (Solo ADMIN): 19 permisos
+-- PERMISOS CRÍTICOS (Solo ADMIN): 19 base + 3 pagos + 3 contabilidad = 25 permisos críticos
 -- - Todos los permisos de USUARIO_* (8)
 -- - Todos los permisos de AUDITORIA_* (2)
 -- - Todos los permisos de SISTEMA_* (3)
--- - FACTURA_ELIMINAR, FACTURA_ANULAR
--- - CONFIG_EDITAR_EMPRESA
--- - NOTIFICACION_ELIMINAR (2)
+-- - FACTURA_ELIMINAR, FACTURA_ANULAR (2)
+-- - CONFIG_EDITAR_EMPRESA (1)
+-- - NOTIFICACION_ELIMINAR (1)
 -- - PRODUCTO_* críticos (2)
--- - CLIENTE_* críticos (2)
+-- - CLIENTE_* críticos (0)
+-- - PAGO_ELIMINAR, PAGO_ANULAR, PAGO_MODIFICAR_CONCILIADO (3)
+-- - CONTABILIDAD_ELIMINAR, CONTABILIDAD_CONTABILIZAR, CONTABILIDAD_ANULAR (3)
+--
+-- SCRIPTS ADICIONALES:
+-- - MIGRATION_PAGOS_PERMISOS.sql: Agrega 7 permisos para gestión de pagos (Sprint 5 - Fase 1)
+-- - MIGRATION_CONTABILIDAD_PERMISOS.sql: Agrega 7 permisos para contabilidad (Sprint 5 - Fase 2)

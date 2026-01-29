@@ -7,7 +7,7 @@ import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
-import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
+import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.shared.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +49,7 @@ public class DashboardController {
     private final ProductoService productoService;
     private final FacturaService facturaService;
     private final UsuarioService usuarioService;
-    private final ConfiguracionFacturacionService configuracionFacturacionService;
+    private final MonedaService monedaService;
 
     /**
      * Muestra el dashboard principal con estadísticas y módulos disponibles
@@ -106,7 +106,7 @@ public class DashboardController {
         model.addAttribute("totalProductos", totalProductos);
         model.addAttribute("facturasHoy", facturasHoy);
         model.addAttribute("totalPendiente", totalPendiente != null ? totalPendiente : BigDecimal.ZERO);
-        model.addAttribute("simboloMoneda", obtenerSimboloMoneda());
+        model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
         
         log.debug("Estadísticas cargadas - Clientes: {}, Productos: {}, Facturas hoy: {}", 
                 totalClientes, totalProductos, facturasHoy);
@@ -207,13 +207,24 @@ public class DashboardController {
                 esAdmin || esUser || esVendedor || esVisualizador
         ));
 
+        //Contabilidad (solo ADMIN y USER)
+        modulos.add(crearModulo(
+                "Contabilidad",
+                "Gestión contable",
+                "fas fa-calculator",
+                "#FF5722",
+                "/contabilidad",
+                true,
+                esAdmin || esUser
+        ));
+
         // Usuarios (solo ADMIN)
         modulos.add(crearModulo(
                 "Usuarios",
                 "Gestión de usuarios",
                 "fas fa-user-cog",
                 "#3F51B5",
-                "/usuarios",
+                "/admin/usuarios",
                 true,
                 esAdmin
         ));
@@ -251,6 +262,8 @@ public class DashboardController {
                 esAdmin
         ));
 
+
+
         long modulosVisibles = modulos.stream().filter(ModuloDTO::isVisible).count();
         log.debug("Módulos cargados: {} visibles de {}", modulosVisibles, modulos.size());
 
@@ -273,28 +286,5 @@ public class DashboardController {
         return new ModuloDTO(titulo, descripcion, icono, color, url, implementado, visible);
     }
 
-    /**
-     * Obtiene el símbolo de moneda desde la configuración de facturación
-     * @return Símbolo de moneda (₡, $, €, etc.)
-     */
-    private String obtenerSimboloMoneda() {
-        try {
-            var config = configuracionFacturacionService.getConfiguracionActiva();
-            if (config.isPresent()) {
-                String moneda = config.get().getMoneda();
-                if (moneda != null) {
-                    return switch (moneda.toUpperCase()) {
-                        case "CRC" -> "₡";
-                        case "USD" -> "$";
-                        case "MXN" -> "$";
-                        case "EUR" -> "€";
-                        default -> moneda + " ";
-                    };
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error al obtener símbolo de moneda, usando predeterminado: {}", e.getMessage());
-        }
-        return "₡"; // Colones por defecto
-    }
+
 }

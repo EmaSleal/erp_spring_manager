@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 
 //id_producto, cantidad, precio_unitario, subtotal, create_by, update_by, create_date, update_date, id_linea_factura
 public record LineaFacturaR(

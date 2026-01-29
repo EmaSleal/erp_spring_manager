@@ -12,7 +12,7 @@
 class Sidebar {
     constructor() {
         this.sidebar = document.querySelector('.sidebar');
-        this.sidebarToggle = document.querySelector('.sidebar-toggle');
+        this.sidebarToggle = document.querySelector('#sidebarToggle'); // Actualizado a ID del navbar
         this.sidebarOverlay = document.querySelector('.sidebar-overlay');
         this.collapseBtn = document.querySelector('.sidebar-collapse-btn');
         this.mainContent = document.querySelector('.main-content');

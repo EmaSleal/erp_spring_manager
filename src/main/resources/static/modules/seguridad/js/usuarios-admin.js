@@ -396,6 +396,192 @@ $(document).ready(function() {
         });
     };
 
+
+    // ==================== RESET PASSWORD Y REENVIAR CREDENCIALES ====================
+
+    let usuarioResetId = null;
+
+    // Abrir modal de reset password
+    $(document).on('click', '.btn-reset-password', function() {
+        usuarioResetId = $(this).data('id');
+        const nombreUsuario = $(this).data('nombre');
+        
+        $('#resetPasswordNombre').text(nombreUsuario);
+        $('#nuevaPasswordContainer').addClass('d-none');
+        $('#nuevaPassword').val('');
+        $('#btnConfirmarReset').prop('disabled', false).show();
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalResetPassword'));
+        modal.show();
+    });
+
+    // Confirmar reset password
+    $('#btnConfirmarReset').on('click', function() {
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="bi bi-hourglass-split me-2"></i>Generando...');
+
+        $.ajax({
+            url: `/admin/usuarios/api/${usuarioResetId}/reset-password`,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    $('#nuevaPassword').val(response.password);
+                    $('#nuevaPasswordContainer').removeClass('d-none');
+                    btn.hide();
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Contraseña Generada!',
+                        text: 'Se ha generado una nueva contraseña. Asegúrate de copiarla y comunicarla al usuario.',
+                        confirmButtonText: 'Entendido'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message || 'Error al resetear contraseña',
+                        confirmButtonText: 'Cerrar'
+                    });
+                    btn.prop('disabled', false).html('<i class="bi bi-key-fill me-2"></i>Generar Nueva Contraseña');
+                }
+            },
+            error: function(xhr) {
+                console.error('Error:', xhr);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: xhr.responseJSON?.error || 'Error al resetear contraseña',
+                    confirmButtonText: 'Cerrar'
+                });
+                btn.prop('disabled', false).html('<i class="bi bi-key-fill me-2"></i>Generar Nueva Contraseña');
+            }
+        });
+    });
+
+    // Copiar contraseña al portapapeles
+    $('#btnCopiarPassword').on('click', function() {
+        const password = $('#nuevaPassword').val();
+        navigator.clipboard.writeText(password).then(function() {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Copiado!',
+                text: 'Contraseña copiada al portapapeles',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }, function(err) {
+            console.error('Error al copiar:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo copiar al portapapeles',
+                confirmButtonText: 'Cerrar'
+            });
+        });
+    });
+
+    // Reenviar credenciales por email
+    $(document).on('click', '.btn-reenviar-credenciales', function() {
+        const idUsuario = $(this).data('id');
+        const nombreUsuario = $(this).data('nombre');
+        const email = $(this).data('email');
+
+        if (!email) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Email no configurado',
+                text: 'Este usuario no tiene un email configurado',
+                confirmButtonText: 'Cerrar'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: '¿Reenviar credenciales?',
+            html: `Se enviará un email a <strong>${email}</strong> con las credenciales de <strong>${nombreUsuario}</strong>.<br><br><small class="text-warning">⚠️ Se generará una nueva contraseña temporal</small>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="bi bi-envelope-fill me-2"></i>Enviar Email',
+            cancelButtonText: 'Cancelar',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return $.ajax({
+                    url: `/admin/usuarios/api/${idUsuario}/reenviar-credenciales`,
+                    method: 'POST'
+                }).then(response => {
+                    if (!response.success) {
+                        throw new Error(response.message || 'Error al enviar credenciales');
+                    }
+                    return response;
+                }).catch(error => {
+                    Swal.showValidationMessage(
+                        error.responseJSON?.error || error.message || 'Error al enviar email'
+                    );
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Enviado!',
+                    html: `Credenciales enviadas exitosamente a:<br><strong>${email}</strong>`,
+                    confirmButtonText: 'Cerrar'
+                });
+            }
+        });
+    });
+
+    // Activar/Desactivar usuario
+    $(document).on('click', '.btn-toggle-active', function() {
+        const idUsuario = $(this).data('id');
+        const nombreUsuario = $(this).data('nombre');
+        const activo = $(this).data('activo');
+        const accion = activo ? 'desactivar' : 'activar';
+        const colorBtn = activo ? '#dc3545' : '#28a745';
+
+        Swal.fire({
+            title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
+            text: `Estás a punto de ${accion} a ${nombreUsuario}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: colorBtn,
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Sí, ${accion}`,
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/admin/usuarios/api/${idUsuario}/estado`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ activo: !activo }),
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: `Usuario ${activo ? 'desactivado' : 'activado'} correctamente`,
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.error || 'Error al cambiar estado del usuario',
+                            confirmButtonText: 'Cerrar'
+                        });
+                    }
+                });
+            }
+        });
+    });
+
     // ==================== EVENTOS GLOBALES ====================
 
     // Limpiar formularios al cerrar modales

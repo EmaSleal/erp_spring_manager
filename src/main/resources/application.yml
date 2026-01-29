@@ -70,6 +70,52 @@ app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
 
 # ========================================
+# CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA
+# ========================================
+facturacion:
+  comprobantes:
+    directorio-base: ${FACTURACION_DIRECTORIO_BASE:./comprobantes}
+  
+  hacienda:
+    webhook:
+      # Token de seguridad para validar callbacks de Hacienda
+      # Si está vacío, no se valida el token
+      token: ${HACIENDA_WEBHOOK_TOKEN:}
+      
+      # URL pública del webhook (para registrar en Hacienda)
+      # Esta URL debe ser accesible desde internet
+      url: ${HACIENDA_WEBHOOK_URL:https://tu-dominio.com/api/hacienda/callback}
+
+# ========================================
+# RESILIENCE4J - CIRCUIT BREAKER Y RETRY
+# ========================================
+resilience4j:
+  circuitbreaker:
+    instances:
+      haciendaAPI:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        slowCallDurationThreshold: 5000
+        slowCallRateThreshold: 50
+  
+  retry:
+    instances:
+      haciendaAPI:
+        maxAttempts: 3
+        waitDuration: 2000
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+
+# ========================================
 # CONFIGURACIÓN DE LOGGING
 # ========================================
 logging:

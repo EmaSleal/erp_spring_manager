@@ -9,6 +9,11 @@
 
 <nav th:fragment="navbar" class="navbar">
     
+    <!-- Botón Hamburguesa (Móvil) -->
+    <button class="navbar-hamburger" id="sidebarToggle" aria-label="Toggle sidebar">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <!-- SECCIÓN IZQUIERDA: Logo y Nombre -->
     <div class="navbar-left">
         <a th:href="@{/dashboard}" class="navbar-brand">

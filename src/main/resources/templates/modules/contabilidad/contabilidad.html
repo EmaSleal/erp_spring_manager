@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Contabilidad</title>
+</head>
+<body>
+    <!-- CSS de dashboard (reutilizamos los estilos de módulos) -->
+    <link rel="stylesheet" th:href="@{/modules/presentacion/css/dashboard.css}">
+    
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+    
+    <!-- Contenido principal -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-calculator me-1"></i>Contabilidad
+                    </li>
+                </ol>
+            </nav>
+            
+            <!-- Encabezado -->
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-calculator text-danger me-2"></i>
+                        <span class="d-none d-md-inline">Módulo de </span>Contabilidad
+                    </h2>
+                    <p class="page-subtitle d-none d-md-block">Gestión contable y financiera del sistema</p>
+                </div>
+                <div class="page-header-actions">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-md-inline ms-2">Volver</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Submódulos Disponibles -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4 class="mb-3">
+                        <i class="fas fa-th me-2"></i>
+                        Submódulos Disponibles
+                    </h4>
+                    <p class="text-muted">Accede rápidamente a las funcionalidades de contabilidad</p>
+                </div>
+            </div>
+            
+            <!-- Grid de Módulos (componente reutilizable) -->
+            <div th:replace="~{shared/components/modules-grid :: modulesGrid(modulos=${modulos})}"></div>
+            
+        </div>
+    </main>
+    
+    <!-- Scripts base -->
+    <div th:replace="~{shared/layout :: scripts}"></div>
+    
+    <!-- Script para manejo de clicks en módulos -->
+    <script>
+        function handleModuleClick(element) {
+            const activo = element.dataset.activo === 'true';
+            const ruta = element.dataset.ruta;
+            const nombre = element.dataset.nombre;
+            
+            if (activo) {
+                // Redirigir al módulo
+                window.location.href = ruta;
+            } else {
+                // Mostrar mensaje de próximamente
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Próximamente',
+                    text: `El módulo "${nombre}" estará disponible pronto.`,
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
+        }
+    </script>
+</body>
+</html>

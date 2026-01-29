@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Comprobantes Electrónicos</title>
+</head>
+<body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/facturacion/css/facturacion-electronica.css}">
+    
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/facturas}" class="text-decoration-none">
+                            <i class="fas fa-file-invoice me-1"></i>Facturas
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-file-signature me-1"></i>Comprobantes Electrónicos
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-file-signature text-primary me-2"></i>
+                        <span class="d-none d-md-inline">Comprobantes </span>Electrónicos
+                    </h2>
+                    <p class="page-subtitle d-none d-md-block">Gestión de facturación electrónica - Hacienda CR</p>
+                </div>
+                <div class="page-header-actions">
+                    <a th:href="@{/facturas}" class="btn btn-outline-secondary"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver a Facturas">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-md-inline ms-2">Volver</span>
+                    </a>
+                    <a th:href="@{/facturas/configuracion-hacienda}" class="btn btn-warning"
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Configuración de Hacienda">
+                        <i class="fas fa-cog"></i>
+                        <span class="d-none d-sm-inline ms-2">Configuración</span>
+                    </a>
+                    <button type="button" class="btn btn-primary" onclick="generarComprobanteModal()" 
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')"
+                            data-bs-toggle="tooltip" data-bs-placement="bottom" title="Generar desde factura">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline ms-2">Generar Comprobante</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estadísticas Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Aceptados</h6>
+                                    <h3 class="mb-0 text-white" id="stat-aceptados">0</h3>
+                                </div>
+                                <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm bg-warning text-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-dark-50 mb-1">Procesando</h6>
+                                    <h3 class="mb-0 text-dark" id="stat-procesando">0</h3>
+                                </div>
+                                <i class="fas fa-spinner fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Rechazados</h6>
+                                    <h3 class="mb-0 text-white" id="stat-rechazados">0</h3>
+                                </div>
+                                <i class="fas fa-times-circle fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Firmados</h6>
+                                    <h3 class="mb-0 text-white" id="stat-firmados">0</h3>
+                                </div>
+                                <i class="fas fa-certificate fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="startDate" class="form-label">Fecha Inicio</label>
+                            <input type="date" id="startDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="endDate" class="form-label">Fecha Fin</label>
+                            <input type="date" id="endDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="estadoFilter" class="form-label">Estado</label>
+                            <select id="estadoFilter" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="ACEPTADO">Aceptado</option>
+                                <option value="PROCESANDO">Procesando</option>
+                                <option value="RECHAZADO">Rechazado</option>
+                                <option value="FIRMADO">Firmado</option>
+                                <option value="ENVIADO">Enviado</option>
+                                <option value="ERROR">Error</option>
+                                <option value="ANULADO">Anulado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end gap-2">
+                            <button id="filterBtn" class="btn btn-primary flex-fill">
+                                <i class="fas fa-filter me-1"></i>Filtrar
+                            </button>
+                            <button id="clearFilterBtn" class="btn btn-secondary flex-fill">
+                                <i class="fas fa-eraser me-1"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Tendencia -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line text-primary me-2"></i>
+                        Tendencia de Envíos (Últimos 30 días)
+                    </h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarExcel()"
+                                data-bs-toggle="tooltip" title="Exportar a Excel">
+                            <i class="fas fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarPDF()"
+                                data-bs-toggle="tooltip" title="Exportar a PDF">
+                            <i class="fas fa-file-pdf me-1"></i>PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="chartTendenciaEnvios"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="responsive-table-container">
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" style="width: 60px;">ID</th>
+                                        <th style="width: 180px;">Clave Numérica</th>
+                                        <th>Factura</th>
+                                        <th style="width: 150px;">Tipo</th>
+                                        <th class="text-center" style="width: 120px;">Estado</th>
+                                        <th class="text-center" style="width: 130px;">Fecha Emisión</th>
+                                        <th class="text-center" style="width: 220px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="comprobantes-tbody">
+                                    <!-- Los datos se cargan dinámicamente vía JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Generar Comprobante -->
+    <div class="modal fade" id="generarComprobanteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-signature me-2"></i>Generar Comprobante Electrónico
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formGenerarComprobante">
+                        <div class="mb-3">
+                            <label for="clienteId" class="form-label">Cliente <span class="text-danger">*</span></label>
+                            <select id="clienteId" class="form-select" required onchange="cargarFacturasPendientesCliente()">
+                                <option value="">Seleccione un cliente...</option>
+                            </select>
+                            <small class="text-muted">Solo clientes con facturas sin comprobante electrónico</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="facturaId" class="form-label">Factura <span class="text-danger">*</span></label>
+                            <select id="facturaId" class="form-select" required disabled>
+                                <option value="">Primero seleccione un cliente...</option>
+                            </select>
+                            <small class="text-muted">Facturas pendientes de generar comprobante</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="generarComprobante()">
+                        <i class="fas fa-check me-1"></i>Generar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle Comprobante -->
+    <div class="modal fade" id="detalleComprobanteModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-info-circle me-2"></i>Detalle del Comprobante
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detalleComprobanteContent">
+                    <!-- Contenido dinámico -->
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div id="modalActions">
+                        <!-- Botones de acción dinámicos -->
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de Bootstrap y librerías -->
+    <div th:replace="~{shared/layout :: scripts}"></div>
+
+    <!-- Scripts personalizados -->
+    <script th:inline="javascript">
+        const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
+        let comprobantes = [];
+
+        // Cargar estadísticas
+        function cargarEstadisticas() {
+            fetch(`/api/facturas/comprobantes/empresa/${EMPRESA_ID}/estadisticas`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('stat-aceptados').textContent = data.aceptados || 0;
+                    document.getElementById('stat-procesando').textContent = (data.procesando || 0) + (data.enviados || 0);
+                    document.getElementById('stat-rechazados').textContent = data.rechazados || 0;
+                    document.getElementById('stat-firmados').textContent = data.firmados || 0;
+                })
+                .catch(err => console.error('Error cargando estadísticas:', err));
+        }
+
+        // Cargar comprobantes
+        function cargarComprobantes(filtros = {}) {
+            let url = `/api/facturas/comprobantes/empresa/${EMPRESA_ID}?page=0&size=100`;
+            
+            if (filtros.fechaInicio && filtros.fechaFin) {
+                url = `/api/facturas/comprobantes/empresa/${EMPRESA_ID}/fechas?fechaInicio=${filtros.fechaInicio}&fechaFin=${filtros.fechaFin}&page=0&size=100`;
+            } else if (filtros.estado) {
+                url = `/api/facturas/comprobantes/empresa/${EMPRESA_ID}/estado/${filtros.estado}?page=0&size=100`;
+            }
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    comprobantes = data;
+                    renderizarComprobantes(data);
+                })
+                .catch(err => {
+                    console.error('Error cargando comprobantes:', err);
+                    mostrarAlerta('Error cargando comprobantes', 'danger');
+                });
+        }
+
+        // Renderizar tabla
+        function renderizarComprobantes(data) {
+            const tbody = document.getElementById('comprobantes-tbody');
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No hay comprobantes para mostrar</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(comp => `
+                <tr>
+                    <td class="text-center">${comp.id}</td>
+                    <td><small class="font-monospace">${comp.claveNumerica}</small></td>
+                    <td>
+                        <div class="fw-semibold">${comp.facturaNumero || 'N/A'}</div>
+                        <small class="text-muted">ID: ${comp.facturaId || '-'}</small>
+                    </td>
+                    <td>${comp.tipoComprobanteDescripcion}</td>
+                    <td class="text-center">${getEstadoBadge(comp.estado)}</td>
+                    <td class="text-center">${formatearFecha(comp.fechaEmision)}</td>
+                    <td class="text-center">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button onclick="verDetalle(${comp.id})" class="btn btn-sm btn-info" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${comp.estado === 'FIRMADO' ? `
+                                <button onclick="enviarHacienda(${comp.id})" class="btn btn-sm btn-primary" title="Enviar a Hacienda">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            ` : ''}
+                            ${comp.puedeReenviar ? `
+                                <button onclick="reenviar(${comp.id})" class="btn btn-sm btn-warning" title="Reenviar">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            ` : ''}
+                            ${comp.xmlComprobante ? `
+                                <button onclick="descargarXML(${comp.id})" class="btn btn-sm btn-success" title="Descargar XML">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Helper: Badge de estado
+        function getEstadoBadge(estado) {
+            const badges = {
+                'ACEPTADO': '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Aceptado</span>',
+                'PROCESANDO': '<span class="badge bg-warning text-dark"><i class="fas fa-spinner me-1"></i>Procesando</span>',
+                'RECHAZADO': '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Rechazado</span>',
+                'FIRMADO': '<span class="badge bg-info"><i class="fas fa-certificate me-1"></i>Firmado</span>',
+                'ENVIADO': '<span class="badge bg-primary"><i class="fas fa-paper-plane me-1"></i>Enviado</span>',
+                'ERROR': '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Error</span>',
+                'ANULADO': '<span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>Anulado</span>',
+                'GENERADO': '<span class="badge bg-light text-dark"><i class="fas fa-file me-1"></i>Generado</span>'
+            };
+            return badges[estado] || `<span class="badge bg-secondary">${estado}</span>`;
+        }
+
+        // Helper: Formatear fecha
+        function formatearFecha(fecha) {
+            if (!fecha) return '-';
+            return new Date(fecha).toLocaleDateString('es-CR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Acciones
+        function generarComprobanteModal() {
+            // Limpiar los campos
+            document.getElementById('clienteId').value = '';
+            document.getElementById('facturaId').innerHTML = '<option value="">Primero seleccione un cliente...</option>';
+            document.getElementById('facturaId').disabled = true;
+            
+            // Cargar clientes con facturas pendientes
+            cargarClientesConFacturasPendientes();
+            
+            const modal = new bootstrap.Modal(document.getElementById('generarComprobanteModal'));
+            modal.show();
+        }
+
+        function cargarClientesConFacturasPendientes() {
+            // Obtener todas las facturas y filtrar clientes únicos sin comprobante
+            fetch(`/api/facturas/comprobantes/empresa/${EMPRESA_ID}/pendientes`)
+                .then(res => {
+                    if (!res.ok) {
+                        // Si el endpoint no existe, cargar todos los clientes
+                        return fetch(`/api/clientes?empresaId=${EMPRESA_ID}`).then(r => r.json());
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    const select = document.getElementById('clienteId');
+                    select.innerHTML = '<option value="">Seleccione un cliente...</option>';
+                    
+                    // Si data es un array de facturas, extraer clientes únicos
+                    const clientes = Array.isArray(data) ? 
+                        [...new Map(data.map(f => [f.cliente?.idCliente, f.cliente])).values()].filter(c => c) :
+                        data;
+                    
+                    clientes.forEach(cliente => {
+                        const id = cliente.idCliente || cliente.id_cliente;
+                        const nombre = cliente.nombre || cliente.razonSocial || cliente.razon_social;
+                        select.innerHTML += `<option value="${id}">${nombre}</option>`;
+                    });
+                })
+                .catch(err => {
+                    console.error('Error cargando clientes:', err);
+                    mostrarAlerta('Error al cargar clientes', 'warning');
+                });
+        }
+
+        function cargarFacturasPendientesCliente() {
+            const clienteId = document.getElementById('clienteId').value;
+            const facturaSelect = document.getElementById('facturaId');
+            
+            if (!clienteId) {
+                facturaSelect.innerHTML = '<option value="">Primero seleccione un cliente...</option>';
+                facturaSelect.disabled = true;
+                return;
+            }
+            
+            // Cargar facturas del cliente sin comprobante
+            fetch(`/api/facturas/comprobantes/empresa/${EMPRESA_ID}/pendientes?clienteId=${clienteId}`)
+                .then(res => {
+                    if (!res.ok) {
+                        // Fallback: obtener facturas del cliente desde endpoint general
+                        return fetch(`/api/factura/cliente/${clienteId}`).then(r => r.json());
+                    }
+                    return res.json();
+                })
+                .then(facturas => {
+                    facturaSelect.innerHTML = '<option value="">Seleccione una factura...</option>';
+                    
+                    if (!facturas || facturas.length === 0) {
+                        facturaSelect.innerHTML = '<option value="">No hay facturas pendientes</option>';
+                        facturaSelect.disabled = true;
+                        return;
+                    }
+                    
+                    facturas.forEach(factura => {
+                        const id = factura.idFactura || factura.id_factura || factura.id;
+                        const numero = factura.numeroFactura || factura.numero_factura || factura.numero || `#${id}`;
+                        const fecha = factura.fechaCreacion || factura.fecha_creacion || factura.fecha;
+                        const total = factura.total || factura.monto_total || 0;
+                        facturaSelect.innerHTML += `<option value="${id}">${numero} - ${fecha} - ₡${parseFloat(total).toLocaleString()}</option>`;
+                    });
+                    
+                    facturaSelect.disabled = false;
+                })
+                .catch(err => {
+                    console.error('Error cargando facturas:', err);
+                    facturaSelect.innerHTML = '<option value="">Error al cargar facturas</option>';
+                    facturaSelect.disabled = true;
+                });
+        }
+
+        function generarComprobante() {
+            const clienteId = document.getElementById('clienteId').value;
+            const facturaId = document.getElementById('facturaId').value;
+            
+            if (!clienteId) {
+                mostrarAlerta('Seleccione un cliente', 'warning');
+                return;
+            }
+            
+            if (!facturaId) {
+                mostrarAlerta('Seleccione una factura', 'warning');
+                return;
+            }
+
+            fetch(`/api/facturas/comprobantes/generar?facturaId=${facturaId}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarAlerta('Comprobante generado exitosamente', 'success');
+                        bootstrap.Modal.getInstance(document.getElementById('generarComprobanteModal')).hide();
+                        cargarComprobantes();
+                        cargarEstadisticas();
+                    } else {
+                        mostrarAlerta(data.message || 'Error generando comprobante', 'danger');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error generando comprobante', 'danger');
+                });
+        }
+
+        function enviarHacienda(id) {
+            if (!confirm('¿Enviar comprobante a Hacienda?')) return;
+            
+            fetch(`/api/facturas/comprobantes/${id}/enviar`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarAlerta('Comprobante enviado exitosamente', 'success');
+                        cargarComprobantes();
+                        cargarEstadisticas();
+                    } else {
+                        mostrarAlerta(data.message || 'Error enviando comprobante', 'danger');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error enviando comprobante', 'danger');
+                });
+        }
+
+        function reenviar(id) {
+            if (!confirm('¿Reenviar comprobante a Hacienda?')) return;
+            
+            fetch(`/api/facturas/comprobantes/${id}/reenviar`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarAlerta('Comprobante reenviado exitosamente', 'success');
+                        cargarComprobantes();
+                    } else {
+                        mostrarAlerta(data.message || 'Error reenviando comprobante', 'danger');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error reenviando comprobante', 'danger');
+                });
+        }
+
+        function descargarXML(id) {
+            window.location.href = `/api/facturas/comprobantes/${id}/xml`;
+        }
+
+        function verDetalle(id) {
+            fetch(`/api/facturas/comprobantes/${id}`)
+                .then(res => res.json())
+                .then(comp => {
+                    const content = document.getElementById('detalleComprobanteContent');
+                    const actions = document.getElementById('modalActions');
+                    
+                    // Crear tabs para organizar la información
+                    content.innerHTML = `
+                        <ul class="nav nav-tabs mb-3" id="detalleTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="info-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#info" type="button" role="tab">
+                                    <i class="fas fa-info-circle me-1"></i>Información General
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="timeline-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#timeline" type="button" role="tab">
+                                    <i class="fas fa-history me-1"></i>Timeline de Estados
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="xml-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#xml" type="button" role="tab">
+                                    <i class="fas fa-code me-1"></i>XML del Comprobante
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="detalleTabContent">
+                            <!-- Tab Información General -->
+                            <div class="tab-pane fade show active" id="info" role="tabpanel">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <strong>Clave Numérica:</strong><br>
+                                        <small class="font-monospace">${comp.claveNumerica}</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Consecutivo:</strong><br>
+                                        ${comp.consecutivo}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Estado:</strong><br>
+                                        ${getEstadoBadge(comp.estado)}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Fecha Emisión:</strong><br>
+                                        ${formatearFecha(comp.fechaEmision)}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Tipo Comprobante:</strong><br>
+                                        ${comp.tipoComprobanteDescripcion}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Factura:</strong><br>
+                                        ${comp.facturaNumero || 'N/A'}
+                                    </div>
+                                    ${comp.fechaEnvio ? `
+                                        <div class="col-md-6">
+                                            <strong>Fecha Envío:</strong><br>
+                                            ${formatearFecha(comp.fechaEnvio)}
+                                        </div>
+                                    ` : ''}
+                                    ${comp.fechaRespuesta ? `
+                                        <div class="col-md-6">
+                                            <strong>Fecha Respuesta:</strong><br>
+                                            ${formatearFecha(comp.fechaRespuesta)}
+                                        </div>
+                                    ` : ''}
+                                    ${comp.intentosEnvio ? `
+                                        <div class="col-md-6">
+                                            <strong>Intentos de Envío:</strong><br>
+                                            <span class="badge bg-secondary">${comp.intentosEnvio}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${comp.mensajeRespuesta ? `
+                                        <div class="col-12">
+                                            <strong>Mensaje Hacienda:</strong><br>
+                                            <div class="alert alert-info mb-0">${comp.mensajeRespuesta}</div>
+                                        </div>
+                                    ` : ''}
+                                    ${comp.ultimoError ? `
+                                        <div class="col-12">
+                                            <strong>Último Error:</strong><br>
+                                            <div class="alert alert-danger mb-0">${comp.ultimoError}</div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            
+                            <!-- Tab Timeline -->
+                            <div class="tab-pane fade" id="timeline" role="tabpanel">
+                                <div class="timeline-container">
+                                    ${generarTimeline(comp)}
+                                </div>
+                            </div>
+                            
+                            <!-- Tab XML -->
+                            <div class="tab-pane fade" id="xml" role="tabpanel">
+                                <div class="mb-3 d-flex justify-content-end">
+                                    <button onclick="copiarXML(${comp.id})" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="fas fa-copy me-1"></i>Copiar XML
+                                    </button>
+                                    <button onclick="descargarXML(${comp.id})" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-download me-1"></i>Descargar XML
+                                    </button>
+                                </div>
+                                <div id="xmlViewer" class="xml-viewer">
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2">Cargando XML...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Actualizar botones de acción
+                    let actionButtons = '';
+                    if (comp.estado === 'ACEPTADO') {
+                        actionButtons += `
+                            <button onclick="enviarPorEmail(${comp.id})" class="btn btn-primary">
+                                <i class="fas fa-envelope me-1"></i>Enviar por Email
+                            </button>
+                        `;
+                    }
+                    actions.innerHTML = actionButtons;
+                    
+                    // Cargar XML cuando se selecciona el tab
+                    document.getElementById('xml-tab').addEventListener('click', () => {
+                        cargarXML(comp.id);
+                    }, { once: true });
+                    
+                    new bootstrap.Modal(document.getElementById('detalleComprobanteModal')).show();
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error cargando detalle', 'danger');
+                });
+        }
+        
+        function generarTimeline(comp) {
+            const eventos = [];
+            
+            // Crear eventos basados en los datos disponibles
+            if (comp.createdAt) {
+                eventos.push({
+                    fecha: comp.createdAt,
+                    titulo: 'Comprobante Generado',
+                    estado: 'GENERADO',
+                    icono: 'fa-file-alt',
+                    descripcion: 'El comprobante fue generado en el sistema'
+                });
+            }
+            
+            if (comp.estado === 'FIRMADO' || comp.fechaEnvio) {
+                eventos.push({
+                    fecha: comp.updatedAt || comp.createdAt,
+                    titulo: 'Comprobante Firmado',
+                    estado: 'FIRMADO',
+                    icono: 'fa-certificate',
+                    descripcion: 'El comprobante fue firmado digitalmente'
+                });
+            }
+            
+            if (comp.fechaEnvio) {
+                eventos.push({
+                    fecha: comp.fechaEnvio,
+                    titulo: 'Enviado a Hacienda',
+                    estado: 'ENVIADO',
+                    icono: 'fa-paper-plane',
+                    descripcion: `Comprobante enviado al Ministerio de Hacienda (Intento ${comp.intentosEnvio || 1})`
+                });
+            }
+            
+            if (comp.fechaRespuesta) {
+                const esExitoso = comp.estado === 'ACEPTADO';
+                eventos.push({
+                    fecha: comp.fechaRespuesta,
+                    titulo: esExitoso ? 'Aceptado por Hacienda' : 'Rechazado por Hacienda',
+                    estado: comp.estado,
+                    icono: esExitoso ? 'fa-check-circle' : 'fa-times-circle',
+                    descripcion: comp.mensajeRespuesta || (esExitoso ? 'Comprobante aceptado' : 'Comprobante rechazado')
+                });
+            }
+            
+            if (comp.fechaEnvioEmail) {
+                eventos.push({
+                    fecha: comp.fechaEnvioEmail,
+                    titulo: 'Enviado por Email',
+                    estado: 'EMAIL',
+                    icono: 'fa-envelope',
+                    descripcion: 'Comprobante enviado al cliente por correo electrónico'
+                });
+            }
+            
+            if (comp.estado === 'ERROR' && comp.ultimoError) {
+                eventos.push({
+                    fecha: comp.updatedAt || new Date().toISOString(),
+                    titulo: 'Error Detectado',
+                    estado: 'ERROR',
+                    icono: 'fa-exclamation-triangle',
+                    descripcion: comp.ultimoError
+                });
+            }
+            
+            // Ordenar eventos por fecha
+            eventos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+            
+            // Generar HTML del timeline
+            let html = '<div class="timeline">';
+            eventos.forEach((evento, index) => {
+                const colorClase = getEstadoColor(evento.estado);
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-marker ${colorClase}">
+                            <i class="fas ${evento.icono}"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <h6 class="mb-1">${evento.titulo}</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>${formatearFecha(evento.fecha)}
+                                </small>
+                            </div>
+                            <p class="mb-0 text-muted">${evento.descripcion}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            return html;
+        }
+        
+        function getEstadoColor(estado) {
+            const colores = {
+                'GENERADO': 'bg-secondary',
+                'FIRMADO': 'bg-info',
+                'ENVIADO': 'bg-primary',
+                'PROCESANDO': 'bg-warning',
+                'ACEPTADO': 'bg-success',
+                'RECHAZADO': 'bg-danger',
+                'ERROR': 'bg-danger',
+                'EMAIL': 'bg-info'
+            };
+            return colores[estado] || 'bg-secondary';
+        }
+        
+        function cargarXML(id) {
+            const viewer = document.getElementById('xmlViewer');
+            
+            fetch(`/api/facturas/comprobantes/${id}/xml-content`)
+                .then(res => res.json())
+                .then(data => {
+                    const xml = data.xmlComprobante || '';
+                    if (!xml) {
+                        viewer.innerHTML = '<div class="alert alert-warning">No hay XML disponible</div>';
+                        return;
+                    }
+                    
+                    // Formatear y colorear XML
+                    const formateado = formatearXML(xml);
+                    viewer.innerHTML = `<pre class="xml-code">${formateado}</pre>`;
+                })
+                .catch(err => {
+                    console.error(err);
+                    viewer.innerHTML = '<div class="alert alert-danger">Error cargando XML</div>';
+                });
+        }
+        
+        function formatearXML(xml) {
+            // Escapar HTML
+            xml = xml.replace(/&/g, '&amp;')
+                     .replace(/</g, '&lt;')
+                     .replace(/>/g, '&gt;');
+            
+            // Aplicar resaltado de sintaxis básico
+            xml = xml.replace(/(&lt;\/?[\w:]+)/g, '<span class="xml-tag">$1</span>')
+                     .replace(/(&gt;)/g, '<span class="xml-tag">$1</span>')
+                     .replace(/([\w:]+)=/g, '<span class="xml-attr">$1</span>=')
+                     .replace(/="([^"]*)"/g, '="<span class="xml-value">$1</span>"');
+            
+            return xml;
+        }
+        
+        function copiarXML(id) {
+            fetch(`/api/facturas/comprobantes/${id}/xml-content`)
+                .then(res => res.json())
+                .then(data => {
+                    const xml = data.xmlComprobante || '';
+                    navigator.clipboard.writeText(xml).then(() => {
+                        mostrarAlerta('XML copiado al portapapeles', 'success');
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error copiando XML', 'danger');
+                });
+        }
+        
+        function enviarPorEmail(id) {
+            if (!confirm('¿Desea enviar este comprobante por email al cliente?')) {
+                return;
+            }
+            
+            fetch(`/api/facturas/comprobantes/${id}/enviar-email`, {
+                method: 'POST'
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarAlerta(data.message, 'success');
+                        bootstrap.Modal.getInstance(document.getElementById('detalleComprobanteModal')).hide();
+                    } else {
+                        mostrarAlerta(data.message, 'danger');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error enviando email', 'danger');
+                });
+        }
+
+        function mostrarAlerta(mensaje, tipo) {
+            // Implementar sistema de alertas (puedes usar toastr o bootstrap alerts)
+            alert(mensaje);
+        }
+        
+        // Exportación
+        function exportarExcel() {
+            const fechaInicio = document.getElementById('startDate').value;
+            const fechaFin = document.getElementById('endDate').value;
+            const estado = document.getElementById('estadoFilter').value;
+            
+            let url = '/api/facturas/comprobantes/exportar/excel?';
+            if (fechaInicio) url += `fechaInicio=${fechaInicio}&`;
+            if (fechaFin) url += `fechaFin=${fechaFin}&`;
+            if (estado) url += `estado=${estado}`;
+            
+            window.location.href = url;
+        }
+        
+        function exportarPDF() {
+            const fechaInicio = document.getElementById('startDate').value;
+            const fechaFin = document.getElementById('endDate').value;
+            const estado = document.getElementById('estadoFilter').value;
+            
+            let url = '/api/facturas/comprobantes/exportar/pdf?';
+            if (fechaInicio) url += `fechaInicio=${fechaInicio}&`;
+            if (fechaFin) url += `fechaFin=${fechaFin}&`;
+            if (estado) url += `estado=${estado}`;
+            
+            window.location.href = url;
+        }
+
+        // Filtros
+        document.getElementById('filterBtn').addEventListener('click', () => {
+            const filtros = {
+                fechaInicio: document.getElementById('startDate').value,
+                fechaFin: document.getElementById('endDate').value,
+                estado: document.getElementById('estadoFilter').value
+            };
+            cargarComprobantes(filtros);
+        });
+
+        document.getElementById('clearFilterBtn').addEventListener('click', () => {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('estadoFilter').value = '';
+            cargarComprobantes();
+        });
+        
+        // Cargar gráfico de tendencia
+        let chartInstance = null;
+        
+        function cargarGraficoTendencia() {
+            fetch('/api/facturas/comprobantes/estadisticas/tendencia?dias=30')
+                .then(res => res.json())
+                .then(data => {
+                    const ctx = document.getElementById('chartTendenciaEnvios').getContext('2d');
+                    
+                    // Destruir instancia previa si existe
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+                    
+                    chartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.fechas,
+                            datasets: [
+                                {
+                                    label: 'Aceptados',
+                                    data: data.aceptados,
+                                    borderColor: '#198754',
+                                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                                    borderWidth: 2,
+                                    tension: 0.3,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Rechazados',
+                                    data: data.rechazados,
+                                    borderColor: '#dc3545',
+                                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                    borderWidth: 2,
+                                    tension: 0.3,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Pendientes',
+                                    data: data.pendientes,
+                                    borderColor: '#ffc107',
+                                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                                    borderWidth: 2,
+                                    tension: 0.3,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Errores',
+                                    data: data.errores,
+                                    borderColor: '#fd7e14',
+                                    backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                                    borderWidth: 2,
+                                    tension: 0.3,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 15
+                                    }
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    callbacks: {
+                                        footer: function(tooltipItems) {
+                                            let total = 0;
+                                            tooltipItems.forEach(item => {
+                                                total += item.parsed.y;
+                                            });
+                                            return 'Total: ' + total;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1,
+                                        precision: 0
+                                    }
+                                },
+                                x: {
+                                    ticks: {
+                                        maxRotation: 45,
+                                        minRotation: 45,
+                                        autoSkip: true,
+                                        maxTicksLimit: 15
+                                    }
+                                }
+                            },
+                            interaction: {
+                                mode: 'nearest',
+                                axis: 'x',
+                                intersect: false
+                            }
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error('Error cargando gráfico:', err);
+                });
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarComprobantes();
+            cargarEstadisticas();
+            cargarGraficoTendencia();
+        });
+    </script>
+    
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</body>
+</html>

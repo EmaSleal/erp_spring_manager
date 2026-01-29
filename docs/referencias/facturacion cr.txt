@@ -1,0 +1,327 @@
+Sí. Para emitir comprobantes electrónicos hacia Hacienda (DGT) y gestionar la respuesta su app debe cubrir, como mínimo, cumplimiento tributario + integración técnica + resguardo.
+
+1) Lo que necesita a nivel “negocio/tributario” (prerrequisitos)
+
+Estar inscrito en el RUT y tener acceso a ATV (Administración Tributaria Virtual). Esto es base para operar como emisor/receptor electrónico y para credenciales del API.
+
+Soportar versión 4.4: Hacienda definió uso voluntario desde 1 de abril 2025 y obligatorio desde 1 de setiembre 2025, con convivencia 4.3/4.4 en ese rango.
+
+Certificado para firmar: el XML que envía debe ir firmado digitalmente (ver punto técnico).
+
+2) Lo que necesita a nivel técnico (integración directa con Hacienda)
+A. Generar el XML v4.4
+
+Su sistema debe construir el XML conforme “Anexos y Estructuras v4.4” (campos, catálogos, clave, consecutivo, impuestos, CAByS, etc.).
+
+B. Firmar el XML (obligatorio)
+
+En el API de Hacienda, el campo comprobanteXml se envía como XML firmado con XAdES-EPES, convertido a bytes y codificado Base64 (UTF-8).
+
+C. Autenticación (token)
+
+Hacienda expone un API REST protegido con OpenID Connect sobre OAuth2; usted obtiene token en el IdP y lo manda como Authorization: bearer <token>.
+
+El token expira rápido (5 minutos); su app debe renovarlo automáticamente.
+
+La contraseña para el API se genera desde ATV (menú de Comprobantes Electrónicos) y llega al buzón.
+
+D. Envío y consulta de estado
+
+Flujo típico:
+
+POST /recepcion con JSON (incluye clave, fecha, emisor, opcional receptor, y comprobanteXml base64).
+
+Recibe HTTP 201: “recibido, pendiente validación”.
+
+Luego obtiene el resultado:
+
+Polling: GET /recepcion/{clave} (estado/resultado).
+
+Callback (recomendado): usted envía callbackUrl y Hacienda le “empuja” la respuesta por POST cuando termine la validación.
+
+E. Ambientes: pruebas y producción
+
+Hacienda publica producción y sandbox para integrar y validar su implementación (recomendación: CI/CD contra sandbox).
+
+3) Gestión de respuesta (lo que su sistema debe “operar” sí o sí)
+
+Estados y trazabilidad por clave: trate la clave como su idempotency key (si reintenta, evite duplicados; Hacienda incluso devuelve errores si ya fue recibido).
+
+Persistencia de evidencias: almacene como mínimo:
+
+XML emitido (firmado)
+
+JSON enviado al API
+
+respuesta/acuse de Hacienda (y su estado)
+
+bitácora de intentos/errores por documento
+
+Reintentos y cola: su “motor de envío” debería correr desacoplado (cola/worker), con:
+
+reintentos con backoff
+
+circuit breaker si IdP/API cae
+
+rate-limit handling (Hacienda expone headers de rate limit).
+
+4) Resguardo legal y continuidad operativa
+
+Conservación: el reglamento exige almacenar comprobantes (y asociados) por 5 años.
+
+Si usa el gratuito TicoFactura, tenga claro que solo almacena ~2 meses; igual debe respaldar por su cuenta.
+
+Contingencia: el reglamento exige planes de continuidad; si su sistema no puede emitir por fuerza mayor, existen reglas de contingencia que usted debe contemplar operativamente.
+
+5) Endpoints (para que su equipo lo aterrice rápido)
+
+Póngalo tal cual en su configuración (separando sandbox/prod) y versionándolo por ambiente.
+
+PRODUCCIÓN
+- Recepción API base: https://api.comprobanteselectronicos.go.cr/recepcion/v1/
+- Token (IdP):       https://idp.comprobanteselectronicos.go.cr/auth/realms/rut/protocol/openid-connect/token
+
+SANDBOX (pruebas)
+- Recepción API base: https://api.comprobanteselectronicos.go.cr/recepcion-sandbox/v1/
+
+
+Recomendación ejecutiva (sin rodeos)
+
+Si su objetivo es control total y costos bajos, integre directo con Hacienda como arriba. Si su objetivo es time-to-market y bajar riesgo operativo, evalúe un proveedor y deje su app como “ERP” (pero igual debe cumplir resguardo, trazabilidad y auditoría; la responsabilidad no se delega).
+
+Si me dice (1) si es persona física o jurídica, (2) si ya tiene certificado de firma, y (3) su stack (Java/.NET/Node/Python), le aterrizo un diseño de módulos + contratos (DTOs) + estrategia de colas/reintentos alineado a v4.4, listo para backlog técnico.
+
+
+
+
+
+Sí: hacerlo directo (sin proveedor tercero) es totalmente viable en Spring Boot. Y para un MVP, hacerlo “manual” (un botón Enviar a Hacienda y otro Consultar estado) es incluso la ruta más eficiente en costo/tiempo siempre que automatice la firma, envío, consulta y almacenamiento. Lo que no le conviene es “manual” al nivel de descargar XML y subirlo a mano: eso le dispara el riesgo operativo y de cumplimiento.
+
+A continuación le dejo, sin rodeos, lo que le falta y cómo armar los documentos de entrada/salida y la data mínima para modelar bien.
+
+1) Lo mínimo indispensable para poder enviar a Hacienda
+A. Credenciales del API (ATV)
+
+Hacienda usa un API REST protegido por OIDC/OAuth2. Usted debe generar la contraseña del API desde ATV (Comprobantes Electrónica) y le llega al buzón.
+
+Access Token URL (prod): https://idp.comprobanteselectronicos.go.cr/auth/realms/rut/protocol/openid-connect/token
+
+Client Id: api-prod
+
+Grant type: password (Resource Owner Password Credential)
+
+Expiración token: 5 minutos
+
+Nota negocio: si no tiene esto, no hay integración. Punto.
+
+B. Certificado de firma (usted hoy no lo tiene)
+
+Para emitir comprobantes electrónicos debe firmar XAdES-EPES (no es opcional). El anexo indica explícitamente XAdES-EPES v1.3.2 o superior.
+En Costa Rica, los certificados de persona física los emite la CA SINPE – Persona Física del BCCR.
+Guía oficial de cómo obtenerlo (tarjeta o móvil) del BCCR:
+
+Conclusión directa: puede avanzar con arquitectura, modelos y sandbox, pero para “ir a producción” necesita resolver certificado + firma sí o sí.
+
+2) Flujo operativo recomendado (MVP “manual”, pero controlado)
+Paso 1 — Generar numeración y clave
+
+Consecutivo (20 dígitos): SSS TTTTT TT NNNNNNNNNN
+
+Sucursal (3), terminal (5), tipo comprobante (2), consecutivo (10)
+
+Para factura electrónica, tipo = 01
+
+Clave (50 dígitos): incluye 506 + fecha + cédula emisor (12) + consecutivo (20) + situación (1) + seguridad (8)
+
+Situación: 1 normal, 2 contingencia, 3 sin internet
+
+La cédula del emisor para la clave debe ir “padded” a 12 según el tipo
+
+Paso 2 — Construir XML v4.4 (FacturaElectronica)
+
+Debe ajustarse al schema v4.4 (Factura Electrónica).
+
+Paso 3 — Firmar XML (XAdES-EPES)
+
+Firma obligatoria (XAdES-EPES).
+
+Paso 4 — Enviar a Hacienda (POST)
+
+Endpoint de recepción (prod): https://api.comprobanteselectronicos.go.cr/recepcion/v1/recepcion
+
+El JSON incluye (mínimo):
+
+clave (50)
+
+fecha formato RFC3339 yyyy-MM-dd'T'HH:mm:ssZ
+
+emisor.tipoIdentificacion + emisor.numeroIdentificacion
+
+comprobanteXml (XML firmado en Base64 UTF-8)
+
+opcional callbackUrl
+
+Si lo recibe bien, devuelve 201 y un Location para consultar estado.
+
+Paso 5 — Consultar estado (GET) o recibir callback
+
+GET: /recepcion/{clave}
+
+Callback: Hacienda le hace POST con el mismo JSON que daría el GET; reintenta 3 veces si no recibe 200.
+
+3) “Entrada” y “Salida” de su módulo FE (modelos de negocio)
+Entrada (lo que su sistema debe tener para armar FE)
+
+Con su data actual, le faltan campos críticos. Su tabla factura hoy no alcanza para cumplir v4.4.
+
+Encabezado (factura):
+
+tipoComprobante (01 venta)
+
+fechaEmision (con zona -06:00)
+
+condicionVenta (01 contado / 02 crédito / etc.)
+
+medioPago (01 efectivo / 02 tarjeta / etc.)
+
+moneda y tipoCambio (si aplica)
+
+emisor: tipo identificación + cédula + nombre + ubicación + correo (config)
+
+receptor (cliente): si existe identificación/nombre/correo
+
+Líneas:
+
+detalle
+
+cantidad, unidadMedida
+
+precioUnitario
+
+CABYS por línea (si usted lo hace “manual”, al menos seleccione CABYS en UI; si no, su tasa de rechazo sube)
+
+impuestos por línea (IVA 13% u otros): código impuesto y tarifa/código
+
+Salida (lo que debe guardar por trazabilidad)
+
+XML sin firma
+
+XML firmado (el que envía)
+
+Request JSON enviado
+
+Location devuelto por Hacienda
+
+Estado indEstado y respuestaXml (Base64) del GET/callback
+
+Auditoría: fechas, errores, reintentos, usuario que ejecutó
+
+Formato recomendado de archivos por clave (para email/almacenamiento) está documentado: clave.xml, clave_respuesta.xml, clave.pdf.
+
+4) Ajustes concretos a su base de datos (lo que le está faltando)
+
+Usted hoy maneja numero_factura tipo FA01-00005 y serie FA01. Eso sirve internamente, pero Hacienda exige consecutivo 20 + clave 50.
+
+Cambios mínimos en factura (propuesto)
+
+Agregue:
+
+consecutivo_hacienda (varchar(20))
+
+clave_hacienda (varchar(50), unique)
+
+fecha_emision (datetime con TZ o almacenar offset)
+
+condicion_venta (varchar(2))
+
+medio_pago (varchar(2) o tabla puente si múltiples medios)
+
+moneda (CRC/USD) y tipo_cambio
+
+situacion (char(1))
+
+codigo_seguridad (char(8))
+
+estado_hacienda (DRAFT/SIGNED/SENT/RECIBIDO/ACEPTADO/RECHAZADO…)
+
+location_hacienda (url)
+
+xml_sin_firma (longtext/blob)
+
+xml_firmado (longtext/blob)
+
+respuesta_xml (longtext/blob)
+
+error_cause (texto)
+
+Cambios mínimos en linea_factura
+
+Agregue:
+
+cabys (varchar)
+
+unidad_medida (varchar)
+
+codigo_impuesto (ej. IVA=01)
+
+codigo_tarifa_iva (ej. 08 = 13%)
+
+monto_impuesto (decimal)
+
+Cliente
+
+Su cliente hoy solo tiene nombre, tipo_cliente, email (y email puede ser NULL). Le faltan:
+
+tipo_identificacion (01/02/03/04/…)
+
+numero_identificacion
+
+ubicación (si va a facturar formal B2B es relevante)
+
+5) ¿Es “mejor” hacerlo manual al inicio?
+
+Sí, pero bien planteado:
+
+Botón “Firmar y Enviar” (bloquea edición y genera consecutivo+clave)
+
+Botón “Consultar estado” (polling) o callback si quiere madurez
+
+Bitácora y reintentos controlados
+
+No es mejor si “manual” significa:
+
+generar facturas sin CABYS/impuestos correctos,
+
+no almacenar XML y respuesta,
+
+depender de pasos humanos fuera del sistema.
+
+Eso es deuda técnica y riesgo fiscal desde el día 1.
+
+6) Configuración técnica (Spring Boot) que sí o sí va a necesitar
+
+Token Manager (cachea token 5 min, renueva antes de expirar)
+
+Cliente HTTP (WebClient) con:
+
+Authorization: bearer <token>
+
+UTF-8 y Base64 correcto
+
+FE Generator:
+
+arma XML v4.4
+
+valida contra schema
+
+Signing Service (XAdES-EPES)
+
+Hacienda Adapter:
+
+POST /recepcion
+
+GET /recepcion/{clave}
+
+State machine (en DB) para no duplicar envíos
+
+Sandbox para pruebas: /recepcion-sandbox/v1/

@@ -15,8 +15,8 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid py-4">
-            <!-- Breadcrumbs -->
-            <nav aria-label="breadcrumb" class="mb-3">
+            <!-- Breadcrumbs (oculto en móvil) -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item">
                         <a th:href="@{/dashboard}" class="text-decoration-none">
@@ -30,18 +30,25 @@
             </nav>
 
             <!-- Header Section -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 mb-1"><i class="fas fa-box text-warning me-2"></i>Gestión de Productos</h2>
-                    <p class="text-muted mb-0">Administra tu catálogo de productos</p>
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-box text-warning me-2"></i>
+                        <span class="d-none d-md-inline">Gestión de </span>Productos
+                    </h2>
+                    <p class="page-subtitle d-none d-md-block">Administra tu catálogo de productos</p>
                 </div>
-                <div class="d-flex gap-2">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
+                <div class="page-header-actions">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-md-inline ms-2">Volver a Dashboard</span>
                     </a>
                     <button type="button" class="btn btn-success" onclick="openAddModal()" 
-                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')">
-                        <i class="fas fa-plus me-2"></i>Agregar Producto
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')"
+                            data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo producto">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline ms-2">Agregar Producto</span>
                     </button>
                 </div>
             </div>
@@ -68,28 +75,43 @@
             <!-- Table Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 data-table">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width: 60px;">ID</th>
-                                    <th class="d-none d-md-table-cell" style="width: 120px;">Código</th>
-                                    <th>Descripción</th>
-                                    <th class="text-end" style="width: 140px;">P. Institucional</th>
-                                    <th class="text-end d-none d-lg-table-cell" style="width: 140px;">P. Mayorista</th>
-                                    <th class="text-center d-none d-md-table-cell" style="width: 90px;">Estado</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="productosBody">
-                                <!-- Renderizado por JavaScript -->
-                            </tbody>
-                        </table>
+                    
+                    <!-- ============================================
+                         CONTENEDOR RESPONSIVE
+                         ============================================ -->
+                    <div class="responsive-table-container">
+                        
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" style="width: 60px;">ID</th>
+                                        <th class="d-none d-md-table-cell" style="width: 120px;">Código</th>
+                                        <th>Descripción</th>
+                                        <th class="text-end" style="width: 140px;">P. Institucional</th>
+                                        <th class="text-end d-none d-lg-table-cell" style="width: 140px;">P. Mayorista</th>
+                                        <th class="text-center d-none d-md-table-cell" style="width: 90px;">Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productosBody">
+                                    <!-- Renderizado por JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- MÓVIL: Vista de tarjetas -->
+                        <div class="mobile-card-view" id="productosCards">
+                            <!-- Tarjetas renderizadas por JavaScript -->
+                        </div>
+
                     </div>
+                    <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                        <div class="text-muted">
+                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
+                        <div class="text-muted text-center text-md-start">
                             Mostrando <span th:text="${#lists.size(productos)}"></span> de 
                             <span th:text="${totalItems}"></span> productos
                         </div>

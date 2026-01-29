@@ -1,0 +1,356 @@
+/*
+ * ============================================================================
+ * RESPONSIVE-TABLE.CSS - Tablas Responsive que se convierten en Tarjetas
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Sistema que muestra tablas en desktop y tarjetas en móvil automáticamente
+ */
+
+/* ============================================================================
+   CONTENEDOR BASE
+   ============================================================================ */
+.responsive-table-container {
+    width: 100%;
+}
+
+/* ============================================================================
+   MODO DESKTOP - Tabla Normal
+   ============================================================================ */
+@media (min-width: 768px) {
+    .responsive-table-container .table {
+        display: table;
+    }
+    
+    .responsive-table-container .mobile-card-view {
+        display: none;
+    }
+}
+
+/* ============================================================================
+   MODO MÓVIL - Vista de Tarjetas
+   ============================================================================ */
+@media (max-width: 767px) {
+    /* Ocultar tabla completa */
+    .responsive-table-container .table {
+        display: none;
+    }
+    
+    /* Mostrar vista de tarjetas */
+    .responsive-table-container .mobile-card-view {
+        display: block;
+    }
+    
+    /* Tarjeta individual */
+    .mobile-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all var(--transition-fast);
+    }
+    
+    .mobile-card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    /* Header de la tarjeta */
+    .mobile-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: var(--spacing-md);
+        padding-bottom: var(--spacing-md);
+        border-bottom: 2px solid var(--primary-color);
+    }
+    
+    .mobile-card-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .mobile-card-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: var(--border-radius-full);
+    }
+    
+    /* Body de la tarjeta */
+    .mobile-card-body {
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .mobile-card-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-sm) 0;
+        border-bottom: 1px solid var(--background-color);
+    }
+    
+    .mobile-card-row:last-child {
+        border-bottom: none;
+    }
+    
+    .mobile-card-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .mobile-card-value {
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        text-align: right;
+        flex: 1;
+        margin-left: var(--spacing-md);
+    }
+    
+    /* Footer de la tarjeta (acciones) */
+    .mobile-card-footer {
+        display: flex;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
+        padding-top: var(--spacing-md);
+        border-top: 1px solid var(--background-color);
+    }
+    
+    .mobile-card-footer .btn {
+        flex: 1;
+        min-width: 120px;
+        font-size: 0.875rem;
+        padding: var(--spacing-sm) var(--spacing-md);
+        white-space: nowrap;
+    }
+    
+    /* Footer con acciones específicas (editar/eliminar) */
+    .mobile-card-footer.mobile-card-actions {
+        justify-content: center;
+        gap: var(--spacing-md);
+    }
+    
+    .mobile-card-footer.mobile-card-actions .btn {
+        flex: 0 1 auto;
+        min-width: 110px;
+    }
+    
+    /* Estado vacío */
+    .mobile-card-empty {
+        text-align: center;
+        padding: var(--spacing-xl);
+        color: var(--text-secondary);
+    }
+    
+    .mobile-card-empty i {
+        font-size: 3rem;
+        color: var(--text-muted);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    /* Avatar en tarjetas móviles */
+    .mobile-card-avatar {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .mobile-card-avatar .avatar-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1.25rem;
+        color: white;
+    }
+    
+    .mobile-card-avatar-info {
+        flex: 1;
+    }
+    
+    .mobile-card-avatar-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .mobile-card-avatar-subtitle {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+}
+
+/* ============================================================================
+   VARIANTES DE TARJETAS
+   ============================================================================ */
+@media (max-width: 767px) {
+    /* Tarjeta con borde coloreado */
+    .mobile-card.card-success {
+        border-left: 4px solid var(--success-color);
+    }
+    
+    .mobile-card.card-warning {
+        border-left: 4px solid var(--warning-color);
+    }
+    
+    .mobile-card.card-danger {
+        border-left: 4px solid var(--danger-color);
+    }
+    
+    .mobile-card.card-info {
+        border-left: 4px solid var(--info-color);
+    }
+    
+    .mobile-card.card-primary {
+        border-left: 4px solid var(--primary-color);
+    }
+    
+    /* Tarjeta compacta */
+    .mobile-card.mobile-card-compact {
+        padding: var(--spacing-md);
+    }
+    
+    .mobile-card.mobile-card-compact .mobile-card-row {
+        padding: 0.375rem 0;
+    }
+    
+    /* Tarjeta destacada */
+    .mobile-card.mobile-card-featured {
+        background: linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(25, 118, 210, 0.02) 100%);
+        border: 2px solid var(--primary-color);
+    }
+}
+
+/* ============================================================================
+   UTILIDADES RESPONSIVE
+   ============================================================================ */
+/* Ocultar en móvil */
+.hide-mobile {
+    display: initial;
+}
+
+@media (max-width: 767px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+/* Mostrar solo en móvil */
+.show-mobile {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .show-mobile {
+        display: initial !important;
+    }
+}
+
+/* ============================================================================
+   MEJORAS PARA TABLAS EXISTENTES
+   ============================================================================ */
+@media (max-width: 767px) {
+    /* Hacer tablas scrollables si no usan el sistema de tarjetas */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Reducir padding en tablas móviles */
+    .table td,
+    .table th {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* ============================================================================
+   BADGES Y ESTADOS EN TARJETAS
+   ============================================================================ */
+@media (max-width: 767px) {
+    .mobile-card-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--border-radius-full);
+        font-size: 0.8125rem;
+        font-weight: 500;
+    }
+    
+    .mobile-card-status.status-active {
+        background-color: rgba(40, 167, 69, 0.1);
+        color: var(--success-color);
+    }
+    
+    .mobile-card-status.status-inactive {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: var(--text-secondary);
+    }
+    
+    .mobile-card-status.status-pending {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: var(--warning-color);
+    }
+    
+    .mobile-card-status.status-blocked {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: var(--danger-color);
+    }
+    
+    .mobile-card-status i {
+        font-size: 0.75rem;
+    }
+}
+
+/* ============================================================================
+   GRUPOS DE BOTONES EN MÓVIL
+   ============================================================================ */
+@media (max-width: 767px) {
+    .mobile-card-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: var(--spacing-sm);
+    }
+    
+    .mobile-card-actions .btn {
+        padding: var(--spacing-sm);
+        font-size: 0.8125rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .mobile-card-actions .btn i {
+        font-size: 0.875rem;
+    }
+}
+
+/* ============================================================================
+   ANIMACIONES
+   ============================================================================ */
+@media (max-width: 767px) {
+    .mobile-card {
+        animation: fadeInUp 0.3s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}

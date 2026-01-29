@@ -224,4 +224,10 @@ public class FacturaServiceImpl implements FacturaService {
             // No lanzar excepción para no afectar la creación de la factura
         }
     }
+
+	@Override
+	public Optional<List<Factura>> findByClienteId(Integer idCliente) {
+		log.debug("Buscando facturas por ID de cliente: {}", idCliente);
+        return facturaRepository.findByClienteId(idCliente);
+	}
 }

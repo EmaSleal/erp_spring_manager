@@ -20,4 +20,6 @@ public interface FacturaService {
     long count();
     long countByFechaToday();
     BigDecimal sumTotalPendiente();
+    //findByClienteId
+    Optional<List<Factura>>  findByClienteId(Integer idCliente);
 }
