@@ -1,0 +1,16 @@
+# docs
+
+- [arquitectura](arquitectura/manifest.md)
+- [base de datos](base de datos/manifest.md)
+- [configuracion](configuracion/manifest.md)
+- [diseno](diseno/manifest.md)
+- [guias](guias/manifest.md)
+- [permisos](permisos/manifest.md)
+- [planificacion](planificacion/manifest.md)
+- [refactorizacion](refactorizacion/manifest.md)
+- [referencias](referencias/manifest.md)
+- [reportes](reportes/manifest.md)
+- [snippets](snippets/manifest.md)
+- [sprints](sprints/manifest.md)
+- [Índice de documentación](INDICE.md)
+- [📚 Documentación del Proyecto - ERP Spring Manager](README.md)
