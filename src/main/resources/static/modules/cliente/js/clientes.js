@@ -63,7 +63,7 @@ document.getElementById('open-modal')?.addEventListener('click', function () {
     // Establecer valor por defecto para Facturación Electrónica
     const requiereFECheckbox = document.getElementById('requiereFacturaElectronica');
     if (requiereFECheckbox) {
-        requiereFECheckbox.checked = true; // Por defecto: SÍ requiere
+        requiereFECheckbox.checked = false; // Por defecto: SÍ requiere
         // Dispara manualmente el evento change para sincronizar la visualización
         requiereFECheckbox.dispatchEvent(new Event('change', { bubbles: true }));
     }
