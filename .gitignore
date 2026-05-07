@@ -65,3 +65,4 @@ src/main/resources/xsd/
 # Logs con información sensible
 logs/hacienda*.log
 logs/facturacion*.log
+logs/
