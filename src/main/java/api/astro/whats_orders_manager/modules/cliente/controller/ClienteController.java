@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Optional;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 /**
  * Controlador para la gestión de clientes
@@ -50,8 +52,8 @@ public class ClienteController {
             Model model,
             Authentication authentication
     ) {
-        log.info("Listando clientes - Página: {}, Tamaño: {}, Ordenar por: {} {}", 
-                page, size, sortBy, sortDir);
+        // log.info("Listando clientes - Página: {}, Tamaño: {}, Ordenar por: {} {}", 
+        //         page, size, sortBy, sortDir);
         
         try {
             // Crear objeto Sort
@@ -65,16 +67,16 @@ public class ClienteController {
             // Obtener página de clientes
             Page<Cliente> clientesPage = clienteService.findAll(pageable);
 
-            log.info("Página de clientes obtenida: {} ", 
-                     clientesPage.getContent());
+            // log.info("Página de clientes obtenida: {} ", 
+            //          clientesPage.getContent());
             
             // Convertir a DTO y agregar atributos al modelo
             PaginacionDTO<Cliente> paginacion = PaginacionUtil.fromPage(clientesPage);
             PaginacionUtil.agregarAtributosConOrdenamiento(model, paginacion, "clientes", sortBy, sortDir);
             model.addAttribute("cliente", new Cliente());
             
-            log.info("Clientes cargados: {} de {} total", 
-                    clientesPage.getContent().size(), clientesPage.getTotalElements());
+            // log.info("Clientes cargados: {} de {} total", 
+            //         clientesPage.getContent().size(), clientesPage.getTotalElements());
             
             return "modules/cliente/clientes";
             
@@ -110,7 +112,7 @@ public class ClienteController {
      */
     @PostMapping("/guardar")
     @PreAuthorize("@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR', 'CLIENTE_EDITAR')")
-    public String guardarCliente(
+    public ResponseEntity<Map<String, String>> guardarCliente(
             @ModelAttribute Cliente cliente,
             BindingResult result,
             RedirectAttributes redirectAttributes,
@@ -121,29 +123,24 @@ public class ClienteController {
         // Validaciones básicas del formulario
         if (result.hasErrors()) {
             log.warn("Errores de validación al guardar cliente");
-            return "modules/cliente/form";
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Errores de validación al guardar cliente"));
         }
         
         try {
             // Delegar la lógica de negocio al servicio
             Cliente clienteGuardado = clienteService.guardarClienteConUsuario(cliente);
             
-            redirectAttributes.addFlashAttribute("success", 
-                "Cliente guardado exitosamente: " + clienteGuardado.getNombre());
             log.info("Cliente guardado exitosamente con ID: {}", clienteGuardado.getIdCliente());
             
-            return "redirect:/clientes";
+            return ResponseEntity.ok(Map.of("success", "Cliente guardado exitosamente: " + clienteGuardado.getNombre()));
             
         } catch (IllegalArgumentException e) {
             log.warn("Error de validación al guardar cliente: {}", e.getMessage());
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/clientes/nuevo";
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
             
         } catch (Exception e) {
             log.error("Error inesperado al guardar cliente: {}", e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("error", 
-                "Error al guardar el cliente. Por favor, inténtelo de nuevo.");
-            return "redirect:/clientes/nuevo";
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error al guardar el cliente. Por favor, inténtelo de nuevo."));
         }
     }
 

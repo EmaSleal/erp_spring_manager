@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.configuracion.controller;
 
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.configuracion.dto.ProvinciaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionNotificaciones;
 import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
@@ -9,6 +10,7 @@ import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionF
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionNotificacionesService;
 import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
+import api.astro.whats_orders_manager.modules.configuracion.service.UbicacionService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
-import java.util.Optional;
+import java.util.List;
 
 /**
  * Controlador para la gestión de Configuración del Sistema
@@ -44,7 +46,7 @@ public class ConfiguracionController {
     @Autowired
     private ConfiguracionFacturacionService configuracionFacturacionService;
 
-    @Autowired
+    @Autowired(required = false)
     private RecordatorioPagoScheduler recordatorioPagoScheduler;
 
     @Autowired
@@ -52,6 +54,9 @@ public class ConfiguracionController {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private UbicacionService ubicacionService;
 
     /**
      * Página principal de configuración
@@ -82,6 +87,10 @@ public class ConfiguracionController {
         // Obtener configuración de notificaciones (necesaria para el tab notificaciones)
         ConfiguracionNotificaciones configuracionNotif = configuracionNotificacionesService.getOrCreateConfiguracion();
         model.addAttribute("configuracionNotif", configuracionNotif);
+
+        // Catálogo de provincias para renderizado inicial del select
+        List<ProvinciaDTO> provincias = ubicacionService.obtenerProvincias();
+        model.addAttribute("provincias", provincias);
         
         // Tab activo (por defecto: empresa, o el que se pase por parámetro)
         model.addAttribute("activeTab", tab != null ? tab : "empresa");
@@ -110,6 +119,10 @@ public class ConfiguracionController {
         // Preview del número de factura
         String previewNumero = configuracion.generarNumeroFactura();
         model.addAttribute("previewNumero", previewNumero);
+
+        List<ProvinciaDTO> provincias = ubicacionService.obtenerProvincias();
+
+        model.addAttribute("provincias", provincias);
         
         model.addAttribute("activeTab", "empresa");
         
@@ -426,6 +439,10 @@ public class ConfiguracionController {
     @ResponseBody
     public String ejecutarRecordatorios() {
         try {
+            if (recordatorioPagoScheduler == null) {
+                log.warn("⚠️ Scheduler de recordatorios no disponible en este arranque");
+                return "ERROR: Scheduler no disponible";
+            }
             log.info("🔧 Ejecutando scheduler de recordatorios manualmente desde admin");
             recordatorioPagoScheduler.ejecutarManualmente();
             return "OK";

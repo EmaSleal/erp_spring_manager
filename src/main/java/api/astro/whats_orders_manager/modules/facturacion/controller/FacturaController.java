@@ -99,6 +99,11 @@ public class FacturaController {
             model.addAttribute("tiposFactura", InvoiceType.values());
             model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
             
+            // Enums de Facturación Electrónica Costa Rica
+            model.addAttribute("condicionesVenta", api.astro.whats_orders_manager.modules.facturacion.electronica.enums.CondicionVentaFE.values());
+            model.addAttribute("mediosPago", api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MedioPagoFE.values());
+            model.addAttribute("monedas", api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE.values());
+            
             // Agregar rol del usuario para controlar permisos en la vista
             agregarRolUsuario(model, authentication);
             

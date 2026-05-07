@@ -589,3 +589,125 @@ function enviarFacturaPorWhatsApp(button) {
         }
     });
 }
+
+/**
+ * Enviar factura a Hacienda desde el modal de detalle
+ */
+function enviarFacturaAHacienda() {
+    const btnEnviar = document.getElementById('btn-enviar-hacienda');
+    const facturaId = document.getElementById('modal-idFactura').innerText;
+    
+    if (!facturaId) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo obtener el ID de la factura',
+            confirmButtonText: 'Entendido'
+        });
+        return;
+    }
+    
+    // Confirmación
+    Swal.fire({
+        title: '¿Enviar a Hacienda?',
+        html: `
+            <div class="text-start">
+                <p>Se generará y enviará el comprobante electrónico a Hacienda de Costa Rica.</p>
+                <div class="alert alert-info mt-3">
+                    <strong><i class="bi bi-info-circle me-2"></i>Información:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Se generará el XML según especificación v4.4</li>
+                        <li>Se firmará digitalmente</li>
+                        <li>Se enviará a la API de Hacienda</li>
+                        <li>El proceso puede tardar unos segundos</li>
+                    </ul>
+                </div>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-cloud-upload me-1"></i> Sí, enviar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            // Mostrar loading
+            btnEnviar.disabled = true;
+            btnEnviar.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>Enviando...';
+            
+            // Obtener CSRF token
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+            
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (csrfToken && csrfHeader) {
+                headers[csrfHeader] = csrfToken;
+            }
+            
+            try {
+                const response = await fetch(`/api/facturas/electronica/comprobantes/procesar/${facturaId}`, {
+                    method: 'POST',
+                    headers: headers
+                });
+                
+                const data = await response.json();
+                
+                if (data.success || response.ok) {
+                    // Éxito
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '¡Enviado!',
+                        text: data.message || 'El comprobante ha sido enviado exitosamente a Hacienda',
+                        confirmButtonText: 'Entendido'
+                    });
+                    
+                    // Cerrar modal y recargar
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('facturaModal'));
+                    modal.hide();
+                    window.location.reload();
+                } else {
+                    // Error
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Error al enviar',
+                        text: data.message || 'No se pudo enviar el comprobante a Hacienda',
+                        confirmButtonText: 'Entendido'
+                    });
+                    
+                    btnEnviar.disabled = false;
+                    btnEnviar.innerHTML = '<i class="fas fa-cloud-upload me-1"></i>Enviar a Hacienda';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Error de conexión',
+                    text: 'No se pudo conectar con el servidor. Por favor, intente nuevamente.',
+                    confirmButtonText: 'Entendido'
+                });
+                
+                btnEnviar.disabled = false;
+                btnEnviar.innerHTML = '<i class="fas fa-cloud-upload me-1"></i>Enviar a Hacienda';
+            }
+        }
+    });
+}
+
+/**
+ * Obtener clase de badge según estado del comprobante
+ */
+function getEstadoBadgeClass(estado) {
+    const clases = {
+        'ACEPTADO': 'success',
+        'RECHAZADO': 'danger',
+        'PROCESANDO': 'warning',
+        'ERROR': 'danger',
+        'PENDIENTE': 'secondary'
+    };
+    return clases[estado] || 'secondary';
+}

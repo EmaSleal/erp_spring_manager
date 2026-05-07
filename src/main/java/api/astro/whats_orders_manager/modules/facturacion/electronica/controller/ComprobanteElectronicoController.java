@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * @since Sprint 5 - Fase 3
  */
 @RestController
-@RequestMapping("/api/facturas/comprobantes")
+@RequestMapping("/api/facturas/electronica/comprobantes")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

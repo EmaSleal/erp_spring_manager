@@ -40,6 +40,46 @@ public class Producto {
     @Column(name = "active")
     private Boolean active;
 
+    // ========== CAMPOS PARA FACTURACIÓN ELECTRÓNICA COSTA RICA ==========
+    
+    /**
+     * Código CABYS de 13 dígitos (obligatorio para FE Costa Rica)
+     * Ejemplo: "2132100000100"
+     */
+    @Column(name = "codigo_cabys", length = 13)
+    private String codigoCabys;
+    
+    /**
+     * Descripción oficial del CABYS según Hacienda
+     * Esta descripción se usará en la facturación electrónica
+     * Ejemplo: "Jugo de tomate concentrado"
+     */
+    @Column(name = "descripcion_cabys", length = 200)
+    private String descripcionCabys;
+    
+    /**
+     * Indica si el producto está gravado con impuestos (IVA)
+     * true = Gravado, false = Exento
+     */
+    @Column(name = "gravado")
+    private Boolean gravado;
+    
+    /**
+     * Porcentaje de impuesto aplicable (IVA)
+     * Ejemplo: 13 (13%)
+     */
+    @Column(name = "porcentaje_impuesto")
+    private BigDecimal porcentajeImpuesto;
+    
+    /**
+     * Indica si aplica otro impuesto adicional
+     * Ejemplo: impuesto selectivo de consumo
+     */
+    @Column(name = "aplica_otro_impuesto")
+    private Boolean aplicaOtroImpuesto;
+    
+    // ========== FIN CAMPOS FACTURACIÓN ELECTRÓNICA ==========
+
     @CreatedDate
     @Column(name = "createDate", updatable = false)
     private Timestamp createDate;

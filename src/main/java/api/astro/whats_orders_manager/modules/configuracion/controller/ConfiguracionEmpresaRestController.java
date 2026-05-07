@@ -1,8 +1,11 @@
 package api.astro.whats_orders_manager.modules.configuracion.controller;
 
+import api.astro.whats_orders_manager.modules.configuracion.dto.CabysBusquedaDTO;
+import api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaConsultaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.dto.ConfiguracionEmpresaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
+import api.astro.whats_orders_manager.modules.configuracion.service.HaciendaApiService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,6 +37,85 @@ public class ConfiguracionEmpresaRestController {
 
     @Autowired
     private ConfiguracionEmpresaService configuracionEmpresaService;
+
+    @Autowired
+    private HaciendaApiService haciendaConsultaService;
+
+    /**
+     * Busca códigos CABYS por descripción o palabra clave
+     * 
+     * GET /api/configuracion/empresa/hacienda/cabys/buscar?q={termino}&top={cantidad}
+     */
+    @GetMapping("/hacienda/cabys/buscar")
+    public ResponseEntity<?> buscarCabys(
+            @RequestParam("q") String termino,
+            @RequestParam(value = "top", defaultValue = "10") Integer top) {
+        try {
+            log.info("GET /api/configuracion/empresa/hacienda/cabys/buscar?q={}&top={}", termino, top);
+            
+            CabysBusquedaDTO resultado = haciendaConsultaService.buscarCabys(termino, top);
+            
+            if (resultado.getExitosa() && resultado.tieneResultados()) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", resultado
+                ));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of(
+                        "success", false,
+                        "message", resultado.getMensajeError() != null ? 
+                            resultado.getMensajeError() : "No se encontraron resultados"
+                    ));
+            }
+            
+        } catch (Exception e) {
+            log.error("Error al buscar códigos CABYS", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "message", "Error al buscar códigos CABYS: " + e.getMessage()
+                ));
+        }
+    }
+
+    /**
+     * Consulta datos de un contribuyente en la API de Hacienda Costa Rica
+     * 
+     * GET /api/configuracion/empresa/hacienda/consultar/{numeroIdentificacion}
+     */
+    @GetMapping("/hacienda/consultar/{numeroIdentificacion}")
+    public ResponseEntity<?> consultarHacienda(@PathVariable String numeroIdentificacion) {
+        try {
+            log.info("GET /api/configuracion/empresa/hacienda/consultar/{} - Consultando API Hacienda", 
+                numeroIdentificacion);
+            
+            HaciendaConsultaDTO resultado = haciendaConsultaService.consultarContribuyente(numeroIdentificacion);
+            
+            log.info("Resultado de consulta Hacienda: {}", resultado);
+
+            if (resultado.getExitosa()) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", resultado
+                ));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of(
+                        "success", false,
+                        "message", resultado.getMensajeError()
+                    ));
+            }
+            
+        } catch (Exception e) {
+            log.error("Error al consultar API de Hacienda", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "message", "Error al consultar Hacienda: " + e.getMessage()
+                ));
+        }
+    }
 
     /**
      * Obtiene la configuración de la empresa

@@ -24,6 +24,14 @@ public class Presentacion {
     private Integer idPresentacion;
     @Column(name = "nombre")
     private String nombre;
+    
+    /**
+     * Código de unidad de medida para Facturación Electrónica Costa Rica
+     * Ejemplos: Unid, Sp, m, kg, l, etc.
+     * Según catálogo de Hacienda
+     */
+    @Column(name = "codigo_unidad_fe", length = 10)
+    private String codigoUnidadFE;
 
     // Getters y Setters
 

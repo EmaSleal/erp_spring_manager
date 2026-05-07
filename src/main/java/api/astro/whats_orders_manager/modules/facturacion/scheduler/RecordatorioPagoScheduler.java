@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -42,6 +43,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@ConditionalOnClass(name = "api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent")
 public class RecordatorioPagoScheduler {
 
     @Autowired

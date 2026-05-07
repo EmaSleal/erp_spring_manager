@@ -8,8 +8,8 @@
     <div class="modal-content">
       <!-- Modal Header -->
       <div class="modal-header bg-success text-white">
-        <h5 class="modal-title" id="nuevaFacturaModalLabel">
-          <i class="fas fa-file-invoice-dollar me-2"></i>Nueva Factura
+        <h5 class="modal-title text-white" id="nuevaFacturaModalLabel">
+          <i class="fas fa-file-invoice-dollar me-2 text-white"></i>Nueva Factura
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -112,6 +112,96 @@
                 <i class="fas fa-comment text-primary me-2"></i>Descripción
               </label>
               <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
+            </div>
+
+            <!-- Separador - Facturación Electrónica -->
+            <div class="mt-4 mb-3">
+              <hr>
+              <h6 class="text-warning">
+                <i class="fas fa-file-invoice me-2"></i>
+                Facturación Electrónica Costa Rica
+              </h6>
+            </div>
+
+            <!-- Fila 5: Condición de Venta y Medio de Pago -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="condicionVentaFE" class="form-label">
+                  <i class="fas fa-handshake text-warning me-2"></i>Condición de Venta
+                </label>
+                <select class="form-select" id="condicionVentaFE" name="condicionVentaFE" onchange="togglePlazoCredito()">
+                  <option value="">Seleccione condición</option>
+                  <option th:each="condicion : ${condicionesVenta}"
+                          th:value="${condicion}"
+                          th:text="${condicion.getFormatoCompleto()}"
+                          th:selected="${condicion.name() == 'CONTADO'}">
+                  </option>
+                </select>
+                <small class="text-muted">Contado, Crédito, Consignación, etc.</small>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="medioPagoFE" class="form-label">
+                  <i class="fas fa-money-bill-wave text-warning me-2"></i>Medio de Pago
+                </label>
+                <select class="form-select" id="medioPagoFE" name="medioPagoFE">
+                  <option value="">Seleccione medio de pago</option>
+                  <option th:each="medio : ${mediosPago}"
+                          th:value="${medio}"
+                          th:text="${medio.getFormatoCompleto()}"
+                          th:selected="${medio.name() == 'EFECTIVO'}">
+                  </option>
+                </select>
+                <small class="text-muted">Efectivo, Tarjeta, Transferencia, etc.</small>
+              </div>
+            </div>
+
+            <!-- Fila 6: Moneda y Tipo de Cambio -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="monedaFE" class="form-label">
+                  <i class="fas fa-coins text-warning me-2"></i>Moneda
+                </label>
+                <select class="form-select" id="monedaFE" name="monedaFE" onchange="toggleTipoCambio()">
+                  <option th:each="moneda : ${monedas}"
+                          th:value="${moneda}"
+                          th:text="${moneda.getFormatoCompleto()}"
+                          th:selected="${moneda.name() == 'CRC'}">
+                  </option>
+                </select>
+                <small class="text-muted">CRC por defecto</small>
+              </div>
+
+              <div class="col-md-6 mb-3" id="divTipoCambio" style="display: none;">
+                <label for="tipoCambio" class="form-label">
+                  <i class="fas fa-exchange-alt text-warning me-2"></i>Tipo de Cambio
+                </label>
+                <input type="number" 
+                       class="form-control" 
+                       id="tipoCambio" 
+                       name="tipoCambio" 
+                       step="0.00001" 
+                       min="0"
+                       placeholder="Ej: 532.15000">
+                <small class="text-muted">Requerido si moneda ≠ CRC</small>
+              </div>
+
+              <div class="col-md-6 mb-3" id="divPlazoCreditoHidden" style="display: none;">
+                <!-- Espacio vacío cuando no se muestra plazo -->
+              </div>
+
+              <div class="col-md-6 mb-3" id="divPlazoCredito" style="display: none;">
+                <label for="plazoCredito" class="form-label">
+                  <i class="fas fa-calendar-alt text-warning me-2"></i>Plazo de Crédito (días)
+                </label>
+                <input type="number" 
+                       class="form-control" 
+                       id="plazoCredito" 
+                       name="plazoCredito" 
+                       min="1"
+                       placeholder="Ej: 30">
+                <small class="text-muted">Requerido si condición = Crédito</small>
+              </div>
             </div>
           </div>
 

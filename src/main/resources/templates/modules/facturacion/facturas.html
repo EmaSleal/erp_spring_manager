@@ -435,40 +435,111 @@
     
     <!-- Función para enviar factura a Hacienda -->
     <script>
-        function enviarAHacienda(button) {
+        async function enviarAHacienda(button) {
             const facturaId = button.getAttribute('data-id');
             
-            if (!confirm('¿Está seguro de enviar esta factura a Hacienda como comprobante electrónico?')) {
+            // Confirmación con SweetAlert2
+            const result = await Swal.fire({
+                title: '¿Enviar a Hacienda?',
+                html: `
+                    <div class="text-start">
+                        <p>Se generará y enviará el comprobante electrónico a Hacienda de Costa Rica.</p>
+                        <div class="alert alert-info mt-3">
+                            <strong><i class="bi bi-info-circle me-2"></i>Información:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Se generará el XML según especificación v4.4</li>
+                                <li>Se firmará digitalmente</li>
+                                <li>Se enviará a la API de Hacienda</li>
+                                <li>El proceso puede tardar unos segundos</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-cloud-upload me-1"></i> Sí, enviar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d'
+            });
+            
+            if (!result.isConfirmed) {
                 return;
             }
             
+            // Deshabilitar botón y mostrar spinner
             button.disabled = true;
-            button.innerHTML = '<i class="spinner-border spinner-border-sm"></i>';
+            button.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>Enviando...';
             
-            fetch(`/api/facturas/comprobantes/procesar/${facturaId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ ' + data.message);
+            // Obtener token CSRF
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+            
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (csrfToken && csrfHeader) {
+                headers[csrfHeader] = csrfToken;
+            }
+            
+            try {
+                const response = await fetch(`/api/facturas/electronica/comprobantes/procesar/${facturaId}`, {
+                    method: 'POST',
+                    headers: headers
+                });
+                
+                const data = await response.json();
+                
+                if (data.success || response.ok) {
+                    // Éxito con Toast
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                    
+                    await Toast.fire({
+                        icon: 'success',
+                        title: data.message || '¡Enviado exitosamente!'
+                    });
+                    
                     window.location.reload();
                 } else {
-                    alert('❌ Error: ' + data.message);
+                    // Error
+                    await Swal.fire({
+                        title: 'Error al enviar',
+                        text: data.message || 'No se pudo enviar el comprobante a Hacienda',
+                        icon: 'error',
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#dc3545'
+                    });
+                    
                     button.disabled = false;
                     button.innerHTML = '<i class="bi bi-file-earmark-check"></i>';
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error:', error);
-                alert('❌ Error al enviar a Hacienda');
+                
+                await Swal.fire({
+                    title: 'Error de conexión',
+                    text: 'No se pudo conectar con el servidor. Por favor, intente nuevamente.',
+                    icon: 'error',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#dc3545'
+                });
+                
                 button.disabled = false;
                 button.innerHTML = '<i class="bi bi-file-earmark-check"></i>';
-            });
+            }
         }
     </script>
+    
+    <!-- Scripts de módulo de facturación -->
+    <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
+    <script th:src="@{/modules/facturacion/js/editar-factura.js}"></script>
+    <script th:src="@{/modules/facturacion/js/factura-fe-utils.js}"></script>
     
 </html>
