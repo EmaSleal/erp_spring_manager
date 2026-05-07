@@ -38,3 +38,30 @@ build/
 .env.production
 .env.ps1
 *.env
+
+### Facturación Electrónica - Seguridad ###
+# Certificados digitales (NUNCA COMMITEAR)
+certificados/
+*.p12
+*.pfx
+*.key
+*.crt
+*.pem
+
+# Archivos XSD (mantener solo en docs/sprints/SPRINT_5/xsd/)
+src/main/resources/xsd/
+!docs/sprints/SPRINT_5/xsd/
+
+# Configuraciones sensibles de Hacienda
+**/hacienda-config.properties
+**/hacienda-credentials.json
+
+# Respuestas y comprobantes con datos reales
+**/comprobantes/produccion/
+**/respuestas/produccion/
+*Factura*real*.xml
+*Respuesta*real*.xml
+
+# Logs con información sensible
+logs/hacienda*.log
+logs/facturacion*.log
