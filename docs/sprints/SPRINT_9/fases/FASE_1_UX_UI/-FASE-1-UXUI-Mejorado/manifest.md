@@ -1,0 +1,12 @@
+# FASE 1 UXUI Mejorado
+
+- [📦 1. SISTEMA DE TEMAS (8 tareas)](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-1.-SISTEMA-DE-TEMAS-8-tareas.md)
+- [📦 2. ACCESIBILIDAD WCAG 2.1 AA (7 tareas)](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-2.-ACCESIBILIDAD-WCAG-2.1-AA-7-tareas.md)
+- [📦 3. ANIMACIONES Y TRANSICIONES (5 tareas)](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-3.-ANIMACIONES-Y-TRANSICIONES-5-tareas.md)
+- [📦 4. COMPONENTES UI MEJORADOS (8 tareas)](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-4.-COMPONENTES-UI-MEJORADOS-8-tareas.md)
+- [📦 5. NAVEGACIÓN Y BREADCRUMBS (4 tareas)](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-5.-NAVEGACIÓN-Y-BREADCRUMBS-4-tareas.md)
+- [📦 6. RESPONSIVE DESIGN (4 tareas)](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-6.-RESPONSIVE-DESIGN-4-tareas.md)
+- [📊 CRITERIOS DE ACEPTACIÓN](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-CRITERIOS-DE-ACEPTACIÓN.md)
+- [📚 DEPENDENCIAS](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-DEPENDENCIAS.md)
+- [📋 OBJETIVO DE LA FASE](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-OBJETIVO-DE-LA-FASE.md)
+- [📊 PROGRESO GENERAL](sprints/SPRINT_9/fases/FASE_1_UX_UI/-FASE-1-UXUI-Mejorado/-PROGRESO-GENERAL.md)

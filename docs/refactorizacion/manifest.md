@@ -1,0 +1,13 @@
+# refactorizacion
+
+- [ACTUALIZACION MODELO PAGO COMPLETO](refactorizacion/ACTUALIZACION_MODELO_PAGO_COMPLETO/manifest.md)
+- [CHECKLIST REFACTORIZACION](refactorizacion/CHECKLIST_REFACTORIZACION/manifest.md)
+- [GUIA REFACTORIZACION MODULAR](refactorizacion/GUIA_REFACTORIZACION_MODULAR/manifest.md)
+- [MAPEO IMPORTS REFACTORIZACION](refactorizacion/MAPEO_IMPORTS_REFACTORIZACION/manifest.md)
+- [REFACTORING DTOS UTILS](refactorizacion/REFACTORING_DTOS_UTILS/manifest.md)
+- [REFACTORIZACION MODULAR COMPLETA](refactorizacion/REFACTORIZACION_MODULAR_COMPLETA/manifest.md)
+- [REFACTORIZACION RESOURCES MODULAR](refactorizacion/REFACTORIZACION_RESOURCES_MODULAR/manifest.md)
+- [Comparativa: Modelo Pago vs Migración SQL](refactorizacion/COMPARATIVA_MODELO_PAGO_VS_MIGRACION.md)
+- [📚 ÍNDICE - DOCUMENTACIÓN DE REFACTORIZACIÓN MODULAR](refactorizacion/INDICE_REFACTORIZACION.md)
+- [Refactorización: Unidad de Medida desde Presentación](refactorizacion/REFACTORING_UNIDAD_MEDIDA_PRESENTACION.md)
+- [📋 Resumen de Organización del Proyecto](refactorizacion/REORGANIZACION_26_10_2025.md)

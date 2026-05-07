@@ -1,0 +1,1 @@
+# 📊 FASE 4.6 - GESTIÓN DE PERMISOS

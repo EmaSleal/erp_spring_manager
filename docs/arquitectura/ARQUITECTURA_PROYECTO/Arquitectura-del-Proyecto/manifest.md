@@ -1,0 +1,18 @@
+# Arquitectura del Proyecto
+
+- [Capa de Datos (Repositories)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Capa-de-Datos-Repositories.md)
+- [Capa de Dominio (Models)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Capa-de-Dominio-Models.md)
+- [Capa de DTOs (Data Transfer Objects)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Capa-de-DTOs-Data-Transfer-Objects.md)
+- [Capa de Lógica de Negocio (Services)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Capa-de-Lógica-de-Negocio-Services.md)
+- [Capa de Presentación (Controllers)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Capa-de-Presentación-Controllers.md)
+- [Capa de Utilidades (Utils)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Capa-de-Utilidades-Utils.md)
+- [Configuración (Config)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Configuración-Config.md)
+- [Diagramas de Arquitectura](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Diagramas-de-Arquitectura.md)
+- [Enumeraciones](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Enumeraciones.md)
+- [Estructura General](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Estructura-General.md)
+- [Notas sobre la Arquitectura](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Notas-sobre-la-Arquitectura.md)
+- [Puntos de Entrada](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Puntos-de-Entrada.md)
+- [Recursos Estáticos y Plantillas](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Recursos-Estáticos-y-Plantillas.md)
+- [Tareas Programadas (Schedulers)](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Tareas-Programadas-Schedulers.md)
+- [Tecnologías Utilizadas](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Tecnologías-Utilizadas.md)
+- [Índice](arquitectura/ARQUITECTURA_PROYECTO/Arquitectura-del-Proyecto/Índice.md)

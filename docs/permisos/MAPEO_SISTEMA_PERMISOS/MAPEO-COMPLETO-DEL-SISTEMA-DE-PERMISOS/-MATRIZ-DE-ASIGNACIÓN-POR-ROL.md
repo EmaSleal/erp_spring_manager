@@ -1,0 +1,117 @@
+## 🔐 MATRIZ DE ASIGNACIÓN POR ROL
+
+### Resumen por Rol
+
+| Rol | Total Permisos | Permisos Críticos | Módulos Accesibles |
+|-----|----------------|-------------------|-------------------|
+| **VENDEDOR** | 15 | 0 | Facturas (limitado), Clientes, Productos (solo ver), Reportes básicos |
+| **GERENTE** | 30 | 3 | Todo lo de VENDEDOR + Productos completo, Reportes avanzados, Configuración (ver) |
+| **ADMIN** | 48 | 19 | TODOS los módulos y operaciones |
+
+### Distribución Detallada
+
+#### ROL: VENDEDOR (15 permisos)
+
+```java
+// FACTURACIÓN (5 permisos)
+✅ FACTURA_VER
+✅ FACTURA_CREAR
+✅ FACTURA_EDITAR
+✅ FACTURA_EXPORTAR
+✅ FACTURA_ENVIAR_EMAIL
+❌ FACTURA_ELIMINAR (solo GERENTE+)
+❌ FACTURA_ANULAR (solo GERENTE+)
+
+// CLIENTES (4 permisos)
+✅ CLIENTE_VER
+✅ CLIENTE_CREAR
+✅ CLIENTE_EDITAR
+✅ CLIENTE_EXPORTAR
+❌ CLIENTE_ELIMINAR (solo GERENTE+)
+
+// PRODUCTOS (1 permiso)
+✅ PRODUCTO_VER
+❌ Resto de PRODUCTO_* (solo GERENTE+)
+
+// REPORTES (2 permisos)
+✅ REPORTE_VENTAS
+✅ REPORTE_DASHBOARD
+❌ Resto de REPORTE_* (solo GERENTE+)
+
+// NOTIFICACIONES (3 permisos)
+✅ NOTIFICACION_VER
+✅ NOTIFICACION_MARCAR_LEIDA
+✅ NOTIFICACION_CONFIGURAR
+```
+
+#### ROL: GERENTE (30 permisos)
+
+```java
+// Hereda TODOS los 15 permisos de VENDEDOR
+// + Adicionales:
+
+// FACTURACIÓN (+2 permisos)
+✅ FACTURA_ELIMINAR
+✅ FACTURA_ANULAR
+
+// CLIENTES (+1 permiso)
+✅ CLIENTE_ELIMINAR
+
+// PRODUCTOS (+5 permisos)
+✅ PRODUCTO_CREAR
+✅ PRODUCTO_EDITAR
+✅ PRODUCTO_ELIMINAR
+✅ PRODUCTO_AJUSTAR_INVENTARIO
+✅ PRODUCTO_EXPORTAR
+
+// REPORTES (+5 permisos)
+✅ REPORTE_PRODUCTOS
+✅ REPORTE_CLIENTES
+✅ REPORTE_EXPORTAR_PDF
+✅ REPORTE_EXPORTAR_EXCEL
+✅ REPORTE_EXPORTAR_CSV
+
+// CONFIGURACIÓN (+1 permiso)
+✅ CONFIG_VER
+
+// NOTIFICACIONES (+1 permiso)
+✅ NOTIFICACION_CREAR
+```
+
+#### ROL: ADMIN (48 permisos - TODOS)
+
+```java
+// Hereda TODOS los 30 permisos de GERENTE
+// + Adicionales:
+
+// CONFIGURACIÓN (+4 permisos)
+✅ CONFIG_EDITAR_EMPRESA
+✅ CONFIG_EDITAR_FACTURACION
+✅ CONFIG_EDITAR_EMAIL
+✅ CONFIG_EDITAR_WHATSAPP
+
+// NOTIFICACIONES (+1 permiso)
+✅ NOTIFICACION_ELIMINAR
+
+// USUARIOS (+8 permisos - EXCLUSIVO)
+✅ USUARIO_VER
+✅ USUARIO_CREAR
+✅ USUARIO_EDITAR
+✅ USUARIO_ELIMINAR
+✅ USUARIO_BLOQUEAR
+✅ USUARIO_CAMBIAR_ROL
+✅ USUARIO_VER_ACTIVIDAD
+✅ USUARIO_RESETEAR_PASSWORD
+
+// AUDITORÍA (+2 permisos - EXCLUSIVO)
+✅ AUDITORIA_VER
+✅ AUDITORIA_EXPORTAR
+
+// SISTEMA (+3 permisos - EXCLUSIVO)
+✅ SISTEMA_VER_LOGS
+✅ SISTEMA_BACKUP
+✅ SISTEMA_MANTENIMIENTO
+```
+
+---
+
