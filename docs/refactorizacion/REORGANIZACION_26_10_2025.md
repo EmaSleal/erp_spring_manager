@@ -41,7 +41,7 @@
 
 **Razón:** Mantener todos los controladores en una sola ubicación para mejor organización
 
-### 4. 📚 Actualización del INDICE.txt
+### 4. 📚 Actualización del INDICE.md
 
 #### Mejoras:
 - Limpieza completa del archivo (removido contenido duplicado/corrupto)
@@ -92,7 +92,7 @@ whats_orders_manager/
 │       └── java/api/
 ├── docs/
 │   ├── ARQUITECTURA_PROYECTO.md      ⭐ NUEVO
-│   ├── INDICE.txt                    ✅ ACTUALIZADO
+│   ├── INDICE.md                    ✅ ACTUALIZADO
 │   ├── ESTADO_PROYECTO.md
 │   ├── README.md
 │   ├── planificacion/
@@ -128,13 +128,13 @@ whats_orders_manager/
 
 1. Revisar `ARQUITECTURA_PROYECTO.md` para familiarizarse con la estructura
 2. Usar `snippets/` para guardar fragmentos de código reutilizables
-3. Mantener actualizado el `INDICE.txt` con nuevos documentos
+3. Mantener actualizado el `INDICE.md` con nuevos documentos
 4. Continuar con el desarrollo del Sprint 3
 
 ## ✨ Archivos Clave Creados/Actualizados
 
 - ✅ `docs/ARQUITECTURA_PROYECTO.md` (NUEVO)
-- ✅ `docs/INDICE.txt` (ACTUALIZADO)
+- ✅ `docs/INDICE.md` (ACTUALIZADO)
 - ✅ `docs/snippets/README.md` (NUEVO)
 - ✅ `src/main/java/.../controllers/CustomErrorController.java` (MOVIDO Y ACTUALIZADO)
 

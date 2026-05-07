@@ -1,0 +1,2 @@
+# Refactorización Modular de Resources
+
