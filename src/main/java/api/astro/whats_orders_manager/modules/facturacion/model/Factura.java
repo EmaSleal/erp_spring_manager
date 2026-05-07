@@ -104,6 +104,47 @@ public class Factura {
     @Column(name = "estadoPago", length = 20)
     private EstadoPagoFactura estadoPago = EstadoPagoFactura.PENDIENTE;
     
+    // ========== CAMPOS PARA FACTURACIÓN ELECTRÓNICA COSTA RICA ==========
+    
+    /**
+     * Condición de venta según catálogo de Hacienda
+     * 01-Contado, 02-Crédito, 03-Consignación, etc.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "condicion_venta_fe", length = 50)
+    private api.astro.whats_orders_manager.modules.facturacion.electronica.enums.CondicionVentaFE condicionVentaFE;
+    
+    /**
+     * Medio de pago según catálogo de Hacienda
+     * 01-Efectivo, 02-Tarjeta, 03-Cheque, 04-Transferencia, etc.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "medio_pago_fe", length = 50)
+    private api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MedioPagoFE medioPagoFE;
+    
+    /**
+     * Moneda de la factura: CRC, USD, EUR
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moneda_fe", length = 3)
+    private api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE monedaFE;
+    
+    /**
+     * Tipo de cambio si la moneda no es CRC
+     * Obligatorio cuando moneda != CRC
+     */
+    @Column(name = "tipo_cambio", precision = 18, scale = 5)
+    private BigDecimal tipoCambio;
+    
+    /**
+     * Plazo de crédito en días
+     * Obligatorio cuando condicionVenta = CREDITO
+     */
+    @Column(name = "plazo_credito")
+    private Integer plazoCredito;
+    
+    // ========== FIN CAMPOS FACTURACIÓN ELECTRÓNICA ==========
+    
     /**
      * Fecha de vencimiento de pago (opcional).
      */

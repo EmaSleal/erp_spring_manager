@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.cliente.model;
 
+import api.astro.whats_orders_manager.modules.configuracion.model.ProvinciaCostaRica;
+import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import jakarta.persistence.*;
@@ -45,6 +47,61 @@ public class Cliente {
     //identifiacion
     @Column(name = "identificacion", length = 20, unique = true)
     private String identificacion;
+
+    // ========== CAMPOS PARA FACTURACIÓN ELECTRÓNICA COSTA RICA ==========
+    
+    /**
+     * Tipo de identificación según Hacienda CR
+     * 01 = Cédula Física, 02 = Cédula Jurídica, 03 = DIMEX, 04 = NITE
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_identificacion", length = 20)
+    private TipoIdentificacion tipoIdentificacion;
+    
+    /**
+     * Número de identificación limpio (sin guiones)
+     * Para facturación electrónica Costa Rica
+     */
+    @Column(name = "numero_identificacion", length = 12)
+    private String numeroIdentificacion;
+
+    /**
+     * Código de actividad económica según Hacienda CR.
+     * Se usa para FE del receptor cuando aplique.
+     */
+    @Column(name = "codigo_actividad", length = 20)
+    private String codigoActividad;
+    
+    /**
+     * Provincia según división territorial de Costa Rica (1-7)
+     * OPCIONAL para clientes
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "provincia", referencedColumnName = "codigo")
+    private ProvinciaCostaRica provincia;
+    
+    /**
+     * Cantón dentro de la provincia (código de 2 dígitos)
+     * OPCIONAL para clientes
+     */
+    @Column(name = "canton", length = 2)
+    private String canton;
+    
+    /**
+     * Distrito dentro del cantón (código de 2 dígitos)
+     * OPCIONAL para clientes
+     */
+    @Column(name = "distrito", length = 2)
+    private String distrito;
+    
+    /**
+     * Otras señas de la ubicación (dirección descriptiva)
+     * OPCIONAL para clientes. Máximo 250 caracteres según XSD
+     */
+    @Column(name = "otras_senas", length = 250)
+    private String otrasSenas;
+    
+    // ========== FIN CAMPOS FACTURACIÓN ELECTRÓNICA ==========
 
     @Column(name = "requiere_factura_electronica")
     private Boolean requiereFacturaElectronica = true; // Default: sí requiere facturación electrónica

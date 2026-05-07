@@ -213,6 +213,8 @@
     <!-- Scripts personalizados -->
     <script th:inline="javascript">
         const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
         let configuraciones = [];
         let configActual = null;
 
@@ -375,27 +377,48 @@
             const url = id ? `/api/facturas/configuracion-hacienda/${id}` : '/api/facturas/configuracion-hacienda';
             const method = id ? 'PUT' : 'POST';
 
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (csrfToken && csrfHeader) {
+                headers[csrfHeader] = csrfToken;
+            }
+
             fetch(url, {
                 method: method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify(data)
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+            })
             .then(result => {
                 mostrarAlerta(id ? 'Configuración actualizada' : 'Configuración creada', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('configuracionModal')).hide();
                 cargarConfiguraciones();
             })
             .catch(err => {
-                console.error(err);
-                mostrarAlerta('Error guardando configuración', 'danger');
+                console.error('Error guardando configuración:', err);
+                mostrarAlerta('Error guardando configuración: ' + err.message, 'danger');
             });
         }
 
         function activarConfig(id) {
             if (!confirm('¿Activar esta configuración? La configuración actual se desactivará.')) return;
 
-            fetch(`/api/facturas/configuracion-hacienda/${id}/activar`, { method: 'PUT' })
+            const headers = {};
+            if (csrfToken && csrfHeader) {
+                headers[csrfHeader] = csrfToken;
+            }
+
+            fetch(`/api/facturas/configuracion-hacienda/${id}/activar`, { 
+                method: 'PUT',
+                headers: headers
+            })
                 .then(res => res.json())
                 .then(result => {
                     mostrarAlerta('Configuración activada', 'success');
@@ -410,7 +433,15 @@
         function eliminarConfig(id) {
             if (!confirm('¿Eliminar esta configuración?')) return;
 
-            fetch(`/api/facturas/configuracion-hacienda/${id}`, { method: 'DELETE' })
+            const headers = {};
+            if (csrfToken && csrfHeader) {
+                headers[csrfHeader] = csrfToken;
+            }
+
+            fetch(`/api/facturas/configuracion-hacienda/${id}`, { 
+                method: 'DELETE',
+                headers: headers
+            })
                 .then(() => {
                     mostrarAlerta('Configuración eliminada', 'success');
                     cargarConfiguraciones();
@@ -422,7 +453,15 @@
         }
 
         function renovarToken(id) {
-            fetch(`/api/facturas/configuracion-hacienda/${id}/renovar-token`, { method: 'POST' })
+            const headers = {};
+            if (csrfToken && csrfHeader) {
+                headers[csrfHeader] = csrfToken;
+            }
+
+            fetch(`/api/facturas/configuracion-hacienda/${id}/renovar-token`, { 
+                method: 'POST',
+                headers: headers
+            })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -456,8 +495,36 @@
             input.type = input.type === 'password' ? 'text' : 'password';
         }
 
+        /**
+         * Mostrar notificación con SweetAlert2 Toast
+         * @param {string} mensaje - Mensaje a mostrar
+         * @param {string} tipo - 'success', 'danger', 'warning', 'info'
+         */
         function mostrarAlerta(mensaje, tipo) {
-            alert(mensaje); // Puedes implementar toastr u otro sistema de notificaciones
+            // Mapear tipos Bootstrap a tipos SweetAlert2
+            const tipoMap = {
+                'success': 'success',
+                'danger': 'error',
+                'warning': 'warning',
+                'info': 'info'
+            };
+            
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+
+            Toast.fire({
+                icon: tipoMap[tipo] || 'info',
+                title: mensaje
+            });
         }
 
         // Inicialización

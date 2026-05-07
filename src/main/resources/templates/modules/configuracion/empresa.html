@@ -94,6 +94,147 @@
                     </div>
                 </div>
 
+                <!-- Facturación Electrónica Costa Rica -->
+                <div class="row mb-4" id="seccion-facturacion-cr">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-file-invoice text-primary me-2"></i>
+                            Facturación Electrónica Costa Rica
+                        </h5>
+                    </div>
+
+                    <!-- Tipo de Identificación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="tipoIdentificacion" class="form-label">
+                            <i class="fas fa-id-badge me-1"></i> Tipo de Identificación
+                        </label>
+                        <select class="form-select" id="tipoIdentificacion" name="tipoIdentificacion">
+                            <option value="">-- Seleccione --</option>
+                            <option value="CEDULA_FISICA">01 - Cédula Física</option>
+                            <option value="CEDULA_JURIDICA">02 - Cédula Jurídica</option>
+                            <option value="DIMEX">03 - DIMEX</option>
+                            <option value="NITE">04 - NITE</option>
+                        </select>
+                        <div class="form-text">Tipo de cédula Hacienda CR</div>
+                    </div>
+
+                    <!-- Número de Identificación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="numeroIdentificacion" class="form-label">
+                            <i class="fas fa-hashtag me-1"></i> Número de Identificación
+                        </label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="numeroIdentificacion" 
+                                   name="numeroIdentificacion"
+                                   placeholder="3101234567"
+                                   maxlength="12">
+                            <button class="btn btn-outline-primary" type="button" 
+                                    onclick="ConfiguracionEmpresa.consultarHacienda(document.getElementById('numeroIdentificacion').value)"
+                                    title="Consultar en Hacienda">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Sin guiones ni espacios. Click en buscar para autocompletar</div>
+                    </div>
+
+                    <!-- Código de Actividad -->
+                    <div class="col-md-4 mb-3">
+                        <label for="codigoActividad" class="form-label">
+                            <i class="fas fa-briefcase me-1"></i> Código de Actividad
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="codigoActividad" 
+                               name="codigoActividad"
+                               placeholder="620100"
+                               maxlength="6"
+                               pattern="\d{6}">
+                        <div class="form-text">6 dígitos según Hacienda</div>
+                    </div>
+
+                    <!-- Nombre Comercial FE -->
+                    <div class="col-md-12 mb-3">
+                        <label for="nombreComercialFe" class="form-label">
+                            <i class="fas fa-tag me-1"></i> Nombre Comercial para FE
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="nombreComercialFe" 
+                               name="nombreComercialFe"
+                               placeholder="Mi Empresa Costa Rica"
+                               maxlength="80">
+                        <div class="form-text">Nombre que aparecerá en comprobantes electrónicos (máx. 80 caracteres)</div>
+                    </div>
+
+                    <!-- Provincia -->
+                    <div class="col-md-3 mb-3">
+                        <label for="provincia" class="form-label">
+                            <i class="fas fa-map-marked-alt me-1"></i> Provincia <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="provincia" name="provincia" required>
+                            <option value="">-- Seleccione --</option>
+                            <option th:each="prov : ${provincias}"
+                                    th:value="${prov.codigo}"
+                                    th:text="${prov.codigo + ' - ' + prov.nombre}">
+                            </option>
+                        </select>
+                        <div class="form-text">Seleccione la provincia</div>
+                    </div>
+
+                    <!-- Cantón -->
+                    <div class="col-md-3 mb-3">
+                        <label for="canton" class="form-label">
+                            <i class="fas fa-map-marker me-1"></i> Cantón <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="canton" name="canton" required disabled>
+                            <option value="">-- Seleccione provincia primero --</option>
+                        </select>
+                        <div class="form-text">Seleccione el cantón</div>
+                    </div>
+
+                    <!-- Distrito -->
+                    <div class="col-md-3 mb-3">
+                        <label for="distrito" class="form-label">
+                            <i class="fas fa-map-pin me-1"></i> Distrito <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="distrito" name="distrito" required disabled>
+                            <option value="">-- Seleccione cantón primero --</option>
+                        </select>
+                        <div class="form-text">Seleccione el distrito</div>
+                    </div>
+
+                    <!-- Barrio -->
+                    <div class="col-md-3 mb-3">
+                        <label for="barrio" class="form-label">
+                            <i class="fas fa-home me-1"></i> Barrio (opcional)
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="barrio" 
+                               name="barrio"
+                               placeholder="01"
+                               maxlength="2"
+                               pattern="\d{2}">
+                        <div class="form-text">2 dígitos</div>
+                    </div>
+
+                    <!-- Otras Señas -->
+                    <div class="col-md-12 mb-3">
+                        <label for="otrasSenas" class="form-label">
+                            <i class="fas fa-map-signs me-1"></i> Otras Señas
+                        </label>
+                        <textarea class="form-control" 
+                                  id="otrasSenas" 
+                                  name="otrasSenas"
+                                  rows="2"
+                                  maxlength="250"
+                                  placeholder="100 metros norte de la iglesia, frente al supermercado"></textarea>
+                        <div class="form-text">Dirección descriptiva (máx. 250 caracteres)</div>
+                    </div>
+                </div>
+
                 <!-- Dirección Fiscal -->
                 <div class="row mb-4">
                     <div class="col-12">

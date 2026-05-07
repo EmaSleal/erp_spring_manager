@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.model;
 
+import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -61,6 +62,81 @@ public class Empresa implements Serializable {
     @Size(max = 20, message = "El RUC no puede exceder 20 caracteres")
     @Column(name = "ruc", length = 20)
     private String ruc;
+
+    // ========== CAMPOS PARA FACTURACIÓN ELECTRÓNICA COSTA RICA ==========
+    
+    /**
+     * Tipo de identificación según Hacienda CR
+     * 01 = Cédula Física, 02 = Cédula Jurídica, 03 = DIMEX, 04 = NITE
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_identificacion", length = 20)
+    private TipoIdentificacion tipoIdentificacion;
+    
+    /**
+     * Número de identificación de la empresa (sin guiones)
+     * Requerido para facturación electrónica Costa Rica
+     */
+    @Size(max = 12, message = "La identificación no puede exceder 12 caracteres")
+    @Column(name = "numero_identificacion", length = 12)
+    private String numeroIdentificacion;
+    
+    /**
+     * Nombre comercial para facturación electrónica
+     * Si es diferente al nombre legal, se muestra en el XML
+     */
+    @Size(max = 80, message = "El nombre comercial para FE no puede exceder 80 caracteres")
+    @Column(name = "nombre_comercial_fe", length = 80)
+    private String nombreComercialFe;
+    
+    /**
+     * Provincia según división territorial de Costa Rica (1-7)
+     * Requerido para ubicación geográfica en comprobantes electrónicos
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "provincia", referencedColumnName = "codigo")
+    private ProvinciaCostaRica provincia;
+    
+    /**
+     * Cantón dentro de la provincia (código de 2 dígitos)
+     * Ejemplo: 01, 02, 03...
+     */
+    @Size(max = 2, message = "El cantón debe ser de 2 dígitos")
+    @Column(name = "canton", length = 2)
+    private String canton;
+    
+    /**
+     * Distrito dentro del cantón (código de 2 dígitos)
+     * Ejemplo: 01, 02, 03...
+     */
+    @Size(max = 2, message = "El distrito debe ser de 2 dígitos")
+    @Column(name = "distrito", length = 2)
+    private String distrito;
+    
+    /**
+     * Barrio dentro del distrito (código de 2 dígitos, opcional)
+     */
+    @Size(max = 2, message = "El barrio debe ser de 2 dígitos")
+    @Column(name = "barrio", length = 2)
+    private String barrio;
+    
+    /**
+     * Otras señas de la ubicación (dirección descriptiva)
+     * Máximo 250 caracteres según XSD de Hacienda
+     */
+    @Size(max = 250, message = "Las otras señas no pueden exceder 250 caracteres")
+    @Column(name = "otras_senas", length = 250)
+    private String otrasSenas;
+    
+    /**
+     * Código de actividad económica de la empresa (6 dígitos)
+     * Requerido para el encabezado del XML de Hacienda
+     */
+    @Size(max = 6, message = "El código de actividad debe tener 6 dígitos")
+    @Column(name = "codigo_actividad", length = 6)
+    private String codigoActividad;
+    
+    // ========== FIN CAMPOS FACTURACIÓN ELECTRÓNICA ==========
 
     /**
      * Dirección fiscal de la empresa

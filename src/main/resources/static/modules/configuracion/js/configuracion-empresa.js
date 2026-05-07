@@ -35,6 +35,17 @@ const ConfiguracionEmpresa = {
                 this.cargarConfiguracion();
             });
         }
+        
+        // Evento para consultar Hacienda cuando cambia el número de identificación
+        const inputIdentificacion = document.getElementById('numeroIdentificacion');
+        if (inputIdentificacion) {
+            inputIdentificacion.addEventListener('blur', () => {
+                const numero = inputIdentificacion.value.trim();
+                if (numero && numero.length >= 9) {
+                    this.consultarHacienda(numero);
+                }
+            });
+        }
     },
     
     /**
@@ -68,11 +79,17 @@ const ConfiguracionEmpresa = {
                 
                 // Branding
                 document.getElementById('logoUrl').value = datos.logoUrl || '';
-                document.getElementById('faviconUrl').value = datos.faviconUrl || '';
-                document.getElementById('colorPrimario').value = datos.colorPrimario || '#007bff';
-                document.getElementById('colorPrimarioText').value = datos.colorPrimario || '#007bff';
-                document.getElementById('colorSecundario').value = datos.colorSecundario || '#6c757d';
-                document.getElementById('colorSecundarioText').value = datos.colorSecundario || '#6c757d';
+                if (document.getElementById('faviconUrl')) {
+                    document.getElementById('faviconUrl').value = datos.faviconUrl || '';
+                }
+                if (document.getElementById('colorPrimario')) {
+                    document.getElementById('colorPrimario').value = datos.colorPrimario || '#007bff';
+                    document.getElementById('colorPrimarioText').value = datos.colorPrimario || '#007bff';
+                }
+                if (document.getElementById('colorSecundario')) {
+                    document.getElementById('colorSecundario').value = datos.colorSecundario || '#6c757d';
+                    document.getElementById('colorSecundarioText').value = datos.colorSecundario || '#6c757d';
+                }
                 
                 console.log('✅ Configuración de empresa cargada');
             } else if (response.message) {
@@ -82,6 +99,107 @@ const ConfiguracionEmpresa = {
             console.error('❌ Error cargando configuración:', error);
             Configuracion.mostrarAlertaEn('alert-empresa-container', 'warning', 
                 'No se pudo cargar la configuración. Puedes crear una nueva.');
+        }
+    },
+    
+    /**
+     * Consulta datos del contribuyente en API de Hacienda Costa Rica
+     */
+    consultarHacienda: async function(numeroIdentificacion) {
+        // Mostrar indicador de carga
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+        });
+        
+        Toast.fire({
+            icon: 'info',
+            title: 'Consultando Hacienda...'
+        });
+        
+        try {
+            const response = await fetch(`${this.API_URL}/hacienda/consultar/${numeroIdentificacion}`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                const hacienda = data.data;
+                
+                // Autocompletar campos
+                if (hacienda.nombre) {
+                    document.getElementById('razonSocial').value = hacienda.nombre;
+                    if (!document.getElementById('nombreComercialFe').value) {
+                        document.getElementById('nombreComercialFe').value = hacienda.nombre;
+                    }
+                }
+                
+                // Tipo de identificación
+                if (hacienda.tipoIdentificacion) {
+                    const selectTipo = document.getElementById('tipoIdentificacion');
+                    const mapping = {'01': 'CEDULA_FISICA', '02': 'CEDULA_JURIDICA', '03': 'DIMEX', '04': 'NITE'};
+                    if (mapping[hacienda.tipoIdentificacion]) {
+                        selectTipo.value = mapping[hacienda.tipoIdentificacion];
+                    }
+                }
+                
+                // Código de actividad principal
+                if (hacienda.actividades && hacienda.actividades.length > 0) {
+                    const actividadPrincipal = hacienda.actividades.find(a => a.tipo === 'P' && a.estado === 'A');
+                    if (actividadPrincipal && actividadPrincipal.codigo) {
+                        // Código de actividad CAECR (formato 9999.9)
+                        const codigo = actividadPrincipal.codigo;
+                        document.getElementById('codigoActividad').value = codigo;
+                    }
+                }
+                
+                // Régimen fiscal
+                if (hacienda.regimen && hacienda.regimen.descripcion) {
+                    document.getElementById('regimenFiscal').value = hacienda.regimen.descripcion;
+                }
+                
+                // Mostrar éxito
+                Toast.fire({
+                    icon: 'success',
+                    title: '¡Datos autocompletados desde Hacienda!'
+                });
+                
+                // Mostrar alerta si no está al día
+                if (!hacienda.estaAlDia || !hacienda.estaInscrito) {
+                    let mensaje = 'Advertencia: ';
+                    if (!hacienda.estaInscrito) {
+                        mensaje += 'No está inscrito en Hacienda. ';
+                    }
+                    if (hacienda.situacion) {
+                        if (hacienda.situacion.moroso === 'SI') {
+                            mensaje += 'Estado: MOROSO. ';
+                        }
+                        if (hacienda.situacion.omiso === 'SI') {
+                            mensaje += 'Estado: OMISO. ';
+                        }
+                    }
+                    
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Situación Tributaria',
+                        text: mensaje,
+                        confirmButtonText: 'Entendido'
+                    });
+                }
+                
+            } else {
+                Toast.fire({
+                    icon: 'error',
+                    title: data.message || 'Identificación no encontrada en Hacienda'
+                });
+            }
+        } catch (error) {
+            console.error('Error consultando Hacienda:', error);
+            Toast.fire({
+                icon: 'error',
+                title: 'Error al consultar Hacienda'
+            });
         }
     },
     

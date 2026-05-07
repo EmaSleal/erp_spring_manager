@@ -81,9 +81,26 @@ function openAddModal() {
     // Marcar como activo por defecto
     document.getElementById('active').checked = true;
     
+    // Valores por defecto para Facturación Electrónica
+    document.getElementById('gravado').checked = true;
+    document.getElementById('porcentajeImpuesto').value = '13.00';
+    document.getElementById('aplicaOtroImpuesto').checked = false;
+    
+    // Limpiar resultados CABYS si están visibles
+    const divResultados = document.getElementById('cabysResultados');
+    if (divResultados) {
+        divResultados.style.display = 'none';
+    }
+    
+    // Actualizar visibilidad de campos de impuesto
+    if (typeof toggleImpuesto === 'function') {
+        toggleImpuesto();
+    }
+    
     // Abrir modal
     productoModal.show();
 }
+
 
 function openEditModal(idProducto, codigo, descripcion, presentacionId, precioInst, precioMay, activo) {
     // Cambiar título del modal
@@ -93,7 +110,10 @@ function openEditModal(idProducto, codigo, descripcion, presentacionId, precioIn
     const form = document.getElementById('productoForm');
     form.classList.remove('was-validated');
     
-    // Llenar campos del formulario
+    // Buscar el producto completo en el array
+    const producto = productos.find(p => p.idProducto == idProducto);
+    
+    // Llenar campos básicos del formulario
     document.getElementById('idProducto').value = idProducto;
     document.getElementById('codigo').value = codigo;
     document.getElementById('descripcion').value = descripcion;
@@ -101,6 +121,20 @@ function openEditModal(idProducto, codigo, descripcion, presentacionId, precioIn
     document.getElementById('precioInstitucional').value = precioInst;
     document.getElementById('precioMayorista').value = precioMay;
     document.getElementById('active').checked = activo;
+    
+    // Llenar campos de Facturación Electrónica si existen
+    if (producto) {
+        document.getElementById('codigoCabys').value = producto.codigoCabys || '';
+        document.getElementById('descripcionCabys').value = producto.descripcionCabys || '';
+        document.getElementById('gravado').checked = producto.gravado !== false; // true por defecto
+        document.getElementById('porcentajeImpuesto').value = producto.porcentajeImpuesto || '13.00';
+        document.getElementById('aplicaOtroImpuesto').checked = producto.aplicaOtroImpuesto || false;
+        
+        // Actualizar visibilidad de campos de impuesto
+        if (typeof toggleImpuesto === 'function') {
+            toggleImpuesto();
+        }
+    }
     
     // El código no se puede editar en modo edición
     document.getElementById('codigo').disabled = true;

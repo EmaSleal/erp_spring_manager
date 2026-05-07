@@ -102,6 +102,141 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Datos para Facturación Electrónica (condicional) -->
+                    <div id="datosFacturacionElectronica" style="display: none;">
+                        <hr class="my-3">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-file-invoice me-2"></i>
+                            Datos para Facturación Electrónica
+                        </h6>
+
+                        <!-- Tipo de Identificación -->
+                        <div class="mb-3">
+                            <label for="tipoIdentificacionCliente" class="form-label">
+                                <i class="fas fa-id-badge me-1"></i>
+                                Tipo de Identificación
+                            </label>
+                            <select class="form-select" id="tipoIdentificacionCliente" th:field="*{tipoIdentificacion}">
+                                <option value="">-- Seleccione --</option>
+                                <option value="CEDULA_FISICA">01 - Cédula Física</option>
+                                <option value="CEDULA_JURIDICA">02 - Cédula Jurídica</option>
+                                <option value="DIMEX">03 - DIMEX</option>
+                                <option value="NITE">04 - NITE</option>
+                            </select>
+                        </div>
+
+                        <!-- Número de Identificación -->
+                        <div class="mb-3">
+                            <label for="numeroIdentificacionCliente" class="form-label">
+                                <i class="fas fa-hashtag me-1"></i>
+                                Número de Identificación
+                            </label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="numeroIdentificacionCliente" 
+                                       th:field="*{numeroIdentificacion}"
+                                       placeholder="Ej: 107890123"
+                                       maxlength="12">
+                                <button class="btn btn-outline-primary" type="button" 
+                                        id="btnConsultarHaciendaCliente"
+                                        title="Consultar en Hacienda">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Sin guiones ni espacios</div>
+                        </div>
+
+                        <!-- Código de Actividad -->
+                        <div class="mb-3">
+                            <label for="codigoActividadCliente" class="form-label">
+                                <i class="fas fa-briefcase me-1"></i>
+                                Código de Actividad
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="codigoActividadCliente"
+                                   th:field="*{codigoActividad}"
+                                   placeholder="047730"
+                                   maxlength="20">
+                            <div class="form-text">Se puede autocompletar desde la consulta de Hacienda</div>
+                        </div>
+
+                        <!-- Ubicación (Opcional) -->
+                        <div class="card bg-light border-0 mb-3">
+                            <div class="card-body">
+                                <h6 class="text-muted mb-3">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    Ubicación (Opcional)
+                                </h6>
+
+                                <div class="row">
+                                    <!-- Provincia -->
+                                    <div class="col-md-6 mb-2">
+                                        <label for="provinciaCliente" class="form-label">Provincia</label>
+                                        <select class="form-select form-select-sm" id="provinciaCliente" th:field="*{provincia}">
+                                            <option value="">-- Opcional --</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Cantón -->
+                                    <div class="col-md-3 mb-2">
+                                        <label for="cantonCliente" class="form-label">Cantón</label>
+                                        <select class="form-select form-select-sm" 
+                                               id="cantonCliente" 
+                                               th:field="*{canton}"
+                                               disabled>
+                                            <option value="">-- Seleccione provincia --</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Distrito -->
+                                    <div class="col-md-3 mb-2">
+                                        <label for="distritoCliente" class="form-label">Distrito</label>
+                                        <select class="form-select form-select-sm" 
+                                               id="distritoCliente" 
+                                               th:field="*{distrito}"
+                                               disabled>
+                                            <option value="">-- Seleccione cantón --</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Otras Señas -->
+                                <div class="mt-2">
+                                    <label for="otrasSenasCliente" class="form-label">Otras Señas</label>
+                                    <textarea class="form-control form-control-sm" 
+                                              id="otrasSenasCliente" 
+                                              th:field="*{otrasSenas}"
+                                              rows="2"
+                                              maxlength="250"
+                                              placeholder="Dirección descriptiva (opcional)"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        // Función para sincronizar la visualización de datos de FE
+                        function toggleFESection() {
+                            const checkbox = document.getElementById('requiereFacturaElectronica');
+                            const seccionFE = document.getElementById('datosFacturacionElectronica');
+                            if (checkbox && seccionFE) {
+                                seccionFE.style.display = checkbox.checked ? 'block' : 'none';
+                            }
+                        }
+
+                        // Mostrar/ocultar sección de FE según el checkbox (evento de cambio manual del usuario)
+                        document.getElementById('requiereFacturaElectronica').addEventListener('change', function() {
+                            toggleFESection();
+                        });
+
+                        // Mostrar al cargar si ya está marcado
+                        window.addEventListener('DOMContentLoaded', function() {
+                            toggleFESection();
+                        });
+                    </script>
                 </form>
             </div>
 

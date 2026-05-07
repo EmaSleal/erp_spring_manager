@@ -90,6 +90,14 @@ public class ProductoController {
     @PostMapping("/guardar")
     @PreAuthorize("@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR', 'PRODUCTO_EDITAR')")
     public String guardarProducto(@ModelAttribute Producto producto, Authentication authentication) {
+        // Manejar checkboxes: si no se envían, establecer false
+        if (producto.getGravado() == null) {
+            producto.setGravado(false);
+        }
+        if (producto.getAplicaOtroImpuesto() == null) {
+            producto.setAplicaOtroImpuesto(false);
+        }
+        
         productoService.save(producto);
         //log.info("Guardando producto: {}", producto);
         return "redirect:/productos";
@@ -122,6 +130,14 @@ public class ProductoController {
 
     @PostMapping("/actualizar")
     public String actualizarProducto(@ModelAttribute Producto producto) {
+        // Manejar checkboxes: si no se envían, establecer false
+        if (producto.getGravado() == null) {
+            producto.setGravado(false);
+        }
+        if (producto.getAplicaOtroImpuesto() == null) {
+            producto.setAplicaOtroImpuesto(false);
+        }
+        
         productoService.save(producto);
         return "redirect:/productos";
     }
