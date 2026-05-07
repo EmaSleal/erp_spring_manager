@@ -82,7 +82,7 @@ function openAddModal() {
     document.getElementById('active').checked = true;
     
     // Valores por defecto para Facturación Electrónica
-    document.getElementById('gravado').checked = true;
+    document.getElementById('gravado').checked = false;
     document.getElementById('porcentajeImpuesto').value = '13.00';
     document.getElementById('aplicaOtroImpuesto').checked = false;
     

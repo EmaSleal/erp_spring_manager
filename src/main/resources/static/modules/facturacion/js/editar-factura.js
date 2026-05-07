@@ -16,6 +16,24 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Si la URL contiene clienteId (ej. /facturas?clienteId=8), preseleccionar cliente y abrir modal
+    const urlParams = new URLSearchParams(window.location.search);
+    const clienteIdParam = urlParams.get('clienteId');
+    if (clienteIdParam) {
+        // esperar un tick para asegurar que el DOM esté listo, abrir modal y luego fijar el select
+        setTimeout(() => {
+            openNuevaFacturaModal(); // esto llama a resetForm(), por eso fijamos el valor después
+            const clienteSelect = document.getElementById('cliente');
+            if (clienteSelect) {
+                clienteSelect.value = clienteIdParam;
+                // Disparar change por si hay listeners que reaccionen al cambio
+                clienteSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            // Limpiar parámetro de URL
+            window.history.replaceState({}, '', window.location.pathname);
+        }, 50);
+    }
+
     // Si estamos en la página de edición, extraer el ID de la URL
     const path = window.location.pathname;
     if (path.includes('/editar/')) {
@@ -214,6 +232,108 @@ function createLineaRow(linea) {
       </td>
     </tr>
   `;
+}
+
+// Nueva función: Crear card de línea para versión móvil
+function createLineaCard(linea) {
+    const selectId = `select-producto-${linea.id_linea_factura}`;
+
+    // Opción por defecto para líneas nuevas
+    const opcionDefault = linea.id_producto > 1000000000000 
+        ? `<option value="" selected>-- Seleccione un producto --</option>` 
+        : `<option value="">-- Seleccione un producto --</option>`;
+
+    const opciones = allProductos.map(p => {
+        const selected = p.id_producto === linea.id_producto ? "selected" : "";
+        return `<option value="${p.id_producto}" ${selected}>${p.nombre} - $${p.precio_institucional}</option>`;
+    }).join("");
+
+    return `
+    <div class="card mb-3 border-light shadow-sm">
+        <div class="card-body">
+            <!-- Número de línea -->
+            <div class="mb-2">
+                <small class="text-muted">Línea #${linea.numero_linea}</small>
+                <input type="hidden" name="numero_linea" value="${linea.numero_linea}">
+            </div>
+
+            <!-- Producto -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-box text-primary me-1"></i>Producto
+                </label>
+                <input type="hidden" name="idLinea" value="${linea.id_linea_factura}">
+                <input type="hidden" name="idProducto" value="${linea.id_producto}">
+                <select name="producto" id="${selectId}" class="form-select form-select-sm" onchange="actualizarProductoSeleccionado(this)">
+                    ${opcionDefault}
+                    ${opciones}
+                </select>
+            </div>
+
+            <!-- Fila: Cantidad y Precio -->
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-hashtag text-info me-1"></i>Cantidad
+                    </label>
+                    <input type="number" name="cantidad" value="${linea.cantidad}" class="form-control form-control-sm" onchange="actualizarProductoSeleccionado(this)" min="1">
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-dollar-sign text-success me-1"></i>Precio Unitario
+                    </label>
+                    <input type="number" name="precio" value="${linea.precioUnitario}" class="form-control form-control-sm" disabled>
+                </div>
+            </div>
+
+            <!-- Subtotal -->
+            <div class="alert alert-info mb-2 py-2">
+                <div class="d-flex justify-content-between">
+                    <span class="fw-bold">Subtotal:</span>
+                    <span class="fw-bold text-success">
+                        <input type="number" name="subtotal" value="${linea.subtotal}" style="width: 100px;" class="form-control form-control-sm text-end" disabled>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Botón Eliminar -->
+            <div class="d-grid">
+                <button type="button" onclick="removeLinea(this)" class="btn btn-sm btn-danger">
+                    <i class="fas fa-trash me-2"></i>Eliminar línea
+                </button>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+// Función para actualizar ambos contenedores (tabla y cards)
+function actualizarVistaLineas() {
+    const rows = document.querySelectorAll("#lineas-body tr");
+    const cardsContainer = document.getElementById("lineas-cards-container");
+    
+    if (cardsContainer) {
+        cardsContainer.innerHTML = '';
+        rows.forEach(row => {
+            const numeroLinea = row.querySelector('input[name="numero_linea"]')?.value;
+            const idLinea = row.querySelector('input[name="idLinea"]')?.value;
+            const idProducto = row.querySelector('input[name="idProducto"]')?.value;
+            const cantidad = row.querySelector('input[name="cantidad"]')?.value;
+            const precio = row.querySelector('input[name="precio"]')?.value;
+            const subtotal = row.querySelector('input[name="subtotal"]')?.value;
+
+            const linea = {
+                numero_linea: numeroLinea,
+                id_linea_factura: idLinea,
+                id_producto: idProducto,
+                cantidad: cantidad,
+                precioUnitario: precio,
+                subtotal: subtotal
+            };
+
+            cardsContainer.innerHTML += createLineaCard(linea);
+        });
+    }
 }
 
 function mostrarPaso2() {

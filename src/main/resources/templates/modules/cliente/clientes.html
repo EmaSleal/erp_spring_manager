@@ -205,6 +205,11 @@
                                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
                                         <i class="fas fa-edit me-1"></i> Editar
                                     </button>
+                                        <a th:href="@{/facturas(clienteId=${cliente.idCliente})}" class="btn btn-sm btn-success"
+                                           title="Agregar factura para este cliente"
+                                           sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
+                                            <i class="fas fa-file-invoice me-1"></i> Agregar Factura
+                                        </a>
                                     <a th:href="@{/clientes/eliminar/{id}(id=${cliente.idCliente})}"
                                        onclick="return confirm('¿Seguro que deseas eliminar este cliente?');"
                                        class="btn btn-sm btn-danger"
