@@ -211,7 +211,8 @@
               <i class="fas fa-list text-primary me-2"></i>Líneas de Factura
             </h5>
 
-            <div class="table-responsive">
+            <!-- VERSIÓN DESKTOP: Tabla -->
+            <div class="table-responsive d-none d-md-block">
               <table class="table table-bordered table-hover">
                 <thead class="table-light">
                 <tr>
@@ -227,6 +228,11 @@
                 <!-- Aquí se llenan dinámicamente las filas vía JS -->
                 </tbody>
               </table>
+            </div>
+
+            <!-- VERSIÓN MÓVIL: Cards -->
+            <div class="d-md-none" id="lineas-cards-container">
+              <!-- Aquí se llenan dinámicamente las cards vía JS -->
             </div>
 
             <button class="btn btn-success" type="button" onclick="addLinea()">

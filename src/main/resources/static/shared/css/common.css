@@ -137,6 +137,14 @@ a:hover {
     transition: margin-left var(--transition-normal);
 }
 
+@media (max-width: 767px) {
+    .main-content {
+        margin-left: 0;
+        padding: var(--spacing-lg);
+    }
+    
+}
+
 .main-content.sidebar-collapsed {
     margin-left: var(--sidebar-collapsed-width);
 }

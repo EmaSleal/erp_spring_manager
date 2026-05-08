@@ -75,6 +75,11 @@ public class FacturaServiceImpl implements FacturaService {
         // ✅ MODIFICADO: Solo generar si no viene del formulario
         if (factura.getNumeroFactura() == null || factura.getNumeroFactura().trim().isEmpty()) {
             String numeroFactura = config.generarNumeroFactura();
+            while (facturaRepository.existsByNumeroFactura(numeroFactura)) {
+                log.warn("El número de factura {} ya existe. Se sincronizará el contador y se intentará nuevamente.", numeroFactura);
+                config.incrementarNumero();
+                numeroFactura = config.generarNumeroFactura();
+            }
             factura.setNumeroFactura(numeroFactura);
             log.info("Número de factura generado automáticamente: {}", numeroFactura);
         } else {
