@@ -3,6 +3,8 @@ let newFactura = {}
 let facturaId = 0;
 let nuevaFacturaModal;
 let nuevaFacturaModalElement;
+let temporalLineaId = -1;
+let facturaCreadaPromise = Promise.resolve(null);
 
 document.addEventListener("DOMContentLoaded", function () {
     // Inicializar el modal de Bootstrap 5
@@ -60,6 +62,39 @@ document.addEventListener("DOMContentLoaded", function () {
                     data.forEach(linea => {
                         tableBody.innerHTML += createLineaRow(linea);
                     });
+                    
+                    // DESPUÉS de inyectar el HTML, sincronizar precios
+                    data.forEach(linea => {
+                        const idProducto = linea.id_producto || linea.idProducto || linea.productoId;
+                        const producto = allProductos.find(p => p.id_producto == idProducto);
+                        
+                        if (producto) {
+                            // Buscar la fila y actualizar precio y subtotal
+                            const row = Array.from(tableBody.querySelectorAll('tr')).find(r => {
+                                const rowIdLinea = r.querySelector('input[name="idLinea"]')?.value;
+                                return rowIdLinea == linea.id_linea_factura;
+                            });
+                            
+                            if (row) {
+                                const precioInput = row.querySelector('input[name="precio"]');
+                                const cantidadInput = row.querySelector('input[name="cantidad"]');
+                                const subtotalInput = row.querySelector('input[name="subtotal"]');
+                                
+                                if (precioInput) precioInput.value = producto.precio_institucional;
+                                if (cantidadInput && subtotalInput) {
+                                    const cantidad = parseFloat(cantidadInput.value) || 1;
+                                    const precio = parseFloat(producto.precio_institucional) || 0;
+                                    subtotalInput.value = (cantidad * precio).toFixed(2);
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Actualizar vista de cards en móvil después de cargar líneas
+                    actualizarVistaLineas();
+                    
+                    // Actualizar resumen de totales
+                    actualizarResumenTotales();
                 });
         }
     }
@@ -82,8 +117,13 @@ function resetForm() {
     document.getElementById('btnSiguiente').style.display = 'inline-block';
     document.getElementById('btnGuardar').style.display = 'none';
     document.getElementById('lineas-body').innerHTML = '';
+    const cardsContainer = document.getElementById('lineas-cards-container');
+    if (cardsContainer) {
+        cardsContainer.innerHTML = '';
+    }
     newFactura = {};
     facturaId = 0;
+    temporalLineaId = -1;
     actualizarResumenTotales();
 }
 
@@ -138,15 +178,106 @@ function actualizarResumenTotales() {
     if (elementoTotal) elementoTotal.textContent = `$${total.toFixed(2)}`;
 }
 
+function obtenerFilaLinea(element) {
+    const row = element.closest("tr");
+    if (row) {
+        return row;
+    }
+
+    const card = element.closest(".card");
+    if (!card) {
+        return null;
+    }
+
+    const idLinea = card.querySelector('input[name="idLinea"]')?.value;
+    if (!idLinea) {
+        return null;
+    }
+
+    const rows = document.querySelectorAll("#lineas-body tr");
+    for (const currentRow of rows) {
+        const rowIdLinea = currentRow.querySelector('input[name="idLinea"]')?.value;
+        if (rowIdLinea == idLinea) {
+            return currentRow;
+        }
+    }
+
+    return null;
+}
+
+function obtenerCardLineaPorId(idLinea) {
+    const cardsContainer = document.getElementById("lineas-cards-container");
+    if (!cardsContainer) {
+        return null;
+    }
+
+    return Array.from(cardsContainer.querySelectorAll(".card")).find(card => {
+        const cardIdLinea = card.querySelector('input[name="idLinea"]')?.value;
+        return cardIdLinea == idLinea;
+    }) || null;
+}
+
+function sincronizarCardLinea(row) {
+    const idLinea = row.querySelector('input[name="idLinea"]')?.value;
+    const card = idLinea ? obtenerCardLineaPorId(idLinea) : null;
+    if (!card) {
+        return;
+    }
+
+    const selectProducto = row.querySelector('select[name="producto"]');
+    const cantidad = row.querySelector('input[name="cantidad"]')?.value ?? '';
+    const precio = row.querySelector('input[name="precio"]')?.value ?? '';
+    const subtotal = row.querySelector('input[name="subtotal"]')?.value ?? '';
+
+    const cardSelect = card.querySelector('select[name="producto"]');
+    if (cardSelect && selectProducto) {
+        cardSelect.value = selectProducto.value;
+    }
+
+    const cardCantidad = card.querySelector('input[name="cantidad"]');
+    if (cardCantidad) {
+        cardCantidad.value = cantidad;
+    }
+
+    const cardPrecio = card.querySelector('input[name="precio"]');
+    if (cardPrecio) {
+        cardPrecio.value = precio;
+    }
+
+    const cardSubtotal = card.querySelector('input[name="subtotal"]');
+    if (cardSubtotal) {
+        cardSubtotal.value = subtotal;
+    }
+}
+
 
 function actualizarProductoSeleccionado(element) {
-    const row = element.closest("tr");
-    const select = row.querySelector('select[name="producto"]');
+    const row = obtenerFilaLinea(element);
+    if (!row) return;
+
+    const select = element.matches('select[name="producto"]')
+        ? element
+        : row.querySelector('select[name="producto"]');
+
+    if (!select) return;
+
+    const cantidadFuente = element.matches('input[name="cantidad"]')
+        ? element
+        : row.querySelector('input[name="cantidad"]');
+
+    const cantidadValue = cantidadFuente ? cantidadFuente.value : '1';
     const selectedId = parseInt(select.value);
     const producto = allProductos.find(p => p.id_producto === selectedId);
     if (!producto) return;
 
-    // Actualizar el precio
+    // Sincronizar la fila fuente con lo que el usuario cambió
+    row.querySelector('select[name="producto"]').value = select.value;
+    const inputCantidad = row.querySelector('input[name="cantidad"]');
+    if (inputCantidad) {
+        inputCantidad.value = cantidadValue;
+    }
+
+    // Actualizar el precio en la tabla (fuente de verdad)
     const inputPrecio = row.querySelector('input[name="precio"]');
     inputPrecio.value = producto.precio_institucional;
 
@@ -155,12 +286,14 @@ function actualizarProductoSeleccionado(element) {
     inputIdProducto.value = producto.id_producto;
 
     // Recalcular subtotal
-    const inputCantidad = row.querySelector('input[name="cantidad"]');
     const subtotalInput = row.querySelector('input[name="subtotal"]');
-    const subtotal = parseFloat(producto.precio_institucional) * parseFloat(inputCantidad.value || 1);
+    const subtotal = parseFloat(producto.precio_institucional) * parseFloat(cantidadValue || 1);
     subtotalInput.value = subtotal.toFixed(2);
     
-    // ✅ NUEVO: Actualizar resumen de totales
+    // Sincronizar solo la card correspondiente, sin reconstruir toda la vista
+    sincronizarCardLinea(row);
+
+    // ✅ Actualizar resumen de totales
     actualizarResumenTotales();
 }
 
@@ -168,36 +301,67 @@ function actualizarProductoSeleccionado(element) {
 
 
 function removeLinea(button) {
-    button.closest("tr").remove();
-    // ✅ NUEVO: Actualizar resumen después de eliminar línea
+    const row = obtenerFilaLinea(button);
+
+    if (row) {
+        // Obtener el ID de la línea ANTES de eliminarla
+        const idLinea = row.querySelector('input[name="idLinea"]')?.value;
+        row.remove();
+        
+        // Eliminar SOLO el card específico sin reconstruir todos
+        if (idLinea) {
+            const card = obtenerCardLineaPorId(idLinea);
+            if (card) {
+                card.remove();
+            }
+        }
+    }
+    
+    // ✅ Actualizar resumen después de eliminar línea
     actualizarResumenTotales();
 }
 
 function addLinea() {
     const tableBody = document.getElementById("lineas-body");
-    const randomId = Date.now();
-    const html = createLineaRow({
+    const randomId = temporalLineaId--;
+    // Calcular número de línea basado en filas existentes
+    const numeroLinea = tableBody.querySelectorAll('tr').length + 1;
+    const linea = {
         producto: {descripcion: ""},
         cantidad: 1,
         precioUnitario: 0,
         idLineaFactura: randomId,
         subtotal: 0,
         idProducto: randomId,
-        numero_linea: tableBody.children.length + 1
-    });
-    tableBody.insertAdjacentHTML("beforeend", html);
+        numero_linea: numeroLinea,
+        id_linea_factura: randomId,
+        id_producto: randomId
+    };
+    tableBody.insertAdjacentHTML("beforeend", createLineaRow(linea));
+
+    const cardsContainer = document.getElementById("lineas-cards-container");
+    if (cardsContainer) {
+        cardsContainer.insertAdjacentHTML("beforeend", createLineaCard(linea));
+    }
 }
 
 function createLineaRow(linea) {
     const selectId = `select-producto-${linea.id_linea_factura}`;
 
+    // Obtener el ID del producto (intenta múltiples nombres de propiedad)
+    const idProducto = linea.id_producto || linea.idProducto || linea.productoId;
+    const es_linea_nueva = !idProducto || idProducto < 0;
+
     // Opción por defecto para líneas nuevas
-    const opcionDefault = linea.id_producto > 1000000000000 
+    const opcionDefault = es_linea_nueva
         ? `<option value="" selected>-- Seleccione un producto --</option>` 
         : `<option value="">-- Seleccione un producto --</option>`;
 
     const opciones = allProductos.map(p => {
-        const selected = p.id_producto === linea.id_producto ? "selected" : "";
+        // Comparar como string para evitar problemas de tipo de dato
+        const idProductoStr = String(idProducto || '');
+        const pIdStr = String(p.id_producto);
+        const selected = pIdStr === idProductoStr && !es_linea_nueva ? "selected" : "";
         return `<option value="${p.id_producto}" ${selected}>${p.nombre} - $${p.precio_institucional}</option>`;
     }).join("");
 
@@ -209,7 +373,7 @@ function createLineaRow(linea) {
         </td>
       <td>
         <input type="hidden" name="idLinea" value="${linea.id_linea_factura}">
-        <input type="hidden" name="idProducto" value="${linea.id_producto}">
+        <input type="hidden" name="idProducto" value="${idProducto}">
         <select name="producto" id="${selectId}" class="form-select" onchange="actualizarProductoSeleccionado(this)">
           ${opcionDefault}
           ${opciones}
@@ -217,7 +381,7 @@ function createLineaRow(linea) {
       </td>
       
       <td class="text-center">
-        <input type="number" name="cantidad" value="${linea.cantidad}" class="form-control text-center" onchange="actualizarProductoSeleccionado(this)" min="1">
+                <input type="number" name="cantidad" value="${linea.cantidad}" class="form-control text-center" oninput="actualizarProductoSeleccionado(this)" min="1">
       </td>
       <td class="text-center">
         <input type="number" name="precio" value="${linea.precioUnitario}" class="form-control text-center" disabled>
@@ -238,13 +402,20 @@ function createLineaRow(linea) {
 function createLineaCard(linea) {
     const selectId = `select-producto-${linea.id_linea_factura}`;
 
+    // Obtener el ID del producto (intenta múltiples nombres de propiedad)
+    const idProducto = linea.id_producto || linea.idProducto || linea.productoId;
+    const es_linea_nueva = !idProducto || idProducto < 0;
+
     // Opción por defecto para líneas nuevas
-    const opcionDefault = linea.id_producto > 1000000000000 
+    const opcionDefault = es_linea_nueva
         ? `<option value="" selected>-- Seleccione un producto --</option>` 
         : `<option value="">-- Seleccione un producto --</option>`;
 
     const opciones = allProductos.map(p => {
-        const selected = p.id_producto === linea.id_producto ? "selected" : "";
+        // Comparar como string para evitar problemas de tipo de dato
+        const idProductoStr = String(idProducto || '');
+        const pIdStr = String(p.id_producto);
+        const selected = pIdStr === idProductoStr && !es_linea_nueva ? "selected" : "";
         return `<option value="${p.id_producto}" ${selected}>${p.nombre} - $${p.precio_institucional}</option>`;
     }).join("");
 
@@ -263,7 +434,7 @@ function createLineaCard(linea) {
                     <i class="fas fa-box text-primary me-1"></i>Producto
                 </label>
                 <input type="hidden" name="idLinea" value="${linea.id_linea_factura}">
-                <input type="hidden" name="idProducto" value="${linea.id_producto}">
+                <input type="hidden" name="idProducto" value="${idProducto}">
                 <select name="producto" id="${selectId}" class="form-select form-select-sm" onchange="actualizarProductoSeleccionado(this)">
                     ${opcionDefault}
                     ${opciones}
@@ -276,7 +447,7 @@ function createLineaCard(linea) {
                     <label class="form-label fw-bold">
                         <i class="fas fa-hashtag text-info me-1"></i>Cantidad
                     </label>
-                    <input type="number" name="cantidad" value="${linea.cantidad}" class="form-control form-control-sm" onchange="actualizarProductoSeleccionado(this)" min="1">
+                    <input type="number" name="cantidad" value="${linea.cantidad}" class="form-control form-control-sm" oninput="actualizarProductoSeleccionado(this)" min="1">
                 </div>
                 <div class="col-6">
                     <label class="form-label fw-bold">
@@ -370,6 +541,7 @@ function mostrarPaso2() {
     // Cambiar botones del footer
     document.getElementById("btnSiguiente").style.display = "none";
     document.getElementById("btnGuardar").style.display = "inline-block";
+    document.getElementById("btnGuardar").disabled = true;
 
     addLinea(); // Agrega al menos una línea por defecto
 
@@ -397,29 +569,56 @@ function mostrarPaso2() {
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
-    fetch('/facturas/guardar', {
+    facturaCreadaPromise = fetch('/facturas/guardar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', [csrfHeader]: csrfToken },
         body: JSON.stringify(factura)
     }).then(res => {
         if (res.ok) {
-            res.json().then(data => {
+            return res.json().then(data => {
                 newFactura = data;
                 facturaId = newFactura.idFactura;
                 console.log('Factura creada:', newFactura);
+                document.getElementById("btnGuardar").disabled = false;
+                return data;
             });
         } else {
+            document.getElementById("btnGuardar").disabled = true;
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
                 text: 'Error al crear la factura',
                 confirmButtonColor: '#d33'
             });
+            return null;
         }
+    }).catch(error => {
+        document.getElementById("btnGuardar").disabled = true;
+        console.error('Error al crear factura:', error);
+        return null;
     });
 }
 
-function guardarLineas() {
+async function guardarLineas() {
+    if (!facturaId) {
+        try {
+            await facturaCreadaPromise;
+        } catch (error) {
+            console.error('No se pudo crear la factura antes de guardar líneas:', error);
+            return;
+        }
+    }
+
+    if (!facturaId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Factura pendiente',
+            text: 'Espere a que se cree la factura antes de guardar las líneas',
+            confirmButtonColor: '#3085d6'
+        });
+        return;
+    }
+
     const rows = document.querySelectorAll("#lineas-body tr");
     
     if (rows.length === 0) {
