@@ -9,7 +9,7 @@
 **Contenido:**
 ```bash
 # Base de Datos
-DB_URL=jdbc:mysql://192.168.100.8:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC
+DB_URL=jdbc:mysql://192.168.100.93:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC
 DB_USERNAME=m4n0
 DB_PASSWORD=Chismosear01
 
@@ -75,7 +75,7 @@ META_WEBHOOK_VERIFY_TOKEN=NThmM2QwNTAtYjQ5ZS00YmZmLTlmOTMtN2MyMDAwNmM5YzAw
   ✅ Variables cargadas: 11
   
 🔍 Verificación de variables críticas:
-  ✅ DB_URL = jdbc:mysql://192.168.100.8:3306...
+  ✅ DB_URL = jdbc:mysql://192.168.100.93:3306...
   ✅ DB_USERNAME = m4n0
   ✅ EMAIL_HOST = smtp.gmail.com
   ✅ EMAIL_USERNAME = manusl2908@gmail.com

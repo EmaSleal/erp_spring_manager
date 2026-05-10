@@ -16,7 +16,7 @@ spring:
 
 ### `.env.local`
 ```properties
-DB_HOST=192.168.100.8
+DB_HOST=192.168.100.93
 DB_PORT=3306
 DB_NAME=facturas_monrachem
 DB_USER=admin_facturas

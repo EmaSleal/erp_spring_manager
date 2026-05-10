@@ -4,7 +4,7 @@
 
 - [ ] Tener instalado JDK 17 o superior
 - [ ] Tener instalado Maven
-- [ ] Tener acceso a MySQL (192.168.100.8:3306)
+- [ ] Tener acceso a MySQL (192.168.100.93:3306)
 - [ ] Tener cuenta de Gmail con App Password generado
 - [ ] (Opcional) Tener credenciales de WhatsApp Business API
 
@@ -108,7 +108,7 @@ Abrir `.env.local` y verificar que todas las variables tienen valores:
 - [ ] Verificar valor de DB_URL
   ```powershell
   $env:DB_URL
-  # Debe mostrar: jdbc:mysql://192.168.100.8:3306/...
+  # Debe mostrar: jdbc:mysql://192.168.100.93:3306/...
   ```
 
 ---
@@ -368,7 +368,7 @@ notepad .env.local
 Verificar en `.env.local`:
 - DB_USERNAME correcto
 - DB_PASSWORD correcto
-- MySQL corriendo en 192.168.100.8:3306
+- MySQL corriendo en 192.168.100.93:3306
 
 ### Error: "Authentication failed" (Email)
 

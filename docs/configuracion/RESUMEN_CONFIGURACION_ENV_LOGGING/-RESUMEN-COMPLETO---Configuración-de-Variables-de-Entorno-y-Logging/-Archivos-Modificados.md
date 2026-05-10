@@ -9,7 +9,7 @@
 **Antes:**
 ```yaml
 datasource:
-  url: jdbc:mysql://192.168.100.8:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC
+  url: jdbc:mysql://192.168.100.93:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC
   username: m4n0
   password: Chismosear01
 ```
