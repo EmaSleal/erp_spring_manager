@@ -99,10 +99,15 @@ public class ClienteServiceImpl implements ClienteService {
             throw new IllegalArgumentException("El nombre del cliente es obligatorio");
         }
         
-        if (cliente.getUsuario() == null || 
-            cliente.getUsuario().getTelefono() == null || 
+        if (cliente.getUsuario() == null ||
+            cliente.getUsuario().getTelefono() == null ||
             cliente.getUsuario().getTelefono().trim().isEmpty()) {
             throw new IllegalArgumentException("El teléfono del usuario es obligatorio");
+        }
+
+        String otrasSenas = cliente.getOtrasSenas();
+        if (otrasSenas != null && !otrasSenas.isBlank() && otrasSenas.trim().length() < 5) {
+            throw new IllegalArgumentException("Otras señas debe tener al menos 5 caracteres (requerido por Hacienda CR)");
         }
     }
 
