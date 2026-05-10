@@ -12,8 +12,6 @@ services:
       MYSQL_PASSWORD: password
     volumes:
       - mysql_data:/var/lib/mysql
-      # Opcional: Montar scripts de inicialización
-      - ./docs/base de datos:/docker-entrypoint-initdb.d:ro
     networks:
       - app-network
     # NO exponemos puerto al host (solo accesible internamente)
@@ -69,6 +67,29 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  seed:
+    image: mysql:8.0
+    container_name: whats_orders_seed
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - ./database/seeds:/seeds:ro
+    environment:
+      MYSQL_PWD: password
+    networks:
+      - app-network
+    command: >
+      bash -c "
+        echo 'Starting seed...';
+        for f in /seeds/*.sql; do
+          echo \"Running $$f\";
+          mysql -h mysql -u root facturas_monrachem < $$f || exit 1;
+        done;
+        echo 'Seeding complete.'
+      "
+    restart: "no"
 
 networks:
   app-network:
