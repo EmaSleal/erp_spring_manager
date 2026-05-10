@@ -1,4 +1,4 @@
-HELP.md
+﻿HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -39,7 +39,7 @@ build/
 .env.ps1
 *.env
 
-### Facturación Electrónica - Seguridad ###
+### FacturaciÃ³n ElectrÃ³nica - Seguridad ###
 # Certificados digitales (NUNCA COMMITEAR)
 certificados/
 *.p12
@@ -62,12 +62,12 @@ src/main/resources/xsd/
 *Factura*real*.xml
 *Respuesta*real*.xml
 
-# Logs con información sensible
+# Logs con informaciÃ³n sensible
 logs/hacienda*.log
 logs/facturacion*.log
 logs/
 
-#Comprobantes electrónicos generados (si contienen datos reales)
+#Comprobantes electrÃ³nicos generados (si contienen datos reales)
 comprobantes/
 
 #engram tool
@@ -77,6 +77,3 @@ build_manifest_tree.py
 database/export/*
 !database/export/.gitkeep
 
-# Database seeds (if they contain sensitive data)
-database/seeds/*
-!database/seeds/.gitkeep
