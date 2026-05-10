@@ -206,12 +206,19 @@
                                 <!-- Otras Señas -->
                                 <div class="mt-2">
                                     <label for="otrasSenasCliente" class="form-label">Otras Señas</label>
-                                    <textarea class="form-control form-control-sm" 
-                                              id="otrasSenasCliente" 
+                                    <textarea class="form-control form-control-sm"
+                                              id="otrasSenasCliente"
                                               th:field="*{otrasSenas}"
                                               rows="2"
+                                              minlength="5"
                                               maxlength="250"
                                               placeholder="Dirección descriptiva (opcional)"></textarea>
+                                    <div class="form-text">
+                                        Si completás este campo, debe tener al menos 5 caracteres (requerido por Hacienda CR)
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        Otras señas debe tener al menos 5 caracteres o dejarlo vacío.
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -275,6 +275,19 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
         event.stopPropagation();
 
+        const otrasSenas = (document.getElementById('otrasSenasCliente')?.value || '').trim();
+        if (otrasSenas.length > 0 && otrasSenas.length < 5) {
+            document.getElementById('otrasSenasCliente').classList.add('is-invalid');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Dirección muy corta',
+                text: 'Otras señas debe tener al menos 5 caracteres o dejarlo vacío.',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+        document.getElementById('otrasSenasCliente')?.classList.remove('is-invalid');
+
         const btnGuardar = document.querySelector('[form="clienteForm"]');
         const originalHtml = btnGuardar ? btnGuardar.innerHTML : '';
         if (btnGuardar) {
