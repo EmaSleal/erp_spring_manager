@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Gestión de Roles</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/admin/usuarios}" class="text-decoration-none">
+                            <i class="fas fa-users me-1"></i>Administración
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-user-shield me-1"></i>Roles
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1"><i class="fas fa-user-shield text-primary me-2"></i>Gestión de Roles</h2>
+                    <p class="text-muted mb-0">Administra los roles y permisos del sistema</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver
+                    </a>
+                    <a th:href="@{/admin/roles/nuevo}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nuevo Rol
+                    </a>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                <span th:if="${param.success[0] == 'created'}">Rol creado exitosamente</span>
+                <span th:if="${param.success[0] == 'updated'}">Rol actualizado exitosamente</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error: [[${param.error[0]}]]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Estadísticas -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-user-shield fa-3x me-3"></i>
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Total Roles</h6>
+                                    <h3 class="mb-0">[[${totalRoles}]]</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-check-circle fa-3x me-3"></i>
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Roles Activos</h6>
+                                    <h3 class="mb-0">[[${rolesActivos}]]</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Roles -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            Listado de Roles
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Descripción</th>
+                                        <th class="text-center">Permisos</th>
+                                        <th class="text-center">Usuarios</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="rol : ${roles}">
+                                        <td>
+                                            <span class="badge bg-secondary">[[${rol.codigo}]]</span>
+                                        </td>
+                                        <td>
+                                            <strong>[[${rol.nombre}]]</strong>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">[[${rol.descripcion}]]</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info">
+                                                [[${#lists.size(rol.permisos)}]] permisos
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-primary">
+                                                [[${#lists.size(rol.usuarios)}]] usuarios
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span th:if="${rol.activo}" class="badge bg-success">
+                                                <i class="fas fa-check-circle"></i> Activo
+                                            </span>
+                                            <span th:unless="${rol.activo}" class="badge bg-secondary">
+                                                <i class="fas fa-ban"></i> Inactivo
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a th:href="@{/admin/roles/editar/{id}(id=${rol.idRol})}" 
+                                                   class="btn btn-warning" 
+                                                   title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <button type="button" 
+                                                        class="btn btn-info" 
+                                                        title="Ver Permisos"
+                                                        th:onclick="'verPermisos(' + ${rol.idRol} + ')'">
+                                                    <i class="fas fa-key"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        th:class="${rol.activo} ? 'btn btn-secondary' : 'btn btn-success'" 
+                                                        th:title="${rol.activo} ? 'Desactivar' : 'Activar'"
+                                                        th:onclick="'cambiarEstado(' + ${rol.idRol} + ', ' + !${rol.activo} + ')'">
+                                                    <i th:class="${rol.activo} ? 'fas fa-ban' : 'fas fa-check'"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal de Permisos -->
+    <div class="modal fade" id="modalPermisos" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-key me-2"></i>
+                        Permisos del Rol
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="contenidoPermisos">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <div th:replace="~{shared/layout :: scripts}"></div>
+    
+    <script th:inline="javascript">
+        function verPermisos(idRol) {
+            const modal = new bootstrap.Modal(document.getElementById('modalPermisos'));
+            modal.show();
+            
+            fetch(`/admin/roles/${idRol}/permisos`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarPermisos(data.permisos);
+                    } else {
+                        mostrarError(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    mostrarError('Error al cargar permisos');
+                });
+        }
+        
+        function mostrarPermisos(permisos) {
+            // Agrupar por categoría
+            const porCategoria = permisos.reduce((acc, permiso) => {
+                if (!acc[permiso.categoria]) {
+                    acc[permiso.categoria] = [];
+                }
+                acc[permiso.categoria].push(permiso);
+                return acc;
+            }, {});
+            
+            let html = '<div class="accordion" id="accordionPermisos">';
+            let index = 0;
+            
+            for (const [categoria, perms] of Object.entries(porCategoria)) {
+                html += `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading${index}">
+                            <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#collapse${index}">
+                                <strong>${categoria}</strong>
+                                <span class="badge bg-primary ms-2">${perms.length}</span>
+                            </button>
+                        </h2>
+                        <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                             data-bs-parent="#accordionPermisos">
+                            <div class="accordion-body">
+                                <ul class="list-group">
+                `;
+                
+                perms.forEach(p => {
+                    const critico = p.critico ? '<span class="badge bg-danger ms-2">Crítico</span>' : '';
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${p.nombre}</strong>
+                                <br>
+                                <small class="text-muted">${p.codigo}</small>
+                            </div>
+                            ${critico}
+                        </li>
+                    `;
+                });
+                
+                html += `
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                index++;
+            }
+            
+            html += '</div>';
+            document.getElementById('contenidoPermisos').innerHTML = html;
+        }
+        
+        function mostrarError(mensaje) {
+            document.getElementById('contenidoPermisos').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${mensaje}
+                </div>
+            `;
+        }
+        
+        function cambiarEstado(idRol, nuevoEstado) {
+            if (!confirm(`¿Está seguro de ${nuevoEstado ? 'activar' : 'desactivar'} este rol?`)) {
+                return;
+            }
+            
+            fetch(`/admin/roles/cambiar-estado/${idRol}?activo=${nuevoEstado}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cambiar el estado del rol');
+            });
+        }
+    </script>
+        </div>
+    </main>
+
+</body>
+</html>

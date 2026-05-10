@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Fragment: Formulario de Empresa -->
+<div th:fragment="empresaForm">
+
+    <!-- Alert container -->
+    <div id="alert-empresa-container"></div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary bg-gradient text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-building me-2"></i>
+                    <strong>Configuración de la Empresa</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <form id="form-empresa">
+
+                <!-- ID oculto (para updates) -->
+                <input type="hidden" id="idConfiguracionEmpresa" name="idConfiguracion">
+
+                <!-- Información Legal -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-briefcase text-primary me-2"></i>
+                            Información Legal
+                        </h5>
+                    </div>
+
+                    <!-- Razón Social -->
+                    <div class="col-md-6 mb-3">
+                        <label for="razonSocial" class="form-label">
+                            <i class="fas fa-building me-1"></i> Razón Social
+                            <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="razonSocial" 
+                               name="razonSocial"
+                               placeholder="Mi Empresa S.A.C."
+                               maxlength="200"
+                               required>
+                        <div class="form-text">Nombre legal de la empresa</div>
+                    </div>
+
+                    <!-- Nombre Comercial -->
+                    <div class="col-md-6 mb-3">
+                        <label for="nombreComercial" class="form-label">
+                            <i class="fas fa-store me-1"></i> Nombre Comercial
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="nombreComercial" 
+                               name="nombreComercial"
+                               placeholder="Mi Empresa"
+                               maxlength="200">
+                        <div class="form-text">Nombre con el que opera públicamente</div>
+                    </div>
+
+                    <!-- RUC/NIT -->
+                    <div class="col-md-4 mb-3">
+                        <label for="rfc" class="form-label">
+                            <i class="fas fa-id-card me-1"></i> RUC / RFC / NIT
+                            <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="rfc" 
+                               name="rfc"
+                               placeholder="20123456789"
+                               maxlength="20"
+                               required>
+                        <div class="form-text">Registro fiscal</div>
+                    </div>
+
+                    <!-- Régimen Fiscal -->
+                    <div class="col-md-8 mb-3">
+                        <label for="regimenFiscal" class="form-label">
+                            <i class="fas fa-balance-scale me-1"></i> Régimen Fiscal
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="regimenFiscal" 
+                               name="regimenFiscal"
+                               placeholder="Régimen General, RUS, etc."
+                               maxlength="100">
+                        <div class="form-text">Tipo de régimen tributario</div>
+                    </div>
+                </div>
+
+                <!-- Facturación Electrónica Costa Rica -->
+                <div class="row mb-4" id="seccion-facturacion-cr">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-file-invoice text-primary me-2"></i>
+                            Facturación Electrónica Costa Rica
+                        </h5>
+                    </div>
+
+                    <!-- Tipo de Identificación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="tipoIdentificacion" class="form-label">
+                            <i class="fas fa-id-badge me-1"></i> Tipo de Identificación
+                        </label>
+                        <select class="form-select" id="tipoIdentificacion" name="tipoIdentificacion">
+                            <option value="">-- Seleccione --</option>
+                            <option value="CEDULA_FISICA">01 - Cédula Física</option>
+                            <option value="CEDULA_JURIDICA">02 - Cédula Jurídica</option>
+                            <option value="DIMEX">03 - DIMEX</option>
+                            <option value="NITE">04 - NITE</option>
+                        </select>
+                        <div class="form-text">Tipo de cédula Hacienda CR</div>
+                    </div>
+
+                    <!-- Número de Identificación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="numeroIdentificacion" class="form-label">
+                            <i class="fas fa-hashtag me-1"></i> Número de Identificación
+                        </label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="numeroIdentificacion" 
+                                   name="numeroIdentificacion"
+                                   placeholder="3101234567"
+                                   maxlength="12">
+                            <button class="btn btn-outline-primary" type="button" 
+                                    onclick="ConfiguracionEmpresa.consultarHacienda(document.getElementById('numeroIdentificacion').value)"
+                                    title="Consultar en Hacienda">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Sin guiones ni espacios. Click en buscar para autocompletar</div>
+                    </div>
+
+                    <!-- Código de Actividad -->
+                    <div class="col-md-4 mb-3">
+                        <label for="codigoActividad" class="form-label">
+                            <i class="fas fa-briefcase me-1"></i> Código de Actividad
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="codigoActividad" 
+                               name="codigoActividad"
+                               placeholder="620100"
+                               maxlength="6">
+                        <div class="form-text">6 dígitos según Hacienda</div>
+                    </div>
+
+                    <!-- Nombre Comercial FE -->
+                    <div class="col-md-12 mb-3">
+                        <label for="nombreComercialFe" class="form-label">
+                            <i class="fas fa-tag me-1"></i> Nombre Comercial para FE
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="nombreComercialFe" 
+                               name="nombreComercialFe"
+                               placeholder="Mi Empresa Costa Rica"
+                               maxlength="80">
+                        <div class="form-text">Nombre que aparecerá en comprobantes electrónicos (máx. 80 caracteres)</div>
+                    </div>
+
+                    <!-- Provincia -->
+                    <div class="col-md-3 mb-3">
+                        <label for="provincia" class="form-label">
+                            <i class="fas fa-map-marked-alt me-1"></i> Provincia <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="provincia" name="provincia" required>
+                            <option value="">-- Seleccione --</option>
+                            <option th:each="prov : ${provincias}"
+                                    th:value="${prov.codigo}"
+                                    th:text="${prov.codigo + ' - ' + prov.nombre}">
+                            </option>
+                        </select>
+                        <div class="form-text">Seleccione la provincia</div>
+                    </div>
+
+                    <!-- Cantón -->
+                    <div class="col-md-3 mb-3">
+                        <label for="canton" class="form-label">
+                            <i class="fas fa-map-marker me-1"></i> Cantón <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="canton" name="canton" required disabled>
+                            <option value="">-- Seleccione provincia primero --</option>
+                        </select>
+                        <div class="form-text">Seleccione el cantón</div>
+                    </div>
+
+                    <!-- Distrito -->
+                    <div class="col-md-3 mb-3">
+                        <label for="distrito" class="form-label">
+                            <i class="fas fa-map-pin me-1"></i> Distrito <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="distrito" name="distrito" required disabled>
+                            <option value="">-- Seleccione cantón primero --</option>
+                        </select>
+                        <div class="form-text">Seleccione el distrito</div>
+                    </div>
+
+                    <!-- Barrio -->
+                    <div class="col-md-3 mb-3">
+                        <label for="barrio" class="form-label">
+                            <i class="fas fa-home me-1"></i> Barrio (opcional)
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="barrio" 
+                               name="barrio"
+                               placeholder="01"
+                               maxlength="2"
+                               pattern="\d{2}">
+                        <div class="form-text">2 dígitos</div>
+                    </div>
+
+                    <!-- Otras Señas -->
+                    <div class="col-md-12 mb-3">
+                        <label for="otrasSenas" class="form-label">
+                            <i class="fas fa-map-signs me-1"></i> Otras Señas
+                        </label>
+                        <textarea class="form-control" 
+                                  id="otrasSenas" 
+                                  name="otrasSenas"
+                                  rows="2"
+                                  maxlength="250"
+                                  placeholder="100 metros norte de la iglesia, frente al supermercado"></textarea>
+                        <div class="form-text">Dirección descriptiva (máx. 250 caracteres)</div>
+                    </div>
+                </div>
+
+                <!-- Dirección Fiscal -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-map-marker-alt text-success me-2"></i>
+                            Dirección Fiscal
+                        </h5>
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label for="direccionCalle" class="form-label">
+                            <i class="fas fa-road me-1"></i> Calle
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionCalle" 
+                               name="direccionCalle"
+                               placeholder="Av. Principal 123"
+                               maxlength="200">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionCiudad" class="form-label">
+                            <i class="fas fa-city me-1"></i> Ciudad
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionCiudad" 
+                               name="direccionCiudad"
+                               placeholder="Lima"
+                               maxlength="100">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionEstado" class="form-label">
+                            <i class="fas fa-map me-1"></i> Estado/Provincia
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionEstado" 
+                               name="direccionEstado"
+                               placeholder="Lima"
+                               maxlength="100">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionCodigoPostal" class="form-label">
+                            <i class="fas fa-mail-bulk me-1"></i> Código Postal
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionCodigoPostal" 
+                               name="direccionCodigoPostal"
+                               placeholder="15001"
+                               maxlength="10">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="direccionPais" class="form-label">
+                            <i class="fas fa-flag me-1"></i> País
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="direccionPais" 
+                               name="direccionPais"
+                               placeholder="Perú"
+                               maxlength="100">
+                    </div>
+                </div>
+
+                <!-- Información de Contacto -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-phone text-info me-2"></i>
+                            Información de Contacto
+                        </h5>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="telefono" class="form-label">
+                            <i class="fas fa-phone me-1"></i> Teléfono
+                        </label>
+                        <input type="tel" 
+                               class="form-control" 
+                               id="telefono" 
+                               name="telefono"
+                               placeholder="+51 999 999 999"
+                               maxlength="20">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">
+                            <i class="fas fa-envelope me-1"></i> Email
+                        </label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="email" 
+                               name="email"
+                               placeholder="contacto@miempresa.com"
+                               maxlength="100">
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label for="sitioWeb" class="form-label">
+                            <i class="fas fa-globe me-1"></i> Sitio Web
+                        </label>
+                        <input type="url" 
+                               class="form-control" 
+                               id="sitioWeb" 
+                               name="sitioWeb"
+                               placeholder="https://www.miempresa.com"
+                               maxlength="200">
+                    </div>
+                </div>
+
+                <!-- Recursos Visuales -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-palette text-warning me-2"></i>
+                            Recursos Visuales
+                        </h5>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="logoUrl" class="form-label">
+                            <i class="fas fa-image me-1"></i> URL del Logo
+                        </label>
+                        <input type="url" 
+                               class="form-control" 
+                               id="logoUrl" 
+                               name="logoUrl"
+                               placeholder="https://ejemplo.com/logo.png"
+                               maxlength="500">
+                        <div class="form-text">URL pública de tu logo</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="faviconUrl" class="form-label">
+                            <i class="fas fa-bookmark me-1"></i> URL del Favicon
+                        </label>
+                        <input type="url" 
+                               class="form-control" 
+                               id="faviconUrl" 
+                               name="faviconUrl"
+                               placeholder="https://ejemplo.com/favicon.ico"
+                               maxlength="500">
+                        <div class="form-text">URL pública de tu favicon (32x32px)</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="colorPrimario" class="form-label">
+                            <i class="fas fa-fill-drip me-1"></i> Color Primario
+                        </label>
+                        <div class="input-group">
+                            <input type="color" 
+                                   class="form-control form-control-color" 
+                                   id="colorPrimario" 
+                                   name="colorPrimario"
+                                   value="#007bff"
+                                   title="Seleccionar color primario">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="colorPrimarioText"
+                                   value="#007bff"
+                                   maxlength="7"
+                                   readonly>
+                        </div>
+                        <div class="form-text">Color principal de tu marca</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="colorSecundario" class="form-label">
+                            <i class="fas fa-fill me-1"></i> Color Secundario
+                        </label>
+                        <div class="input-group">
+                            <input type="color" 
+                                   class="form-control form-control-color" 
+                                   id="colorSecundario" 
+                                   name="colorSecundario"
+                                   value="#6c757d"
+                                   title="Seleccionar color secundario">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="colorSecundarioText"
+                                   value="#6c757d"
+                                   maxlength="7"
+                                   readonly>
+                        </div>
+                        <div class="form-text">Color secundario de tu marca</div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end pt-3 border-top">
+                            <button type="button" 
+                                    class="btn btn-secondary me-2" 
+                                    id="btn-cancelar-empresa">
+                                <i class="fas fa-times me-2"></i>
+                                Cancelar
+                            </button>
+                            <button type="submit" 
+                                    class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

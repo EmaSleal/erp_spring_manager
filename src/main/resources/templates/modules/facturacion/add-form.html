@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+
+<!-- Modal de Nueva Factura (Bootstrap 5) -->
+<div th:fragment="nueva-factura-modal" class="modal fade" id="nuevaFacturaModal" tabindex="-1" aria-labelledby="nuevaFacturaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <!-- Modal Header -->
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title text-white" id="nuevaFacturaModalLabel">
+          <i class="fas fa-file-invoice-dollar me-2 text-white"></i>Nueva Factura
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body">
+        <form id="facturaForm">
+          <!-- Campo oculto que indica el paso -->
+          <input type="hidden" name="paso" id="paso" value="1" />
+
+          <!-- Paso 1: Datos de la factura -->
+          <div id="paso-1">
+            <h5 class="mb-4"><i class="fas fa-info-circle text-primary me-2"></i>Datos de Factura</h5>
+
+            <!-- Fila 1: Cliente y Tipo de Factura -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="cliente" class="form-label">
+                  <i class="fas fa-user text-primary me-2"></i>Cliente <span class="text-danger">*</span>
+                </label>
+                <select name="cliente" id="cliente" class="form-select" required>
+                  <option value="">Seleccione un cliente</option>
+                  <option th:each="c : ${clientes}" th:value="${c.idCliente}" th:text="${c.nombre}"></option>
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="tipoFactura" class="form-label">
+                  <i class="fas fa-tags text-primary me-2"></i>Tipo Factura <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" id="tipoFactura" name="tipoFactura" required>
+                  <option th:each="tipo : ${tiposFactura}"
+                          th:value="${tipo}"
+                          th:text="${tipo.getDisplayName()}">Tipo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Fila 2: Serie y Número de Factura -->
+            <div class="row">
+              <div class="col-md-3 mb-3">
+                <label for="serie" class="form-label">
+                  <i class="fas fa-hashtag text-primary me-2"></i>Serie
+                </label>
+                <input type="text" class="form-control" id="serie" name="serie" 
+                       placeholder="Ej: F001" maxlength="10"
+                       title="Serie de la factura (opcional)">
+                <small class="text-muted">Opcional</small>
+              </div>
+
+              <div class="col-md-9 mb-3">
+                <label for="numeroFactura" class="form-label">
+                  <i class="fas fa-file-invoice text-primary me-2"></i>Número de Factura
+                </label>
+                <input type="text" class="form-control" id="numeroFactura" name="numeroFactura" 
+                       placeholder="Ej: 001-2025-00123" maxlength="50"
+                       title="Número único de la factura (se genera automáticamente si se deja vacío)">
+                <small class="text-muted">Se generará automáticamente si no se especifica</small>
+              </div>
+            </div>
+
+            <!-- Fila 3: Fechas -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="fechaEntrega" class="form-label">
+                  <i class="fas fa-calendar text-primary me-2"></i>Fecha de Entrega <span class="text-danger">*</span>
+                </label>
+                <input type="date" class="form-control" id="fechaEntrega" name="fechaEntrega" required 
+                       onchange="calcularFechaPago()" />
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="fechaPago" class="form-label">
+                  <i class="fas fa-money-check-alt text-primary me-2"></i>Fecha Límite de Pago
+                </label>
+                <input type="date" class="form-control" id="fechaPago" name="fechaPago"
+                       title="Se calcula automáticamente como Fecha de Entrega + 7 días">
+                <small class="text-muted">Se calcula automáticamente (+7 días desde entrega)</small>
+              </div>
+            </div>
+
+            <!-- Fila 4: Estado y Descripción -->
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label">
+                  <i class="fas fa-truck text-primary me-2"></i>Estado de Entrega
+                </label>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="entregado" name="entregado">
+                  <label class="form-check-label" for="entregado">
+                    <strong>Marcar como entregado</strong>
+                  </label>
+                </div>
+                <small class="text-muted">Indica si el pedido ya fue entregado al cliente</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="descripcion" class="form-label">
+                <i class="fas fa-comment text-primary me-2"></i>Descripción
+              </label>
+              <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
+            </div>
+
+            <!-- Separador - Facturación Electrónica -->
+            <div class="mt-4 mb-3">
+              <hr>
+              <h6 class="text-warning">
+                <i class="fas fa-file-invoice me-2"></i>
+                Facturación Electrónica Costa Rica
+              </h6>
+            </div>
+
+            <!-- Fila 5: Condición de Venta y Medio de Pago -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="condicionVentaFE" class="form-label">
+                  <i class="fas fa-handshake text-warning me-2"></i>Condición de Venta
+                </label>
+                <select class="form-select" id="condicionVentaFE" name="condicionVentaFE" onchange="togglePlazoCredito()">
+                  <option value="">Seleccione condición</option>
+                  <option th:each="condicion : ${condicionesVenta}"
+                          th:value="${condicion}"
+                          th:text="${condicion.getFormatoCompleto()}"
+                          th:selected="${condicion.name() == 'CONTADO'}">
+                  </option>
+                </select>
+                <small class="text-muted">Contado, Crédito, Consignación, etc.</small>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="medioPagoFE" class="form-label">
+                  <i class="fas fa-money-bill-wave text-warning me-2"></i>Medio de Pago
+                </label>
+                <select class="form-select" id="medioPagoFE" name="medioPagoFE">
+                  <option value="">Seleccione medio de pago</option>
+                  <option th:each="medio : ${mediosPago}"
+                          th:value="${medio}"
+                          th:text="${medio.getFormatoCompleto()}"
+                          th:selected="${medio.name() == 'EFECTIVO'}">
+                  </option>
+                </select>
+                <small class="text-muted">Efectivo, Tarjeta, Transferencia, etc.</small>
+              </div>
+            </div>
+
+            <!-- Fila 6: Moneda y Tipo de Cambio -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="monedaFE" class="form-label">
+                  <i class="fas fa-coins text-warning me-2"></i>Moneda
+                </label>
+                <select class="form-select" id="monedaFE" name="monedaFE" onchange="toggleTipoCambio()">
+                  <option th:each="moneda : ${monedas}"
+                          th:value="${moneda}"
+                          th:text="${moneda.getFormatoCompleto()}"
+                          th:selected="${moneda.name() == 'CRC'}">
+                  </option>
+                </select>
+                <small class="text-muted">CRC por defecto</small>
+              </div>
+
+              <div class="col-md-6 mb-3" id="divTipoCambio" style="display: none;">
+                <label for="tipoCambio" class="form-label">
+                  <i class="fas fa-exchange-alt text-warning me-2"></i>Tipo de Cambio
+                </label>
+                <input type="number" 
+                       class="form-control" 
+                       id="tipoCambio" 
+                       name="tipoCambio" 
+                       step="0.00001" 
+                       min="0"
+                       placeholder="Ej: 532.15000">
+                <small class="text-muted">Requerido si moneda ≠ CRC</small>
+              </div>
+
+              <div class="col-md-6 mb-3" id="divPlazoCreditoHidden" style="display: none;">
+                <!-- Espacio vacío cuando no se muestra plazo -->
+              </div>
+
+              <div class="col-md-6 mb-3" id="divPlazoCredito" style="display: none;">
+                <label for="plazoCredito" class="form-label">
+                  <i class="fas fa-calendar-alt text-warning me-2"></i>Plazo de Crédito (días)
+                </label>
+                <input type="number" 
+                       class="form-control" 
+                       id="plazoCredito" 
+                       name="plazoCredito" 
+                       min="1"
+                       placeholder="Ej: 30">
+                <small class="text-muted">Requerido si condición = Crédito</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Paso 2: Líneas de factura -->
+          <div id="paso-2" style="display: none;">
+            <h5 class="mb-3">
+              <i class="fas fa-list text-primary me-2"></i>Líneas de Factura
+            </h5>
+
+            <!-- VERSIÓN DESKTOP: Tabla -->
+            <div class="table-responsive d-none d-md-block">
+              <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                <tr>
+                  <th style="width: 60px;" class="text-center">#</th>
+                  <th>Producto</th>
+                  <th style="width: 100px;" class="text-center">Cantidad</th>
+                  <th style="width: 120px;" class="text-center">Precio</th>
+                  <th style="width: 120px;" class="text-center">Subtotal</th>
+                  <th style="width: 100px;" class="text-center">Acciones</th>
+                </tr>
+                </thead>
+                <tbody id="lineas-body">
+                <!-- Aquí se llenan dinámicamente las filas vía JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- VERSIÓN MÓVIL: Cards -->
+            <div class="d-md-none" id="lineas-cards-container">
+              <!-- Aquí se llenan dinámicamente las cards vía JS -->
+            </div>
+
+            <button class="btn btn-success" type="button" onclick="addLinea()">
+              <i class="fas fa-plus me-2"></i>Agregar línea
+            </button>
+
+            <!-- Resumen de Totales -->
+            <div class="card mt-4 border-primary">
+              <div class="card-body">
+                <h6 class="card-title text-primary">
+                  <i class="fas fa-calculator me-2"></i>Resumen de Factura
+                </h6>
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="d-flex justify-content-between">
+                      <span>Subtotal:</span>
+                      <strong id="resumen-subtotal">$0.00</strong>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="d-flex justify-content-between">
+                      <span>IGV (0%):</span>
+                      <strong id="resumen-igv">$0.00</strong>
+                    </div>
+                    <small class="text-muted">No se aplica impuesto actualmente</small>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="h5 mb-0">Total:</span>
+                      <strong class="h5 mb-0 text-success" id="resumen-total">$0.00</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-info mt-3">
+              <strong><i class="fas fa-info-circle me-2"></i>Nota:</strong> Recuerde agregar al menos una línea de producto antes de guardar la factura.
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btnCancelar">
+          <i class="fas fa-times me-2"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" id="btnSiguiente" onclick="mostrarPaso2()">
+          <i class="fas fa-arrow-right me-2"></i>Siguiente
+        </button>
+        <button type="button" class="btn btn-success" id="btnGuardar" style="display: none;" onclick="guardarLineas()">
+          <i class="fas fa-save me-2"></i>Guardar factura
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

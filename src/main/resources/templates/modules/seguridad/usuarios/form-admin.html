@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title th:text="${modoEdicion ? 'Editar Usuario' : 'Nuevo Usuario'}">Formulario Usuario</title>
+</head>
+<body>
+    <!-- Estilos personalizados para esta página -->
+    <style>
+        .form-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .form-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 0.5rem;
+        }
+        .required-field::after {
+            content: " *";
+            color: #dc3545;
+        }
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #dee2e6;
+        }
+        .password-toggle {
+            cursor: pointer;
+        }
+    </style>
+
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Header -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <nav aria-label="breadcrumb" class="mb-3">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a th:href="@{/dashboard}" class="text-decoration-none">
+                                    <i class="fas fa-home me-1"></i>Dashboard
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a th:href="@{/admin/usuarios}" class="text-decoration-none">
+                                    <i class="fas fa-users me-1"></i>Usuarios
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"
+                                th:text="${modoEdicion ? 'Editar' : 'Nuevo'}">
+                            </li>
+                        </ol>
+                    </nav>
+                    <h2 class="mb-0">
+                        <i class="fas" th:classappend="${modoEdicion ? 'fa-user-edit' : 'fa-user-plus'} + ' text-primary me-2'"></i>
+                        <span th:text="${modoEdicion ? 'Editar Usuario' : 'Nuevo Usuario'}"></span>
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Formulario -->
+            <form th:action="${modoEdicion ? '/admin/usuarios/actualizar/' + usuario.idUsuario : '/admin/usuarios/guardar'}"
+                  method="POST"
+                  th:object="${usuario}"
+                  enctype="multipart/form-data"
+                  id="formUsuario">
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Sección: Información Personal -->
+                    <div class="form-section">
+                        <h5 class="form-section-title">
+                            <i class="fas fa-id-card me-2"></i>Información Personal
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nombre" class="form-label required-field">Nombre Completo</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="nombre" 
+                                       th:field="*{nombre}"
+                                       placeholder="Ej: Juan Pérez"
+                                       required>
+                                <div class="invalid-feedback">Por favor ingrese el nombre</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="telefono" class="form-label required-field">Teléfono</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-phone"></i>
+                                    </span>
+                                    <input type="tel" 
+                                           class="form-control" 
+                                           id="telefono" 
+                                           th:field="*{telefono}"
+                                           placeholder="50612345678"
+                                           pattern="[0-9]{8,15}"
+                                           required
+                                           th:readonly="${modoEdicion}">
+                                </div>
+                                <small class="text-muted">8-15 dígitos (será el usuario para login)</small>
+                                <div class="invalid-feedback">Ingrese un teléfono válido</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-envelope"></i>
+                                    </span>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="email" 
+                                           th:field="*{email}"
+                                           placeholder="usuario@ejemplo.com">
+                                </div>
+                                <div class="invalid-feedback">Ingrese un email válido</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3" th:if="${!modoEdicion}">
+                                <label for="password" class="form-label required-field">Contraseña</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="password" 
+                                           th:field="*{password}"
+                                           placeholder="Mínimo 6 caracteres"
+                                           minlength="6"
+                                           required>
+                                    <span class="input-group-text password-toggle" onclick="togglePassword()">
+                                        <i class="fas fa-eye" id="toggleIcon"></i>
+                                    </span>
+                                </div>
+                                <div class="invalid-feedback">Mínimo 6 caracteres</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Rol y Permisos -->
+                    <div class="form-section">
+                        <h5 class="form-section-title">
+                            <i class="fas fa-user-shield me-2"></i>Rol y Permisos
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="rol" class="form-label required-field">Rol</label>
+                                <select class="form-select" id="rol" th:field="*{rol}" required>
+                                    <option value="">Seleccione un rol...</option>
+                                    <option th:each="rolItem : ${roles}" 
+                                            th:value="${rolItem.codigo}" 
+                                            th:text="${rolItem.nombre}">
+                                        Rol
+                                    </option>
+                                </select>
+                                <small class="text-muted" th:if="${roles != null and !roles.empty}">
+                                    <strong>Permisos del rol seleccionado:</strong>
+                                    <div id="rolPermisosInfo" class="mt-2 small">
+                                        <!-- Se llenará dinámicamente con JavaScript -->
+                                    </div>
+                                </small>
+                                <div class="invalid-feedback">Seleccione un rol</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Estado de la Cuenta</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="activo" 
+                                           th:field="*{activo}"
+                                           checked>
+                                    <label class="form-check-label" for="activo">
+                                        <span class="badge bg-success" id="estadoBadge">Activo</span>
+                                    </label>
+                                </div>
+                                <small class="text-muted">Usuario puede acceder al sistema</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Seguridad (solo en edición) -->
+                    <div class="form-section" th:if="${modoEdicion}">
+                        <h5 class="form-section-title">
+                            <i class="fas fa-shield-alt me-2"></i>Seguridad
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Forzar Cambio de Contraseña</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="requireCambioPassword" 
+                                           th:field="*{requireCambioPassword}">
+                                    <label class="form-check-label" for="requireCambioPassword">
+                                        El usuario debe cambiar su contraseña en el próximo login
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Intentos Fallidos</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </span>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           th:field="*{intentosFallidos}"
+                                           readonly>
+                                    <button class="btn btn-outline-secondary" 
+                                            type="button" 
+                                            onclick="resetearIntentos()"
+                                            th:if="${usuario.intentosFallidos > 0}">
+                                        <i class="fas fa-redo me-1"></i>Resetear
+                                    </button>
+                                </div>
+                                <small class="text-muted">Se bloquea automáticamente a los 5 intentos</small>
+                            </div>
+                        </div>
+
+                        <div class="row" th:if="${usuario.bloqueado}">
+                            <div class="col-12">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-lock me-2"></i>
+                                    <strong>Usuario Bloqueado:</strong>
+                                    <span th:text="${usuario.razonBloqueo}"></span>
+                                    <br>
+                                    <small th:text="'Bloqueado el: ' + ${usuario.fechaBloqueo}"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-md-4">
+                    <!-- Avatar -->
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">
+                                <i class="fas fa-image me-2"></i>Avatar del Usuario
+                            </h6>
+                            <img th:src="${usuario.avatar != null ? usuario.avatar : '/images/default-avatar.png'}" 
+                                 class="avatar-preview mb-3" 
+                                 id="avatarPreview"
+                                 alt="Avatar">
+                            
+                            <!-- Input File para subir imagen -->
+                            <div class="mb-3">
+                                <label for="avatarFile" class="form-label small">
+                                    <i class="fas fa-upload me-1"></i>Subir nueva imagen
+                                </label>
+                                <input type="file" 
+                                       class="form-control form-control-sm" 
+                                       id="avatarFile" 
+                                       name="avatarFile"
+                                       accept="image/jpeg,image/png,image/jpg,image/gif"
+                                       onchange="previewAvatarFile(this)">
+                                <small class="text-muted d-block mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Formatos: JPG, PNG, GIF. Máximo 2MB
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información del Sistema -->
+                    <div class="card border-0 shadow-sm" th:if="${modoEdicion}">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-info-circle me-2"></i>Información del Sistema
+                            </h6>
+                            <ul class="list-unstyled mb-0 small">
+                                <li class="mb-2">
+                                    <strong>ID:</strong> 
+                                    <span th:text="${usuario.idUsuario}"></span>
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Creado:</strong> 
+                                    <span th:text="${usuario.fechaCreacionFormateada}"></span>
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Último Acceso:</strong> 
+                                    <span th:text="${usuario.ultimoAccesoFormateado}"></span>
+                                </li>
+                                <li class="mb-2" th:if="${usuario.totalActividades != null}">
+                                    <strong>Actividades:</strong> 
+                                    <span th:text="${usuario.totalActividades}"></span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between">
+                        <a th:href="@{/admin/usuarios}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Volver
+                        </a>
+                        <div>
+                            <button type="reset" class="btn btn-outline-warning me-2">
+                                <i class="fas fa-redo me-2"></i>Limpiar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                <span th:text="${modoEdicion ? 'Actualizar Usuario' : 'Crear Usuario'}"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        </div>
+    </main>
+    <!-- Fin Main Content -->
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Toggle contraseña
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('toggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        // Preview de archivo de avatar
+        function previewAvatarFile(input) {
+            const avatarPreview = document.getElementById('avatarPreview');
+            
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // Validar tamaño (2MB máximo)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('El archivo es demasiado grande. Máximo 2MB permitido.');
+                    input.value = '';
+                    return;
+                }
+                
+                // Validar tipo
+                if (!file.type.match('image.*')) {
+                    alert('Por favor selecciona un archivo de imagen válido.');
+                    input.value = '';
+                    return;
+                }
+                
+                // Mostrar preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    avatarPreview.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Actualizar badge de estado
+        document.getElementById('activo')?.addEventListener('change', function() {
+            const badge = document.getElementById('estadoBadge');
+            if (this.checked) {
+                badge.className = 'badge bg-success';
+                badge.textContent = 'Activo';
+            } else {
+                badge.className = 'badge bg-secondary';
+                badge.textContent = 'Inactivo';
+            }
+        });
+
+        // Resetear intentos fallidos
+        function resetearIntentos() {
+            if (confirm('¿Está seguro de resetear los intentos fallidos?')) {
+                const idUsuario = [[usuario.idUsuario]];
+                
+                fetch(`/admin/usuarios/api/${idUsuario}/resetear-intentos`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Intentos reseteados exitosamente');
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al resetear intentos');
+                });
+            }
+        }
+
+        // Validación del formulario
+        (function () {
+            'use strict'
+            const forms = document.querySelectorAll('.needs-validation')
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+        })()
+    </script>
+</body>
+</html>

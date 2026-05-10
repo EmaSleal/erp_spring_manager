@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{shared/layout :: head}">
+    <title>Editar Permiso | WhatsApp Orders Manager</title>
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+        
+        <!-- Page Content -->
+        <div id="content">
+            <!-- Navbar -->
+            <div th:replace="~{shared/components/navbar :: navbar}"></div>
+            
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Breadcrumb -->
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a th:href="@{/admin/dashboard}">
+                                <i class="bi bi-house-door"></i> Inicio
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a th:href="@{/admin/permisos/gestionar}">
+                                <i class="bi bi-key"></i> Permisos
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item active">Editar Permiso</li>
+                    </ol>
+                </nav>
+                
+                <!-- Header -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h2>
+                            <i class="bi bi-pencil-square me-2"></i>Editar Permiso
+                        </h2>
+                    </div>
+                </div>
+                            <i class="fas fa-edit"></i> Editar Permiso
+                        </h2>
+                    </div>
+                </div>
+                
+                <!-- Alertas -->
+                <!-- Mensajes -->
+                <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-1"></i> <span th:text="${success}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                
+                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                
+                <div class="row">
+                    <!-- Formulario Principal -->
+                    <div class="col-lg-8">
+                        <!-- Código (inmutable) -->
+                        <div class="card mb-3 bg-primary text-white">
+                            <div class="card-body text-center">
+                                <small class="text-white-50">CÓDIGO DEL PERMISO (Inmutable)</small>
+                                <h3 class="mt-2 mb-2 font-monospace" th:text="${permiso.codigo}">CLIENTE_VER</h3>
+                                <small><i class="bi bi-lock me-1"></i>Este código no puede modificarse</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Formulario -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-pencil-square me-2"></i>Datos del Permiso
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <form th:action="@{/admin/permisos/actualizar/{id}(id=${permiso.idPermiso})}" 
+                                      method="post" 
+                                      th:object="${permiso}">
+                                    
+                                    <!-- Nombre -->
+                                    <div class="mb-4">
+                                        <label for="nombre" class="form-label">
+                                            <i class="bi bi-tag me-1"></i> Nombre del Permiso *
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="nombre" 
+                                               name="nombre" 
+                                               th:value="${permiso.nombre}"
+                                               required
+                                               maxlength="100"
+                                               placeholder="Ej: Ver Clientes">
+                                        <small class="form-text text-muted">
+                                            Nombre descriptivo que aparecerá en la interfaz
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Descripción -->
+                                    <div class="mb-4">
+                                        <label for="descripcion" class="form-label">
+                                            <i class="bi bi-text-left me-1"></i> Descripción *
+                                        </label>
+                                        <textarea class="form-control" 
+                                                  id="descripcion" 
+                                                  name="descripcion" 
+                                                  rows="3" 
+                                                  required
+                                                  maxlength="500"
+                                                  placeholder="Describe para qué sirve este permiso..."
+                                                  th:text="${permiso.descripcion}"></textarea>
+                                        <small class="form-text text-muted">
+                                            Explicación detallada de qué permite hacer este permiso
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Categoría -->
+                                    <div class="mb-4">
+                                        <label for="categoria" class="form-label">
+                                            <i class="bi bi-folder me-1"></i> Categoría *
+                                        </label>
+                                        <select class="form-select" 
+                                                id="categoria" 
+                                                name="categoria" 
+                                                required>
+                                            <option value="">Seleccione una categoría...</option>
+                                            <option value="CLIENTE" th:selected="${permiso.categoria == 'CLIENTE'}">CLIENTE</option>
+                                            <option value="PRODUCTO" th:selected="${permiso.categoria == 'PRODUCTO'}">PRODUCTO</option>
+                                            <option value="FACTURA" th:selected="${permiso.categoria == 'FACTURA'}">FACTURA</option>
+                                            <option value="USUARIO" th:selected="${permiso.categoria == 'USUARIO'}">USUARIO</option>
+                                            <option value="REPORTE" th:selected="${permiso.categoria == 'REPORTE'}">REPORTE</option>
+                                            <option value="CONFIGURACION" th:selected="${permiso.categoria == 'CONFIGURACION'}">CONFIGURACION</option>
+                                            <option value="ROL" th:selected="${permiso.categoria == 'ROL'}">ROL</option>
+                                            <option value="PERMISO" th:selected="${permiso.categoria == 'PERMISO'}">PERMISO</option>
+                                            <option value="SISTEMA" th:selected="${permiso.categoria == 'SISTEMA'}">SISTEMA</option>
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            Agrupa el permiso para facilitar su gestión
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Es Crítico -->
+                                    <div class="mb-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="esCritico" 
+                                                   name="esCritico"
+                                                   th:checked="${permiso.esCritico}">
+                                            <label class="form-check-label" for="esCritico">
+                                                <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> 
+                                                <strong>Marcar como PERMISO CRÍTICO</strong>
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Los permisos críticos requieren atención especial al asignarlos. 
+                                            Ejemplos: eliminar datos, modificar configuración del sistema, gestionar usuarios.
+                                        </small>
+                                        <div th:if="${permiso.esCritico}">
+                                            <span class="badge bg-danger mt-2">
+                                                <i class="bi bi-shield-exclamation"></i> PERMISO CRÍTICO ACTIVO
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Botones -->
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                        <a th:href="@{/admin/permisos/gestionar}" 
+                                           class="btn btn-outline-secondary btn-lg">
+                                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                                        </a>
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="bi bi-save me-1"></i> Guardar Cambios
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>                    <!-- Panel Lateral - Información -->
+                    <div class="col-lg-4">
+                        <!-- Estado Actual -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-info-circle me-2"></i> Estado Actual
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <strong>Estado:</strong>
+                                    <span th:if="${permiso.activo}" 
+                                          class="badge bg-success ms-2">
+                                        <i class="bi bi-check-circle-fill"></i> ACTIVO
+                                    </span>
+                                    <span th:unless="${permiso.activo}" 
+                                          class="badge bg-secondary ms-2">
+                                        <i class="bi bi-x-circle-fill"></i> INACTIVO
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <strong>Criticidad:</strong>
+                                    <span th:if="${permiso.esCritico}" 
+                                          class="badge bg-danger ms-2">
+                                        <i class="bi bi-exclamation-triangle-fill"></i> CRÍTICO
+                                    </span>
+                                    <span th:unless="${permiso.esCritico}" 
+                                          class="badge bg-info ms-2">
+                                        <i class="bi bi-info-circle"></i> NORMAL
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <strong>ID:</strong> 
+                                    <code th:text="${permiso.idPermiso}">1</code>
+                                </div>
+                                
+                                <hr>
+                                
+                                <div class="d-grid gap-2">
+                                    <!-- Cambiar estado -->
+                                    <form th:action="@{/admin/permisos/cambiar-estado/{id}(id=${permiso.idPermiso})}" 
+                                          method="post"
+                                          class="form-cambiar-estado"
+                                          th:data-permiso-nombre="${permiso.nombre}">
+                                        <button type="submit" 
+                                                class="btn w-100"
+                                                th:classappend="${permiso.activo} ? 'btn-warning' : 'btn-success'">
+                                            <i th:class="${permiso.activo} ? 'bi bi-toggle-off' : 'bi bi-toggle-on'"></i>
+                                            <span th:text="${permiso.activo} ? ' Desactivar' : ' Activar'"></span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Roles que tienen este permiso -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-people me-2"></i> Asignado a Roles
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex flex-wrap gap-2" th:if="${permiso.roles != null and !permiso.roles.isEmpty()}">
+                                    <span th:each="rol : ${permiso.roles}" 
+                                          class="badge bg-primary">
+                                        <i th:class="${rol.codigo == 'ADMIN' ? 'bi bi-shield-fill-check' : 
+                                                      (rol.codigo == 'GERENTE' ? 'bi bi-person-fill-gear' : 
+                                                      (rol.codigo == 'VENDEDOR' ? 'bi bi-person-fill' : 
+                                                      'bi bi-person-circle'))}"></i>
+                                        <span th:text="${' ' + rol.nombre}">Admin</span>
+                                    </span>
+                                </div>
+                                
+                                <div th:if="${permiso.roles == null or permiso.roles.isEmpty()}" 
+                                     class="text-center text-muted py-3">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    <p class="mb-0">No asignado a ningún rol</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Ayuda -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-lightbulb me-1"></i> Ayuda</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="small mb-0">
+                                    <li>El <strong>código</strong> del permiso es inmutable y único</li>
+                                    <li>El <strong>nombre</strong> es lo que verán los usuarios</li>
+                                    <li>La <strong>categoría</strong> ayuda a organizar permisos</li>
+                                    <li>Los permisos <strong>críticos</strong> requieren mayor cuidado</li>
+                                    <li>Solo permisos <strong>activos</strong> funcionan en el sistema</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <div th:replace="~{shared/layout :: scripts}"></div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Confirmación para cambiar estado
+            document.querySelectorAll('.form-cambiar-estado').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    const permisoNombre = this.dataset.permisoNombre;
+                    if (!confirm(`¿Cambiar estado del permiso ${permisoNombre}?`)) {
+                        e.preventDefault();
+                    }
+                });
+            });
+            
+            // Confirmación al salir sin guardar
+            let formModificado = false;
+            
+            document.querySelectorAll('form input, form textarea, form select').forEach(field => {
+                field.addEventListener('change', function() {
+                    formModificado = true;
+                });
+            });
+            
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', function() {
+                    formModificado = false;
+                });
+            });
+            
+            window.addEventListener('beforeunload', function(e) {
+                if (formModificado) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

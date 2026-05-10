@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Preferencias de Notificaciones</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/notificaciones}" class="text-decoration-none">
+                            <i class="fas fa-bell me-1"></i>Notificaciones
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-cog me-1"></i>Preferencias
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1">
+                        <i class="fas fa-cog text-primary me-2"></i>
+                        Preferencias de Notificaciones
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Configura cómo y cuándo deseas recibir notificaciones
+                    </p>
+                </div>
+                <div>
+                    <a th:href="@{/notificaciones}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Notificaciones
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Preferencias por Tipo -->
+                <div class="col-lg-8">
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-sliders-h me-2"></i>
+                                Notificaciones por Tipo
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">
+                                Selecciona los canales por los que deseas recibir cada tipo de notificación
+                            </p>
+
+                            <div id="preferenciasContainer" class="preferencias-list">
+                                <!-- JavaScript cargará las preferencias aquí -->
+                                <div class="text-center py-4">
+                                    <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                                    <p class="text-muted">Cargando preferencias...</p>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4">
+                                <button id="btnRestaurarDefecto" class="btn btn-outline-secondary">
+                                    <i class="fas fa-undo me-2"></i>Restaurar por Defecto
+                                </button>
+                                <button id="btnGuardarPreferencias" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Guardar Preferencias
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información y Ayuda -->
+                <div class="col-lg-4">
+                    <!-- Canales Disponibles -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0 fw-semibold">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Canales Disponibles
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="canal-info mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-globe text-primary me-2"></i>
+                                    <strong>Web</strong>
+                                </div>
+                                <small class="text-muted">
+                                    Notificaciones en tiempo real dentro de la aplicación. 
+                                    Aparecerán en el badge del navbar.
+                                </small>
+                            </div>
+
+                            <div class="canal-info mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-envelope text-info me-2"></i>
+                                    <strong>Email</strong>
+                                </div>
+                                <small class="text-muted">
+                                    Recibirás un correo electrónico con el contenido de la notificación.
+                                </small>
+                            </div>
+
+                            <div class="canal-info">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fab fa-whatsapp text-success me-2"></i>
+                                    <strong>WhatsApp</strong>
+                                </div>
+                                <small class="text-muted">
+                                    Mensaje directo a tu WhatsApp configurado.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tipos de Notificación -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0 fw-semibold">
+                                <i class="fas fa-list me-2"></i>
+                                Tipos de Notificación
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2">
+                                    <i class="fas fa-file-invoice text-success me-2"></i>
+                                    <strong>Factura Creada</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Cuando se genera una nueva factura
+                                    </p>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                                    <strong>Factura Vencida</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Cuando una factura ha vencido
+                                    </p>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-clock text-warning me-2"></i>
+                                    <strong>Próxima a Vencer</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        3 días antes del vencimiento
+                                    </p>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-money-bill-wave text-info me-2"></i>
+                                    <strong>Pago Recibido</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Cuando se registra un pago
+                                    </p>
+                                </li>
+                                <li>
+                                    <i class="fas fa-info-circle text-secondary me-2"></i>
+                                    <strong>Sistema</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Notificaciones del sistema
+                                    </p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts adicionales -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        // Configuración de CSRF para peticiones AJAX
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+        /*]]>*/
+    </script>
+    <script th:src="@{/modules/notificacion/js/preferencias-notificaciones.js}"></script>
+
+    <style>
+        /* Estilos específicos para preferencias */
+        .preferencia-item {
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .preferencia-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-color: var(--primary-color);
+        }
+
+        .preferencia-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .preferencia-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 0.75rem;
+        }
+
+        .preferencia-icon.type-factura-creada {
+            background-color: rgba(76, 175, 80, 0.1);
+            color: var(--success-color);
+        }
+
+        .preferencia-icon.type-factura-vencida {
+            background-color: rgba(244, 67, 54, 0.1);
+            color: var(--error-color);
+        }
+
+        .preferencia-icon.type-factura-proxima-vencer {
+            background-color: rgba(255, 152, 0, 0.1);
+            color: var(--warning-color);
+        }
+
+        .preferencia-icon.type-pago-recibido {
+            background-color: rgba(33, 150, 243, 0.1);
+            color: var(--info-color);
+        }
+
+        .preferencia-icon.type-sistema {
+            background-color: rgba(156, 39, 176, 0.1);
+            color: #9c27b0;
+        }
+
+        .preferencia-title {
+            display: flex;
+            align-items: center;
+        }
+
+        .preferencia-title h6 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .preferencia-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-left: 52px;
+            margin-bottom: 1rem;
+        }
+
+        .canales-switches {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-left: 52px;
+        }
+
+        .canal-switch {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .canal-switch label {
+            margin: 0;
+            font-size: 0.9rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .canal-icon {
+            font-size: 1.1rem;
+            margin-right: 0.25rem;
+        }
+
+        .canal-icon.web {
+            color: var(--primary-color);
+        }
+
+        .canal-icon.email {
+            color: var(--info-color);
+        }
+
+        .canal-icon.whatsapp {
+            color: var(--success-color);
+        }
+
+        /* Toggle Switch Custom */
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        /* Canal Info */
+        .canal-info {
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .canal-info:last-child {
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+    </style>
+</body>
+</html>

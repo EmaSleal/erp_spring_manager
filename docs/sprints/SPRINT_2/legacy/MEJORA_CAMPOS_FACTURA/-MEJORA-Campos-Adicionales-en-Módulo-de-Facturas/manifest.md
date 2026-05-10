@@ -1,0 +1,15 @@
+# MEJORA Campos Adicionales en Módulo de Facturas
+
+- [🎨 Cambios en la Interfaz](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Cambios-en-la-Interfaz.md)
+- [💻 Cambios Técnicos](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Cambios-Técnicos.md)
+- [📊 Campos Agregados](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Campos-Agregados.md)
+- [📋 Checklist de Implementación](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Checklist-de-Implementación.md)
+- [✅ Conclusión](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Conclusión.md)
+- [💡 Decisiones de Diseño](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Decisiones-de-Diseño.md)
+- [🔮 Mejoras Futuras](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Mejoras-Futuras.md)
+- [🏷️ Metadata](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Metadata.md)
+- [🎯 Motivación](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Motivación.md)
+- [🔗 Referencias](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Referencias.md)
+- [📊 Resultados](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Resultados.md)
+- [📋 Resumen Ejecutivo](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Resumen-Ejecutivo.md)
+- [🧪 Testing](sprints/SPRINT_2/legacy/MEJORA_CAMPOS_FACTURA/-MEJORA-Campos-Adicionales-en-Módulo-de-Facturas/-Testing.md)

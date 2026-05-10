@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- ============================================================================
+     SIDEBAR COMPONENT - Menú Lateral de Navegación
+     WhatsApp Orders Manager
+     ============================================================================ -->
+
+<div th:fragment="sidebar">
+<aside class="sidebar" id="sidebar">
+    
+    <!-- Header del Sidebar -->
+    <div class="sidebar-header">
+        <div class="sidebar-title">Menú Principal</div>
+    </div>
+
+    <!-- Menú de Módulos -->
+    <ul class="sidebar-menu">
+        
+        <!-- ====================================================================
+             MÓDULOS ACTIVOS (Funcionales)
+             ==================================================================== -->
+        
+        <!-- Clientes -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_VER')">
+            <a th:href="@{/clientes}" 
+               class="menu-link" 
+               data-module="clientes"
+               data-tooltip="Clientes">
+                <div class="menu-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="menu-text">Clientes</span>
+            </a>
+        </li>
+
+        <!-- Productos -->
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_VER')">
+            <a th:href="@{/productos}" 
+               class="menu-link" 
+               data-module="productos"
+               data-tooltip="Productos">
+                <div class="menu-icon">
+                    <i class="fas fa-box"></i>
+                </div>
+                <span class="menu-text">Productos</span>
+            </a>
+        </li>
+
+        <!-- Facturas -->
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
+            <a th:href="@{/facturas}" 
+               class="menu-link" 
+               data-module="facturas"
+               data-tooltip="Facturas">
+                <div class="menu-icon">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <span class="menu-text">Facturas</span>
+            </a>
+        </li>
+
+        <!-- Contabilidad -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_VER')">
+            <a th:href="@{/contabilidad}" 
+               class="menu-link" 
+               data-module="contabilidad"
+               data-tooltip="Contabilidad">
+                <div class="menu-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <span class="menu-text">Contabilidad</span>
+            </a>
+        </li>
+
+        <!-- Reportes -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REPORTE_DASHBOARD')">
+            <a th:href="@{/reportes}" 
+               class="menu-link" 
+               data-module="reportes"
+               data-tooltip="Reportes">
+                <div class="menu-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <span class="menu-text">Reportes</span>
+            </a>
+        </li>
+
+        <!-- WhatsApp -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_WHATSAPP')">
+            <a th:href="@{/whatsapp/mensajes}" 
+               class="menu-link" 
+               data-module="whatsapp"
+               data-tooltip="WhatsApp">
+                <div class="menu-icon">
+                    <i class="fab fa-whatsapp"></i>
+                </div>
+                <span class="menu-text">WhatsApp</span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <li><div class="menu-divider"></div></li>
+
+        <!-- Section Title -->
+        <li><div class="menu-section-title">Próximamente</div></li>
+
+        <!-- ====================================================================
+             MÓDULOS INACTIVOS (Próximamente)
+             ==================================================================== -->
+        
+        <!-- Pedidos -->
+        <li class="menu-item">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="pedidos"
+               data-tooltip="Pedidos">
+                <div class="menu-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <span class="menu-text">Pedidos</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Inventario -->
+        <li class="menu-item">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="inventario"
+               data-tooltip="Inventario">
+                <div class="menu-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <span class="menu-text">Inventario</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Pagos -->
+        <li class="menu-item">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="pagos"
+               data-tooltip="Pagos">
+                <div class="menu-icon">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <span class="menu-text">Pagos</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Documentos -->
+        <li class="menu-item">
+            <a href="#" 
+               class="menu-link disabled" 
+               data-module="documentos"
+               data-tooltip="Documentos">
+                <div class="menu-icon">
+                    <i class="fas fa-folder"></i>
+                </div>
+                <span class="menu-text">Documentos</span>
+                <span class="menu-badge">Pronto</span>
+            </a>
+        </li>
+
+        <!-- Divider (solo quien tenga permisos de administración) -->
+        <li sec:authorize="@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name, 
+                           'USUARIO_VER',
+                           'CONFIG_VER')">
+            <div class="menu-divider"></div>
+        </li>
+
+        <!-- Section Title (solo quien tenga permisos de administración) -->
+        <li sec:authorize="@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name,
+                           'USUARIO_VER',
+                           'CONFIG_VER')">
+            <div class="menu-section-title">Administración</div>
+        </li>
+
+        <!-- Usuarios -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'USUARIO_VER')">
+            <a th:href="@{/admin/usuarios}" 
+               class="menu-link" 
+               data-module="usuarios"
+               data-tooltip="Gestión de Usuarios">
+                <div class="menu-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="menu-text">Usuarios</span>
+            </a>
+        </li>
+
+        <!-- Gestión de Roles -->
+        <li class="menu-item" 
+            sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/admin/roles}" 
+               class="menu-link" 
+               data-module="roles"
+               data-tooltip="Gestión de Roles">
+                <div class="menu-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <span class="menu-text">Roles</span>
+            </a>
+        </li>
+
+        <!-- Permisos (Matriz) -->
+        <li class="menu-item" 
+            sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/admin/permisos}" 
+               class="menu-link" 
+               data-module="permisos"
+               data-tooltip="Matriz de Permisos">
+                <div class="menu-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <span class="menu-text">Permisos</span>
+            </a>
+        </li>
+
+        <!-- Gestionar Permisos (CRUD Individual) -->
+        <li class="menu-item" 
+            sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/admin/permisos/gestionar}" 
+               class="menu-link" 
+               data-module="permisos-gestionar"
+               data-tooltip="Gestionar Permisos Individuales">
+                <div class="menu-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <span class="menu-text">Gestionar Permisos</span>
+            </a>
+        </li>
+
+        <!-- Configuración -->
+        <li class="menu-item" 
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_VER')">
+            <a th:href="@{/configuracion}" 
+               class="menu-link" 
+               data-module="config"
+               data-tooltip="Configuración">
+                <div class="menu-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <span class="menu-text">Configuración</span>
+            </a>
+        </li>
+
+    </ul>
+
+    <!-- Botón de Collapse (Desktop) -->
+    <div class="sidebar-collapse-container">
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+    </div>
+
+</aside>
+
+<!-- Overlay para cerrar sidebar en móvil -->
+<div class="sidebar-overlay"></div>
+</div>
+
+</html>

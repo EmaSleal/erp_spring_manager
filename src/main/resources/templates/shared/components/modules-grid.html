@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+
+<!-- ============================================================================
+     MODULES GRID - Componente Reutilizable
+     WhatsApp Orders Manager
+     ============================================================================
+     Fragmento que muestra un grid de tarjetas de módulos/submódulos.
+     
+     Parámetros:
+     - modulos: Lista de objetos ModuloDTO con {nombre, descripcion, icono, color, ruta, activo}
+     
+     Uso:
+     <div th:replace="~{shared/components/modules-grid :: modulesGrid(modulos=${listaModulos})}"></div>
+     ============================================================================ -->
+
+<body>
+    <!-- FRAGMENTO: Grid de Módulos -->
+    <th:block th:fragment="modulesGrid(modulos)">
+        <div class="row" id="modulosGrid">
+            <!-- Módulo Card (se repite por cada módulo) -->
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4" 
+                 th:each="modulo : ${modulos}">
+                
+                <!-- Card del Módulo -->
+                <div class="module-card" 
+                     th:classappend="${!modulo.activo} ? 'module-disabled' : ''"
+                     th:attr="data-activo=${modulo.activo}, data-ruta=${modulo.ruta}, data-nombre=${modulo.nombre}"
+                     onclick="handleModuleClick(this)">
+                    
+                    <!-- Icono del Módulo -->
+                    <div class="module-icon" th:style="'color: ' + ${modulo.color}">
+                        <i th:class="${modulo.icono} + ' fa-3x'"></i>
+                    </div>
+                    
+                    <!-- Nombre del Módulo -->
+                    <h5 class="module-name" th:text="${modulo.nombre}">Módulo</h5>
+                    
+                    <!-- Descripción del Módulo -->
+                    <p class="module-description" th:text="${modulo.descripcion}">Descripción del módulo</p>
+                    
+                    <!-- Badge "Próximamente" para módulos inactivos -->
+                    <span class="badge bg-secondary module-badge" th:if="${!modulo.activo}">
+                        <i class="fas fa-clock me-1"></i> Próximamente
+                    </span>
+                    
+                    <!-- Badge "Activo" para módulos implementados -->
+                    <span class="badge bg-success module-badge" th:if="${modulo.activo}">
+                        <i class="fas fa-check-circle me-1"></i> Disponible
+                    </span>
+                </div>
+            </div>
+        </div>
+    </th:block>
+</body>
+</html>

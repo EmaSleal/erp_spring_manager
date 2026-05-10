@@ -1,0 +1,71 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Environment Variables ###
+.env
+.env.local
+.env.production
+.env.ps1
+*.env
+
+### Facturación Electrónica - Seguridad ###
+# Certificados digitales (NUNCA COMMITEAR)
+certificados/
+*.p12
+*.pfx
+*.key
+*.crt
+*.pem
+
+# Archivos XSD (mantener solo en docs/sprints/SPRINT_5/xsd/)
+src/main/resources/xsd/
+!docs/sprints/SPRINT_5/xsd/
+
+# Configuraciones sensibles de Hacienda
+**/hacienda-config.properties
+**/hacienda-credentials.json
+
+# Respuestas y comprobantes con datos reales
+**/comprobantes/produccion/
+**/respuestas/produccion/
+*Factura*real*.xml
+*Respuesta*real*.xml
+
+# Logs con información sensible
+logs/hacienda*.log
+logs/facturacion*.log
+logs/
+
+#Comprobantes electrónicos generados (si contienen datos reales)
+comprobantes/

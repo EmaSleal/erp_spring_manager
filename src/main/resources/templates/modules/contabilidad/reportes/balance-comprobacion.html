@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Balance de Comprobación</title>
+</head>
+<body>
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+    
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/contabilidad}">Contabilidad</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/contabilidad/reportes}">Reportes</a></li>
+                    <li class="breadcrumb-item active">Balance de Comprobación</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1"><i class="fas fa-balance-scale text-primary"></i> Balance de Comprobación</h1>
+                    <p class="text-muted">Del <span th:text="${#temporals.format(fechaInicio, 'dd/MM/yyyy')}"></span> al <span th:text="${#temporals.format(fechaFin, 'dd/MM/yyyy')}"></span></p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary me-2" onclick="window.location.href='/contabilidad/reportes'">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="exportarPDF()">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="exportarExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Cuenta</th>
+                                    <th class="text-end">Debe</th>
+                                    <th class="text-end">Haber</th>
+                                    <th class="text-end">Saldo Deudor</th>
+                                    <th class="text-end">Saldo Acreedor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="saldo : ${saldos}">
+                                    <td><code th:text="${saldo.cuenta.codigo}">1.1</code></td>
+                                    <td th:text="${saldo.cuenta.nombre}">Nombre Cuenta</td>
+                                    <td class="text-end text-primary" th:text="'$' + ${#numbers.formatDecimal(saldo.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end text-success" th:text="'$' + ${#numbers.formatDecimal(saldo.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end" th:text="${saldo.saldo > 0 ? '$' + #numbers.formatDecimal(saldo.saldo, 1, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                    <td class="text-end" th:text="${saldo.saldo < 0 ? '$' + #numbers.formatDecimal(-saldo.saldo, 1, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td colspan="2" class="text-end">TOTALES:</td>
+                                    <td class="text-end text-primary" id="totalDebe">$0.00</td>
+                                    <td class="text-end text-success" id="totalHaber">$0.00</td>
+                                    <td class="text-end" id="totalDeudor">$0.00</td>
+                                    <td class="text-end" id="totalAcreedor">$0.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    <script th:src="@{/modules/contabilidad/js/reportes.js}"></script>
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            calcularTotalesBalance();
+        });
+        
+        function calcularTotalesBalance() {
+            const filas = document.querySelectorAll('tbody tr');
+            let totalDebe = 0, totalHaber = 0, totalDeudor = 0, totalAcreedor = 0;
+            
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                totalDebe += parseFloat(celdas[2].textContent.replace(/[$,]/g, '')) || 0;
+                totalHaber += parseFloat(celdas[3].textContent.replace(/[$,]/g, '')) || 0;
+                
+                const deudor = celdas[4].textContent.trim() !== '-' ? parseFloat(celdas[4].textContent.replace(/[$,]/g, '')) : 0;
+                const acreedor = celdas[5].textContent.trim() !== '-' ? parseFloat(celdas[5].textContent.replace(/[$,]/g, '')) : 0;
+                
+                totalDeudor += deudor;
+                totalAcreedor += acreedor;
+            });
+            
+            document.getElementById('totalDebe').textContent = '$' + totalDebe.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalHaber').textContent = '$' + totalHaber.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalDeudor').textContent = '$' + totalDeudor.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalAcreedor').textContent = '$' + totalAcreedor.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Registrar Pago</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/facturas}" class="text-decoration-none">
+                            <i class="fas fa-file-invoice-dollar me-1"></i>Facturas
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/pagos}" class="text-decoration-none">
+                            <i class="fas fa-money-bill-wave me-1"></i>Pagos
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        Registrar Pago
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1"><i class="fas fa-cash-register text-success me-2"></i>Registrar Nuevo Pago</h2>
+                    <p class="text-muted mb-0">Complete los datos del pago a registrar</p>
+                </div>
+                <a th:href="@{/pagos}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Pagos
+                </a>
+            </div>
+
+            <!-- Form Card -->
+            <div class="row">
+                <div class="col-md-10 offset-md-1">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-4">
+                            <form id="pagoForm" th:object="${pago}" method="post">
+                                <!-- Selector de Cliente -->
+                                <div class="mb-3">
+                                    <label for="idCliente" class="form-label">
+                                        <i class="fas fa-user text-primary me-1"></i>
+                                        Cliente <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" 
+                                            id="idCliente" 
+                                            name="idCliente"
+                                            th:field="*{idCliente}"
+                                            required
+                                            onchange="cargarFacturasCliente()">
+                                        <option value="">Seleccione un cliente...</option>
+                                        <option th:each="cliente : ${clientes}"
+                                                th:value="${cliente.idCliente}"
+                                                th:text="${cliente.nombre}">
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <!-- Tipo de Pago -->
+                                <div class="mb-3">
+                                    <label for="tipoPago" class="form-label">
+                                        <i class="fas fa-tags text-success me-1"></i>
+                                        Tipo de Pago <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" 
+                                            id="tipoPago" 
+                                            name="tipoPago"
+                                            th:field="*{tipoPago}"
+                                            required
+                                            onchange="toggleFacturaField()">
+                                        <option value="">Seleccione un tipo...</option>
+                                        <option th:each="tipo : ${tiposPago}"
+                                                th:value="${tipo.name()}"
+                                                th:text="${tipo.descripcion}"
+                                                th:attr="data-requiere-factura=${tipo.requiereFactura()}"></option>
+                                    </select>
+                                    <div class="form-text">Los adelantos no requieren factura asignada</div>
+                                </div>
+
+                                <!-- Información de la Factura -->
+                                <div class="alert alert-info mb-4" th:if="${pago.idFactura != null}">
+                                    <h6 class="alert-heading mb-3"><i class="fas fa-info-circle me-2"></i>Información de la Factura</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <strong>Número:</strong> <span th:text="${pago.numeroFactura}">F001-00001</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Cliente:</strong> <span th:text="${pago.nombreCliente}">Cliente</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Total Factura:</strong> <span th:text="'₡ ' + ${#numbers.formatDecimal(pago.totalFactura ?: 0, 1, 2)}">₡ 0.00</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Saldo Pendiente:</strong> 
+                                            <span class="text-danger fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente ?: 0, 1, 2)}">₡ 0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ID Factura (opcional para adelantos) -->
+                                <div class="mb-3" id="facturaField">
+                                    <label for="idFactura" class="form-label">
+                                        <i class="fas fa-file-invoice text-primary me-1"></i>
+                                        Factura <span class="text-danger d-none" id="facturaRequired">*</span>
+                                    </label>
+                                    <select class="form-select" id="idFactura" name="idFactura">
+                                        <option value="">Sin asignar (Adelanto)</option>
+                                        <!-- Este select se poblará dinámicamente al seleccionar cliente -->
+                                    </select>
+                                    <div class="form-text">Seleccione una factura o deje sin asignar para adelantos</div>
+                                </div>
+
+                                <!-- Monto del Pago -->
+                                <div class="mb-3">
+                                    <label for="monto" class="form-label">
+                                        <i class="fas fa-dollar-sign text-success me-1"></i>
+                                        Monto del Pago <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₡</span>
+                                        <input type="number" 
+                                               step="0.01" 
+                                               min="0.01"
+                                               th:max="${pago.saldoPendiente}"
+                                               class="form-control" 
+                                               id="monto" 
+                                               name="monto"
+                                               th:value="${pago.monto}"
+                                               placeholder="0.00" 
+                                               required>
+                                    </div>
+                                    <div class="form-text" th:if="${pago.saldoPendiente != null}">
+                                        Máximo permitido: <span class="fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">₡ 0.00</span>
+                                    </div>
+                                </div>
+
+                                <!-- Método de Pago -->
+                                <div class="mb-3">
+                                    <label for="metodoPago" class="form-label">
+                                        <i class="fas fa-credit-card text-info me-1"></i>
+                                        Método de Pago <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" 
+                                            id="metodoPago" 
+                                            name="metodoPago"
+                                            th:field="*{metodoPago}"
+                                            required
+                                            onchange="toggleReferencia()">
+                                        <option value="">Seleccione un método...</option>
+                                        <option th:each="metodo : ${metodosPago}"
+                                                th:value="${metodo.name()}"
+                                                th:text="${metodo.codigo + ' - ' + metodo.descripcion}"
+                                                th:attr="data-requiere-ref=${metodo.requiereReferencia()}"></option>
+                                    </select>
+                                </div>
+
+                                <!-- Referencia Bancaria (Condicional) -->
+                                <div class="mb-3" id="referenciaGroup">
+                                    <label for="referenciaBancaria" class="form-label">
+                                        <i class="fas fa-hashtag text-warning me-1"></i>
+                                        Referencia Bancaria <span class="text-danger d-none" id="referenciaRequired">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="referenciaBancaria" 
+                                           name="referenciaBancaria"
+                                           th:value="${pago.referenciaBancaria}"
+                                           placeholder="Ej: Número de cheque, código de transacción, etc.">
+                                    <div class="form-text">
+                                        Ingrese el número de referencia del pago (cheque, transacción, comprobante). Obligatorio para CHEQUE y TRANSFERENCIA.
+                                    </div>
+                                </div>
+
+                                <!-- Información Bancaria -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="banco" class="form-label">
+                                            <i class="fas fa-university text-info me-1"></i>
+                                            Banco
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="banco" 
+                                               name="banco"
+                                               th:value="${pago.banco}"
+                                               placeholder="Nombre del banco"
+                                               maxlength="100">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="cuentaBancaria" class="form-label">
+                                            <i class="fas fa-credit-card text-info me-1"></i>
+                                            Cuenta Bancaria
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="cuentaBancaria" 
+                                               name="cuentaBancaria"
+                                               th:value="${pago.cuentaBancaria}"
+                                               placeholder="Últimos 4 dígitos"
+                                               maxlength="50">
+                                    </div>
+                                </div>
+
+                                <!-- URL del Comprobante -->
+                                <div class="mb-3">
+                                    <label for="comprobanteUrl" class="form-label">
+                                        <i class="fas fa-file-upload text-primary me-1"></i>
+                                        Comprobante (URL)
+                                    </label>
+                                    <input type="url" 
+                                           class="form-control" 
+                                           id="comprobanteUrl" 
+                                           name="comprobanteUrl"
+                                           th:value="${pago.comprobanteUrl}"
+                                           placeholder="https://ejemplo.com/comprobante.pdf"
+                                           maxlength="255">
+                                    <div class="form-text">URL del comprobante de pago (PDF, imagen, etc.)</div>
+                                </div>
+
+                                <!-- Fecha de Pago -->
+                                <div class="mb-3">
+                                    <label for="fechaPago" class="form-label">
+                                        <i class="fas fa-calendar text-primary me-1"></i>
+                                        Fecha y Hora del Pago <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="datetime-local" 
+                                           class="form-control" 
+                                           id="fechaPago" 
+                                           name="fechaPago"
+                                           th:value="${pago.fechaPago != null ? #temporals.format(pago.fechaPago, 'yyyy-MM-dd') + 'T' + #temporals.format(pago.fechaPago, 'HH:mm') : ''}"
+                                           required>
+                                </div>
+
+                                <!-- Estado del Pago -->
+                                <div class="mb-3">
+                                    <label for="estado" class="form-label">
+                                        <i class="fas fa-info-circle text-secondary me-1"></i>
+                                        Estado del Pago <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" 
+                                            id="estado" 
+                                            name="estado"
+                                            th:field="*{estado}"
+                                            required>
+                                        <option value="">Seleccione un estado...</option>
+                                        <option th:each="estadoPago : ${estadosPago}"
+                                                th:value="${estadoPago.name()}"
+                                                th:text="${estadoPago.descripcion}"></option>
+                                    </select>
+                                </div>
+
+                                <!-- Observaciones -->
+                                <div class="mb-3">
+                                    <label for="observaciones" class="form-label">
+                                        <i class="fas fa-sticky-note text-secondary me-1"></i>
+                                        Notas u Observaciones
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="observaciones" 
+                                              name="observaciones"
+                                              th:text="${pago.observaciones}"
+                                              rows="3" 
+                                              maxlength="1000"
+                                              placeholder="Información adicional sobre el pago (opcional)"></textarea>
+                                </div>
+
+                                <!-- valor conciliado con switch -->
+                                <div class="mb-3 form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="conciliado" name="conciliado" th:checked="${pago.conciliado}">
+                                    <label class="form-check-label" for="conciliado">
+                                        ¿El pago ha sido conciliado con el banco?
+                                    </label>
+                                </div>
+
+                                <!-- Botones de Acción -->
+                                <div class="d-flex justify-content-end gap-2 mt-4">
+                                    <a th:href="@{/pagos}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save me-2"></i>Registrar Pago
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    
+    <!-- JavaScript específico -->
+    <script th:src="@{/modules/facturacion/js/pagos.js}"></script>
+</body>
+</html>

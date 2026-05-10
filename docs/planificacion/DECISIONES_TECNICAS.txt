@@ -1,0 +1,515 @@
+================================================================================
+DECISIONES TÉCNICAS - SPRINT 1: DASHBOARD Y NAVEGACIÓN
+WhatsApp Orders Manager
+================================================================================
+Fecha: 10 de octubre de 2025
+Estado: DECISIONES PENDIENTES DE APROBACIÓN
+================================================================================
+
+DECISIÓN 1: FRAMEWORK CSS
+================================================================================
+OPCIONES:
+---------
+A) Bootstrap 5
+   Pros: Muy conocido, componentes completos, grid system robusto
+   Cons: Archivos grandes, puede ser genérico
+
+B) Tailwind CSS
+   Pros: Muy customizable, utility-first, moderno
+   Cons: Curva de aprendizaje, requiere configuración
+
+C) Material Design (Materialize CSS)
+   Pros: Estilo profesional tipo Google, componentes bonitos
+   Cons: Menos personalizable
+
+RECOMENDACIÓN: Bootstrap 5
+RAZÓN: Más rápido de implementar, componentes listos, documentación extensa
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Otra opción: ________________
+
+================================================================================
+DECISIÓN 2: LIBRERÍA DE ICONOS
+================================================================================
+OPCIONES:
+---------
+A) Font Awesome 6 (Free)
+   Iconos disponibles: ~2000
+   CDN: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css
+
+B) Material Icons
+   Iconos disponibles: ~1000
+   CDN: https://fonts.googleapis.com/icon?family=Material+Icons
+
+C) Bootstrap Icons
+   Iconos disponibles: ~1800
+   CDN: https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css
+
+RECOMENDACIÓN: Font Awesome 6
+RAZÓN: Más variedad, iconos de calidad, muy utilizado
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Otra opción: ________________
+
+================================================================================
+DECISIÓN 3: PALETA DE COLORES FINAL
+================================================================================
+PROPUESTA:
+----------
+Navbar/Header: #1976D2 (Azul Material Design)
+Background: #F5F5F5 (Gris claro)
+Cards: #FFFFFF (Blanco)
+
+Módulos (colores de tarjetas):
+- Clientes: #2196F3 (Azul)
+- Productos: #FF9800 (Naranja)
+- Facturas: #4CAF50 (Verde)
+- Pedidos: #9C27B0 (Púrpura)
+- Reportes: #009688 (Teal)
+- Inventario: #3F51B5 (Índigo)
+- Usuarios: #607D8B (Gris azulado)
+- Configuración: #9E9E9E (Gris)
+- Documentos: #546E7A (Azul grisáceo)
+- Pagos: #8BC34A (Verde lima)
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 4: ESTRUCTURA DEL NAVBAR
+================================================================================
+PROPUESTA:
+----------
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [📱 LOGO] WhatsApp Orders    [🏠 Dashboard]      [👤 Admin Usuario ▼]  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Elementos:
+1. Logo/Icono + Nombre app (izquierda)
+2. Botón "Volver a Dashboard" (centro-izquierda)
+3. Breadcrumbs (centro) - Ejemplo: Dashboard > Clientes > Nuevo
+4. Nombre usuario + dropdown (derecha)
+
+Dropdown incluye:
+- Ver mi perfil
+- Configuración (solo ADMIN)
+- Mi actividad
+- Ayuda
+- ───────────────
+- Cerrar sesión
+
+ALTURA NAVBAR: 64px
+STICKY: Sí (fijo al hacer scroll)
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 5: DISEÑO DE TARJETAS DE MÓDULOS
+================================================================================
+PROPUESTA:
+----------
+Tamaño: 180px x 180px (cuadradas)
+Grid: 5 columnas en desktop, 3 en tablet, 2 en móvil
+
+Estructura de cada tarjeta:
+┌────────────────┐
+│                │
+│     [ICONO]    │  <- 48px, color del módulo
+│                │
+│   Nombre       │  <- 16px, bold
+│   Módulo       │
+│                │
+│  Descripción   │  <- 12px, gris
+└────────────────┘
+
+Estados:
+- Normal: Fondo blanco, sombra suave
+- Hover: Levantamiento (transform: translateY(-5px)), sombra más pronunciada
+- Active/Click: Escala ligeramente
+- Disabled: Opacidad 50%, cursor not-allowed
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 6: WIDGETS DE ESTADÍSTICAS EN DASHBOARD
+================================================================================
+PROPUESTA:
+----------
+4 Widgets superiores (antes del grid de módulos):
+
+1. 👥 TOTAL CLIENTES
+   - Número grande
+   - Texto: "Total clientes registrados"
+   - Subtexto: "+X esta semana" (en verde si positivo)
+
+2. 📦 PRODUCTOS
+   - Número grande
+   - Texto: "Productos en catálogo"
+   - Subtexto: "Stock total: XXX unidades"
+
+3. 💰 FACTURAS HOY/MES
+   - Número de facturas
+   - Texto: "Facturas emitidas"
+   - Subtexto: "Total: $XXX,XXX"
+
+4. 💳 PAGOS PENDIENTES
+   - Monto total pendiente
+   - Texto: "Por cobrar"
+   - Subtexto: "XX facturas pendientes"
+
+Tamaño: 250px x 120px cada uno
+Colores: Fondo blanco, borde superior de color según tipo
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 7: LAYOUT GENERAL DE PÁGINAS
+================================================================================
+PROPUESTA:
+----------
+OPCIÓN A - SIN SIDEBAR (más simple):
+┌─────────────────────────────────────┐
+│         NAVBAR FIJO                 │
+├─────────────────────────────────────┤
+│                                     │
+│         CONTENIDO PRINCIPAL         │
+│         (100% ancho)                │
+│                                     │
+└─────────────────────────────────────┘
+
+OPCIÓN B - CON SIDEBAR (estilo Odoo):
+┌───────┬─────────────────────────────┐
+│       │     NAVBAR FIJO             │
+│       ├─────────────────────────────┤
+│ SIDE  │                             │
+│ BAR   │   CONTENIDO PRINCIPAL       │
+│ MENÚ  │   (80% ancho)               │
+│       │                             │
+└───────┴─────────────────────────────┘
+
+RECOMENDACIÓN: OPCIÓN A (Sin sidebar)
+RAZÓN: Más simple para empezar, dashboard sirve como menú principal
+
+¿APROBADO? [ ] Opción A  [x] Opción B  [ ] Híbrida: ________________
+
+================================================================================
+DECISIÓN 8: RUTA POST-LOGIN
+================================================================================
+PROPUESTA:
+----------
+Después de login exitoso, redirigir a: /dashboard
+
+SecurityConfig.java:
+.defaultSuccessUrl("/dashboard", true)
+
+Si usuario accede a "/" estando logueado -> redirect a /dashboard
+Si usuario NO logueado intenta acceder a rutas protegidas -> redirect a /auth/login
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Otra ruta: ________________
+
+================================================================================
+DECISIÓN 9: MÓDULOS A MOSTRAR EN DASHBOARD (PRIMERA VERSIÓN)
+================================================================================
+PROPUESTA - MOSTRAR SOLO MÓDULOS FUNCIONALES:
+----------------------------------------------
+SPRINT 1 (Inmediato):
+✅ Clientes (ya existe)
+✅ Productos (ya existe)
+✅ Facturas (ya existe)
+
+SPRINT 2-3 (Próximos):
+🚧 Pedidos (a desarrollar)
+🚧 Pagos (a desarrollar)
+
+FUTURO:
+⏳ Reportes
+⏳ Inventario (mejorar)
+⏳ Usuarios (solo ADMIN)
+⏳ Configuración (solo ADMIN)
+
+Opción 1: Mostrar TODOS los módulos pero deshabilitar los no implementados
+Opción 2: Mostrar SOLO los módulos funcionales
+
+RECOMENDACIÓN: Opción 1
+RAZÓN: Da visión completa del sistema, genera expectativa
+
+¿APROBADO? [x] Opción 1  [ ] Opción 2
+
+================================================================================
+DECISIÓN 10: INFORMACIÓN DEL USUARIO EN NAVBAR
+================================================================================
+PROPUESTA:
+----------
+Mostrar en navbar:
+┌─────────────────────────┐
+│ [Avatar] Nombre Usuario │
+│          Rol            │  <- Pequeño badge
+└─────────────────────────┘
+
+Avatar:
+- Opción A: Iniciales en círculo de color (ej: "JD" para Juan Díaz)
+- Opción B: Icono genérico de usuario
+- Opción C: Imagen de perfil (si tiene)
+
+RECOMENDACIÓN: Opción A (Iniciales) como default
+RAZÓN: Personalizado sin necesidad de subir imágenes
+
+¿APROBADO? [x] Opción A  [ ] Opción B  [ ] Opción C
+
+================================================================================
+DECISIÓN 11: MANEJO DE ROLES EN DASHBOARD
+================================================================================
+PROPUESTA:
+----------
+Renderizado condicional de módulos según rol:
+
+USUARIO ADMIN ve:
+- Todos los módulos
+
+USUARIO REGULAR ve:
+- Clientes, Productos, Facturas, Pedidos, Pagos, Reportes
+- NO ve: Usuarios, Configuración
+
+USUARIO CLIENTE ve:
+- Solo: Mis Pedidos, Mis Facturas
+
+Implementación en Thymeleaf:
+<div th:if="${#authorization.hasRole('ADMIN')}">
+    <!-- Módulo solo para admin -->
+</div>
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 12: ANIMACIONES Y TRANSICIONES
+================================================================================
+PROPUESTA:
+----------
+Transiciones suaves:
+- Hover en tarjetas: 0.3s ease
+- Dropdown: 0.2s ease
+- Page transitions: fade-in 0.3s
+
+Animaciones:
+- Loading spinner al cargar estadísticas
+- Skeleton loading en tarjetas de módulos
+- Ripple effect al hacer click (Material Design)
+
+Nivel de animación:
+[ ] Mínimo (solo hover básico)
+[ ] Moderado (hover + transiciones suaves) <- RECOMENDADO
+[ ] Alto (animaciones complejas, efectos visuales)
+
+¿APROBADO? [ ] Mínimo  [x] Moderado  [ ] Alto
+
+================================================================================
+DECISIÓN 13: RESPONSIVE BREAKPOINTS
+================================================================================
+PROPUESTA (Bootstrap 5 standard):
+---------------------------------
+Extra small (xs): < 576px   -> 1 columna de módulos
+Small (sm): ≥ 576px         -> 2 columnas de módulos
+Medium (md): ≥ 768px        -> 3 columnas de módulos
+Large (lg): ≥ 992px         -> 4 columnas de módulos
+Extra large (xl): ≥ 1200px  -> 5 columnas de módulos
+XXL: ≥ 1400px               -> 5-6 columnas de módulos
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 14: LIBRERÍAS ADICIONALES
+================================================================================
+PROPUESTA:
+----------
+□ SweetAlert2 - Alertas y confirmaciones bonitas
+  CDN: https://cdn.jsdelivr.net/npm/sweetalert2@11
+  Uso: Confirmar eliminaciones, mostrar éxitos/errores
+
+□ Chart.js - Gráficas en dashboard
+  CDN: https://cdn.jsdelivr.net/npm/chart.js
+  Uso: Widgets de estadísticas visuales
+
+□ DataTables - Tablas interactivas
+  CDN: https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js
+  Uso: Listados de clientes, productos, facturas
+
+□ Flatpickr - Date picker moderno
+  CDN: https://cdn.jsdelivr.net/npm/flatpickr
+  Uso: Selección de fechas en formularios
+
+¿APROBADO?
+[x] Todas  [ ] Solo SweetAlert2 y Chart.js  [ ] Ninguna  [ ] Otras: ________
+
+================================================================================
+DECISIÓN 15: ESTRUCTURA DE ARCHIVOS CSS
+================================================================================
+PROPUESTA:
+----------
+static/css/
+├── common.css           <- Variables, reset, estilos globales
+├── navbar.css           <- Estilos de barra superior
+├── dashboard.css        <- Dashboard y widgets
+├── module-cards.css     <- Tarjetas de módulos
+├── forms.css            <- Estilos de formularios
+├── tables.css           <- Estilos de tablas
+└── responsive.css       <- Media queries
+
+Orden de carga en layout.html:
+1. Bootstrap CSS (CDN)
+2. Font Awesome (CDN)
+3. common.css
+4. Archivo específico de página (navbar, dashboard, etc.)
+5. responsive.css (último)
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 16: LOADING STATES
+================================================================================
+PROPUESTA:
+----------
+Al cargar dashboard:
+1. Mostrar skeleton loading en widgets de estadísticas
+2. Mostrar shimmer effect en tarjetas de módulos
+3. Cargar datos vía AJAX al finalizar carga de página
+
+Spinner global:
+- Overlay con spinner al hacer operaciones (guardar, eliminar)
+- Color: Mismo que primary (#1976D2)
+
+¿APROBADO? [x] Sí  [ ] No, cargar todo de una vez
+
+================================================================================
+DECISIÓN 17: MANEJO DE ERRORES Y MENSAJES
+================================================================================
+PROPUESTA:
+----------
+Toast notifications (esquina superior derecha):
+- Success: Verde con check
+- Error: Rojo con X
+- Warning: Amarillo con !
+- Info: Azul con i
+
+Librería: SweetAlert2 Toast mode
+
+Mensajes desde backend (Thymeleaf):
+<div th:if="${success}" class="alert alert-success">
+    <span th:text="${success}"></span>
+</div>
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 18: PERFIL DE USUARIO - CAMPOS A MOSTRAR/EDITAR
+================================================================================
+PROPUESTA:
+----------
+VISTA DE PERFIL (Ver mi perfil):
+- Nombre completo
+- Teléfono
+- Email (nuevo campo)
+- Rol (no editable)
+- Fecha de registro
+- Último acceso
+- Avatar/Foto (opcional)
+
+EDICIÓN DE PERFIL:
+Campos editables:
+✓ Nombre
+✓ Email
+✓ Teléfono
+✓ Avatar (subir imagen)
+
+Cambio de contraseña:
+- Contraseña actual
+- Nueva contraseña
+- Confirmar nueva contraseña
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+DECISIÓN 19: SEGURIDAD - LOGOUT
+================================================================================
+PROPUESTA:
+----------
+Endpoint: POST /auth/logout (Spring Security estándar)
+
+Comportamiento:
+1. Invalidar sesión
+2. Limpiar cookies
+3. Redirect a /auth/login
+4. Mostrar mensaje: "Sesión cerrada exitosamente"
+
+Botón logout en dropdown:
+- Ícono: 🚪 o <i class="fas fa-sign-out-alt"></i>
+- Color: Rojo (#F44336)
+- Confirmación: SweetAlert "¿Seguro que deseas cerrar sesión?"
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Sin confirmación
+
+================================================================================
+DECISIÓN 20: NOMENCLATURA Y CONVENCIONES
+================================================================================
+PROPUESTA:
+----------
+Controladores:
+- Rutas en minúsculas con guiones: /mi-perfil
+- Métodos en camelCase: mostrarDashboard()
+
+Vistas:
+- Nombres en kebab-case: dashboard.html, mi-perfil.html
+- Carpetas por módulo: templates/perfil/, templates/dashboard/
+
+CSS:
+- Clases en kebab-case: .module-card, .navbar-user
+- IDs en camelCase: #dashboardGrid
+
+JavaScript:
+- Variables en camelCase: userName, dashboardData
+- Funciones en camelCase: loadStatistics()
+
+¿APROBADO? [x] Sí  [ ] No  [ ] Modificar: ________________
+
+================================================================================
+RESUMEN DE DECISIONES PARA SPRINT 1
+================================================================================
+
+APROBADAS (para proceder):
+□ Framework CSS: Bootstrap 5
+□ Iconos: Font Awesome 6
+□ Paleta de colores definida
+□ Navbar con dropdown de usuario
+□ Tarjetas de módulos 180x180px
+□ 4 Widgets de estadísticas
+□ Layout sin sidebar
+□ Ruta post-login: /dashboard
+□ Mostrar todos los módulos (disabled si no están listos)
+□ Avatar con iniciales
+□ Roles condicionales en vista
+□ Animaciones moderadas
+□ Responsive con 5 breakpoints
+□ SweetAlert2 + Chart.js
+□ Estructura CSS propuesta
+□ Loading states con skeleton
+□ Toast notifications
+□ Perfil de usuario con campos básicos
+□ Logout con confirmación
+□ Nomenclatura en kebab-case/camelCase
+
+================================================================================
+PRÓXIMOS PASOS
+================================================================================
+
+Una vez aprobadas las decisiones:
+
+1. Crear estructura de archivos vacíos
+2. Configurar Bootstrap y Font Awesome en layout.html
+3. Implementar navbar.html
+4. Crear DashboardController
+5. Crear dashboard.html con widgets y módulos
+6. Implementar estilos CSS
+7. Agregar JavaScript para interactividad
+8. Probar en diferentes dispositivos
+
+Tiempo estimado SPRINT 1: 3-5 días de desarrollo
+
+================================================================================
+FIN DEL DOCUMENTO DE DECISIONES TÉCNICAS
+================================================================================

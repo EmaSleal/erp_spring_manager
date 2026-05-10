@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- ============================================================================
+     MODAL CLIENTE - Bootstrap 5
+     Modal para agregar y editar clientes
+     ============================================================================ -->
+
+<div th:fragment="cliente-modal" class="modal fade" id="clienteModal" tabindex="-1" aria-labelledby="clienteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h5 class="modal-title" id="clienteModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>
+                    <span id="modal-title">Agregar Cliente</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="clienteForm" th:action="@{/clientes/guardar}" method="post" th:object="${cliente}">
+                    <input type="hidden" id="idCliente" th:field="*{idCliente}">
+
+                    <!-- Nombre -->
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">
+                            <i class="fas fa-user text-primary me-1"></i>
+                            Nombre Completo
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="nombre" 
+                               th:field="*{nombre}" 
+                               placeholder="Ej: Juan Pérez" 
+                               required>
+                        <div class="invalid-feedback">
+                            Por favor ingrese el nombre del cliente.
+                        </div>
+                    </div>
+
+                    <!-- Teléfono -->
+                    <div class="mb-3">
+                        <label for="telefono" class="form-label">
+                            <i class="fas fa-phone text-success me-1"></i>
+                            Teléfono (WhatsApp)
+                        </label>
+                        <input type="tel" 
+                               class="form-control" 
+                               id="telefono" 
+                               th:field="*{usuario.telefono}" 
+                               placeholder="Ej: 55512345" 
+                               pattern="[0-9]{8}" 
+                               required>
+                        <div class="form-text">8 dígitos sin espacios ni guiones</div>
+                        <div class="invalid-feedback">
+                            Por favor ingrese un teléfono válido de 8 dígitos.
+                        </div>
+                    </div>
+
+                    <!-- Tipo de Cliente -->
+                    <div class="mb-3">
+                        <label for="tipoCliente" class="form-label">
+                            <i class="fas fa-tag text-warning me-1"></i>
+                            Tipo de Cliente
+                        </label>
+                        <select class="form-select" 
+                                id="tipoCliente" 
+                                th:field="*{tipoCliente}" 
+                                required>
+                            <option value="">Seleccione un tipo...</option>
+                            <option th:each="tipo : ${tiposCliente}"
+                                    th:value="${tipo}"
+                                    th:text="${tipo.getDisplayName()}">Tipo</option>
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor seleccione el tipo de cliente.
+                        </div>
+                    </div>
+
+                    <!-- Facturación Electrónica -->
+                    <div class="mb-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           role="switch"
+                                           id="requiereFacturaElectronica" 
+                                           th:field="*{requiereFacturaElectronica}"
+                                           checked>
+                                    <label class="form-check-label" for="requiereFacturaElectronica">
+                                        <i class="bi bi-file-earmark-text text-primary me-1"></i>
+                                        <strong>Requiere Facturación Electrónica</strong>
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Si está activado, las facturas de este cliente se enviarán a Hacienda CR
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos para Facturación Electrónica (condicional) -->
+                    <div id="datosFacturacionElectronica" style="display: none;">
+                        <hr class="my-3">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-file-invoice me-2"></i>
+                            Datos para Facturación Electrónica
+                        </h6>
+
+                        <!-- Tipo de Identificación -->
+                        <div class="mb-3">
+                            <label for="tipoIdentificacionCliente" class="form-label">
+                                <i class="fas fa-id-badge me-1"></i>
+                                Tipo de Identificación
+                            </label>
+                            <select class="form-select" id="tipoIdentificacionCliente" th:field="*{tipoIdentificacion}">
+                                <option value="">-- Seleccione --</option>
+                                <option value="CEDULA_FISICA">01 - Cédula Física</option>
+                                <option value="CEDULA_JURIDICA">02 - Cédula Jurídica</option>
+                                <option value="DIMEX">03 - DIMEX</option>
+                                <option value="NITE">04 - NITE</option>
+                            </select>
+                        </div>
+
+                        <!-- Número de Identificación -->
+                        <div class="mb-3">
+                            <label for="numeroIdentificacionCliente" class="form-label">
+                                <i class="fas fa-hashtag me-1"></i>
+                                Número de Identificación
+                            </label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="numeroIdentificacionCliente" 
+                                       th:field="*{numeroIdentificacion}"
+                                       placeholder="Ej: 107890123"
+                                       maxlength="12">
+                                <button class="btn btn-outline-primary" type="button" 
+                                        id="btnConsultarHaciendaCliente"
+                                        title="Consultar en Hacienda">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Sin guiones ni espacios</div>
+                        </div>
+
+                        <!-- Código de Actividad -->
+                        <div class="mb-3">
+                            <label for="codigoActividadCliente" class="form-label">
+                                <i class="fas fa-briefcase me-1"></i>
+                                Código de Actividad
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="codigoActividadCliente"
+                                   th:field="*{codigoActividad}"
+                                   placeholder="047730"
+                                   maxlength="20">
+                            <div class="form-text">Se puede autocompletar desde la consulta de Hacienda</div>
+                        </div>
+
+                        <!-- Ubicación (Opcional) -->
+                        <div class="card bg-light border-0 mb-3">
+                            <div class="card-body">
+                                <h6 class="text-muted mb-3">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    Ubicación (Opcional)
+                                </h6>
+
+                                <div class="row">
+                                    <!-- Provincia -->
+                                    <div class="col-md-6 mb-2">
+                                        <label for="provinciaCliente" class="form-label">Provincia</label>
+                                        <select class="form-select form-select-sm" id="provinciaCliente" th:field="*{provincia}">
+                                            <option value="">-- Opcional --</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Cantón -->
+                                    <div class="col-md-3 mb-2">
+                                        <label for="cantonCliente" class="form-label">Cantón</label>
+                                        <select class="form-select form-select-sm" 
+                                               id="cantonCliente" 
+                                               th:field="*{canton}"
+                                               disabled>
+                                            <option value="">-- Seleccione provincia --</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Distrito -->
+                                    <div class="col-md-3 mb-2">
+                                        <label for="distritoCliente" class="form-label">Distrito</label>
+                                        <select class="form-select form-select-sm" 
+                                               id="distritoCliente" 
+                                               th:field="*{distrito}"
+                                               disabled>
+                                            <option value="">-- Seleccione cantón --</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Otras Señas -->
+                                <div class="mt-2">
+                                    <label for="otrasSenasCliente" class="form-label">Otras Señas</label>
+                                    <textarea class="form-control form-control-sm"
+                                              id="otrasSenasCliente"
+                                              th:field="*{otrasSenas}"
+                                              rows="2"
+                                              minlength="5"
+                                              maxlength="250"
+                                              placeholder="Dirección descriptiva (opcional)"></textarea>
+                                    <div class="form-text">
+                                        Si completás este campo, debe tener al menos 5 caracteres (requerido por Hacienda CR)
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        Otras señas debe tener al menos 5 caracteres o dejarlo vacío.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        // Función para sincronizar la visualización de datos de FE
+                        function toggleFESection() {
+                            const checkbox = document.getElementById('requiereFacturaElectronica');
+                            const seccionFE = document.getElementById('datosFacturacionElectronica');
+                            if (checkbox && seccionFE) {
+                                seccionFE.style.display = checkbox.checked ? 'block' : 'none';
+                            }
+                        }
+
+                        // Mostrar/ocultar sección de FE según el checkbox (evento de cambio manual del usuario)
+                        document.getElementById('requiereFacturaElectronica').addEventListener('change', function() {
+                            toggleFESection();
+                        });
+
+                        // Mostrar al cargar si ya está marcado
+                        window.addEventListener('DOMContentLoaded', function() {
+                            toggleFESection();
+                        });
+                    </script>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="submit" form="clienteForm" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Guardar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</html>

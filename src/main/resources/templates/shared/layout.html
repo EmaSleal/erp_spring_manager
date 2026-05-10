@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" 
+      lang="es">
+
+<!-- ============================================================================
+     LAYOUT.HTML - Fragmento HEAD reutilizable
+     WhatsApp Orders Manager
+     
+     Este archivo contiene ÚNICAMENTE el fragmento <head> con todos los CDNs y
+     archivos CSS necesarios. Cada página debe incluir manualmente navbar y sidebar.
+     ============================================================================ -->
+
+<head th:fragment="head">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title th:text="${title ?: 'WhatsApp Orders Manager'}">WhatsApp Orders Manager</title>
+    
+    <!-- ===================================================================
+         BOOTSTRAP 5.3.0 - Framework CSS
+         =================================================================== -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+          rel="stylesheet" 
+          integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" 
+          crossorigin="anonymous">
+    
+    <!-- ===================================================================
+         FONT AWESOME 6.4.0 - Iconos
+         =================================================================== -->
+    <link rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
+          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" 
+          crossorigin="anonymous" 
+          referrerpolicy="no-referrer" />
+    
+    <!-- ===================================================================
+         BOOTSTRAP ICONS 1.10.0 - Iconos adicionales
+         =================================================================== -->
+    <link rel="stylesheet" 
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <!-- ===================================================================
+         CHART.JS 4.4.0 - Librería de gráficos
+         =================================================================== -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" 
+            crossorigin="anonymous"></script>
+    
+    <!-- ===================================================================
+         CSS PERSONALIZADOS - En orden de carga
+         =================================================================== -->
+    <link rel="stylesheet" th:href="@{/shared/css/common.css}">
+    <link rel="stylesheet" th:href="@{/shared/css/navbar.css}">
+    <link rel="stylesheet" th:href="@{/shared/css/sidebar.css}">
+    <link rel="stylesheet" th:href="@{/modules/presentacion/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/shared/css/forms.css}">
+    <link rel="stylesheet" th:href="@{/shared/css/tables.css}">
+    <link rel="stylesheet" th:href="@{/shared/css/responsive-table.css}">
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+    <link rel="stylesheet" th:href="@{/modules/whatsapp/css/whatsapp.css}">
+    <link rel="stylesheet" th:href="@{/shared/css/responsive.css}">
+</head>
+
+<!-- ============================================================================
+     FRAGMENTO SCRIPTS - JavaScript reutilizable
+     Para incluir al final del <body> en cada página
+     ============================================================================ -->
+<th:block th:fragment="scripts">
+    <!-- jQuery 3.6.0 - Librería JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" 
+            integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" 
+            crossorigin="anonymous"></script>
+    
+    <!-- Bootstrap 5.3.0 - JavaScript Bundle (incluye Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" 
+            integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" 
+            crossorigin="anonymous"></script>
+    
+    <!-- SweetAlert2 - Alertas y confirmaciones -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- JavaScript personalizados -->
+    <script th:src="@{/shared/js/common.js}"></script>
+    <script th:src="@{/shared/js/navbar.js}"></script>
+    <script th:src="@{/shared/js/sidebar.js}"></script>
+</th:block>
+
+</html>
