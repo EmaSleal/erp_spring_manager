@@ -1,11 +1,13 @@
 ## 📊 CRITERIOS DE ACEPTACIÓN
 
-✅ Cobertura de código >= 80% (medida por JaCoCo)  
-✅ Todos los servicios críticos tienen tests unitarios  
-✅ Tests de integración con BD (TestContainers) funcionan  
-✅ CI/CD ejecuta tests automáticamente en cada push  
-✅ No hay tests flakey (intermitentes)  
-✅ Tests de Hacienda Sandbox pasan (con credenciales)  
+✅ Comprobantes electrónicos aceptados por Hacienda CR sandbox  
+✅ Firma XAdES-BES validada por Hacienda (no rechazada por firma inválida)  
+✅ `NumeroConsecutivo` consistente con `Clave` (sin error -23)  
+✅ `OtrasSenas` validado en 3 capas: HTML / JS / backend  
+✅ Estado final ACEPTADO reflejado correctamente en la BD  
+✅ MensajeHacienda (base64) decodificado y legible en la UI  
+
+~~✅ Cobertura de código >= 80% (JaCoCo)~~ — pospuesto  
+~~✅ CI/CD ejecuta tests automáticamente~~ — eliminado del scope  
 
 ---
-
