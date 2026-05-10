@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
-import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
-import api.astro.whats_orders_manager.modules.configuracion.repository.EmpresaRepository;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
+import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ConfiguracionHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ConfiguracionHaciendaMapper;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaService {
     
     private final ConfiguracionHaciendaRepository repository;
-    private final EmpresaRepository empresaRepository;
+    private final ConfiguracionEmpresaRepository configuracionEmpresaRepository;
     private final ConfiguracionHaciendaMapper mapper;
     private final HaciendaApiService haciendaApiService;
     
@@ -41,8 +41,8 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     public ConfiguracionHaciendaDTO crear(ConfiguracionHaciendaDTO dto) {
         log.info("Creando configuración de Hacienda para empresa ID: {}", dto.getEmpresaId());
         
-        Empresa empresa = empresaRepository.findById(dto.getEmpresaId().intValue())
-            .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada"));
+        ConfiguracionEmpresa empresa = configuracionEmpresaRepository.findById(dto.getEmpresaId().intValue())
+            .orElseThrow(() -> new IllegalArgumentException("ConfiguracionEmpresa no encontrada"));
         
         ConfiguracionHacienda configuracion = ConfiguracionHacienda.builder()
             .empresa(empresa)
@@ -99,19 +99,25 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     
     @Override
     @Transactional(readOnly = true)
-    public Optional<ConfiguracionHacienda> obtenerActivaPorEmpresa(Long empresaId) {
+    public Optional<ConfiguracionHacienda> obtenerConfiguracionActivaGlobal() {
+        return repository.findFirstByActivaTrue();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ConfiguracionHacienda> obtenerActivaPorEmpresa(Integer empresaId) {
         return repository.findActivaByEmpresaId(empresaId);
     }
-    
+
     @Override
     @Transactional(readOnly = true)
-    public Optional<ConfiguracionHacienda> obtenerPorEmpresaYAmbiente(Long empresaId, AmbienteHacienda ambiente) {
+    public Optional<ConfiguracionHacienda> obtenerPorEmpresaYAmbiente(Integer empresaId, AmbienteHacienda ambiente) {
         return repository.findByEmpresaIdAndAmbiente(empresaId, ambiente);
     }
-    
+
     @Override
     @Transactional(readOnly = true)
-    public List<ConfiguracionHaciendaDTO> listarPorEmpresa(Long empresaId) {
+    public List<ConfiguracionHaciendaDTO> listarPorEmpresa(Integer empresaId) {
         return repository.findAllByEmpresaId(empresaId)
             .stream()
             .map(mapper::toDTO)
@@ -127,7 +133,7 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
             .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
         
         // Desactivar otras configuraciones de la misma empresa
-        Long empresaId = configuracion.getEmpresa().getIdEmpresa().longValue();
+        Integer empresaId = configuracion.getEmpresa().getIdEmpresa();
         repository.findAllByEmpresaId(empresaId).forEach(config -> {
             if (!config.getId().equals(id)) {
                 config.setActiva(false);
@@ -229,8 +235,7 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     }
 
     @Override
-    public Optional<ConfiguracionHaciendaDTO> obtenerConfiguracionActiva(Long empresaId) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'obtenerConfiguracionActiva'");
+    public Optional<ConfiguracionHaciendaDTO> obtenerConfiguracionActiva(Integer empresaId) {
+        return repository.findActivaByEmpresaId(empresaId).map(mapper::toDTO);
     }
 }

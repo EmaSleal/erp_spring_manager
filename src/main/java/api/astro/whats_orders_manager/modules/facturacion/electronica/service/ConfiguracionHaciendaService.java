@@ -32,24 +32,29 @@ public interface ConfiguracionHaciendaService {
     Optional<ConfiguracionHaciendaDTO> obtenerPorId(Long id);
     
     /**
+     * Obtiene la primera configuración activa disponible (sin filtrar por empresa).
+     */
+    Optional<ConfiguracionHacienda> obtenerConfiguracionActivaGlobal();
+
+    /**
      * Obtiene la configuración activa de una empresa.
      */
-    Optional<ConfiguracionHacienda> obtenerActivaPorEmpresa(Long empresaId);
+    Optional<ConfiguracionHacienda> obtenerActivaPorEmpresa(Integer empresaId);
     
     /**
      * Obtiene la configuración activa de una empresa como DTO.
      */
-    Optional<ConfiguracionHaciendaDTO> obtenerConfiguracionActiva(Long empresaId);
+    Optional<ConfiguracionHaciendaDTO> obtenerConfiguracionActiva(Integer empresaId);
     
     /**
      * Obtiene configuración por empresa y ambiente.
      */
-    Optional<ConfiguracionHacienda> obtenerPorEmpresaYAmbiente(Long empresaId, AmbienteHacienda ambiente);
+    Optional<ConfiguracionHacienda> obtenerPorEmpresaYAmbiente(Integer empresaId, AmbienteHacienda ambiente);
     
     /**
      * Lista todas las configuraciones de una empresa.
      */
-    List<ConfiguracionHaciendaDTO> listarPorEmpresa(Long empresaId);
+    List<ConfiguracionHaciendaDTO> listarPorEmpresa(Integer empresaId);
     
     /**
      * Activa una configuración (desactiva las demás de la empresa).

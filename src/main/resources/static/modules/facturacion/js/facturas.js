@@ -250,7 +250,7 @@ function openModal(button) {
  * Envía una factura a Hacienda de Costa Rica.
  * @param {number} facturaId - ID de la factura a enviar
  */
-async function enviarAHacienda(facturaId) {
+async function enviarAHacienda(button) {
     // Obtener token CSRF
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
@@ -287,8 +287,9 @@ async function enviarAHacienda(facturaId) {
                 if (csrfHeader && csrfToken) {
                     headers[csrfHeader] = csrfToken;
                 }
-                
-                const response = await fetch(`/api/facturas/electronica/comprobantes`, {
+                const facturaId = button.getAttribute('data-id');
+                console.log(facturaId);
+                const response = await fetch(`/api/facturas/electronica/comprobantes/procesar/${facturaId}`, {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({
@@ -311,8 +312,8 @@ async function enviarAHacienda(facturaId) {
     });
     
     if (confirmed.isConfirmed && confirmed.value) {
-        const comprobante = confirmed.value;
-        
+        const comprobante = confirmed.value.comprobante;
+
         // Mostrar resultado
         await Swal.fire({
             title: '¡Enviado!',
@@ -329,7 +330,7 @@ async function enviarAHacienda(facturaId) {
             timerProgressBar: true,
             showConfirmButton: false
         });
-        
+
         // Redirigir a comprobantes
         window.location.href = `/facturas/comprobantes?id=${comprobante.id}`;
     }

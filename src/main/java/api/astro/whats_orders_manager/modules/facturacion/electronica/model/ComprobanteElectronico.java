@@ -3,7 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.model;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
-import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -51,7 +51,7 @@ public class ComprobanteElectronico {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empresa_id", nullable = false)
     @NotNull(message = "La empresa es obligatoria")
-    private Empresa empresa;
+    private ConfiguracionEmpresa empresa;
     
     /**
      * Tipo de comprobante electrónico (01-09).

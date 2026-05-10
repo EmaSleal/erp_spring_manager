@@ -289,7 +289,7 @@
 
         // Cargar estadísticas
         function cargarEstadisticas() {
-            fetch(`/api/facturas/comprobantes/empresa/${EMPRESA_ID}/estadisticas`)
+            fetch(`/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}/estadisticas`)
                 .then(res => res.json())
                 .then(data => {
                     document.getElementById('stat-aceptados').textContent = data.aceptados || 0;
@@ -302,12 +302,12 @@
 
         // Cargar comprobantes
         function cargarComprobantes(filtros = {}) {
-            let url = `/api/facturas/comprobantes/empresa/${EMPRESA_ID}?page=0&size=100`;
+            let url = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}?page=0&size=100`;
             
             if (filtros.fechaInicio && filtros.fechaFin) {
-                url = `/api/facturas/comprobantes/empresa/${EMPRESA_ID}/fechas?fechaInicio=${filtros.fechaInicio}&fechaFin=${filtros.fechaFin}&page=0&size=100`;
+                url = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}/fechas?fechaInicio=${filtros.fechaInicio}&fechaFin=${filtros.fechaFin}&page=0&size=100`;
             } else if (filtros.estado) {
-                url = `/api/facturas/comprobantes/empresa/${EMPRESA_ID}/estado/${filtros.estado}?page=0&size=100`;
+                url = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}/estado/${filtros.estado}?page=0&size=100`;
             }
 
             fetch(url)
@@ -394,6 +394,30 @@
             });
         }
 
+        function decodeMensajeHacienda(base64) {
+            if (!base64) return null;
+            try {
+                const xml = atob(base64);
+                const xmlDoc = new DOMParser().parseFromString(xml, 'text/xml');
+                const estado  = xmlDoc.querySelector('EstadoMensaje')?.textContent  || '';
+                const detalle = xmlDoc.querySelector('DetalleMensaje')?.textContent || '';
+                return { estado, detalle };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function renderMensajeHacienda(base64, cssClass = '') {
+            if (!base64) return '';
+            const msg = decodeMensajeHacienda(base64);
+            if (!msg) return `<div class="alert alert-secondary mb-0 ${cssClass}">${base64}</div>`;
+            const alertClass = msg.estado.toLowerCase() === 'aceptado' ? 'alert-success' : 'alert-danger';
+            return `
+                <div class="alert ${alertClass} mb-0 ${cssClass}" style="white-space:pre-wrap">
+                    <strong>${msg.estado}</strong><br>${msg.detalle}
+                </div>`;
+        }
+
         // Acciones
         function generarComprobanteModal() {
             // Limpiar los campos
@@ -410,7 +434,7 @@
 
         function cargarClientesConFacturasPendientes() {
             // Obtener todas las facturas y filtrar clientes únicos sin comprobante
-            fetch(`/api/facturas/comprobantes/empresa/${EMPRESA_ID}/pendientes`)
+            fetch(`/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}/pendientes`)
                 .then(res => {
                     if (!res.ok) {
                         // Si el endpoint no existe, cargar todos los clientes
@@ -450,7 +474,7 @@
             }
             
             // Cargar facturas del cliente sin comprobante
-            fetch(`/api/facturas/comprobantes/empresa/${EMPRESA_ID}/pendientes?clienteId=${clienteId}`)
+            fetch(`/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}/pendientes?clienteId=${clienteId}`)
                 .then(res => {
                     if (!res.ok) {
                         // Fallback: obtener facturas del cliente desde endpoint general
@@ -498,7 +522,7 @@
                 return;
             }
 
-            fetch(`/api/facturas/comprobantes/generar?facturaId=${facturaId}`, { method: 'POST' })
+            fetch(`/api/facturas/electronica/comprobantes/generar?facturaId=${facturaId}`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -519,7 +543,7 @@
         function enviarHacienda(id) {
             if (!confirm('¿Enviar comprobante a Hacienda?')) return;
             
-            fetch(`/api/facturas/comprobantes/${id}/enviar`, { method: 'POST' })
+            fetch(`/api/facturas/electronica/comprobantes/${id}/enviar`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -539,7 +563,7 @@
         function reenviar(id) {
             if (!confirm('¿Reenviar comprobante a Hacienda?')) return;
             
-            fetch(`/api/facturas/comprobantes/${id}/reenviar`, { method: 'POST' })
+            fetch(`/api/facturas/electronica/comprobantes/${id}/reenviar`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -556,11 +580,11 @@
         }
 
         function descargarXML(id) {
-            window.location.href = `/api/facturas/comprobantes/${id}/xml`;
+            window.location.href = `/api/facturas/electronica/comprobantes/${id}/xml`;
         }
 
         function verDetalle(id) {
-            fetch(`/api/facturas/comprobantes/${id}`)
+            fetch(`/api/facturas/electronica/comprobantes/${id}`)
                 .then(res => res.json())
                 .then(comp => {
                     const content = document.getElementById('detalleComprobanteContent');
@@ -638,7 +662,7 @@
                                     ${comp.mensajeRespuesta ? `
                                         <div class="col-12">
                                             <strong>Mensaje Hacienda:</strong><br>
-                                            <div class="alert alert-info mb-0">${comp.mensajeRespuesta}</div>
+                                            ${renderMensajeHacienda(comp.mensajeRespuesta)}
                                         </div>
                                     ` : ''}
                                     ${comp.ultimoError ? `
@@ -744,7 +768,7 @@
                     titulo: esExitoso ? 'Aceptado por Hacienda' : 'Rechazado por Hacienda',
                     estado: comp.estado,
                     icono: esExitoso ? 'fa-check-circle' : 'fa-times-circle',
-                    descripcion: comp.mensajeRespuesta || (esExitoso ? 'Comprobante aceptado' : 'Comprobante rechazado')
+                    descripcion: (() => { const m = decodeMensajeHacienda(comp.mensajeRespuesta); return m ? m.detalle : (esExitoso ? 'Comprobante aceptado' : 'Comprobante rechazado'); })()
                 });
             }
             
@@ -814,7 +838,7 @@
         function cargarXML(id) {
             const viewer = document.getElementById('xmlViewer');
             
-            fetch(`/api/facturas/comprobantes/${id}/xml-content`)
+            fetch(`/api/facturas/electronica/comprobantes/${id}/xml-content`)
                 .then(res => res.json())
                 .then(data => {
                     const xml = data.xmlComprobante || '';
@@ -849,7 +873,7 @@
         }
         
         function copiarXML(id) {
-            fetch(`/api/facturas/comprobantes/${id}/xml-content`)
+            fetch(`/api/facturas/electronica/comprobantes/${id}/xml-content`)
                 .then(res => res.json())
                 .then(data => {
                     const xml = data.xmlComprobante || '';
@@ -868,7 +892,7 @@
                 return;
             }
             
-            fetch(`/api/facturas/comprobantes/${id}/enviar-email`, {
+            fetch(`/api/facturas/electronica/comprobantes/${id}/enviar-email`, {
                 method: 'POST'
             })
                 .then(res => res.json())
@@ -897,7 +921,7 @@
             const fechaFin = document.getElementById('endDate').value;
             const estado = document.getElementById('estadoFilter').value;
             
-            let url = '/api/facturas/comprobantes/exportar/excel?';
+            let url = '/api/facturas/electronica/comprobantes/exportar/excel?';
             if (fechaInicio) url += `fechaInicio=${fechaInicio}&`;
             if (fechaFin) url += `fechaFin=${fechaFin}&`;
             if (estado) url += `estado=${estado}`;
@@ -910,7 +934,7 @@
             const fechaFin = document.getElementById('endDate').value;
             const estado = document.getElementById('estadoFilter').value;
             
-            let url = '/api/facturas/comprobantes/exportar/pdf?';
+            let url = '/api/facturas/electronica/comprobantes/exportar/pdf?';
             if (fechaInicio) url += `fechaInicio=${fechaInicio}&`;
             if (fechaFin) url += `fechaFin=${fechaFin}&`;
             if (estado) url += `estado=${estado}`;
@@ -939,7 +963,7 @@
         let chartInstance = null;
         
         function cargarGraficoTendencia() {
-            fetch('/api/facturas/comprobantes/estadisticas/tendencia?dias=30')
+            fetch('/api/facturas/electronica/comprobantes/estadisticas/tendencia?dias=30')
                 .then(res => res.json())
                 .then(data => {
                     const ctx = document.getElementById('chartTendenciaEnvios').getContext('2d');

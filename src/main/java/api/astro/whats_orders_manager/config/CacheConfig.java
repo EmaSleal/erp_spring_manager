@@ -49,6 +49,9 @@ public class CacheConfig {
     public static final String CACHE_CONFIG_FACTURACION = "configuracionFacturacion";
     public static final String CACHE_CONFIG_NOTIFICACIONES = "configuracionNotificaciones";
 
+    // Nombres de los cachés - Facturación Electrónica
+    public static final String CACHE_HACIENDA_TOKEN = "haciendaToken";
+
     /**
      * Configura el CacheManager con cachés en memoria.
      * 
@@ -72,7 +75,10 @@ public class CacheConfig {
             new ConcurrentMapCache(CACHE_PLANTILLAS_ACTIVAS),
             new ConcurrentMapCache(CACHE_PLANTILLAS_APROBADAS),
             new ConcurrentMapCache(CACHE_CONFIG_FACTURACION),
-            new ConcurrentMapCache(CACHE_CONFIG_NOTIFICACIONES)
+            new ConcurrentMapCache(CACHE_CONFIG_NOTIFICACIONES),
+
+            // Caché de tokens de Hacienda (tokens expiran ~30 min, se invalida cada 25 min)
+            new ConcurrentMapCache(CACHE_HACIENDA_TOKEN)
         ));
         
         return cacheManager;
@@ -127,6 +133,15 @@ public class CacheConfig {
     }
 
     /**
+     * Invalida tokens de Hacienda cada 4 minutos (los tokens del CPFE expiran en 5 min).
+     */
+    @Scheduled(fixedDelay = 240000) // 4 minutos = 240,000 ms
+    @CacheEvict(value = CACHE_HACIENDA_TOKEN, allEntries = true)
+    public void limpiarCacheTokensHacienda() {
+        System.out.println("🧹 [CACHE] Invalidando tokens de Hacienda...");
+    }
+
+    /**
      * Limpia todos los cachés al inicio de cada día (00:00).
      * Esto asegura que los reportes diarios empiecen con datos frescos.
      */
@@ -141,7 +156,8 @@ public class CacheConfig {
         CACHE_PLANTILLAS_ACTIVAS,
         CACHE_PLANTILLAS_APROBADAS,
         CACHE_CONFIG_FACTURACION,
-        CACHE_CONFIG_NOTIFICACIONES
+        CACHE_CONFIG_NOTIFICACIONES,
+        CACHE_HACIENDA_TOKEN
     }, allEntries = true)
     public void limpiarTodosCachesMedianoche() {
         System.out.println("🧹🌙 [CACHE] Limpieza diaria de todos los cachés (medianoche)...");

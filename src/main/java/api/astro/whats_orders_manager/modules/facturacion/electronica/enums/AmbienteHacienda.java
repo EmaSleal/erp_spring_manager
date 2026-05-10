@@ -15,7 +15,7 @@ public enum AmbienteHacienda {
     /**
      * Ambiente de pruebas (Sandbox) para desarrollo y testing.
      */
-    SANDBOX("sandbox", 
+    SANDBOX("sandbox",
             "https://api-sandbox.comprobanteselectronicos.go.cr",
             "https://idp.comprobanteselectronicos.go.cr/auth/realms/rut-stag/protocol/openid-connect/token"),
     

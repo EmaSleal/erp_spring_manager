@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.model;
 
+import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -83,8 +84,38 @@ public class ConfiguracionEmpresa implements Serializable {
     @Column(name = "sitio_web", length = 255)
     private String sitioWeb;
 
+    // ==================== FACTURACIÓN ELECTRÓNICA (COSTA RICA) ====================
+
+    @Column(name = "numero_identificacion", length = 20)
+    private String numeroIdentificacion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_identificacion", length = 20)
+    private TipoIdentificacion tipoIdentificacion;
+
+    @Column(name = "codigo_provincia", length = 1)
+    private String codigoProvincia;
+
+    @Column(name = "canton", length = 3)
+    private String canton;
+
+    @Column(name = "distrito", length = 3)
+    private String distrito;
+
+    @Column(name = "barrio", length = 3)
+    private String barrio;
+
+    @Column(name = "otras_senas", length = 255)
+    private String otrasSenas;
+
+    @Column(name = "codigo_actividad", length = 6)
+    private String codigoActividad;
+
+    @Column(name = "nombre_comercial_fe", length = 255)
+    private String nombreComercialFe;
+
     // ==================== LOGO Y BRANDING ====================
-    
+
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
 
@@ -183,12 +214,37 @@ public class ConfiguracionEmpresa implements Serializable {
 
     /**
      * Verifica si los datos fiscales están completos.
-     * 
+     *
      * @return true si RFC y régimen fiscal están configurados
      */
     public boolean tieneDatosFiscalesCompletos() {
-        return rfc != null && !rfc.isEmpty() && 
+        return rfc != null && !rfc.isEmpty() &&
                regimenFiscal != null && !regimenFiscal.isEmpty();
+    }
+
+    // ==================== COMPATIBILIDAD FACTURACIÓN ELECTRÓNICA ====================
+
+    /** Alias para getIdConfiguracion() — compatibilidad con referencias a empresa.getIdEmpresa(). */
+    public Integer getIdEmpresa() {
+        return idConfiguracion;
+    }
+
+    /** Alias para razonSocial — compatibilidad con empresa.getNombreEmpresa(). */
+    public String getNombreEmpresa() {
+        return razonSocial;
+    }
+
+    /** Alias para numeroIdentificacion — compatibilidad con empresa.getRuc(). */
+    public String getRuc() {
+        return numeroIdentificacion;
+    }
+
+    /** Dirección descriptiva: usa otrasSenas si existe, si no construye desde campos de dirección. */
+    public String getDireccion() {
+        if (otrasSenas != null && !otrasSenas.isEmpty()) {
+            return otrasSenas;
+        }
+        return getDireccionCompleta();
     }
 
     @Override

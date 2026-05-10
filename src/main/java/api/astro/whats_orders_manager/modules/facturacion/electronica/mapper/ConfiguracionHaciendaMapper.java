@@ -25,7 +25,7 @@ public class ConfiguracionHaciendaMapper {
         return ConfiguracionHaciendaDTO.builder()
             .id(entity.getId())
             .empresaId(entity.getEmpresa().getIdEmpresa().longValue())
-            .empresaNombre(entity.getEmpresa().getNombreParaMostrar())
+            .empresaNombre(entity.getEmpresa().getNombreDisplay())
             .ambiente(entity.getAmbiente())
             .usuarioHacienda(entity.getUsuarioHacienda())
             .passwordHacienda("********") // No exponer contraseña

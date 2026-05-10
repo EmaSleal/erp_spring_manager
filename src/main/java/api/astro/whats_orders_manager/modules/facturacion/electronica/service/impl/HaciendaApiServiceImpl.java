@@ -21,6 +21,9 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -74,11 +77,16 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             long startTime = System.currentTimeMillis();
             ResponseEntity<Map> response = restTemplate.postForEntity(urlToken, request, Map.class);
             long responseTime = System.currentTimeMillis() - startTime;
+
+            log.info("Respuesta de autenticación - Status: {} - Tiempo: {}ms", 
+                response.getStatusCode(), responseTime);
             
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
                 
                 log.info("Autenticación exitosa - Tiempo: {}ms", responseTime);
+
+                //log.info("Respuesta de autenticación: {}", responseBody);
                 
                 return new TokenResponse(
                     (String) responseBody.get("access_token"),
@@ -158,8 +166,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             // Obtener token
             TokenResponse token = autenticar(configuracionId);
             
-            // URL de recepción
-            String urlRecepcion = config.getAmbiente().getUrlBase() + "/recepcion/v4.4/recepcion";
+            String urlRecepcion = config.getAmbiente().getUrlBase() + "/recepcion/v1/recepcion";
             
             // Codificar XML en Base64
             String xmlBase64 = Base64.getEncoder().encodeToString(xml.getBytes("UTF-8"));
@@ -170,24 +177,41 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             headers.setBearerAuth(token.accessToken());
             
             // Preparar body JSON
+            String fechaEmision = OffsetDateTime.now(ZoneId.of("America/Costa_Rica"))
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx"));
+
+            String tipoId = config.getEmpresa().getTipoIdentificacion() != null
+                ? config.getEmpresa().getTipoIdentificacion().getCodigo()
+                : "02";
+
             Map<String, Object> body = Map.of(
                 "clave", claveNumerica,
-                "fecha", LocalDateTime.now().toString(),
+                "fecha", fechaEmision,
                 "emisor", Map.of(
-                    "tipoIdentificacion", "02", // Persona Jurídica por defecto
+                    "tipoIdentificacion", tipoId,
                     "numeroIdentificacion", config.getEmpresa().getRuc()
                 ),
                 "comprobanteXml", xmlBase64
             );
-            
+            // Log de request completo para depuración
+            log.info("URL consulta: {}", urlRecepcion);
+  log.info("Auth header: {}", headers.getFirst("Authorization") != null
+      ? "Bearer " + headers.getFirst("Authorization").substring(7, 27) + "..."
+      : "No Authorization header");
+
+
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
             
+            
+
             long startTime = System.currentTimeMillis();
             ResponseEntity<String> response = restTemplate.postForEntity(urlRecepcion, request, String.class);
             long responseTime = System.currentTimeMillis() - startTime;
             
             log.info("Respuesta de Hacienda - Status: {} - Tiempo: {}ms", 
                 response.getStatusCode(), responseTime);
+            
+            log.debug("Respuesta de Hacienda: {}", response.toString());
             
             // Parsear respuesta
             return parsearRespuesta(response, claveNumerica, responseTime);
@@ -234,18 +258,24 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             // Obtener token
             TokenResponse token = autenticar(configuracionId);
             
-            // URL de consulta
-            String urlConsulta = config.getAmbiente().getUrlBase() + 
-                "/consulta-documento/v4.4/documentos/" + claveNumerica;
+            String urlConsulta = config.getAmbiente().getUrlBase() +
+                "/recepcion/v1/recepcion/" + claveNumerica;
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(token.accessToken());
             headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // Log de request completo para depuración
+            log.debug("Consultando comprobante en Hacienda - URL: {} - Headers: {}", 
+                urlConsulta.toString(), headers.toString());
             
             HttpEntity<?> request = new HttpEntity<>(headers);
             
             long startTime = System.currentTimeMillis();
+
+           
+
             ResponseEntity<String> response = restTemplate.exchange(
                 urlConsulta, 
                 HttpMethod.GET, 
@@ -295,8 +325,8 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             TokenResponse token = autenticar(configuracionId);
             
             // URL de mensajes
-            String urlMensajes = config.getAmbiente().getUrlBase() + 
-                "/mensajes-receptor/v4.4/mensajes/" + config.getEmpresa().getRuc();
+            String urlMensajes = config.getAmbiente().getUrlBase() +
+                "/mensajes-receptor/v1/mensajes/" + config.getEmpresa().getRuc();
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();
@@ -344,18 +374,34 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
     /**
      * Parsea la respuesta de Hacienda y crea DTO.
      */
-    private RespuestaHaciendaDTO parsearRespuesta(ResponseEntity<String> response, 
-                                                   String claveNumerica, 
+    private RespuestaHaciendaDTO parsearRespuesta(ResponseEntity<String> response,
+                                                   String claveNumerica,
                                                    long responseTime) {
+        // 202 = Hacienda aceptó el comprobante para procesamiento asíncrono (body vacío esperado)
+        if (response.getBody() == null || response.getBody().isBlank()) {
+            return RespuestaHaciendaDTO.builder()
+                .claveNumerica(claveNumerica)
+                .fechaRespuesta(LocalDateTime.now())
+                .codigoMensaje(MensajeHacienda.PROCESANDO)
+                .mensaje("Comprobante recibido por Hacienda, en procesamiento")
+                .exitoso(false)
+                .codigoHttp(response.getStatusCode().value())
+                .tiempoRespuestaMs(responseTime)
+                .debeReintentar(false)
+                .build();
+        }
+
         try {
             JsonNode root = objectMapper.readTree(response.getBody());
             
-            // Determinar estado según código de Hacienda
-            String codigoMensaje = root.has("indEstado") ? root.get("indEstado").asText() : "";
+            // Hacienda retorna "ind-estado" (con guion), no camelCase
+            String codigoMensaje = root.has("ind-estado") ? root.get("ind-estado").asText()
+                : (root.has("indEstado") ? root.get("indEstado").asText() : "");
+            log.info("Hacienda ind-estado: '{}'", codigoMensaje);
             MensajeHacienda mensaje = determinarMensaje(codigoMensaje);
-            
-            String mensajeTexto = root.has("respuesta-xml") 
-                ? root.get("respuesta-xml").asText() 
+
+            String mensajeTexto = root.has("respuesta-xml")
+                ? root.get("respuesta-xml").asText()
                 : (root.has("mensaje") ? root.get("mensaje").asText() : "");
             
             return RespuestaHaciendaDTO.builder()
@@ -363,6 +409,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
                 .fechaRespuesta(LocalDateTime.now())
                 .codigoMensaje(mensaje)
                 .mensaje(mensajeTexto)
+                .indicadorEstado(codigoMensaje)
                 .exitoso(mensaje == MensajeHacienda.ACEPTADO)
                 .detalles(response.getBody())
                 .codigoHttp(response.getStatusCode().value())
