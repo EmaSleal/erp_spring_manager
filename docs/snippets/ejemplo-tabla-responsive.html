@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Ejemplo - Lista Responsive</title>
+    
+    <!-- Layout base -->
+    <div th:replace="~{shared/layout :: head}"></div>
+    
+    <!-- CSS específico de tablas responsive -->
+    <link rel="stylesheet" th:href="@{/shared/css/responsive-table.css}">
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            
+            <h2 class="mb-4">
+                <i class="bi bi-people-fill me-2"></i>
+                Ejemplo: Tabla Responsive con Tarjetas
+            </h2>
+
+            <!-- Card con tabla responsive -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table me-2"></i>
+                        Lista de Usuarios
+                    </h5>
+                    <span class="badge bg-primary" th:text="'Total: ' + ${usuarios.size()}">Total: 0</span>
+                </div>
+                <div class="card-body p-0">
+                    
+                    <!-- ============================================
+                         CONTENEDOR RESPONSIVE
+                         ============================================ -->
+                    <div class="responsive-table-container">
+                        
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="usuariosTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%">#</th>
+                                        <th style="width: 25%">Usuario</th>
+                                        <th style="width: 15%">Contacto</th>
+                                        <th style="width: 12%" class="text-center">Rol</th>
+                                        <th style="width: 10%" class="text-center">Estado</th>
+                                        <th style="width: 13%" class="text-center">Último Acceso</th>
+                                        <th style="width: 20%" class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${usuarios.isEmpty()}">
+                                        <td colspan="7" class="text-center py-4">
+                                            <i class="bi bi-inbox fs-1 text-muted"></i>
+                                            <p class="text-muted mb-0">No hay usuarios</p>
+                                        </td>
+                                    </tr>
+                                    <tr th:each="usuario, iter : ${usuarios}">
+                                        <td th:text="${iter.index + 1}">1</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle me-2 bg-primary">
+                                                    <span th:text="${#strings.substring(usuario.nombre, 0, 1)}">A</span>
+                                                </div>
+                                                <div>
+                                                    <strong th:text="${usuario.nombre}">Nombre</strong><br>
+                                                    <small class="text-muted" th:text="'@' + ${usuario.username}">@user</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div th:if="${usuario.telefono}">
+                                                <i class="bi bi-phone me-1"></i>
+                                                <span th:text="${usuario.telefono}">999999999</span>
+                                            </div>
+                                            <div th:if="${usuario.email}">
+                                                <i class="bi bi-envelope me-1"></i>
+                                                <small th:text="${usuario.email}">email@example.com</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info" th:text="${usuario.rol?.nombre}">ROL</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge" 
+                                                  th:classappend="${usuario.activo ? 'bg-success' : 'bg-secondary'}"
+                                                  th:text="${usuario.activo ? 'Activo' : 'Inactivo'}">Activo</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <small th:text="${usuario.ultimoAcceso ? #temporals.format(usuario.ultimoAcceso, 'dd/MM/yyyy HH:mm') : 'Nunca'}">
+                                                Nunca
+                                            </small>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-info btn-sm" title="Ver detalle">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-primary btn-sm" title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm" title="Eliminar">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- MÓVIL: Vista de tarjetas -->
+                        <div class="mobile-card-view">
+                            <!-- Mensaje vacío -->
+                            <div th:if="${usuarios.isEmpty()}" class="mobile-card-empty">
+                                <i class="bi bi-inbox"></i>
+                                <p>No hay usuarios registrados</p>
+                            </div>
+                            
+                            <!-- Tarjetas de usuarios -->
+                            <div th:each="usuario, iter : ${usuarios}" 
+                                 class="mobile-card"
+                                 th:classappend="${usuario.activo ? 'card-success' : 'card-secondary'}">
+                                
+                                <!-- Header con avatar y nombre -->
+                                <div class="mobile-card-header">
+                                    <div class="mobile-card-avatar">
+                                        <div class="avatar-circle" 
+                                             th:classappend="${usuario.activo ? 'bg-success' : 'bg-secondary'}">
+                                            <span th:text="${#strings.substring(usuario.nombre, 0, 1)}">A</span>
+                                        </div>
+                                        <div class="mobile-card-avatar-info">
+                                            <div class="mobile-card-avatar-name" th:text="${usuario.nombre}">Nombre</div>
+                                            <div class="mobile-card-avatar-subtitle" th:text="'@' + ${usuario.username}">@username</div>
+                                        </div>
+                                    </div>
+                                    <span class="mobile-card-status"
+                                          th:classappend="${usuario.activo ? 'status-active' : 'status-inactive'}">
+                                        <i class="bi" th:classappend="${usuario.activo ? 'bi-check-circle-fill' : 'bi-x-circle-fill'}"></i>
+                                        <span th:text="${usuario.activo ? 'Activo' : 'Inactivo'}">Estado</span>
+                                    </span>
+                                </div>
+
+                                <!-- Body con información -->
+                                <div class="mobile-card-body">
+                                    <!-- Rol -->
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Rol</span>
+                                        <span class="mobile-card-value">
+                                            <span class="badge bg-info" th:text="${usuario.rol?.nombre}">ROL</span>
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Teléfono -->
+                                    <div class="mobile-card-row" th:if="${usuario.telefono}">
+                                        <span class="mobile-card-label">Teléfono</span>
+                                        <span class="mobile-card-value">
+                                            <i class="bi bi-phone me-1"></i>
+                                            <span th:text="${usuario.telefono}">999999999</span>
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Email -->
+                                    <div class="mobile-card-row" th:if="${usuario.email}">
+                                        <span class="mobile-card-label">Email</span>
+                                        <span class="mobile-card-value">
+                                            <i class="bi bi-envelope me-1"></i>
+                                            <small th:text="${usuario.email}">email@example.com</small>
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Último acceso -->
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Último Acceso</span>
+                                        <span class="mobile-card-value">
+                                            <small th:text="${usuario.ultimoAcceso ? #temporals.format(usuario.ultimoAcceso, 'dd/MM/yyyy HH:mm') : 'Nunca'}">
+                                                Nunca
+                                            </small>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Footer con acciones -->
+                                <div class="mobile-card-footer mobile-card-actions">
+                                    <button class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-eye me-1"></i> Ver
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil me-1"></i> Editar
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash me-1"></i> Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instrucciones -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-info-circle me-2"></i>Cómo Funciona</h5>
+                    <ul class="mb-0">
+                        <li><strong>Desktop (≥ 768px):</strong> Muestra tabla tradicional completa</li>
+                        <li><strong>Móvil (< 768px):</strong> Muestra tarjetas con toda la información</li>
+                        <li><strong>Automático:</strong> El cambio es completamente automático mediante CSS</li>
+                        <li><strong>Reutilizable:</strong> Solo necesitas incluir el CSS y seguir la estructura</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <div th:replace="~{shared/layout :: scripts}"></div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Ignorar todos los archivos de avatares
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+
+# Mantener el .gitkeep
+!.gitkeep

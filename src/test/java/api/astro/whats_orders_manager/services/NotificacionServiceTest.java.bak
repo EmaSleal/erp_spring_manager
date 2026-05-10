@@ -1,0 +1,439 @@
+package api.astro.whats_orders_manager.services;
+
+import api.astro.whats_orders_manager.models.Notificacion;
+import api.astro.whats_orders_manager.models.PlantillaNotificacion;
+import api.astro.whats_orders_manager.models.PreferenciaNotificacion;
+import api.astro.whats_orders_manager.models.Usuario;
+import api.astro.whats_orders_manager.models.enums.CanalNotificacion;
+import api.astro.whats_orders_manager.models.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.repositories.NotificacionRepository;
+import api.astro.whats_orders_manager.repositories.PlantillaNotificacionRepository;
+import api.astro.whats_orders_manager.repositories.PreferenciaNotificacionRepository;
+import api.astro.whats_orders_manager.services.impl.NotificacionServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * ============================================================================
+ * NOTIFICACION SERVICE TEST
+ * WhatsApp Orders Manager - Sprint 4 Fase 3.8
+ * ============================================================================
+ * Tests unitarios para el servicio de notificaciones.
+ * 
+ * Cobertura:
+ * - Creación de notificaciones
+ * - Envío multicanal (Web, Email, WhatsApp)
+ * - Validación de preferencias
+ * - Procesamiento de plantillas
+ * - Consultas paginadas
+ * - Marcar como leído
+ * ============================================================================
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("NotificacionService - Tests Unitarios")
+class NotificacionServiceTest {
+
+    @Mock
+    private NotificacionRepository notificacionRepository;
+
+    @Mock
+    private PreferenciaNotificacionRepository preferenciaRepository;
+
+    @Mock
+    private PlantillaNotificacionRepository plantillaRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private WhatsAppService whatsAppService;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
+    @InjectMocks
+    private NotificacionServiceImpl notificacionService;
+
+    private Usuario usuario;
+    private Notificacion notificacion;
+    private PlantillaNotificacion plantilla;
+
+    @BeforeEach
+    void setUp() {
+        // Usuario de prueba
+        usuario = new Usuario();
+        usuario.setIdUsuario(1);
+        usuario.setNombre("Test User");
+        usuario.setEmail("test@example.com");
+        usuario.setTelefono("1234567890");
+
+        // Notificación de prueba
+        notificacion = new Notificacion();
+        notificacion.setIdNotificacion(1);
+        notificacion.setUsuario(usuario);
+        notificacion.setTipo(TipoNotificacion.FACTURA_CREADA);
+        notificacion.setCanal(CanalNotificacion.WEB);
+        notificacion.setTitulo("Factura Creada");
+        notificacion.setMensaje("Se ha generado la factura #123");
+        notificacion.setLeida(false);
+        notificacion.setEnviada(true);
+        notificacion.setFechaEnvio(Timestamp.valueOf(LocalDateTime.now()));
+
+        // Plantilla de prueba
+        plantilla = new PlantillaNotificacion();
+        plantilla.setIdPlantilla(1);
+        plantilla.setTipo(TipoNotificacion.FACTURA_CREADA);
+        plantilla.setCanal(CanalNotificacion.EMAIL);
+        plantilla.setTitulo("Nueva Factura - {{numero_factura}}");
+        plantilla.setContenido("Se ha generado la factura #{{numero_factura}} por {{total}}");
+        plantilla.setActiva(true);
+    }
+
+    // ==================== TESTS DE CREACIÓN ====================
+
+    @Test
+    @DisplayName("Debe crear notificación correctamente")
+    void debeCrearNotificacion() {
+        // Arrange
+        when(notificacionRepository.save(any(Notificacion.class))).thenReturn(notificacion);
+
+        // Act
+        Notificacion resultado = notificacionService.crear(notificacion);
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(notificacion.getTitulo(), resultado.getTitulo());
+        assertEquals(notificacion.getMensaje(), resultado.getMensaje());
+        verify(notificacionRepository, times(1)).save(any(Notificacion.class));
+    }
+
+    @Test
+    @DisplayName("Debe validar campos obligatorios al crear")
+    void debeValidarCamposObligatorios() {
+        // Arrange
+        Notificacion notificacionInvalida = new Notificacion();
+        // Sin usuario, tipo o canal
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            notificacionService.crear(notificacionInvalida);
+        });
+    }
+
+    // ==================== TESTS DE CONSULTA ====================
+
+    @Test
+    @DisplayName("Debe obtener notificaciones no leídas por usuario")
+    void debeObtenerNoLeidasPorUsuario() {
+        // Arrange
+        List<Notificacion> notificaciones = new ArrayList<>();
+        notificaciones.add(notificacion);
+        
+        when(notificacionRepository.findNoLeidasByUsuarioId(anyInt()))
+                .thenReturn(notificaciones);
+
+        // Act
+        List<Notificacion> resultado = notificacionService.findNoLeidasByUsuarioId(1);
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(1, resultado.size());
+        assertFalse(resultado.get(0).getLeida());
+        verify(notificacionRepository, times(1)).findNoLeidasByUsuarioId(1);
+    }
+
+    @Test
+    @DisplayName("Debe contar notificaciones no leídas")
+    void debeContarNoLeidas() {
+        // Arrange
+        when(notificacionRepository.countNoLeidasByUsuarioId(anyInt())).thenReturn(5L);
+
+        // Act
+        long count = notificacionService.countNoLeidasByUsuarioId(1);
+
+        // Assert
+        assertEquals(5L, count);
+        verify(notificacionRepository, times(1)).countNoLeidasByUsuarioId(1);
+    }
+
+    @Test
+    @DisplayName("Debe obtener notificaciones paginadas")
+    void debeObtenerNotificacionesPaginadas() {
+        // Arrange
+        List<Notificacion> notificaciones = List.of(notificacion);
+        Page<Notificacion> page = new PageImpl<>(notificaciones);
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(notificacionRepository.findByUsuarioId(anyInt(), any(Pageable.class)))
+                .thenReturn(page);
+
+        // Act
+        Page<Notificacion> resultado = notificacionService.findByUsuarioId(1, pageable);
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(1, resultado.getTotalElements());
+        assertEquals(1, resultado.getContent().size());
+        verify(notificacionRepository, times(1)).findByUsuarioId(1, pageable);
+    }
+
+    // ==================== TESTS DE ACTUALIZACIÓN ====================
+
+    @Test
+    @DisplayName("Debe marcar notificación como leída")
+    void debeMarcarComoLeida() {
+        // Arrange
+        when(notificacionRepository.findById(anyInt())).thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.save(any(Notificacion.class))).thenReturn(notificacion);
+
+        // Act
+        Notificacion resultado = notificacionService.marcarComoLeida(1);
+
+        // Assert
+        assertNotNull(resultado);
+        assertTrue(resultado.getLeida());
+        assertNotNull(resultado.getFechaLectura());
+        verify(notificacionRepository, times(1)).findById(1);
+        verify(notificacionRepository, times(1)).save(any(Notificacion.class));
+    }
+
+    @Test
+    @DisplayName("Debe lanzar excepción si notificación no existe")
+    void debeLanzarExcepcionSiNoExiste() {
+        // Arrange
+        when(notificacionRepository.findById(anyInt())).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> {
+            notificacionService.marcarComoLeida(999);
+        });
+    }
+
+    @Test
+    @DisplayName("Debe marcar todas como leídas para un usuario")
+    void debeMarcarTodasComoLeidas() {
+        // Arrange
+        when(notificacionRepository.marcarTodasComoLeidas(anyInt(), any(Timestamp.class)))
+                .thenReturn(5);
+
+        // Act
+        int actualizadas = notificacionService.marcarTodasComoLeidas(1);
+
+        // Assert
+        assertEquals(5, actualizadas);
+        verify(notificacionRepository, times(1))
+                .marcarTodasComoLeidas(anyInt(), any(Timestamp.class));
+    }
+
+    // ==================== TESTS DE ENVÍO ====================
+
+    @Test
+    @DisplayName("Debe enviar notificación web")
+    void debeEnviarNotificacionWeb() {
+        // Arrange
+        notificacion.setCanal(CanalNotificacion.WEB);
+        when(notificacionRepository.save(any(Notificacion.class))).thenReturn(notificacion);
+
+        // Act
+        Notificacion resultado = notificacionService.enviarNotificacionWeb(
+                usuario, TipoNotificacion.FACTURA_CREADA, "Título", "Mensaje"
+        );
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(CanalNotificacion.WEB, resultado.getCanal());
+        assertTrue(resultado.getEnviada());
+        verify(notificacionRepository, times(1)).save(any(Notificacion.class));
+        verify(messagingTemplate, times(1)).convertAndSendToUser(
+                anyString(), anyString(), any()
+        );
+    }
+
+    @Test
+    @DisplayName("Debe enviar notificación por email")
+    void debeEnviarNotificacionEmail() {
+        // Arrange
+        notificacion.setCanal(CanalNotificacion.EMAIL);
+        when(notificacionRepository.save(any(Notificacion.class))).thenReturn(notificacion);
+        doNothing().when(emailService).sendHtmlEmail(anyString(), anyString(), anyString());
+
+        // Act
+        Notificacion resultado = notificacionService.enviarNotificacionEmail(
+                usuario, TipoNotificacion.FACTURA_CREADA, "Título", "Mensaje"
+        );
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(CanalNotificacion.EMAIL, resultado.getCanal());
+        assertTrue(resultado.getEnviada());
+        verify(emailService, times(1)).sendHtmlEmail(anyString(), anyString(), anyString());
+    }
+
+    // ==================== TESTS DE VALIDACIÓN DE PREFERENCIAS ====================
+
+    @Test
+    @DisplayName("Debe validar preferencias del usuario")
+    void debeValidarPreferencias() {
+        // Arrange
+        PreferenciaNotificacion preferencia = new PreferenciaNotificacion();
+        preferencia.setUsuario(usuario);
+        preferencia.setTipoNotificacion(TipoNotificacion.FACTURA_CREADA);
+        preferencia.setCanal(CanalNotificacion.EMAIL);
+        preferencia.setActiva(true);
+
+        when(preferenciaRepository.findPreferenciasAplicables(
+                anyInt(), any(TipoNotificacion.class), any(CanalNotificacion.class)
+        )).thenReturn(List.of(preferencia));
+
+        // Act
+        boolean permitido = notificacionService.validarPreferencias(
+                usuario, TipoNotificacion.FACTURA_CREADA, CanalNotificacion.EMAIL
+        );
+
+        // Assert
+        assertTrue(permitido);
+    }
+
+    @Test
+    @DisplayName("Debe denegar envío si preferencias desactivadas")
+    void debeDenegarSiPreferenciasDesactivadas() {
+        // Arrange
+        when(preferenciaRepository.findPreferenciasAplicables(
+                anyInt(), any(TipoNotificacion.class), any(CanalNotificacion.class)
+        )).thenReturn(List.of());
+
+        // Act
+        boolean permitido = notificacionService.validarPreferencias(
+                usuario, TipoNotificacion.FACTURA_CREADA, CanalNotificacion.EMAIL
+        );
+
+        // Assert
+        assertFalse(permitido);
+    }
+
+    // ==================== TESTS DE ELIMINACIÓN ====================
+
+    @Test
+    @DisplayName("Debe eliminar notificación")
+    void debeEliminarNotificacion() {
+        // Arrange
+        when(notificacionRepository.existsById(anyInt())).thenReturn(true);
+        doNothing().when(notificacionRepository).deleteById(anyInt());
+
+        // Act
+        boolean resultado = notificacionService.eliminar(1);
+
+        // Assert
+        assertTrue(resultado);
+        verify(notificacionRepository, times(1)).deleteById(1);
+    }
+
+    @Test
+    @DisplayName("Debe retornar false si notificación no existe al eliminar")
+    void debeRetornarFalseSiNoExisteAlEliminar() {
+        // Arrange
+        when(notificacionRepository.existsById(anyInt())).thenReturn(false);
+
+        // Act
+        boolean resultado = notificacionService.eliminar(999);
+
+        // Assert
+        assertFalse(resultado);
+        verify(notificacionRepository, never()).deleteById(anyInt());
+    }
+
+    // ==================== TESTS DE PROCESAMIENTO DE PLANTILLAS ====================
+
+    @Test
+    @DisplayName("Debe procesar variables en plantilla")
+    void debeProcesarVariablesEnPlantilla() {
+        // Arrange
+        when(plantillaRepository.findByTipoAndCanalAndActivaTrue(
+                any(TipoNotificacion.class), any(CanalNotificacion.class)
+        )).thenReturn(Optional.of(plantilla));
+
+        // Act
+        String resultado = notificacionService.procesarPlantilla(
+                TipoNotificacion.FACTURA_CREADA,
+                CanalNotificacion.EMAIL,
+                "titulo",
+                java.util.Map.of("numero_factura", "F-001", "total", "$1,500.00")
+        );
+
+        // Assert
+        assertNotNull(resultado);
+        assertTrue(resultado.contains("F-001"));
+        assertTrue(resultado.contains("$1,500.00"));
+    }
+
+    // ==================== TESTS DE EDGE CASES ====================
+
+    @Test
+    @DisplayName("Debe manejar usuario sin email al enviar notificación email")
+    void debeManejarUsuarioSinEmail() {
+        // Arrange
+        usuario.setEmail(null);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            notificacionService.enviarNotificacionEmail(
+                    usuario, TipoNotificacion.FACTURA_CREADA, "Título", "Mensaje"
+            );
+        });
+    }
+
+    @Test
+    @DisplayName("Debe manejar usuario sin teléfono al enviar WhatsApp")
+    void debeManejarUsuarioSinTelefono() {
+        // Arrange
+        usuario.setTelefono(null);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            notificacionService.enviarNotificacionWhatsApp(
+                    usuario, TipoNotificacion.FACTURA_CREADA, "Mensaje"
+            );
+        });
+    }
+
+    @Test
+    @DisplayName("Debe registrar error si envío de email falla")
+    void debeRegistrarErrorSiEmailFalla() {
+        // Arrange
+        notificacion.setCanal(CanalNotificacion.EMAIL);
+        when(notificacionRepository.save(any(Notificacion.class))).thenReturn(notificacion);
+        doThrow(new RuntimeException("SMTP Error"))
+                .when(emailService).sendHtmlEmail(anyString(), anyString(), anyString());
+
+        // Act
+        Notificacion resultado = notificacionService.enviarNotificacionEmail(
+                usuario, TipoNotificacion.FACTURA_CREADA, "Título", "Mensaje"
+        );
+
+        // Assert
+        assertNotNull(resultado);
+        assertFalse(resultado.getEnviada());
+        assertNotNull(resultado.getErrorMensaje());
+        assertTrue(resultado.getErrorMensaje().contains("SMTP Error"));
+    }
+}

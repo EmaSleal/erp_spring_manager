@@ -1,0 +1,19 @@
+package api.astro.whats_orders_manager.modules.facturacion.service;
+
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public interface LineaFacturaService {
+    List<LineaFactura> findAll();
+    Optional<LineaFactura> findById(Integer id);
+    LineaFactura save(LineaFactura lineaFactura);
+    Boolean deleteById(Integer id);
+    List<LineaFacturaR> findLineasByFacturaId(Integer idFactura);
+    Boolean updateLineas(List<LineaFacturaR> lineas);
+    Boolean existsByFacturaId(Integer id);
+}

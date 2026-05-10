@@ -1,0 +1,186 @@
+spring:
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+  main:
+    allow-bean-definition-overriding: true
+    web-application-type: servlet
+  
+  # ========================================
+  # CONFIGURACIÓN DE BASE DE DATOS
+  # ========================================
+  datasource:
+    url: ${DB_URL:jdbc:mysql://192.168.100.8:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false  # Desactivado para no mostrar queries
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+  
+  # ========================================
+  # CONFIGURACIÓN DE EMAIL
+  # ========================================
+  mail:
+    host: ${EMAIL_HOST:smtp.gmail.com}
+    port: ${EMAIL_PORT:587}
+    username: ${EMAIL_USERNAME:manusl2908@gmail.com}
+    password: ${EMAIL_PASSWORD:syzm qsxg mmiw hdsn}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: ${EMAIL_HOST:smtp.gmail.com}
+        debug: false
+    default-encoding: UTF-8
+
+# ========================================
+# CONFIGURACIÓN DE WHATSAPP WEBHOOK
+# ========================================
+meta:
+  webhook:
+    verify-token: ${META_WEBHOOK_VERIFY_TOKEN:defaulttoken}
+
+# ========================================
+# CONFIGURACIÓN DE WHATSAPP API
+# ========================================
+whatsapp:
+  api:
+    url: ${META_WHATSAPP_API_URL:https://graph.facebook.com}
+    version: ${META_WHATSAPP_API_VERSION:v18.0}
+  phone-number-id: ${META_WHATSAPP_PHONE_NUMBER_ID:}
+  access-token: ${META_WHATSAPP_ACCESS_TOKEN:}
+
+# ========================================
+# CONFIGURACIÓN DE BASE URL
+# ========================================
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
+# ========================================
+# CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA
+# ========================================
+facturacion:
+  comprobantes:
+    directorio-base: ${FACTURACION_DIRECTORIO_BASE:./comprobantes}
+  
+  hacienda:
+    webhook:
+      # Token de seguridad para validar callbacks de Hacienda
+      # Si está vacío, no se valida el token
+      token: ${HACIENDA_WEBHOOK_TOKEN:}
+      
+      # URL pública del webhook (para registrar en Hacienda)
+      # Esta URL debe ser accesible desde internet
+      url: ${HACIENDA_WEBHOOK_URL:https://tu-dominio.com/api/hacienda/callback}
+
+# ========================================
+# RESILIENCE4J - CIRCUIT BREAKER Y RETRY
+# ========================================
+resilience4j:
+  circuitbreaker:
+    instances:
+      haciendaAPI:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        slowCallDurationThreshold: 5000
+        slowCallRateThreshold: 50
+  
+  retry:
+    instances:
+      haciendaAPI:
+        maxAttempts: 3
+        waitDuration: 2000
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+
+# ========================================
+# CONFIGURACIÓN DE LOGGING
+# ========================================
+logging:
+  level:
+    root: INFO
+    
+    # Paquetes de la aplicación
+    api.astro.whats_orders_manager: INFO
+    api.astro.whats_orders_manager.controllers: INFO
+    api.astro.whats_orders_manager.services: INFO
+    api.astro.whats_orders_manager.repositories: INFO
+    
+    # Hibernate SQL (queries) - DESACTIVADO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    
+    # Spring Framework
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.web.servlet.mvc.method.annotation: INFO
+    
+    # Transacciones de base de datos - DESACTIVADO
+    org.springframework.jdbc.core: WARN
+    org.springframework.transaction: INFO
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  
+  # Configuración de archivos de log (opcional)
+  file:
+    name: logs/whats-orders-manager.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
+
+# ========================================
+# PROFILES - Configuración por ambiente
+# ========================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  level:
+    root: DEBUG
+    api.astro.whats_orders_manager: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    root: WARN
+    api.astro.whats_orders_manager: INFO
+    api.astro.whats_orders_manager.controllers: INFO
+    org.hibernate.SQL: WARN
+  
+  file:
+    name: /var/log/whats-orders-manager/application.log

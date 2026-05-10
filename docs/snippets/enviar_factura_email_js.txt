@@ -1,0 +1,50 @@
+
+// ========================================
+// Función para Enviar Factura por Email
+// ========================================
+function enviarFacturaPorEmail(button) {
+    const facturaId = button.getAttribute("data-id");
+    const email = button.getAttribute("data-email");
+    
+    Swal.fire({
+        title: '📧 Enviar Factura',
+        html: `¿Desea enviar la factura por email a:<br><strong>${email}</strong>?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0dcaf0',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-paper-plane me-1"></i>Enviar',
+        cancelButtonText: 'Cancelar',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return fetch(`/facturas/${facturaId}/enviar-email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Error al enviar el email');
+                    });
+                }
+                return response.json();
+            })
+            .catch(error => {
+                Swal.showValidationMessage(`Error: ${error.message}`);
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                icon: 'success',
+                title: '✅ Email Enviado',
+                html: `La factura ha sido enviada exitosamente a:<br><strong>${email}</strong>`,
+                timer: 3000,
+                showConfirmButton: false
+            });
+        }
+    });
+}

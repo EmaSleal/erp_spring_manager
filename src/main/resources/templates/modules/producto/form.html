@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+
+<!-- Modal para agregar/editar producto -->
+<div th:fragment="producto-modal" class="modal fade" id="productoModal" tabindex="-1" aria-labelledby="productoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title" id="productoModalLabel">
+                    <i class="fas fa-box me-2"></i>
+                    <span id="modalTitle">Agregar Producto</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="productoForm" method="post" novalidate>
+                    <input type="hidden" id="idProducto" name="idProducto" />
+                    <input type="hidden" name="_csrf" th:value="${_csrf.token}" />
+
+                    <div class="row g-3">
+                        <!-- Código -->
+                        <div class="col-md-6">
+                            <label for="codigo" class="form-label">
+                                <i class="fas fa-barcode text-warning me-1"></i>
+                                Código
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="codigo" 
+                                   name="codigo" 
+                                   required 
+                                   maxlength="50">
+                            <div class="invalid-feedback">
+                                Por favor ingrese el código del producto.
+                            </div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="col-md-6">
+                            <label for="descripcion" class="form-label">
+                                <i class="fas fa-align-left text-warning me-1"></i>
+                                Descripción
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="descripcion" 
+                                   name="descripcion" 
+                                   required 
+                                   maxlength="200">
+                            <div class="invalid-feedback">
+                                Por favor ingrese la descripción.
+                            </div>
+                        </div>
+
+                        <!-- Presentación -->
+                        <div class="col-md-12">
+                            <label for="presentacion" class="form-label">
+                                <i class="fas fa-cube text-warning me-1"></i>
+                                Presentación
+                            </label>
+                            <select class="form-select" 
+                                    id="presentacion" 
+                                    name="presentacion.idPresentacion" 
+                                    required>
+                                <option value="">Seleccione una presentación</option>
+                                <option th:each="p : ${presentaciones}"
+                                        th:value="${p.idPresentacion}"
+                                        th:text="${p.nombre}">
+                                </option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una presentación.
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                La unidad de medida para FE se toma de la presentación
+                            </small>
+                        </div>
+
+                        <!-- Precio Institucional -->
+                        <div class="col-md-6">
+                            <label for="precioInstitucional" class="form-label">
+                                <i class="fas fa-dollar-sign text-warning me-1"></i>
+                                Precio Institucional
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="precioInstitucional" 
+                                   name="precioInstitucional" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese el precio institucional.
+                            </div>
+                        </div>
+
+                        <!-- Precio Mayorista -->
+                        <div class="col-md-6">
+                            <label for="precioMayorista" class="form-label">
+                                <i class="fas fa-dollar-sign text-warning me-1"></i>
+                                Precio Mayorista
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="precioMayorista" 
+                                   name="precioMayorista" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese el precio mayorista.
+                            </div>
+                        </div>
+
+                        <!-- Estado Activo -->
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="active" 
+                                       name="active" 
+                                       checked>
+                                <label class="form-check-label" for="active">
+                                    Producto Activo
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Separador - Facturación Electrónica -->
+                        <div class="col-12 mt-4">
+                            <hr>
+                            <h6 class="text-warning">
+                                <i class="fas fa-file-invoice me-2"></i>
+                                Facturación Electrónica Costa Rica
+                            </h6>
+                        </div>
+
+                        <!-- Buscar Código CABYS -->
+                        <div class="col-12">
+                            <label class="form-label">
+                                <i class="fas fa-search text-warning me-1"></i>
+                                Buscar Código CABYS
+                            </label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="cabysBusqueda" 
+                                       placeholder="Ej: jugo de tomate, café, papel">
+                                <button type="button" 
+                                        class="btn btn-warning" 
+                                        id="btnBuscarCabys"
+                                        onclick="buscarCabys()">
+                                    <i class="fas fa-search me-1"></i>
+                                    Buscar
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                Busque el producto en el catálogo oficial de Hacienda para obtener el código CABYS
+                            </small>
+                        </div>
+
+                        <!-- Resultados CABYS -->
+                        <div class="col-12" id="cabysResultados" style="display: none;">
+                            <div class="list-group" id="cabysListGroup">
+                                <!-- Se llenarán dinámicamente con JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Código CABYS (13 dígitos) -->
+                        <div class="col-md-6">
+                            <label for="codigoCabys" class="form-label">
+                                <i class="fas fa-hashtag text-warning me-1"></i>
+                                Código CABYS
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="codigoCabys" 
+                                   name="codigoCabys" 
+                                   maxlength="13"
+                                   pattern="\d{13}"
+                                   placeholder="1234567890123"
+                                   readonly>
+                            <small class="text-muted">13 dígitos del catálogo CABYS</small>
+                        </div>
+
+                        <!-- Descripción CABYS (oficial para XML) -->
+                        <div class="col-md-6">
+                            <label for="descripcionCabys" class="form-label">
+                                <i class="fas fa-tag text-warning me-1"></i>
+                                Descripción CABYS
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="descripcionCabys" 
+                                   name="descripcionCabys" 
+                                   maxlength="200"
+                                   placeholder="Descripción oficial del catálogo"
+                                   readonly>
+                            <small class="text-muted">Descripción oficial que se usará en el XML</small>
+                        </div>
+
+                        <!-- Gravado (checkbox) -->
+                        <div class="col-md-4">
+                            <label class="form-label d-block">
+                                <i class="fas fa-percent text-warning me-1"></i>
+                                Impuesto
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="gravado" 
+                                       name="gravado"
+                                       value="true"
+                                       checked
+                                       onchange="toggleImpuesto()">
+                                <label class="form-check-label" for="gravado">
+                                    Producto Gravado
+                                </label>
+                            </div>
+                            <small class="text-muted">¿Aplica IVA?</small>
+                        </div>
+
+                        <!-- Porcentaje de Impuesto -->
+                        <div class="col-md-4" id="divPorcentajeImpuesto">
+                            <label for="porcentajeImpuesto" class="form-label">
+                                <i class="fas fa-percentage text-warning me-1"></i>
+                                % Impuesto
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="porcentajeImpuesto" 
+                                   name="porcentajeImpuesto" 
+                                   step="0.01" 
+                                   min="0" 
+                                   max="100"
+                                   value="13.00"
+                                   placeholder="13.00">
+                            <small class="text-muted">IVA estándar: 13%</small>
+                        </div>
+
+                        <!-- Aplica Otro Impuesto -->
+                        <div class="col-md-6">
+                            <label class="form-label d-block">
+                                <i class="fas fa-file-invoice-dollar text-warning me-1"></i>
+                                Otros Impuestos
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="aplicaOtroImpuesto" 
+                                       name="aplicaOtroImpuesto"
+                                       value="true">
+                                <label class="form-check-label" for="aplicaOtroImpuesto">
+                                    Aplica impuestos adicionales (selectivos, específicos)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-warning" id="btnGuardarProducto">
+                    <i class="fas fa-save me-1"></i>
+                    Guardar Producto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

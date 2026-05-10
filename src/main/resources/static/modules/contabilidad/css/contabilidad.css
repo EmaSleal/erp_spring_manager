@@ -1,0 +1,102 @@
+/**
+ * ============================================================================
+ * CONTABILIDAD MODULE - STYLES
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Estilos específicos para el módulo de Contabilidad
+ * @version 1.0
+ * @since Sprint 5 - Fase 3
+ * ============================================================================
+ */
+
+/* ===== Tarjetas de Módulos ===== */
+.module-card {
+    transition: all 0.3s ease;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2) !important;
+}
+
+.module-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.module-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.module-description {
+    font-size: 0.9rem;
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+/* ===== Gradientes de Colores ===== */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* ===== Módulos Deshabilitados ===== */
+.disabled-module {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.disabled-module:hover .module-card {
+    transform: none;
+}
+
+/* ===== Badge "Próximamente" ===== */
+.badge-soon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ff6b6b;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 10;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .module-icon {
+        font-size: 2.5rem;
+    }
+    
+    .module-title {
+        font-size: 1.25rem;
+    }
+    
+    .module-description {
+        font-size: 0.85rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+}

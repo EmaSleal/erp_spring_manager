@@ -1,0 +1,260 @@
+/**
+ * ============================================================================
+ * FACTURACIÓN ELECTRÓNICA - STYLES
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Estilos específicos para el módulo de Facturación Electrónica CR
+ * @version 1.0
+ * @since Sprint 5 - Fase 3
+ * ============================================================================
+ */
+
+/* ===== Hover Lift Effect ===== */
+.hover-lift {
+    transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ===== Icon Wrapper ===== */
+.icon-wrapper {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 123, 255, 0.1);
+    border-radius: 10px;
+}
+
+.icon-wrapper.bg-info {
+    background-color: rgba(23, 162, 184, 0.1);
+}
+
+/* ===== Estado Badges ===== */
+.badge-estado {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.badge-aceptado {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-rechazado {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.badge-pendiente {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* ===== Tarjetas de Configuración ===== */
+.config-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid;
+}
+
+.config-card.activa {
+    border-left-color: #28a745;
+    background-color: #f8f9fa;
+}
+
+.config-card.inactiva {
+    border-left-color: #6c757d;
+    opacity: 0.8;
+}
+
+.config-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+/* ===== Tablas ===== */
+.table-comprobantes tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-comprobantes tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* ===== Botones de Acción ===== */
+.btn-action {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    margin: 0 0.25rem;
+}
+
+/* ===== Modal Responsive ===== */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .icon-wrapper {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* ===== Loading State ===== */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    color: white;
+    font-size: 3rem;
+}
+/* ===== Timeline de Estados ===== */
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20px;
+    height: 100%;
+    width: 3px;
+    background: linear-gradient(to bottom, #007bff, #6c757d);
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 60px;
+    margin-bottom: 30px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    border-left: 3px solid #007bff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-header h6 {
+    font-weight: 600;
+    color: #333;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+/* ===== Visualizador XML ===== */
+.xml-viewer {
+    max-height: 500px;
+    overflow-y: auto;
+    background-color: #2d2d2d;
+    border-radius: 8px;
+    padding: 0;
+}
+
+.xml-code {
+    background-color: #2d2d2d;
+    color: #f8f8f2;
+    padding: 20px;
+    margin: 0;
+    border-radius: 8px;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.xml-tag {
+    color: #66d9ef;
+    font-weight: 600;
+}
+
+.xml-attr {
+    color: #a6e22e;
+}
+
+.xml-value {
+    color: #e6db74;
+}
+
+/* Scrollbar personalizado para el visualizador XML */
+.xml-viewer::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.xml-viewer::-webkit-scrollbar-track {
+    background: #1e1e1e;
+    border-radius: 8px;
+}
+
+.xml-viewer::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 8px;
+}
+
+.xml-viewer::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+/* ===== Mejoras para tabs del modal ===== */
+.nav-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.75rem 1.25rem;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: #dee2e6;
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+    background-color: transparent;
+    font-weight: 600;
+}

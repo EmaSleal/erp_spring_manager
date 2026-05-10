@@ -1,0 +1,15 @@
+# CAMBIO Modelo Factura Campo fecha fechaPago
+
+- [📦 Archivos Creados/Modificados](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Archivos-CreadosModificados.md)
+- [💡 Beneficios del Cambio](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Beneficios-del-Cambio.md)
+- [🔄 Cambios Realizados](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Cambios-Realizados.md)
+- [📊 Comparación Antes vs Después](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Comparación-Antes-vs-Después.md)
+- [✅ Compilación](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Compilación.md)
+- [⚠️ Consideraciones Importantes](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Consideraciones-Importantes.md)
+- [🎯 Impacto en el Código](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Impacto-en-el-Código.md)
+- [🔧 Implementación Futura (Punto 5.3.3)](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Implementación-Futura-Punto-5.3.3.md)
+- [📋 Información del Cambio](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Información-del-Cambio.md)
+- [🗄️ Migración de Base de Datos](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Migración-de-Base-de-Datos.md)
+- [🎯 Próximos Pasos](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Próximos-Pasos.md)
+- [📝 Stored Procedures Actualizados](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Stored-Procedures-Actualizados.md)
+- [🧪 Testing Necesario](sprints/SPRINT_2/legacy/CAMBIO_FACTURA_FECHA_PAGO/CAMBIO-Modelo-Factura---Campo-fecha--fechaPago/-Testing-Necesario.md)

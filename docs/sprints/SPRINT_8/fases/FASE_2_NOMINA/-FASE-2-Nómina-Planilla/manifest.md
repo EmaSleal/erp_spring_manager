@@ -1,0 +1,9 @@
+# FASE 2 Nómina Planilla
+
+- [📦 1. MODELOS DE NÓMINA (8 tareas)](sprints/SPRINT_8/fases/FASE_2_NOMINA/-FASE-2-Nómina-Planilla/-1.-MODELOS-DE-NÓMINA-8-tareas.md)
+- [📊 CRITERIOS DE ACEPTACIÓN](sprints/SPRINT_8/fases/FASE_2_NOMINA/-FASE-2-Nómina-Planilla/-CRITERIOS-DE-ACEPTACIÓN.md)
+- [📚 DEPENDENCIAS](sprints/SPRINT_8/fases/FASE_2_NOMINA/-FASE-2-Nómina-Planilla/-DEPENDENCIAS.md)
+- [🇨🇷 NORMATIVA LABORAL DE COSTA RICA](sprints/SPRINT_8/fases/FASE_2_NOMINA/-FASE-2-Nómina-Planilla/-NORMATIVA-LABORAL-DE-COSTA-RICA.md)
+- [📋 OBJETIVO DE LA FASE](sprints/SPRINT_8/fases/FASE_2_NOMINA/-FASE-2-Nómina-Planilla/-OBJETIVO-DE-LA-FASE.md)
+- [📊 PROGRESO GENERAL](sprints/SPRINT_8/fases/FASE_2_NOMINA/-FASE-2-Nómina-Planilla/-PROGRESO-GENERAL.md)
+- [🔄 PRÓXIMOS PASOS](sprints/SPRINT_8/fases/FASE_2_NOMINA/-FASE-2-Nómina-Planilla/-PRÓXIMOS-PASOS.md)

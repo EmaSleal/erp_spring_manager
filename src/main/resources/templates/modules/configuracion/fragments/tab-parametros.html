@@ -1,0 +1,340 @@
+<!-- Fragment: Gestión de Parámetros del Sistema -->
+<div th:fragment="parametrosForm" xmlns:th="http://www.thymeleaf.org">
+    
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning bg-gradient text-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-sliders-h me-2"></i>
+                    <strong>Parámetros del Sistema</strong>
+                </div>
+                <div>
+                    <button type="button" 
+                            class="btn btn-sm btn-dark" 
+                            id="btn-inicializar-parametros">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Inicializar Parámetros por Defecto
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <!-- Alert container -->
+            <div id="alert-parametros-container"></div>
+
+            <!-- Barra de filtros y búsqueda -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               id="search-parametros" 
+                               placeholder="Buscar parámetro...">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <select class="form-select" id="filter-categoria">
+                        <option value="">📁 Todas las Categorías</option>
+                        <option value="GENERAL">🔧 General</option>
+                        <option value="FACTURACION">📄 Facturación</option>
+                        <option value="WHATSAPP">💬 WhatsApp</option>
+                        <option value="NOTIFICACIONES">🔔 Notificaciones</option>
+                        <option value="REPORTES">📊 Reportes</option>
+                        <option value="SEGURIDAD">🔒 Seguridad</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" 
+                               class="btn-check" 
+                               name="filter-editable" 
+                               id="filter-todos" 
+                               value="" 
+                               autocomplete="off" 
+                               checked>
+                        <label class="btn btn-outline-secondary" for="filter-todos">
+                            <i class="fas fa-list me-1"></i> Todos
+                        </label>
+
+                        <input type="radio" 
+                               class="btn-check" 
+                               name="filter-editable" 
+                               id="filter-editables" 
+                               value="true" 
+                               autocomplete="off">
+                        <label class="btn btn-outline-success" for="filter-editables">
+                            <i class="fas fa-edit me-1"></i> Editables
+                        </label>
+
+                        <input type="radio" 
+                               class="btn-check" 
+                               name="filter-editable" 
+                               id="filter-sistema" 
+                               value="false" 
+                               autocomplete="off">
+                        <label class="btn btn-outline-danger" for="filter-sistema">
+                            <i class="fas fa-lock me-1"></i> Sistema
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de parámetros -->
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle" id="tabla-parametros">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%;" class="text-center">
+                                <i class="fas fa-hashtag"></i>
+                            </th>
+                            <th style="width: 20%;">
+                                <i class="fas fa-key me-1"></i> Clave
+                            </th>
+                            <th style="width: 25%;">
+                                <i class="fas fa-keyboard me-1"></i> Valor
+                            </th>
+                            <th style="width: 10%;" class="text-center">
+                                <i class="fas fa-tag me-1"></i> Tipo
+                            </th>
+                            <th style="width: 15%;" class="text-center">
+                                <i class="fas fa-folder me-1"></i> Categoría
+                            </th>
+                            <th style="width: 10%;" class="text-center">
+                                <i class="fas fa-shield-alt me-1"></i> Estado
+                            </th>
+                            <th style="width: 15%;" class="text-center">
+                                <i class="fas fa-cog me-1"></i> Acciones
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-parametros">
+                        <!-- Filas cargadas dinámicamente -->
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                Cargando parámetros...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer con estadísticas -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-primary me-2">
+                                <i class="fas fa-list me-1"></i>
+                                Total: <strong id="total-parametros">0</strong>
+                            </span>
+                            <span class="badge bg-success me-2">
+                                <i class="fas fa-edit me-1"></i>
+                                Editables: <strong id="total-editables">0</strong>
+                            </span>
+                            <span class="badge bg-danger">
+                                <i class="fas fa-lock me-1"></i>
+                                Sistema: <strong id="total-sistema">0</strong>
+                            </span>
+                        </div>
+                        <div>
+                            <button type="button" 
+                                    class="btn btn-sm btn-success" 
+                                    id="btn-nuevo-parametro">
+                                <i class="fas fa-plus me-2"></i>
+                                Nuevo Parámetro
+                            </button>
+                            <button type="button" 
+                                    class="btn btn-sm btn-secondary" 
+                                    id="btn-refrescar-parametros">
+                                <i class="fas fa-sync me-2"></i>
+                                Refrescar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Crear/Editar Parámetro -->
+    <div class="modal fade" id="modal-parametro" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="modal-parametro-titulo">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Nuevo Parámetro
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-parametro">
+                        <input type="hidden" id="param-id" name="idParametro">
+                        <input type="hidden" id="param-modo" value="crear">
+
+                        <div class="mb-3">
+                            <label for="param-clave" class="form-label">
+                                <i class="fas fa-key me-1"></i> Clave
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="param-clave" 
+                                   name="clave"
+                                   placeholder="mi.parametro.nombre"
+                                   pattern="^[a-z0-9._]+$"
+                                   required>
+                            <div class="form-text">
+                                Solo letras minúsculas, números, puntos y guiones bajos
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="param-valor" class="form-label">
+                                <i class="fas fa-keyboard me-1"></i> Valor
+                                <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" 
+                                      id="param-valor" 
+                                      name="valor"
+                                      rows="3" 
+                                      required></textarea>
+                            <div class="form-text">Valor del parámetro según su tipo</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="param-tipo" class="form-label">
+                                        <i class="fas fa-tag me-1"></i> Tipo de Dato
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="param-tipo" name="tipoDato" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option value="STRING">🔤 Texto (STRING)</option>
+                                        <option value="INTEGER">🔢 Entero (INTEGER)</option>
+                                        <option value="DECIMAL">💰 Decimal (DECIMAL)</option>
+                                        <option value="BOOLEAN">✅ Booleano (BOOLEAN)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="param-categoria" class="form-label">
+                                        <i class="fas fa-folder me-1"></i> Categoría
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="param-categoria" name="categoria" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option value="GENERAL">🔧 General</option>
+                                        <option value="FACTURACION">📄 Facturación</option>
+                                        <option value="WHATSAPP">💬 WhatsApp</option>
+                                        <option value="NOTIFICACIONES">🔔 Notificaciones</option>
+                                        <option value="REPORTES">📊 Reportes</option>
+                                        <option value="SEGURIDAD">🔒 Seguridad</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="param-descripcion" class="form-label">
+                                <i class="fas fa-info-circle me-1"></i> Descripción
+                            </label>
+                            <textarea class="form-control" 
+                                      id="param-descripcion" 
+                                      name="descripcion"
+                                      rows="2"
+                                      placeholder="Descripción opcional del parámetro"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="param-editable" 
+                                       name="editable"
+                                       checked>
+                                <label class="form-check-label" for="param-editable">
+                                    <i class="fas fa-edit me-1"></i> Parámetro Editable
+                                    <small class="text-muted">(Si está desactivado, solo puede editarse desde el código)</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Ejemplos de valores:</strong>
+                            <ul class="mb-0 mt-2" style="font-size: 0.9rem;">
+                                <li><strong>STRING:</strong> "Mi valor de texto"</li>
+                                <li><strong>INTEGER:</strong> 123</li>
+                                <li><strong>DECIMAL:</strong> 16.50</li>
+                                <li><strong>BOOLEAN:</strong> true / false</li>
+                            </ul>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-warning text-dark" id="btn-guardar-parametro">
+                        <i class="fas fa-save me-2"></i>
+                        Guardar Parámetro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Edición Rápida de Valor -->
+    <div class="modal fade" id="modal-editar-valor" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>
+                        Editar Valor
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-editar-valor">
+                        <input type="hidden" id="edit-clave">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" id="edit-clave-label"></label>
+                            <div id="edit-valor-container">
+                                <!-- El input se generará dinámicamente según el tipo -->
+                            </div>
+                            <div class="form-text">
+                                Tipo: <span id="edit-tipo-label" class="fw-bold"></span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btn-actualizar-valor">
+                        <i class="fas fa-save me-2"></i>
+                        Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -1,0 +1,706 @@
+/*
+ * ============================================================================
+ * NAVBAR.CSS - Barra de Navegación Superior
+ * WhatsApp Orders Manager
+ * ============================================================================
+ * Navbar fijo con logo, breadcrumbs y menú de usuario
+ */
+
+/* ============================================================================
+   NAVBAR PRINCIPAL
+   ============================================================================ */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--navbar-height);
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+}
+
+/* ============================================================================
+   BOTÓN HAMBURGUESA (Solo Móvil)
+   ============================================================================ */
+.navbar-hamburger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius-md);
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-right: var(--spacing-md);
+}
+
+.navbar-hamburger:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.navbar-hamburger:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 767px) {
+    .navbar-hamburger {
+        display: flex;
+    }
+}
+
+/* ============================================================================
+   SECCIÓN IZQUIERDA - Logo y Nombre
+   ============================================================================ */
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: white;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 600;
+    transition: opacity var(--transition-fast);
+}
+
+.navbar-brand:hover {
+    opacity: 0.9;
+    text-decoration: none;
+    color: white;
+}
+
+.navbar-logo {
+    font-size: 1.5rem;
+}
+
+.navbar-app-name {
+    display: none; /* Oculto en móvil */
+}
+
+/* ============================================================================
+   SECCIÓN CENTRO - Botón Dashboard y Breadcrumbs
+   ============================================================================ */
+.navbar-center {
+    display: none; /* Ocultado: breadcrumbs ahora solo en contenido */
+    align-items: center;
+    gap: var(--spacing-lg);
+    flex: 1;
+    margin-left: var(--spacing-xl);
+}
+
+.btn-dashboard {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--border-radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.btn-dashboard:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.breadcrumbs {
+    display: none; /* Se muestra solo en desktop */
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.breadcrumb-item a {
+    color: rgba(104, 102, 102, 0.9);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.breadcrumb-item a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.breadcrumb-item.active {
+    color: rgba(104, 102, 102, 0.9);
+    font-weight: 500;
+}
+
+.breadcrumb-item.active:hover {
+    color: white;
+    font-weight: 500;
+}
+
+
+/* ============================================================================
+   SECCIÓN DERECHA - Usuario y Dropdown
+   ============================================================================ */
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.navbar-user {
+    position: relative;
+}
+
+.navbar-user-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: var(--border-radius-lg);
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.navbar-user-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--border-radius-full);
+    background-color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+    position: relative;
+}
+
+/* Avatar con imagen */
+.user-avatar.has-image {
+    background-color: transparent;
+    padding: 0;
+}
+
+.user-avatar .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--border-radius-full);
+}
+
+/* Avatar con iniciales (fallback) */
+.user-avatar.has-initials {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+}
+
+.user-avatar .avatar-initials {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: white;
+    letter-spacing: 0.5px;
+}
+
+.user-name {
+    display: none; /* Oculto en móvil */
+    font-weight: 500;
+}
+
+.user-dropdown-icon {
+    font-size: 0.75rem;
+    transition: transform var(--transition-fast);
+}
+
+.navbar-user-trigger.active .user-dropdown-icon {
+    transform: rotate(180deg);
+}
+
+/* ============================================================================
+   DROPDOWN MENU
+   ============================================================================ */
+/* Dropdown Menu - Compatible con Bootstrap */
+.navbar-dropdown {
+    min-width: 280px !important;
+    margin-top: 8px !important;
+    border: none;
+    box-shadow: var(--shadow-xl);
+    border-radius: var(--border-radius-md);
+    padding: 0;
+}
+
+.dropdown-header {
+    padding: var(--spacing-md);
+    background-color: var(--background-color);
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.dropdown-user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.dropdown-user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--border-radius-full);
+    background-color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: white;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Avatar grande en dropdown con imagen */
+.dropdown-user-avatar.has-image {
+    background-color: transparent;
+    padding: 0;
+}
+
+.dropdown-user-avatar .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--border-radius-full);
+}
+
+/* Avatar grande en dropdown con iniciales */
+.dropdown-user-avatar.has-initials {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.dropdown-user-avatar .avatar-initials {
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    color: white;
+    letter-spacing: 0.5px;
+}
+
+.dropdown-user-details {
+    flex: 1;
+}
+
+.dropdown-user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.dropdown-user-role {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Menu items del dropdown */
+.navbar-menu-items {
+    list-style: none;
+    margin: 0;
+    padding: var(--spacing-sm) 0;
+}
+
+.navbar-menu-item {
+    margin: 0;
+}
+
+.navbar-menu-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.navbar-menu-link:hover {
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.navbar-menu-link i {
+    width: 20px;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.navbar-menu-divider {
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: var(--spacing-sm) 0;
+}
+
+.navbar-menu-logout {
+    color: var(--error-color);
+}
+
+.navbar-menu-logout:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* ============================================================================
+   NOTIFICACIONES - Badge y Dropdown
+   ============================================================================ */
+.navbar-notifications {
+    position: relative;
+    margin-right: var(--spacing-md);
+}
+
+.navbar-notifications-trigger {
+    position: relative;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.3rem;
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.navbar-notifications-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-notifications-trigger.active {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Badge de contador */
+.notifications-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: var(--error-color);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 5px;
+    border-radius: 10px;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Dropdown de notificaciones */
+.navbar-notifications-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 380px;
+    max-width: 90vw;
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all var(--transition-medium);
+    z-index: 1100;
+    overflow: hidden;
+}
+
+.navbar-notifications-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Header del dropdown */
+.notifications-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+}
+
+.notifications-dropdown-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.btn-preferences {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.btn-preferences:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+/* Lista de notificaciones */
+.notifications-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notifications-loading {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.notifications-loading i {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-sm);
+    color: var(--primary-color);
+}
+
+.notifications-empty {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.notifications-empty i {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-md);
+    color: var(--border-color);
+}
+
+.notifications-empty p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Item de notificación */
+.notification-item {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color var(--transition-fast);
+    cursor: pointer;
+    display: flex;
+    gap: var(--spacing-sm);
+    position: relative;
+}
+
+.notification-item:hover {
+    background-color: var(--background-hover);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item.unread {
+    background-color: rgba(33, 150, 243, 0.05);
+}
+
+.notification-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    background-color: var(--primary-color);
+    border-radius: 0 4px 4px 0;
+}
+
+/* Icono de la notificación */
+.notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.notification-icon.type-factura-creada {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: var(--success-color);
+}
+
+.notification-icon.type-factura-vencida {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--error-color);
+}
+
+.notification-icon.type-factura-proxima-vencer {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: var(--warning-color);
+}
+
+.notification-icon.type-pago-recibido {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: var(--info-color);
+}
+
+.notification-icon.type-sistema {
+    background-color: rgba(156, 39, 176, 0.1);
+    color: #9c27b0;
+}
+
+/* Contenido de la notificación */
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notification-message {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Footer del dropdown */
+.notifications-dropdown-footer {
+    padding: var(--spacing-sm);
+    background-color: var(--background-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-ver-todas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.btn-ver-todas:hover {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+/* ============================================================================
+   RESPONSIVE - TABLET
+   ============================================================================ */
+@media (min-width: 768px) {
+    .navbar-app-name {
+        display: block;
+    }
+    
+    .user-name {
+        display: block;
+    }
+    
+    .breadcrumbs {
+        display: flex;
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE - DESKTOP
+   ============================================================================ */
+@media (min-width: 1200px) {
+    .navbar {
+        padding: 0 var(--spacing-xl);
+    }
+}

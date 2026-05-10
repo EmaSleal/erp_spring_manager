@@ -1,0 +1,4 @@
+# permisos
+
+- [MAPEO SISTEMA PERMISOS](permisos/MAPEO_SISTEMA_PERMISOS/manifest.md)
+- [RESUMEN ROLES PERMISOS](permisos/RESUMEN_ROLES_PERMISOS/manifest.md)
