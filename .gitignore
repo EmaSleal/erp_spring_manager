@@ -70,5 +70,13 @@ logs/
 #Comprobantes electrónicos generados (si contienen datos reales)
 comprobantes/
 
-#engram tool 
+#engram tool
 build_manifest_tree.py
+
+# Database export (may contain sensitive data)
+database/export/*
+!database/export/.gitkeep
+
+# Database seeds (if they contain sensitive data)
+database/seeds/*
+!database/seeds/.gitkeep
