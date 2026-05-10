@@ -22,27 +22,32 @@ public interface ConfiguracionHaciendaRepository extends JpaRepository<Configura
     /**
      * Encuentra la configuración activa de una empresa.
      */
-    @Query("SELECT c FROM ConfiguracionHacienda c WHERE c.empresa.id = :empresaId AND c.activa = true")
-    Optional<ConfiguracionHacienda> findActivaByEmpresaId(@Param("empresaId") Long empresaId);
+    @Query("SELECT c FROM ConfiguracionHacienda c WHERE c.empresa.idConfiguracion = :empresaId AND c.activa = true")
+    Optional<ConfiguracionHacienda> findActivaByEmpresaId(@Param("empresaId") Integer empresaId);
     
     /**
      * Encuentra configuración por empresa y ambiente.
      */
-    @Query("SELECT c FROM ConfiguracionHacienda c WHERE c.empresa.id = :empresaId AND c.ambiente = :ambiente")
+    @Query("SELECT c FROM ConfiguracionHacienda c WHERE c.empresa.idConfiguracion = :empresaId AND c.ambiente = :ambiente")
     Optional<ConfiguracionHacienda> findByEmpresaIdAndAmbiente(
-        @Param("empresaId") Long empresaId,
+        @Param("empresaId") Integer empresaId,
         @Param("ambiente") AmbienteHacienda ambiente
     );
     
     /**
      * Verifica si existe configuración activa para una empresa.
      */
-    @Query("SELECT COUNT(c) > 0 FROM ConfiguracionHacienda c WHERE c.empresa.id = :empresaId AND c.activa = true")
-    boolean existsActivaByEmpresaId(@Param("empresaId") Long empresaId);
+    @Query("SELECT COUNT(c) > 0 FROM ConfiguracionHacienda c WHERE c.empresa.idConfiguracion = :empresaId AND c.activa = true")
+    boolean existsActivaByEmpresaId(@Param("empresaId") Integer empresaId);
     
     /**
      * Encuentra todas las configuraciones de una empresa.
      */
-    @Query("SELECT c FROM ConfiguracionHacienda c WHERE c.empresa.id = :empresaId ORDER BY c.activa DESC, c.createdAt DESC")
-    java.util.List<ConfiguracionHacienda> findAllByEmpresaId(@Param("empresaId") Long empresaId);
+    @Query("SELECT c FROM ConfiguracionHacienda c WHERE c.empresa.idConfiguracion = :empresaId ORDER BY c.activa DESC, c.createdAt DESC")
+    java.util.List<ConfiguracionHacienda> findAllByEmpresaId(@Param("empresaId") Integer empresaId);
+
+    /**
+     * Encuentra la primera configuración activa (independiente de empresa).
+     */
+    Optional<ConfiguracionHacienda> findFirstByActivaTrue();
 }

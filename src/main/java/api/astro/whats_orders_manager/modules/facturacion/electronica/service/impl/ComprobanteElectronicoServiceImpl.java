@@ -1,7 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
-import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
-import api.astro.whats_orders_manager.modules.configuracion.repository.EmpresaRepository;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.HaciendaCallbackDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -14,6 +13,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.service.*;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.ClaveNumericaGenerator;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     
     private final ComprobanteElectronicoRepository repository;
     private final FacturaRepository facturaRepository;
-    private final EmpresaRepository empresaRepository;
+    private final LineaFacturaRepository lineaFacturaRepository;
     private final ConfiguracionHaciendaService configuracionService;
     private final XmlGeneratorService xmlGenerator;
     private final FirmaDigitalService firmaDigital;
@@ -108,13 +108,23 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             // Enviar a Hacienda
             ComprobanteElectronicoDTO resultado = enviarAHacienda(comprobanteId);
             log.info("✅ Comprobante enviado a Hacienda: {}", resultado.getEstado());
-            
-            // Esperar 30 segundos antes de consultar estado
-            Thread.sleep(30000);
-            
-            // Consultar y actualizar estado
-            consultarYActualizarEstado(comprobanteId);
-            
+
+            // Hacienda es asíncrono: esperar y reintentar hasta obtener estado final
+            int maxReintentos = 5;
+            long esperaMs = 30_000;
+            for (int intento = 1; intento <= maxReintentos; intento++) {
+                Thread.sleep(esperaMs);
+                var actualizado = consultarYActualizarEstado(comprobanteId);
+                EstadoComprobante estadoActual = actualizado.getEstado();
+                if (estadoActual == EstadoComprobante.ACEPTADO
+                        || estadoActual == EstadoComprobante.RECHAZADO) {
+                    log.info("✅ Estado final obtenido: {} (intento {}/{})", estadoActual, intento, maxReintentos);
+                    break;
+                }
+                log.info("⏳ Hacienda aún procesando (intento {}/{}), reintentando en {}s...",
+                        intento, maxReintentos, esperaMs / 1000);
+            }
+
         } catch (InterruptedException e) {
             log.warn("⚠️ Proceso asíncrono interrumpido: {}", e.getMessage());
             Thread.currentThread().interrupt();
@@ -138,31 +148,34 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     public ComprobanteElectronicoDTO generarDesdeFactura(Long facturaId) {
         log.info("Generando comprobante electrónico desde factura ID: {}", facturaId);
         
-        // Necesitamos el empresaId, obtenerlo de configuración activa
-        // Por ahora usar empresaId 1 como default, debería pasarse como parámetro
-        Long empresaId = 1L; // TODO: Pasar empresaId como parámetro
-        TipoComprobanteElectronico tipo = TipoComprobanteElectronico.FACTURA_ELECTRONICA; // Default
-        
+        TipoComprobanteElectronico tipo = TipoComprobanteElectronico.FACTURA_ELECTRONICA;
+
         Factura factura = facturaRepository.findById(facturaId.intValue())
             .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada"));
-        
-        // Obtener empresa desde configuración activa ya que Factura no tiene referencia directa
-        ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(empresaId)
+
+        ConfiguracionHacienda config = configuracionService.obtenerConfiguracionActivaGlobal()
             .orElseThrow(() -> new IllegalStateException("No hay configuración activa de Hacienda"));
-        
-        Empresa empresa = config.getEmpresa();
-        
+
+        ConfiguracionEmpresa empresa = config.getEmpresa();
+
+        if (empresa.getRuc() == null || empresa.getRuc().isBlank()) {
+            throw new IllegalStateException(
+                "La empresa no tiene número de identificación (cédula jurídica) configurado. " +
+                "Configúrelo en Configuración → Empresa antes de emitir comprobantes.");
+        }
+
         // Generar consecutivo y clave numérica
         Long consecutivo = config.siguienteConsecutivo(tipo.getCodigo());
         LocalDateTime fechaEmision = LocalDateTime.now();
-        
+
         String claveNumerica = claveGenerator.generar(
             empresa.getRuc(),
             consecutivo,
             tipo,
             fechaEmision
         );
-        
+        //log de factura
+        log.info("Objeto de factura para generación de comprobante: {}", factura);
         // Crear comprobante
         ComprobanteElectronico comprobante = ComprobanteElectronico.builder()
             .factura(factura)
@@ -246,7 +259,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
         
         ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa().longValue()
+            comprobante.getEmpresa().getIdEmpresa()
         ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
         
         try {
@@ -293,7 +306,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
         
         ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa().longValue()
+            comprobante.getEmpresa().getIdEmpresa()
         ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
         
         // Verificar y renovar token si es necesario
@@ -317,6 +330,10 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             if (respuesta.getExitoso()) {
                 comprobante.setEstado(EstadoComprobante.ACEPTADO);
                 log.info("Comprobante aceptado por Hacienda");
+            } else if (respuesta.getDebeReintentar() || respuesta.getCodigoHttp() == 202) {
+                // 202 = Hacienda recibió y está procesando de forma asíncrona — NO es rechazo
+                comprobante.setEstado(EstadoComprobante.ENVIADO);
+                log.info("Comprobante en procesamiento por Hacienda (asíncrono)");
             } else {
                 comprobante.setEstado(EstadoComprobante.RECHAZADO);
                 log.warn("Comprobante rechazado por Hacienda: {}", respuesta.getMensaje());
@@ -356,7 +373,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
         
         ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa().longValue()
+            comprobante.getEmpresa().getIdEmpresa()
         ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
         
         try {
@@ -390,7 +407,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
         
         ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa().longValue()
+            comprobante.getEmpresa().getIdEmpresa()
         ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
         
         try {
@@ -567,6 +584,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     
     /**
      * Convierte resultados de SP (Object[]) a DTOs.
+     * JDBC retorna java.sql.Timestamp para DATETIME y Number para INT/TINYINT —
+     * nunca castear directamente a LocalDateTime, Integer o Boolean.
      */
     private List<ComprobanteElectronicoDTO> convertirResultadosADTO(List<Object[]> results) {
         return results.stream()
@@ -575,14 +594,14 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 .claveNumerica((String) row[1])
                 .consecutivo((String) row[2])
                 .tipoComprobante(TipoComprobanteElectronico.valueOf((String) row[3]))
-                .fechaEmision((LocalDateTime) row[4])
+                .fechaEmision(row[4] != null ? ((java.sql.Timestamp) row[4]).toLocalDateTime() : null)
                 .estado(EstadoComprobante.valueOf((String) row[5]))
                 .facturaId(row[6] != null ? ((Number) row[6]).longValue() : null)
                 .empresaId(((Number) row[7]).longValue())
                 .codigoRespuesta((String) row[8])
                 .mensajeRespuesta((String) row[9])
-                .intentosEnvio((Integer) row[10])
-                .enviadoEmail((Boolean) row[11])
+                .intentosEnvio(row[10] != null ? ((Number) row[10]).intValue() : 0)
+                .enviadoEmail(row[11] instanceof Boolean b ? b : row[11] instanceof Number n && n.intValue() != 0)
                 .build())
             .collect(java.util.stream.Collectors.toList());
     }

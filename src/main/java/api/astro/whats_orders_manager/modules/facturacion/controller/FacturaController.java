@@ -138,27 +138,6 @@ public class FacturaController {
             
             Factura factura = facturaOpt.get();
             
-            // Cargar las líneas de factura (están marcadas como @Transient)
-            List<LineaFactura> lineas = lineaFacturaService.findLineasByFacturaId(id)
-                    .stream()
-                    .map(lineaR -> {
-                        LineaFactura linea = new LineaFactura();
-                        linea.setIdLineaFactura(lineaR.id_linea_factura());
-                        linea.setNumeroLinea(lineaR.numero_linea());
-                        linea.setCantidad(lineaR.cantidad());
-                        linea.setPrecioUnitario(lineaR.precioUnitario());
-                        linea.setSubtotal(lineaR.subtotal());
-                        Producto producto = new Producto();
-                        producto.setIdProducto(lineaR.id_producto());
-                        producto.setDescripcion(lineaR.descripcion());
-                        linea.setProducto(producto);
-                        return linea;
-                    })
-                    .toList();
-                    
-
-            factura.setLineas(lineas);
-            
             return ResponseEntity.ok(facturaMapper.toDetalleDTO(factura));
                     
         } catch (Exception e) {

@@ -349,30 +349,6 @@ public class EmailServiceImpl implements EmailService {
                 throw new IllegalArgumentException("El cliente no tiene email configurado");
             }
             
-            // Cargar las líneas de la factura
-            var lineasR = lineaFacturaService.findLineasByFacturaId(factura.getIdFactura());
-            
-            // Convertir LineaFacturaR a LineaFactura y asignarlas a la factura
-            var lineas = lineasR.stream()
-                .map(lr -> {
-                    LineaFactura lf = new LineaFactura();
-                    lf.setIdLineaFactura(lr.id_linea_factura());
-                    lf.setCantidad(lr.cantidad());
-                    lf.setPrecioUnitario(lr.precioUnitario());
-                    lf.setSubtotal(lr.subtotal());
-                    
-                    // Crear un producto simplificado con el ID y descripción
-                    var producto = new api.astro.whats_orders_manager.modules.producto.model.Producto();
-                    producto.setIdProducto(lr.id_producto());
-                    producto.setDescripcion(lr.descripcion());
-                    lf.setProducto(producto);
-                    
-                    return lf;
-                })
-                .toList();
-            
-            factura.setLineas(lineas);
-            
             // Obtener información de la empresa
             var empresa = empresaService.getEmpresaPrincipal();
             

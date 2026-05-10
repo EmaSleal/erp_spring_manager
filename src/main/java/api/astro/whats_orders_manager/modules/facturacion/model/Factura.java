@@ -151,8 +151,9 @@ public class Factura {
     @Column(name = "fechaVencimiento")
     private Date fechaVencimiento;
 
-    @Transient
-    private List<LineaFactura> lineas;
+    @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @ToString.Exclude
+    private List<LineaFactura> lineas = new ArrayList<>();
     
     // ==================== MÉTODOS DE NEGOCIO - PAGOS ====================
     

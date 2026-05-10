@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.model;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
-import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -37,7 +37,7 @@ public class ConfiguracionHacienda {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empresa_id", nullable = false)
     @NotNull(message = "La empresa es obligatoria")
-    private Empresa empresa;
+    private ConfiguracionEmpresa empresa;
     
     /**
      * Ambiente de operación (SANDBOX o PRODUCCION).

@@ -27,7 +27,7 @@ public class ComprobanteElectronicoMapper {
             .facturaId(entity.getFactura() != null ? entity.getFactura().getIdFactura().longValue() : null)
             .facturaNumero(entity.getFactura() != null ? entity.getFactura().getNumeroFactura() : null)
             .empresaId(entity.getEmpresa().getIdEmpresa().longValue())
-            .empresaNombre(entity.getEmpresa().getNombreParaMostrar())
+            .empresaNombre(entity.getEmpresa().getNombreDisplay())
             .tipoComprobante(entity.getTipoComprobante())
             .tipoComprobanteDescripcion(entity.getTipoComprobante().getDescripcion())
             .claveNumerica(entity.getClaveNumerica())

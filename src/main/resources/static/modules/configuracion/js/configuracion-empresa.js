@@ -90,7 +90,45 @@ const ConfiguracionEmpresa = {
                     document.getElementById('colorSecundario').value = datos.colorSecundario || '#6c757d';
                     document.getElementById('colorSecundarioText').value = datos.colorSecundario || '#6c757d';
                 }
-                
+
+                // Facturación Electrónica Costa Rica
+                if (document.getElementById('tipoIdentificacion')) {
+                    document.getElementById('tipoIdentificacion').value = datos.tipoIdentificacion || '';
+                }
+                if (document.getElementById('numeroIdentificacion')) {
+                    document.getElementById('numeroIdentificacion').value = datos.numeroIdentificacion || '';
+                }
+                if (document.getElementById('codigoActividad')) {
+                    document.getElementById('codigoActividad').value = datos.codigoActividad || '';
+                }
+                if (document.getElementById('nombreComercialFe')) {
+                    document.getElementById('nombreComercialFe').value = datos.nombreComercialFe || '';
+                }
+                if (document.getElementById('otrasSenas')) {
+                    document.getElementById('otrasSenas').value = datos.otrasSenas || '';
+                }
+                if (document.getElementById('barrio')) {
+                    document.getElementById('barrio').value = datos.barrio || '';
+                }
+                // Ubicación CR (provincia → canton → distrito en cascada)
+                if (datos.codigoProvincia && document.getElementById('provincia')) {
+                    const selectProvincia = document.getElementById('provincia');
+                    selectProvincia.value = datos.codigoProvincia;
+                    selectProvincia.dispatchEvent(new Event('change'));
+                    // Canton y distrito se cargan después del evento change de provincia
+                    setTimeout(() => {
+                        if (datos.canton && document.getElementById('canton')) {
+                            document.getElementById('canton').value = datos.canton;
+                            document.getElementById('canton').dispatchEvent(new Event('change'));
+                            setTimeout(() => {
+                                if (datos.distrito && document.getElementById('distrito')) {
+                                    document.getElementById('distrito').value = datos.distrito;
+                                }
+                            }, 300);
+                        }
+                    }, 300);
+                }
+
                 console.log('✅ Configuración de empresa cargada');
             } else if (response.message) {
                 console.log('ℹ️ No hay configuración: ', response.message);
@@ -230,9 +268,19 @@ const ConfiguracionEmpresa = {
                 email: document.getElementById('email').value || null,
                 sitioWeb: document.getElementById('sitioWeb').value || null,
                 logoUrl: document.getElementById('logoUrl').value || null,
-                faviconUrl: document.getElementById('faviconUrl').value || null,
+                faviconUrl: document.getElementById('faviconUrl') ? document.getElementById('faviconUrl').value || null : null,
                 colorPrimario: document.getElementById('colorPrimario').value || '#007bff',
-                colorSecundario: document.getElementById('colorSecundario').value || '#6c757d'
+                colorSecundario: document.getElementById('colorSecundario').value || '#6c757d',
+                // Facturación Electrónica Costa Rica
+                tipoIdentificacion: document.getElementById('tipoIdentificacion').value || null,
+                numeroIdentificacion: document.getElementById('numeroIdentificacion').value || null,
+                codigoActividad: document.getElementById('codigoActividad').value || null,
+                nombreComercialFe: document.getElementById('nombreComercialFe').value || null,
+                codigoProvincia: document.getElementById('provincia').value || null,
+                canton: document.getElementById('canton').value || null,
+                distrito: document.getElementById('distrito').value || null,
+                barrio: document.getElementById('barrio').value || null,
+                otrasSenas: document.getElementById('otrasSenas').value || null
             };
             
             const idConfiguracion = document.getElementById('idConfiguracionEmpresa').value;

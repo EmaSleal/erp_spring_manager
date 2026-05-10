@@ -39,7 +39,7 @@ public class ConfiguracionHaciendaController {
     public ResponseEntity<ConfiguracionHaciendaDTO> obtenerConfiguracionActiva(
             @PathVariable Integer empresaId) {
         log.info("Obteniendo configuración activa para empresa {}", empresaId);
-        return configuracionService.obtenerConfiguracionActiva(empresaId.longValue())
+        return configuracionService.obtenerConfiguracionActiva(empresaId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -52,7 +52,7 @@ public class ConfiguracionHaciendaController {
     public ResponseEntity<List<ConfiguracionHaciendaDTO>> listarConfiguraciones(
             @PathVariable Integer empresaId) {
         log.info("Listando configuraciones de Hacienda para empresa {}", empresaId);
-        List<ConfiguracionHaciendaDTO> configuraciones = configuracionService.listarPorEmpresa(empresaId.longValue());
+        List<ConfiguracionHaciendaDTO> configuraciones = configuracionService.listarPorEmpresa(empresaId);
         return ResponseEntity.ok(configuraciones);
     }
     
@@ -65,7 +65,7 @@ public class ConfiguracionHaciendaController {
             @PathVariable Integer empresaId,
             @PathVariable AmbienteHacienda ambiente) {
         log.info("Obteniendo configuración {} para empresa {}", ambiente, empresaId);
-        ConfiguracionHacienda config = configuracionService.obtenerPorEmpresaYAmbiente(empresaId.longValue(), ambiente)
+        ConfiguracionHacienda config = configuracionService.obtenerPorEmpresaYAmbiente(empresaId, ambiente)
                 .orElse(null);
         if (config == null) {
             return ResponseEntity.notFound().build();

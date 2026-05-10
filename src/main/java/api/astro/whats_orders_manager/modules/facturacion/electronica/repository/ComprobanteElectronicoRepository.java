@@ -89,9 +89,10 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
     /**
      * Busca comprobantes por tipo (sin paginación - método auxiliar).
      */
-    List<ComprobanteElectronico> findByEmpresaIdEmpresaAndTipoComprobante(
-        Integer empresaId,
-        TipoComprobanteElectronico tipo
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE c.empresa.idConfiguracion = :empresaId AND c.tipoComprobante = :tipo")
+    List<ComprobanteElectronico> findByEmpresaIdConfiguracionAndTipoComprobante(
+        @Param("empresaId") Integer empresaId,
+        @Param("tipo") TipoComprobanteElectronico tipo
     );
     
     /**

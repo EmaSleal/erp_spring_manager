@@ -13,6 +13,17 @@ import java.util.List;
 @Repository
 public interface LineaFacturaRepository extends JpaRepository<LineaFactura, Integer> {
 
+    /**
+     * Carga líneas de factura como entidades JPA con producto/presentación para procesos internos
+     * (ej. generación de XML de comprobante electrónico).
+     */
+    @Query("SELECT lf FROM LineaFactura lf " +
+           "LEFT JOIN FETCH lf.producto p " +
+           "LEFT JOIN FETCH p.presentacion " +
+           "WHERE lf.factura.idFactura = :idFactura " +
+           "ORDER BY lf.numeroLinea")
+    List<LineaFactura> findEntitiesByFacturaId(@Param("idFactura") Integer idFactura);
+
     //sp to get the lineas of a factura
     @Query(value = "call sp_get_lineas_factura(:idFactura)", nativeQuery = true)
     List<LineaFacturaR> findLineasByFacturaId(Integer idFactura);

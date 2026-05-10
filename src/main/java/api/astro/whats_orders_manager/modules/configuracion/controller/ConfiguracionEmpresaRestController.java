@@ -292,7 +292,18 @@ public class ConfiguracionEmpresaRestController {
         dto.setDireccionCompleta(entidad.getDireccionCompleta());
         dto.setTieneLogoConfigurado(entidad.tieneLogoConfigurado());
         dto.setDatosFiscalesCompletos(entidad.tieneDatosFiscalesCompletos());
-        
+
+        // Facturación Electrónica Costa Rica
+        dto.setNumeroIdentificacion(entidad.getNumeroIdentificacion());
+        dto.setTipoIdentificacion(entidad.getTipoIdentificacion());
+        dto.setCodigoProvincia(entidad.getCodigoProvincia());
+        dto.setCanton(entidad.getCanton());
+        dto.setDistrito(entidad.getDistrito());
+        dto.setBarrio(entidad.getBarrio());
+        dto.setOtrasSenas(entidad.getOtrasSenas());
+        dto.setCodigoActividad(entidad.getCodigoActividad());
+        dto.setNombreComercialFe(entidad.getNombreComercialFe());
+
         return dto;
     }
 
@@ -319,6 +330,16 @@ public class ConfiguracionEmpresaRestController {
                 .logoUrl(dto.getLogoUrl())
                 .colorPrimario(dto.getColorPrimario())
                 .colorSecundario(dto.getColorSecundario())
+                // Facturación Electrónica Costa Rica
+                .numeroIdentificacion(dto.getNumeroIdentificacion())
+                .tipoIdentificacion(dto.getTipoIdentificacion())
+                .codigoProvincia(dto.getCodigoProvincia())
+                .canton(dto.getCanton())
+                .distrito(dto.getDistrito())
+                .barrio(dto.getBarrio())
+                .otrasSenas(dto.getOtrasSenas())
+                .codigoActividad(dto.getCodigoActividad())
+                .nombreComercialFe(dto.getNombreComercialFe())
                 .build();
     }
 }

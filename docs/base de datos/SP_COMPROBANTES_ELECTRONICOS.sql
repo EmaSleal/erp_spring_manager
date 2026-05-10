@@ -10,6 +10,10 @@ DELIMITER $$
 
 -- =============================================
 -- SP: Listar comprobantes por empresa con paginación
+-- Columnas en el orden exacto que espera convertirResultadosADTO:
+--   [0] id, [1] clave_numerica, [2] consecutivo, [3] tipo_comprobante,
+--   [4] fecha_emision, [5] estado, [6] factura_id, [7] empresa_id,
+--   [8] codigo_respuesta, [9] mensaje_respuesta, [10] intentos_envio, [11] enviado_email
 -- =============================================
 DROP PROCEDURE IF EXISTS sp_listar_comprobantes_por_empresa$$
 CREATE PROCEDURE sp_listar_comprobantes_por_empresa(
@@ -20,53 +24,22 @@ CREATE PROCEDURE sp_listar_comprobantes_por_empresa(
 BEGIN
     DECLARE v_offset INT;
     SET v_offset = p_page * p_size;
-    
-    SELECT 
+
+    SELECT
         ce.id,
-        IFNULL(ce.factura_id, 0) AS facturaId,
-        IFNULL(f.numero_factura, '') AS facturaNumero,
-        e.id_empresa AS empresaId,
-        COALESCE(e.nombre_comercial, e.nombre_empresa) AS empresaNombre,
-        ce.tipo_comprobante AS tipoComprobante,
-        CASE ce.tipo_comprobante
-            WHEN 'FACTURA_ELECTRONICA' THEN 'Factura Electrónica'
-            WHEN 'NOTA_DEBITO' THEN 'Nota de Débito Electrónica'
-            WHEN 'NOTA_CREDITO' THEN 'Nota de Crédito Electrónica'
-            WHEN 'TIQUETE_ELECTRONICO' THEN 'Tiquete Electrónico'
-            WHEN 'FACTURA_ELECTRONICA_COMPRA' THEN 'Factura Electrónica de Compra'
-            WHEN 'FACTURA_ELECTRONICA_EXPORTACION' THEN 'Factura Electrónica de Exportación'
-            ELSE ce.tipo_comprobante
-        END AS tipoComprobanteDescripcion,
-        ce.clave_numerica AS claveNumerica,
+        ce.clave_numerica,
         ce.consecutivo,
-        ce.fecha_emision AS fechaEmision,
+        ce.tipo_comprobante,
+        ce.fecha_emision,
         ce.estado,
-        CASE ce.estado
-            WHEN 'GENERADO' THEN 'Generado'
-            WHEN 'FIRMADO' THEN 'Firmado'
-            WHEN 'ENVIADO' THEN 'Enviado'
-            WHEN 'PROCESANDO' THEN 'Procesando'
-            WHEN 'ACEPTADO' THEN 'Aceptado'
-            WHEN 'RECHAZADO' THEN 'Rechazado'
-            WHEN 'ERROR' THEN 'Error'
-            WHEN 'ANULADO' THEN 'Anulado'
-            ELSE ce.estado
-        END AS estadoDescripcion,
-        ce.codigo_respuesta AS codigoRespuesta,
-        ce.mensaje_respuesta AS mensajeRespuesta,
-        ce.fecha_envio AS fechaEnvio,
-        ce.fecha_respuesta AS fechaRespuesta,
-        ce.intentos_envio AS intentosEnvio,
-        ce.ultimo_error AS ultimoError,
-        ce.enviado_email AS enviadoEmail,
-        ce.fecha_envio_email AS fechaEnvioEmail,
-        ce.url_pdf AS urlPdf,
-        ce.created_at AS createdAt,
-        ce.updated_at AS updatedAt,
-        -- Contar total para paginación
-        COUNT(*) OVER() AS total_count
+        ce.factura_id,
+        ce.empresa_id,
+        ce.codigo_respuesta,
+        ce.mensaje_respuesta,
+        ce.intentos_envio,
+        ce.enviado_email
     FROM comprobante_electronico ce
-    INNER JOIN empresa e ON e.id_empresa = ce.empresa_id
+    INNER JOIN configuracion_empresa e ON e.id_configuracion = ce.empresa_id
     LEFT JOIN factura f ON f.id_factura = ce.factura_id
     WHERE ce.empresa_id = p_empresa_id
     ORDER BY ce.fecha_emision DESC
@@ -86,52 +59,24 @@ CREATE PROCEDURE sp_listar_comprobantes_por_estado(
 BEGIN
     DECLARE v_offset INT;
     SET v_offset = p_page * p_size;
-    
-    SELECT 
+
+    SELECT
         ce.id,
-        IFNULL(f.id_factura, 0) AS facturaId,
-        IFNULL(f.numero_factura, '') AS facturaNumero,
-        e.id_empresa AS empresaId,
-        COALESCE(e.nombre_comercial, e.nombre_empresa) AS empresaNombre,
-        ce.tipo_comprobante AS tipoComprobante,
-        CASE ce.tipo_comprobante
-            WHEN 'FACTURA_ELECTRONICA' THEN 'Factura Electrónica'
-            WHEN 'NOTA_DEBITO' THEN 'Nota de Débito Electrónica'
-            WHEN 'NOTA_CREDITO' THEN 'Nota de Crédito Electrónica'
-            WHEN 'TIQUETE_ELECTRONICO' THEN 'Tiquete Electrónico'
-            ELSE ce.tipo_comprobante
-        END AS tipoComprobanteDescripcion,
-        ce.clave_numerica AS claveNumerica,
+        ce.clave_numerica,
         ce.consecutivo,
-        ce.fecha_emision AS fechaEmision,
+        ce.tipo_comprobante,
+        ce.fecha_emision,
         ce.estado,
-        CASE ce.estado
-            WHEN 'GENERADO' THEN 'Generado'
-            WHEN 'FIRMADO' THEN 'Firmado'
-            WHEN 'ENVIADO' THEN 'Enviado'
-            WHEN 'PROCESANDO' THEN 'Procesando'
-            WHEN 'ACEPTADO' THEN 'Aceptado'
-            WHEN 'RECHAZADO' THEN 'Rechazado'
-            WHEN 'ERROR' THEN 'Error'
-            WHEN 'ANULADO' THEN 'Anulado'
-            ELSE ce.estado
-        END AS estadoDescripcion,
-        ce.codigo_respuesta AS codigoRespuesta,
-        ce.mensaje_respuesta AS mensajeRespuesta,
-        ce.fecha_envio AS fechaEnvio,
-        ce.fecha_respuesta AS fechaRespuesta,
-        ce.intentos_envio AS intentosEnvio,
-        ce.ultimo_error AS ultimoError,
-        ce.enviado_email AS enviadoEmail,
-        ce.fecha_envio_email AS fechaEnvioEmail,
-        ce.url_pdf AS urlPdf,
-        ce.created_at AS createdAt,
-        ce.updated_at AS updatedAt,
-        COUNT(*) OVER() AS total_count
+        ce.factura_id,
+        ce.empresa_id,
+        ce.codigo_respuesta,
+        ce.mensaje_respuesta,
+        ce.intentos_envio,
+        ce.enviado_email
     FROM comprobante_electronico ce
-    INNER JOIN empresa e ON e.id_empresa = ce.empresa_id
+    INNER JOIN configuracion_empresa e ON e.id_configuracion = ce.empresa_id
     LEFT JOIN factura f ON f.id_factura = ce.factura_id
-    WHERE ce.empresa_id = p_empresa_id 
+    WHERE ce.empresa_id = p_empresa_id
       AND ce.estado = p_estado
     ORDER BY ce.fecha_emision DESC
     LIMIT p_size OFFSET v_offset;
@@ -151,52 +96,24 @@ CREATE PROCEDURE sp_listar_comprobantes_por_fechas(
 BEGIN
     DECLARE v_offset INT;
     SET v_offset = p_page * p_size;
-    
-    SELECT 
+
+    SELECT
         ce.id,
-        IFNULL(f.id_factura, 0) AS facturaId,
-        IFNULL(f.numero_factura, '') AS facturaNumero,
-        e.id_empresa AS empresaId,
-        COALESCE(e.nombre_comercial, e.nombre_empresa) AS empresaNombre,
-        ce.tipo_comprobante AS tipoComprobante,
-        CASE ce.tipo_comprobante
-            WHEN 'FACTURA_ELECTRONICA' THEN 'Factura Electrónica'
-            WHEN 'NOTA_DEBITO' THEN 'Nota de Débito Electrónica'
-            WHEN 'NOTA_CREDITO' THEN 'Nota de Crédito Electrónica'
-            WHEN 'TIQUETE_ELECTRONICO' THEN 'Tiquete Electrónico'
-            ELSE ce.tipo_comprobante
-        END AS tipoComprobanteDescripcion,
-        ce.clave_numerica AS claveNumerica,
+        ce.clave_numerica,
         ce.consecutivo,
-        ce.fecha_emision AS fechaEmision,
+        ce.tipo_comprobante,
+        ce.fecha_emision,
         ce.estado,
-        CASE ce.estado
-            WHEN 'GENERADO' THEN 'Generado'
-            WHEN 'FIRMADO' THEN 'Firmado'
-            WHEN 'ENVIADO' THEN 'Enviado'
-            WHEN 'PROCESANDO' THEN 'Procesando'
-            WHEN 'ACEPTADO' THEN 'Aceptado'
-            WHEN 'RECHAZADO' THEN 'Rechazado'
-            WHEN 'ERROR' THEN 'Error'
-            WHEN 'ANULADO' THEN 'Anulado'
-            ELSE ce.estado
-        END AS estadoDescripcion,
-        ce.codigo_respuesta AS codigoRespuesta,
-        ce.mensaje_respuesta AS mensajeRespuesta,
-        ce.fecha_envio AS fechaEnvio,
-        ce.fecha_respuesta AS fechaRespuesta,
-        ce.intentos_envio AS intentosEnvio,
-        ce.ultimo_error AS ultimoError,
-        ce.enviado_email AS enviadoEmail,
-        ce.fecha_envio_email AS fechaEnvioEmail,
-        ce.url_pdf AS urlPdf,
-        ce.created_at AS createdAt,
-        ce.updated_at AS updatedAt,
-        COUNT(*) OVER() AS total_count
+        ce.factura_id,
+        ce.empresa_id,
+        ce.codigo_respuesta,
+        ce.mensaje_respuesta,
+        ce.intentos_envio,
+        ce.enviado_email
     FROM comprobante_electronico ce
-    INNER JOIN empresa e ON e.id_empresa = ce.empresa_id
+    INNER JOIN configuracion_empresa e ON e.id_configuracion = ce.empresa_id
     LEFT JOIN factura f ON f.id_factura = ce.factura_id
-    WHERE ce.empresa_id = p_empresa_id 
+    WHERE ce.empresa_id = p_empresa_id
       AND ce.fecha_emision BETWEEN p_fecha_inicio AND p_fecha_fin
     ORDER BY ce.fecha_emision DESC
     LIMIT p_size OFFSET v_offset;

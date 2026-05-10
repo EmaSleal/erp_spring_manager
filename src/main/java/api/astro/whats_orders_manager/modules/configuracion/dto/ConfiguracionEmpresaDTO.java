@@ -1,21 +1,10 @@
 package api.astro.whats_orders_manager.modules.configuracion.dto;
 
+import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * ============================================================================
- * CONFIGURACION EMPRESA DTO
- * WhatsApp Orders Manager
- * ============================================================================
- * Data Transfer Object para la configuración de la empresa.
- * 
- * Contiene información legal, fiscal, de contacto y branding de la empresa.
- * Usado para transferir datos entre el frontend y el backend sin exponer
- * la entidad directamente.
- * ============================================================================
- */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -125,4 +114,16 @@ public class ConfiguracionEmpresaDTO {
      * Indica si tiene datos fiscales completos (solo lectura)
      */
     private Boolean datosFiscalesCompletos;
+
+    // ==================== FACTURACIÓN ELECTRÓNICA COSTA RICA ====================
+
+    private String numeroIdentificacion;
+    private TipoIdentificacion tipoIdentificacion;
+    private String codigoProvincia;
+    private String canton;
+    private String distrito;
+    private String barrio;
+    private String otrasSenas;
+    private String codigoActividad;
+    private String nombreComercialFe;
 }
