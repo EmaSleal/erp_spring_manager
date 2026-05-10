@@ -12,6 +12,7 @@
 ## Tabla de Contenidos
 
 - [Descripción](#descripción)
+- [Capturas de Pantalla](#capturas-de-pantalla)
 - [Características](#características)
 - [Tecnologías](#tecnologías)
 - [Requisitos Previos](#requisitos-previos)
@@ -35,6 +36,34 @@
 - **Facturación Electrónica integrada con Hacienda CR** (CPFE v4.4, firma XAdES-BES)
 - Sistema de perfiles y roles de usuario
 - Diseño 100% responsive (móvil, tablet, desktop)
+
+---
+
+## Capturas de Pantalla
+
+### Dashboard
+![Dashboard](assets/dashboard.png)
+
+### Gestión de Clientes
+![Gestión de Clientes](assets/gestion_clientes.png)
+
+### Gestión de Productos
+![Gestión de Productos](assets/gestion_productos.png)
+
+### Gestión de Facturas
+![Gestión de Facturas](assets/gestion_facturas.png)
+
+### Gestión Contable
+![Gestión Contable](assets/gestion_contable.png)
+
+### Reportes
+![Reportes](assets/reportes.png)
+
+### Gestión de Permisos
+![Gestión de Permisos](assets/gestion_permisos.png)
+
+### Perfil de Usuario
+![Perfil de Usuario](assets/perfil_usuario.png)
 
 ---
 
