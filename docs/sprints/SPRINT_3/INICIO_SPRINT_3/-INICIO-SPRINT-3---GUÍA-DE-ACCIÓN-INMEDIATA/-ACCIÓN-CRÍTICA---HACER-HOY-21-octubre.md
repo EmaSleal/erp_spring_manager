@@ -22,7 +22,7 @@
 3. **Seleccionar:** "Empresa"
 4. **Configurar:**
    ```
-   Nombre de la app: WhatsApp Orders Manager
+   Nombre de la app: ERP Orders Manager
    Email de contacto: [EMAIL CORPORATIVO]
    Cuenta de empresa: [LA CREADA EN PASO 1]
    ```

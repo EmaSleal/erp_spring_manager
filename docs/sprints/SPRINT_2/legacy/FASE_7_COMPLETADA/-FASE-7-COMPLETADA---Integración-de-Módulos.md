@@ -1,6 +1,6 @@
 # ✅ FASE 7 COMPLETADA - Integración de Módulos
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** Sprint 2 - Configuración y Gestión Avanzada  
 **Fase:** 7 - Integración de Módulos  
 **Estado:** ✅ COMPLETADA  

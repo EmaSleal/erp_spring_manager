@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * ============================================================================
  * PRODUCTO CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador para la gestión del catálogo de productos.
  * 

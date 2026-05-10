@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * CONFIGURATION.JS - Utilidades comunes para módulo de configuración
- * WhatsApp Orders Manager - Sprint 4
+ * ERP Orders Manager - Sprint 4
  * ============================================================================
  */
 

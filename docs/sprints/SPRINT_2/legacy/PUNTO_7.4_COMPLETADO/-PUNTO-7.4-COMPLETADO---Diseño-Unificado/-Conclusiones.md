@@ -2,7 +2,7 @@
 
 ### Resumen General
 
-El sistema **WhatsApp Orders Manager** tiene un diseño **altamente consistente y profesional** con una puntuación general de **97%**.
+El sistema **ERP Orders Manager** tiene un diseño **altamente consistente y profesional** con una puntuación general de **97%**.
 
 ✅ **Logros:**
 - Uso extensivo de Bootstrap 5

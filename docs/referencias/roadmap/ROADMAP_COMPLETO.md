@@ -1,5 +1,5 @@
 # 🚀 ROADMAP COMPLETO DEL PROYECTO
-# WhatsApp Orders Manager - Sistema ERP
+# ERP Orders Manager - Sistema ERP
 
 **Última actualización:** 20 de octubre de 2025  
 **Estado del proyecto:** Sprint 2 COMPLETADO (100%)  

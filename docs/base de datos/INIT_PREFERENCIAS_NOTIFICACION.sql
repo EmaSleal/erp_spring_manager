@@ -1,6 +1,6 @@
 -- ============================================================================
 -- INICIALIZAR PREFERENCIAS DE NOTIFICACIÓN
--- WhatsApp Orders Manager
+-- ERP Orders Manager
 -- ============================================================================
 -- Este script crea preferencias predeterminadas para todos los usuarios
 -- que NO tienen preferencias configuradas.

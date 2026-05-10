@@ -6,7 +6,7 @@ import jakarta.mail.MessagingException;
 /**
  * ============================================================================
  * EMAIL SERVICE
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Servicio para el env├¡o de correos electr├│nicos.
  * 

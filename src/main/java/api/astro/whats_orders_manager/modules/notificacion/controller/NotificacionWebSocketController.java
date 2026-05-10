@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * ============================================================================
  * NOTIFICACIÓN WEBSOCKET CONTROLLER
- * WhatsApp Orders Manager - Sprint 4 Fase 3.5
+ * ERP Orders Manager - Sprint 4 Fase 3.5
  * ============================================================================
  * Controller WebSocket para envío de notificaciones en tiempo real.
  * 

@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * CONFIGURACION-EMPRESA.JS - Gestión de configuración de empresa
- * WhatsApp Orders Manager - Sprint 4
+ * ERP Orders Manager - Sprint 4
  * ============================================================================
  */
 

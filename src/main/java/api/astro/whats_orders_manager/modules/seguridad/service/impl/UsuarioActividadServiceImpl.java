@@ -22,7 +22,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * USUARIO ACTIVIDAD SERVICE IMPLEMENTATION
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Implementación del servicio de actividades de usuarios.
  * Maneja el registro automático de auditoría.

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 /**
  * ============================================================================
  * PARAMETRO SISTEMA DTO
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Data Transfer Object para parámetros del sistema.
  * 

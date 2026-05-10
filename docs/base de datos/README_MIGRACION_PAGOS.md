@@ -2,7 +2,7 @@
 
 ## 📋 Descripción
 
-Este directorio contiene las migraciones SQL necesarias para implementar el **Módulo de Pagos** en el sistema WhatsApp Orders Manager (Sprint 5 - Fase 1).
+Este directorio contiene las migraciones SQL necesarias para implementar el **Módulo de Pagos** en el sistema ERP Orders Manager (Sprint 5 - Fase 1).
 
 ---
 

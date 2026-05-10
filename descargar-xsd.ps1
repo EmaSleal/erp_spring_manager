@@ -1,6 +1,6 @@
 # ============================================================================
 # Script: Descargar Esquemas XSD de Hacienda Costa Rica v4.4
-# Autor: Sistema ERP - WhatsApp Orders Manager
+# Autor: Sistema ERP - ERP Orders Manager
 # Fecha: 2 de febrero de 2026
 # Propósito: Descargar automáticamente los esquemas XSD oficiales de Hacienda
 # ============================================================================

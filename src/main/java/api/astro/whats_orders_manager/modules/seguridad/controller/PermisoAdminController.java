@@ -22,7 +22,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * PERMISO ADMIN CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador para la gestión administrativa de permisos individuales.
  * Permite listar, editar, activar/desactivar y marcar como críticos los

@@ -90,7 +90,7 @@ FASE 2: LAYOUT BASE Y NAVBAR
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title th:text="${title ?: 'WhatsApp Orders Manager'}"></title>
+          <title th:text="${title ?: 'ERP Orders Manager'}"></title>
           
           <!-- Bootstrap 5 -->
           <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -145,7 +145,7 @@ FASE 2: LAYOUT BASE Y NAVBAR
               <!-- Logo y nombre -->
               <a class="navbar-brand" th:href="@{/dashboard}">
                   <i class="fas fa-comments"></i>
-                  WhatsApp Orders Manager
+                  ERP Orders Manager
               </a>
               
               <!-- Botón Dashboard -->
@@ -397,7 +397,7 @@ FASE 3: DASHBOARD
       <html xmlns:th="http://www.thymeleaf.org"
             xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
       <head>
-          <title>Dashboard - WhatsApp Orders Manager</title>
+          <title>Dashboard - ERP Orders Manager</title>
           <link rel="stylesheet" th:href="@{/css/dashboard.css}">
       </head>
       <body>

@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * NOTIFICACIÓN VIEW CONTROLLER
- * WhatsApp Orders Manager - Sprint 4 Fase 3.7
+ * ERP Orders Manager - Sprint 4 Fase 3.7
  * ============================================================================
  * Controller para las vistas web de notificaciones (no API REST).
  * 

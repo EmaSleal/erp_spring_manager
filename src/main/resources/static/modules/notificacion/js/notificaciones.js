@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * NOTIFICACIONES.JS - Gestión de Notificaciones (Página Lista)
- * WhatsApp Orders Manager - Sprint 4 Fase 3.7
+ * ERP Orders Manager - Sprint 4 Fase 3.7
  * ============================================================================
  * Funcionalidad para la página de lista de notificaciones:
  * - Carga paginada de notificaciones

@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * ============================================================================
  * DASHBOARD CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador principal para la página de dashboard/inicio.
  * 

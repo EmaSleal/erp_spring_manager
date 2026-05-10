@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 /**
  * ============================================================================
  * MODULO DTO
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Data Transfer Object para representar los módulos del sistema en el dashboard.
  * 

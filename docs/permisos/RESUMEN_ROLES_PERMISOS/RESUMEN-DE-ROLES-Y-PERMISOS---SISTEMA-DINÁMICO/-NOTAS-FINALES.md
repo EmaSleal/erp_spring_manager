@@ -9,4 +9,4 @@
 ---
 
 **Generado:** 23 de diciembre de 2025  
-**Sistema:** WhatsApp Orders Manager v0.0.1
+**Sistema:** ERP Orders Manager v0.0.1

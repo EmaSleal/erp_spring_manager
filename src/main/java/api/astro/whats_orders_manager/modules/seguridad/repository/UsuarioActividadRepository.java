@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * ============================================================================
  * USUARIO ACTIVIDAD REPOSITORY
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Repository para gestión de actividades de usuarios.
  * Proporciona queries para auditoría y reportes.

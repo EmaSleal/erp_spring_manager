@@ -1,6 +1,6 @@
 ## 📝 Notas Finales
 
-La Fase 5 representa un hito importante en el Sprint 2, completando el sistema de notificaciones del proyecto WhatsApp Orders Manager. 
+La Fase 5 representa un hito importante en el Sprint 2, completando el sistema de notificaciones del proyecto ERP Orders Manager. 
 
 Puntos destacados:
 - Implementación limpia y profesional
@@ -14,6 +14,6 @@ Puntos destacados:
 ---
 
 **Fecha de completación:** 13 de octubre de 2025  
-**Autor:** Equipo de desarrollo WhatsApp Orders Manager  
+**Autor:** Equipo de desarrollo ERP Orders Manager  
 **Versión:** 1.0  
 **Estado:** ✅ COMPLETADA

@@ -10,7 +10,7 @@
 
 1. Ve a "Contraseñas de aplicaciones": https://myaccount.google.com/apppasswords
 2. Selecciona "Correo" como aplicación
-3. Selecciona "Otra" como dispositivo (escribe "WhatsApp Orders Manager")
+3. Selecciona "Otra" como dispositivo (escribe "ERP Orders Manager")
 4. Copia la contraseña generada (16 caracteres, ej: `abcd efgh ijkl mnop`)
 
 ### Paso 3: Configurar variables de entorno

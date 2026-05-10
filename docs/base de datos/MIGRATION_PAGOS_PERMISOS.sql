@@ -1,6 +1,6 @@
 -- =====================================================
 -- MIGRACIÓN DE PERMISOS DE PAGOS
--- Sistema: WhatsApp Orders Manager
+-- Sistema: ERP Orders Manager
 -- Fecha: 18 de enero de 2026
 -- Sprint: 5 - Fase 1
 -- Descripción: Permisos para el módulo de pagos

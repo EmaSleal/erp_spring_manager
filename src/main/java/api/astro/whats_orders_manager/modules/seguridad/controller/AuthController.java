@@ -17,7 +17,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 /**
  * ============================================================================
  * AUTH CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador de autenticación (Login y Registro)
  * 

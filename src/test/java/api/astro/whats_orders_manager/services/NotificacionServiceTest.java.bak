@@ -36,7 +36,7 @@ import static org.mockito.Mockito.*;
 /**
  * ============================================================================
  * NOTIFICACION SERVICE TEST
- * WhatsApp Orders Manager - Sprint 4 Fase 3.8
+ * ERP Orders Manager - Sprint 4 Fase 3.8
  * ============================================================================
  * Tests unitarios para el servicio de notificaciones.
  * 

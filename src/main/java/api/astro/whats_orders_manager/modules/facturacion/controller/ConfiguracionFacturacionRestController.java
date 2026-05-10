@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * ============================================================================
  * CONFIGURACION FACTURACION REST CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador REST para gestión de configuración de facturación
  * Endpoints protegidos por autenticación

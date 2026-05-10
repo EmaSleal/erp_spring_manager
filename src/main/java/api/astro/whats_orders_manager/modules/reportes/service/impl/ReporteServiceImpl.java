@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 /**
  * ============================================================================
  * REPORTE SERVICE IMPLEMENTATION
- * WhatsApp Orders Manager - Sprint 2 Fase 6
+ * ERP Orders Manager - Sprint 2 Fase 6
  * ============================================================================
  * Implementación del servicio de reportes con lógica de negocio completa.
  * 

@@ -11,7 +11,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * USUARIO ACTIVIDAD SERVICE
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Servicio para gestión de actividades de usuarios.
  * Maneja el registro y consulta de auditoría.

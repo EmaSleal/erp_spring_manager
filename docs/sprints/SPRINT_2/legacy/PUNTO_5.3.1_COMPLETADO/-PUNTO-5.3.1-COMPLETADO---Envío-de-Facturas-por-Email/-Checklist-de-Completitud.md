@@ -23,6 +23,6 @@
 ---
 
 **Desarrollado por:** GitHub Copilot  
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** 2 - Fase 5  
 **Versión:** 1.0.0

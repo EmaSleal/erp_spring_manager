@@ -16,7 +16,7 @@ La **Fase 3: Dashboard** se completó exitosamente al 100%. Se implementaron:
 
 **Fecha:** 12 de octubre de 2025  
 **Autor:** GitHub Copilot  
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** 1 - Dashboard, Navbar y Navegación Principal  
 **Fase:** 3 - Dashboard ✅ COMPLETADA
 

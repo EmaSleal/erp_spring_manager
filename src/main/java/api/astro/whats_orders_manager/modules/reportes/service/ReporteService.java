@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * ============================================================================
  * REPORTE SERVICE
- * WhatsApp Orders Manager - Sprint 2 Fase 6
+ * ERP Orders Manager - Sprint 2 Fase 6
  * ============================================================================
  * Servicio para la generación de reportes y estadísticas del sistema.
  * 

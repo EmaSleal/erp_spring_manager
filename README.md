@@ -1,4 +1,4 @@
-# WhatsApp Orders Manager — ERP
+# ERP Orders Manager — ERP
 
 > Sistema ERP para gestión de pedidos, ventas e inventario, con Facturación Electrónica integrada para Costa Rica (CPFE v4.4)
 
@@ -28,7 +28,7 @@
 
 ## Descripción
 
-**WhatsApp Orders Manager** es un sistema ERP orientado a pequeñas y medianas empresas de Costa Rica que gestionan pedidos a través de WhatsApp. Incluye:
+**ERP Orders Manager** es un sistema ERP orientado a pequeñas y medianas empresas de Costa Rica que gestionan pedidos a través de WhatsApp. Incluye:
 
 - Dashboard con estadísticas en tiempo real
 - Gestión completa de clientes, productos y facturas

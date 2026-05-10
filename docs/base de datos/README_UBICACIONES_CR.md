@@ -325,6 +325,6 @@ ORDER BY c.codigo;
 
 ---
 
-**Autor:** Sistema ERP - WhatsApp Orders Manager  
+**Autor:** Sistema ERP - ERP Orders Manager  
 **Fecha:** Marzo 2026  
 **Versión:** 1.0

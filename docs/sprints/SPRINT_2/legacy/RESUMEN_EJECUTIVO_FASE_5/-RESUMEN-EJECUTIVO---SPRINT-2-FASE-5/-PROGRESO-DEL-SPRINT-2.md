@@ -19,6 +19,6 @@ SPRINT 2: ███████████████████████ 
 ---
 
 **📅 Fecha:** 13 de octubre de 2025  
-**👨‍💻 Autor:** Equipo WhatsApp Orders Manager  
+**👨‍💻 Autor:** Equipo ERP Orders Manager  
 **📌 Versión:** 1.0  
 **✅ Estado:** COMPLETADA

@@ -1,6 +1,6 @@
 -- =====================================================
 -- SCRIPT DE MIGRACIÓN DE PERMISOS
--- Sistema: WhatsApp Orders Manager
+-- Sistema: ERP Orders Manager
 -- Fecha: 23 de diciembre de 2025
 -- Descripción: Migración de permisos desde enum a base de datos
 -- =====================================================

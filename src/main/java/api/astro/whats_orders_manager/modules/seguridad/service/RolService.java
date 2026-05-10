@@ -10,7 +10,7 @@ import java.util.Set;
 /**
  * ============================================================================
  * SERVICIO DE ROLES
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Gestión de roles y sus permisos asociados.
  * 

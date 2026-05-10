@@ -1,6 +1,6 @@
 # 🔧 DECISIONES TÉCNICAS - SPRINT 3
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** 3  
 **Fecha:** 20 de octubre de 2025  
 **Estado:** 📋 EN DELIBERACIÓN

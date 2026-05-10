@@ -1,6 +1,6 @@
 ## 📞 INFORMACIÓN DE CONTACTO
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Repositorio:** erp_spring_manager  
 **Owner:** EmaSleal  
 **Branch:** master

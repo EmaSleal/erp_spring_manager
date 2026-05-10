@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpSession;
 /**
  * ============================================================================
  * GLOBAL CONTROLLER ADVICE
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Clase global que agrega automáticamente datos del usuario al modelo
  * en todas las vistas del sistema.

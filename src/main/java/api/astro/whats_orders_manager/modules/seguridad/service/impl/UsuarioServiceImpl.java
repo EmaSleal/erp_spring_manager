@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * USUARIO SERVICE IMPLEMENTATION
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Implementación del servicio de gestión de usuarios.
  * 

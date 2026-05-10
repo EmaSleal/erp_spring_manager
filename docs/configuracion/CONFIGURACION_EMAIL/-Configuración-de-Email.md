@@ -1,2 +1,2 @@
-# 📧 Configuración de Email - WhatsApp Orders Manager
+# 📧 Configuración de Email - ERP Orders Manager
 

@@ -1,5 +1,5 @@
 ================================================================================
-PLAN DE REORGANIZACIÓN DE UI - WHATSAPP ORDERS MANAGER
+PLAN DE REORGANIZACIÓN DE UI - ERP Orders Manager
 Sistema tipo ERP con interfaz estilo Odoo
 ================================================================================
 Fecha de inicio: 10 de octubre de 2025
@@ -24,7 +24,7 @@ Ubicación: Fija en la parte superior de todas las páginas
 
 ELEMENTOS:
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ [LOGO] WhatsApp Orders Manager    [🏠 Dashboard]    [👤 Usuario ▼]     │
+│ [LOGO] ERP Orders Manager    [🏠 Dashboard]    [👤 Usuario ▼]     │
 └─────────────────────────────────────────────────────────────────────────┘
 
 Componentes:
@@ -591,7 +591,7 @@ FASE 10: WIREFRAMES ASCII
 
 DASHBOARD COMPLETO:
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ [LOGO] WhatsApp Orders Manager        [🏠]        [👤 Usuario Admin ▼]     │
+│ [LOGO] ERP Orders Manager        [🏠]        [👤 Usuario Admin ▼]     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │   Dashboard > Inicio                                                         │

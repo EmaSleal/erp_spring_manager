@@ -10,7 +10,7 @@
 
 ### Estado del Sistema
 
-El sistema **WhatsApp Orders Manager** está en un estado **excelente** para uso en producción:
+El sistema **ERP Orders Manager** está en un estado **excelente** para uso en producción:
 
 - ✅ Todas las funcionalidades principales implementadas
 - ✅ Diseño consistente y profesional

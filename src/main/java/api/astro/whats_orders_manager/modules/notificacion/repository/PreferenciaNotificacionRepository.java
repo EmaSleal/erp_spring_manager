@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * PREFERENCIA NOTIFICACIÓN REPOSITORY
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Repositorio para gestionar las preferencias de notificaciones de usuarios.
  * 

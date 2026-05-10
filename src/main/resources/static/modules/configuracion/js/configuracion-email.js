@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * CONFIGURACION-EMAIL.JS - Gestión de configuración SMTP y pruebas de email
- * WhatsApp Orders Manager - Sprint 4
+ * ERP Orders Manager - Sprint 4
  * ============================================================================
  */
 

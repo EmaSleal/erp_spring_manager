@@ -2,7 +2,7 @@
 
 ### ¿Por qué "Precio Institucional" y no "Precio Público"?
 
-Según la estructura del negocio (WhatsApp Orders Manager):
+Según la estructura del negocio (ERP Orders Manager):
 
 1. **precioMayorista**: Precio para clientes mayoristas
 2. **precioInstitucional**: Precio para clientes institucionales

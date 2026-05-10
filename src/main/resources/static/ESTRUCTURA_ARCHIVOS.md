@@ -1,5 +1,5 @@
 # Estructura de Archivos - Sprint 1
-## WhatsApp Orders Manager
+## ERP Orders Manager
 
 📅 **Fecha de creación:** 11 de octubre de 2025  
 ✅ **Estado:** Fase 1 completada (puntos 1.2 y 1.3)

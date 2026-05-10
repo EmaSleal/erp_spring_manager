@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * ============================================================================
  * STRING UTIL
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Utilidad para operaciones comunes con cadenas de texto.
  * 

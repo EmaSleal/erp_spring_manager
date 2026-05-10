@@ -3,7 +3,7 @@ package api.astro.whats_orders_manager.modules.seguridad.enums;
 /**
  * ============================================================================
  * PERMISOS DEL SISTEMA
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Enum que define todos los permisos granulares del sistema.
  * Cada permiso representa una acción específica que puede realizar un usuario.

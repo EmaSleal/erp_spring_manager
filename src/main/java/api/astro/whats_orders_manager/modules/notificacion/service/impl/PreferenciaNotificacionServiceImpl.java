@@ -19,7 +19,7 @@ import java.util.*;
 /**
  * ============================================================================
  * PREFERENCIA NOTIFICACIÓN SERVICE IMPLEMENTATION
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Implementación del servicio de gestión de preferencias de notificaciones.
  * 

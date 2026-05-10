@@ -1,6 +1,6 @@
 ## 🎯 Introducción
 
-El **Sistema de Permisos y Roles** de WhatsApp Orders Manager garantiza que cada usuario tenga acceso únicamente a las funcionalidades necesarias para realizar su trabajo. Esto mejora la seguridad y organización del sistema.
+El **Sistema de Permisos y Roles** de ERP Orders Manager garantiza que cada usuario tenga acceso únicamente a las funcionalidades necesarias para realizar su trabajo. Esto mejora la seguridad y organización del sistema.
 
 ### ¿Por qué es importante?
 

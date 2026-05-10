@@ -17,7 +17,7 @@ import java.sql.Timestamp;
 /**
  * ============================================================================
  * CONFIGURACIÓN DE NOTIFICACIONES
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Modelo de entidad para almacenar la configuración de notificaciones
  * del sistema.

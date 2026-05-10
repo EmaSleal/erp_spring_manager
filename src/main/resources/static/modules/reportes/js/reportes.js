@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * REPORTES.JS - JavaScript para Gráficos de Reportes
- * WhatsApp Orders Manager - Sprint 2 Fase 6
+ * ERP Orders Manager - Sprint 2 Fase 6
  * ============================================================================
  * Funcionalidades:
  * - Carga de datos desde API REST

@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * CONFIGURACION-FACTURACION.JS - Gestión de configuración de facturación
- * WhatsApp Orders Manager - Sprint 4
+ * ERP Orders Manager - Sprint 4
  * ============================================================================
  */
 

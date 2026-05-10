@@ -19,7 +19,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * CONFIGURACION EMPRESA REST CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador REST para gestión de configuración de empresa
  * Endpoints protegidos por autenticación

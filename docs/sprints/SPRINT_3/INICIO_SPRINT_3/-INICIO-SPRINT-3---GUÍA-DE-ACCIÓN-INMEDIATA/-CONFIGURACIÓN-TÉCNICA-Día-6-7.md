@@ -3,7 +3,7 @@
 ### Generar Access Token Permanente
 
 1. **Ir a:** Graph API Explorer
-2. **Seleccionar app:** WhatsApp Orders Manager
+2. **Seleccionar app:** ERP Orders Manager
 3. **Permisos necesarios:**
    - `whatsapp_business_messaging`
    - `whatsapp_business_management`

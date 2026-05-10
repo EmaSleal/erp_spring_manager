@@ -42,7 +42,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * REPORTE CONTROLLER
- * WhatsApp Orders Manager - Sprint 2 Fase 6
+ * ERP Orders Manager - Sprint 2 Fase 6
  * ============================================================================
  * Controlador para la gestión de reportes y estadísticas del sistema.
  * 

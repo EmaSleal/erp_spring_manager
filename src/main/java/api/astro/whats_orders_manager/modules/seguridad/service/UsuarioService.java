@@ -10,7 +10,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * USUARIO SERVICE - Gestión de Usuarios
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Servicio para la gestión completa de usuarios del sistema.
  * 

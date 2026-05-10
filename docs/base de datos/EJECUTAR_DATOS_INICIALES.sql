@@ -1,6 +1,6 @@
 -- ============================================================================
 -- DATOS INICIALES - SPRINT 4 (VERSIÓN COMPLETA)
--- WhatsApp Orders Manager
+-- ERP Orders Manager
 -- Fecha: 22 de diciembre de 2025
 -- ============================================================================
 -- Inserta configuraciones iniciales para:

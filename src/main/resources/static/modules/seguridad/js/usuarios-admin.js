@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * USUARIOS ADMIN - JavaScript
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Manejo de la gestión de usuarios desde el panel de administración.
  * 
