@@ -69,3 +69,6 @@ logs/
 
 #Comprobantes electrónicos generados (si contienen datos reales)
 comprobantes/
+
+#engram tool 
+build_manifest_tree.py
