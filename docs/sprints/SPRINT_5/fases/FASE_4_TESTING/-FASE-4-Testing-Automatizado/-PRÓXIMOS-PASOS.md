@@ -1,11 +1,17 @@
-## 🔄 PRÓXIMOS PASOS
+## 🚀 PRÓXIMOS PASOS
 
-Una vez completada esta fase:
-1. ✅ Verificar cobertura de tests
-2. ✅ Ejecutar CI/CD localmente
-3. 🚀 Continuar con **FASE 5: Documentación**
+### Fase 4 cerrada ✅ — 2026-05-09
+
+La integración con Hacienda CR quedó completamente funcional en sandbox.
+
+### Pendiente para sprints futuros
+
+- Migrar de **sandbox → producción** (certificado PKCS12 real + URL producción)
+- Agregar **job `@Scheduled`** para recuperar comprobantes en estado ENVIADO por más de 10 minutos (edge case de downtime de Hacienda)
+- Evaluar tests unitarios para `XmlGeneratorServiceImpl` y `FirmaDigitalServiceImpl` cuando la lógica esté estabilizada
 
 ---
 
 **Fase creada:** 16 de enero de 2026  
-**Responsable:** Equipo de QA y Desarrollo
+**Fase cerrada:** 09 de mayo de 2026  
+**Responsable:** Emanuel Soto
