@@ -66,3 +66,6 @@ src/main/resources/xsd/
 logs/hacienda*.log
 logs/facturacion*.log
 logs/
+
+#Comprobantes electrónicos generados (si contienen datos reales)
+comprobantes/
