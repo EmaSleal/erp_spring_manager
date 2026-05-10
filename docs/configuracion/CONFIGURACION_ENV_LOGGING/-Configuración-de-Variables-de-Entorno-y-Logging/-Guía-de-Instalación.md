@@ -35,7 +35,7 @@ Ejecutar:
 **Opción B: Manual**
 ```powershell
 # Base de datos
-$env:DB_URL="jdbc:mysql://192.168.100.8:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC"
+$env:DB_URL="jdbc:mysql://192.168.100.93:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC"
 $env:DB_USERNAME="m4n0"
 $env:DB_PASSWORD="Chismosear01"
 
