@@ -1,6 +1,6 @@
 # 🚀 PLAN SPRINT 3 (ACTUALIZADO)
 
-**Proyecto:** WhatsApp Orders Manager - Sistema ERP  
+**Proyecto:** ERP Orders Manager - Sistema ERP  
 **Sprint:** 3  
 **Objetivo:** Integración WhatsApp API + Dashboard Avanzado + Sistema Multi-Divisa  
 **Duración:** 32 días / 17 días laborables (21 oct - 21 nov 2025)  

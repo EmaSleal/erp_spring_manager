@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * NOTIFICACIÓN SERVICE
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Servicio para gestionar el historial y envío de notificaciones.
  * 

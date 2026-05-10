@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * ============================================================================
  * USUARIO ACTIVIDAD - Entidad de Auditoría
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Registra todas las acciones importantes realizadas por los usuarios.
  * 

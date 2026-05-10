@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * ============================================================================
  * RECORDATORIO DE PAGO SCHEDULER
- * WhatsApp Orders Manager - Sprint 4 Fase 3.6
+ * ERP Orders Manager - Sprint 4 Fase 3.6
  * ============================================================================
  * Tarea programada para enviar recordatorios de pago automáticos.
  * 

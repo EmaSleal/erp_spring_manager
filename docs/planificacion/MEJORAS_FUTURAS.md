@@ -1,6 +1,6 @@
 # 🚀 MEJORAS FUTURAS Y CAMBIOS PLANIFICADOS
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Fecha de creación:** 12 de octubre de 2025  
 **Última actualización:** 12 de octubre de 2025
 
@@ -1721,7 +1721,7 @@ Se requiere **integrar completamente los parámetros** en los módulos correspon
 
 | Parámetro | Valor Actual | Tipo | Donde Aplicar | Descripción |
 |-----------|--------------|------|---------------|-------------|
-| `APP_NOMBRE` | WhatsApp Orders Manager | STRING | `layout.html`, `navbar`, `login.html`, emails | Nombre de la aplicación mostrado en UI |
+| `APP_NOMBRE` | ERP Orders Manager | STRING | `layout.html`, `navbar`, `login.html`, emails | Nombre de la aplicación mostrado en UI |
 | `APP_VERSION` | 1.0.0 | STRING | `footer`, `/dashboard`, logs | Versión actual del sistema |
 | `TIEMPO_SESION` | 30 | INTEGER | `SecurityConfig.java`, `SessionConfig` | Minutos de inactividad antes de cerrar sesión |
 | `PAGINA_REGISTROS` | 10 | INTEGER | Todos los controladores con paginación | Registros por página en listados |
@@ -2182,8 +2182,8 @@ public class NotificacionServiceImpl implements NotificacionService {
 ```html
 <!-- templates/layout.html -->
 <head th:fragment="head">
-    <title th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'WhatsApp Orders Manager')}">
-        WhatsApp Orders Manager
+    <title th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'ERP Orders Manager')}">
+        ERP Orders Manager
     </title>
     <!-- ... resto del head ... -->
 </head>
@@ -2191,8 +2191,8 @@ public class NotificacionServiceImpl implements NotificacionService {
 <!-- templates/components/navbar.html -->
 <nav class="navbar">
     <div class="navbar-brand">
-        <span th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'WhatsApp Orders Manager')}">
-            WhatsApp Orders Manager
+        <span th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'ERP Orders Manager')}">
+            ERP Orders Manager
         </span>
         <small class="text-muted ms-2" 
                th:text="'v' + ${@configuracionService.getValorOr('APP_VERSION', '1.0.0')}">
@@ -2205,10 +2205,10 @@ public class NotificacionServiceImpl implements NotificacionService {
 <!-- templates/components/footer.html -->
 <footer class="footer">
     <div class="container text-center">
-        <p th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'WhatsApp Orders Manager')} + 
+        <p th:text="${@configuracionService.getValorOr('APP_NOMBRE', 'ERP Orders Manager')} + 
                      ' © 2025 | Versión ' + 
                      ${@configuracionService.getValorOr('APP_VERSION', '1.0.0')}">
-            WhatsApp Orders Manager © 2025 | Versión 1.0.0
+            ERP Orders Manager © 2025 | Versión 1.0.0
         </p>
     </div>
 </footer>

@@ -1,6 +1,6 @@
 # 🔐 FASE 5: SEGURIDAD AVANZADA - SPRINT 1
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** Sprint 1  
 **Fase:** 5 - Seguridad Avanzada  
 **Fecha inicio:** 12/10/2025  

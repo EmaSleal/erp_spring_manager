@@ -1,6 +1,6 @@
 # ✅ PUNTO 7.3 COMPLETADO - Último Acceso
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** Sprint 2 - Configuración y Gestión Avanzada  
 **Fase:** 7 - Integración de Módulos  
 **Punto:** 7.3 - Último Acceso  

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * ============================================================================
  * IMPLEMENTACIÓN DEL SERVICIO DE PERMISOS
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Implementa la lógica de verificación de permisos basada en roles.
  * Valida estado del usuario (activo, no bloqueado) antes de verificar permisos.

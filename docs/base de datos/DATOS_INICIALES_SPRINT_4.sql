@@ -1,6 +1,6 @@
 -- ============================================================================
 -- DATOS INICIALES SPRINT 4 - CONFIGURACIÓN
--- WhatsApp Orders Manager
+-- ERP Orders Manager
 -- Fecha: 1 de diciembre de 2025
 -- ============================================================================
 
@@ -158,7 +158,7 @@ SELECT COUNT(*) FROM parametro_sistema;
 -- Insertar 17 parámetros del sistema
 INSERT INTO parametro_sistema (clave, valor, tipo_dato, descripcion, categoria, editable, create_date, update_date) VALUES
 -- GENERAL (4 parámetros)
-('APP_NOMBRE', 'WhatsApp Orders Manager', 'STRING', 'Nombre de la aplicación', 'GENERAL', TRUE, NOW(), NOW()),
+('APP_NOMBRE', 'ERP Orders Manager', 'STRING', 'Nombre de la aplicación', 'GENERAL', TRUE, NOW(), NOW()),
 ('APP_VERSION', '1.0.0', 'STRING', 'Versión actual de la aplicación', 'GENERAL', FALSE, NOW(), NOW()),
 ('TIEMPO_SESION', '30', 'INTEGER', 'Tiempo de inactividad antes de cerrar sesión (minutos)', 'GENERAL', TRUE, NOW(), NOW()),
 ('PAGINA_REGISTROS', '10', 'INTEGER', 'Número de registros por página en listados', 'GENERAL', TRUE, NOW(), NOW()),

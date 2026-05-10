@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * NAVBAR.JS - Funcionalidad de la Barra de Navegación
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  */
 

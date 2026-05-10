@@ -18,7 +18,7 @@ import java.util.Set;
 /**
  * ============================================================================
  * IMPLEMENTACIÓN DEL SERVICIO DE ROLES
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Gestiona roles y sus permisos asociados en base de datos.
  * 

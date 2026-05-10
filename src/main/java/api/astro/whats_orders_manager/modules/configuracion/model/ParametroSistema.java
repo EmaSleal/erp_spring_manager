@@ -21,7 +21,7 @@ import java.time.format.DateTimeFormatter;
  * Permite configurar valores del sistema sin cambiar código.
  * 
  * Ejemplos:
- * - sistema.nombre = "WhatsApp Orders Manager"
+ * - sistema.nombre = "ERP Orders Manager"
  * - factura.dias_antes_vencimiento_alerta = "3"
  * - whatsapp.mensajes_automaticos = "true"
  */

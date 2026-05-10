@@ -1,6 +1,6 @@
 # 📚 ÍNDICE - DOCUMENTACIÓN DE REFACTORIZACIÓN MODULAR
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Tipo:** Reorganización Package by Layer → Package by Feature  
 **Fecha:** 27 de diciembre de 2025  
 **Estado:** 📋 DOCUMENTACIÓN COMPLETA

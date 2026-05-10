@@ -29,7 +29,7 @@
 
 5. **Footer (opcional):**
    ```
-   WhatsApp Orders Manager
+   ERP Orders Manager
    ```
 
 6. **Buttons (opcional):**

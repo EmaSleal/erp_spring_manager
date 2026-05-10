@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * ============================================================================
  * CONTROLADOR DE GESTIÓN DE ROLES
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Gestiona la administración de roles y sus permisos.
  * Solo accesible para usuarios con permisos de ADMIN.

@@ -11,7 +11,7 @@ import java.util.Set;
 /**
  * ============================================================================
  * SERVICIO DE PERMISOS
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Define las operaciones para verificar permisos de usuarios.
  * Se integra con Spring Security para control de acceso basado en roles.

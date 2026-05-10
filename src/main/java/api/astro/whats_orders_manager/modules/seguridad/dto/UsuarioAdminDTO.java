@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 /**
  * ============================================================================
  * USUARIO ADMIN DTO - Data Transfer Object
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * DTO para transferencia de datos de usuario en el panel de administración.
  * 

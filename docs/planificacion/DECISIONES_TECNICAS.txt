@@ -1,6 +1,6 @@
 ================================================================================
 DECISIONES TÉCNICAS - SPRINT 1: DASHBOARD Y NAVEGACIÓN
-WhatsApp Orders Manager
+ERP Orders Manager
 ================================================================================
 Fecha: 10 de octubre de 2025
 Estado: DECISIONES PENDIENTES DE APROBACIÓN

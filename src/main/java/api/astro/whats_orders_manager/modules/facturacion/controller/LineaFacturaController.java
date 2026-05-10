@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * ============================================================================
  * LINEA FACTURA CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * API REST para gestión de líneas de factura
  * 

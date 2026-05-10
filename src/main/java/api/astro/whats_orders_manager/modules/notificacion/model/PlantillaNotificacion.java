@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 /**
  * ============================================================================
  * PLANTILLA DE NOTIFICACIÓN
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Modelo de entidad para almacenar plantillas reutilizables de notificaciones.
  * 

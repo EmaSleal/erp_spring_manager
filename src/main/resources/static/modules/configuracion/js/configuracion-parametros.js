@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * CONFIGURACION-PARAMETROS.JS - Gestión CRUD de parámetros del sistema
- * WhatsApp Orders Manager - Sprint 4
+ * ERP Orders Manager - Sprint 4
  * ============================================================================
  */
 

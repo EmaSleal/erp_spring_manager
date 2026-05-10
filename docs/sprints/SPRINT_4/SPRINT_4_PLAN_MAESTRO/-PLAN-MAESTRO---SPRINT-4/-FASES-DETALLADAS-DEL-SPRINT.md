@@ -138,7 +138,7 @@ VALUES ('F', 1, 16.00, 'MXN', '$');
 
 -- Parámetros iniciales del sistema
 INSERT INTO parametro_sistema (clave, valor, tipo_dato, categoria, descripcion) VALUES
-('sistema.nombre', 'WhatsApp Orders Manager', 'STRING', 'GENERAL', 'Nombre del sistema'),
+('sistema.nombre', 'ERP Orders Manager', 'STRING', 'GENERAL', 'Nombre del sistema'),
 ('sistema.version', '1.0.0', 'STRING', 'GENERAL', 'Versión del sistema'),
 ('sistema.mantenimiento', 'false', 'BOOLEAN', 'GENERAL', 'Modo mantenimiento activo'),
 ('factura.dias_antes_vencimiento_alerta', '3', 'INTEGER', 'FACTURACION', 'Días antes de vencer para alertar'),
@@ -492,7 +492,7 @@ src/main/resources/templates/configuracion/
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout/layout}">
 <head>
-    <title>Configuración - WhatsApp Orders Manager</title>
+    <title>Configuración - ERP Orders Manager</title>
     <style>
         .config-tabs {
             border-bottom: 2px solid #dee2e6;

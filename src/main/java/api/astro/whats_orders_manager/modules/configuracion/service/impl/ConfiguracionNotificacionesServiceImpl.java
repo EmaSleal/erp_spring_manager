@@ -15,7 +15,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * CONFIGURACIÓN NOTIFICACIONES SERVICE IMPLEMENTATION
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Implementación del servicio de configuración de notificaciones.
  * 

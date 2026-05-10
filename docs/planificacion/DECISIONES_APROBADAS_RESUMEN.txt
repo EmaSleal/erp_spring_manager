@@ -1,6 +1,6 @@
 ================================================================================
 ✅ RESUMEN DE DECISIONES APROBADAS - SPRINT 1
-WhatsApp Orders Manager - Rediseño UI/UX
+ERP Orders Manager - Rediseño UI/UX
 ================================================================================
 Fecha de aprobación: 11 de octubre de 2025
 Estado: ✅ TODAS LAS DECISIONES APROBADAS - LISTO PARA DESARROLLO

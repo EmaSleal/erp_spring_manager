@@ -3,7 +3,7 @@
 # ═══════════════════════════════════════════════════════════
 
 Write-Host "`n╔════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║   WhatsApp Orders Manager - Inicio de Aplicación      ║" -ForegroundColor Cyan
+Write-Host "║   ERP Orders Manager - Inicio de Aplicación      ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Verificar si existe .env.local

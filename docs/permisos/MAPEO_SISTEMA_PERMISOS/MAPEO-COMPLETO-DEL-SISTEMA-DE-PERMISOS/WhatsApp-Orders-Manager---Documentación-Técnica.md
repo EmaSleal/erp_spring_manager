@@ -1,4 +1,4 @@
-## WhatsApp Orders Manager - Documentación Técnica
+## ERP Orders Manager - Documentación Técnica
 
 **Fecha de creación:** 23 de diciembre de 2025  
 **Versión:** 1.0 - Sprint 4  

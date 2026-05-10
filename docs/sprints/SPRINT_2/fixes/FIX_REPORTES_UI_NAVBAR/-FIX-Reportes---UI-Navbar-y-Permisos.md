@@ -1,6 +1,6 @@
 # ✅ FIX: Reportes - UI, Navbar y Permisos
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** Sprint 2 - Fase 6  
 **Tipo:** Fix - Corrección de errores  
 **Fecha:** 18 de octubre de 2025  

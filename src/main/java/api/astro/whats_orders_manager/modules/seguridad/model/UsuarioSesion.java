@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * ============================================================================
  * USUARIO SESION - Gestión de Sesiones Activas
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Registra y gestiona las sesiones activas de los usuarios.
  * 

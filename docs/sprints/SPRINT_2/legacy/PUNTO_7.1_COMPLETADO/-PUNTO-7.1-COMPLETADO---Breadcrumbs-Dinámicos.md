@@ -1,6 +1,6 @@
 # ✅ PUNTO 7.1 COMPLETADO - Breadcrumbs Dinámicos
 
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** Sprint 2 - Fase 7: Integración de Módulos  
 **Punto:** 7.1 - Actualizar Breadcrumbs  
 **Estado:** ✅ **COMPLETADO**  

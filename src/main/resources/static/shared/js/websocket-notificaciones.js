@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * WEBSOCKET NOTIFICACIONES - CLIENTE JAVASCRIPT
- * WhatsApp Orders Manager - Sprint 4 Fase 3.5
+ * ERP Orders Manager - Sprint 4 Fase 3.5
  * ============================================================================
  * Cliente WebSocket con SockJS y STOMP para notificaciones en tiempo real.
  * 

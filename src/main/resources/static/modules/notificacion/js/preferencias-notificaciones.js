@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * PREFERENCIAS-NOTIFICACIONES.JS
- * WhatsApp Orders Manager - Sprint 4 Fase 3.7
+ * ERP Orders Manager - Sprint 4 Fase 3.7
  * ============================================================================
  * Gestión de preferencias de notificaciones por tipo y canal
  * ============================================================================

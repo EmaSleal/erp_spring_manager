@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter;
 /**
  * ============================================================================
  * EMAIL SERVICE IMPLEMENTATION
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Implementación del servicio de correos electrónicos usando JavaMailSender.
  * 
@@ -183,7 +183,7 @@ public class EmailServiceImpl implements EmailService {
             
             String htmlContent = generarHtmlEmailPrueba(timestamp);
             
-            enviarEmailHtml(to, "✅ Prueba de Configuración de Email - WhatsApp Orders Manager", htmlContent);
+            enviarEmailHtml(to, "✅ Prueba de Configuración de Email - ERP Orders Manager", htmlContent);
             
             return true;
         } catch (Exception e) {
@@ -275,7 +275,7 @@ public class EmailServiceImpl implements EmailService {
                 <body>
                     <div class="header">
                         <h1>✅ Configuración de Email Exitosa</h1>
-                        <p style="margin: 10px 0 0 0;">WhatsApp Orders Manager</p>
+                        <p style="margin: 10px 0 0 0;">ERP Orders Manager</p>
                     </div>
                     
                     <div class="content">
@@ -294,7 +294,7 @@ public class EmailServiceImpl implements EmailService {
                                 <strong>Fecha y Hora:</strong> """ + timestamp + """
                             </div>
                             <div class="info-item">
-                                <strong>Sistema:</strong> WhatsApp Orders Manager v1.0
+                                <strong>Sistema:</strong> ERP Orders Manager v1.0
                             </div>
                             <div class="info-item">
                                 <strong>Módulo:</strong> Servicio de Notificaciones por Email
@@ -323,7 +323,7 @@ public class EmailServiceImpl implements EmailService {
                     
                     <div class="footer">
                         <p>
-                            <strong>WhatsApp Orders Manager</strong><br>
+                            <strong>ERP Orders Manager</strong><br>
                             Sistema de Gestión de Pedidos y Facturación<br>
                             © 2025 - Todos los derechos reservados
                         </p>

@@ -8,4 +8,4 @@
 
 **Última actualización:** 22 de diciembre de 2025  
 **Versión del sistema:** Sprint 4  
-**Elaborado por:** Equipo de Desarrollo WhatsApp Orders Manager
+**Elaborado por:** Equipo de Desarrollo ERP Orders Manager

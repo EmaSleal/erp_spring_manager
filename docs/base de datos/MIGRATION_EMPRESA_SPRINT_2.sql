@@ -1,6 +1,6 @@
 -- =====================================================
 -- MIGRATION: EMPRESA - SPRINT 2 FASE 1
--- Proyecto: WhatsApp Orders Manager
+-- Proyecto: ERP Orders Manager
 -- Descripción: Tabla para almacenar datos de la empresa
 -- Fecha: 13 de octubre de 2025
 -- =====================================================

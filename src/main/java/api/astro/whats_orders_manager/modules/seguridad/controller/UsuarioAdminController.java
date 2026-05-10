@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 /**
  * ============================================================================
  * USUARIO ADMIN CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controller para la gestión administrativa de usuarios del sistema.
  * 

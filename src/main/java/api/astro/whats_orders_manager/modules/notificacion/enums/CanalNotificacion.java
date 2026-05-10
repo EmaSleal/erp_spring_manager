@@ -3,7 +3,7 @@ package api.astro.whats_orders_manager.modules.notificacion.enums;
 /**
  * ============================================================================
  * CANAL DE NOTIFICACIÓN
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Enumera los diferentes canales por los cuales se pueden enviar notificaciones.
  * 

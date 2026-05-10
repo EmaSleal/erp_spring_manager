@@ -20,7 +20,7 @@ El **Sprint 4** ha sido completado exitosamente con un **94.9% de cumplimiento**
 
 ```
 ┌───────────────────────────────────────────────┐
-│  WHATSAPP ORDERS MANAGER                      │
+│  ERP Orders Manager                      │
 │  Estado General del Proyecto                  │
 ├───────────────────────────────────────────────┤
 │                                               │
@@ -58,7 +58,7 @@ El **Sprint 4** ha sido completado exitosamente con un **94.9% de cumplimiento**
 
 ### Palabras Finales
 
-El Sprint 4 representa un hito importante en el proyecto **WhatsApp Orders Manager**. Se ha construido un **ERP completo y funcional** con características empresariales avanzadas:
+El Sprint 4 representa un hito importante en el proyecto **ERP Orders Manager**. Se ha construido un **ERP completo y funcional** con características empresariales avanzadas:
 
 - 🏢 Gestión completa de configuración
 - 📊 Reportes y análisis de negocio

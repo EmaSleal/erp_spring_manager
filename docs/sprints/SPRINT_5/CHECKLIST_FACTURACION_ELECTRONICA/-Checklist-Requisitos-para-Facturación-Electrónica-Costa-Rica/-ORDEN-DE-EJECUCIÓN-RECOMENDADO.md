@@ -7,5 +7,5 @@
 
 ---
 
-**Documentado por:** Sistema ERP - WhatsApp Orders Manager  
+**Documentado por:** Sistema ERP - ERP Orders Manager  
 **Última actualización:** 19 de febrero de 2026

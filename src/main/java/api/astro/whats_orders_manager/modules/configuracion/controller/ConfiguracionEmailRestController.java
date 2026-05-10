@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * ============================================================================
  * CONFIGURACION EMAIL REST CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador REST para gestión de configuración de email/SMTP
  * Endpoints protegidos por autenticación

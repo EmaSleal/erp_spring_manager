@@ -1,6 +1,6 @@
 // ============================================================================
 // CLIENTES.JS - Gestión del modal de clientes con Bootstrap 5
-// WhatsApp Orders Manager
+// ERP Orders Manager
 // ============================================================================
 
 // Referencia al modal de Bootstrap

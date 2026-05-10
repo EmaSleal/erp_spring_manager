@@ -7,7 +7,7 @@ import java.util.*;
 /**
  * ============================================================================
  * MATRIZ DE PERMISOS
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Define qué permisos tiene cada rol del sistema.
  * Esta es la fuente de verdad para el control de acceso basado en roles (RBAC).

@@ -5,7 +5,7 @@
 **Configuración completa:**
 ```json
 {
-  "name": "WhatsApp Orders Manager",
+  "name": "ERP Orders Manager",
   "short_name": "WOM ERP",
   "description": "Sistema ERP para gestión de pedidos vía WhatsApp",
   "start_url": "/",

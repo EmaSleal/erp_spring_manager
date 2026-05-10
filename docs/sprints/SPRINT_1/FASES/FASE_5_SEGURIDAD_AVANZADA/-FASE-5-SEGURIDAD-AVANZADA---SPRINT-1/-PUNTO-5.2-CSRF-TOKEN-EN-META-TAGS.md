@@ -24,7 +24,7 @@ Agregar meta tags con token CSRF en `layout.html` para facilitar su uso en JavaS
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     
-    <title th:text="${title ?: 'WhatsApp Orders Manager'}"></title>
+    <title th:text="${title ?: 'ERP Orders Manager'}"></title>
     <!-- ... resto del código ... -->
 </head>
 ```

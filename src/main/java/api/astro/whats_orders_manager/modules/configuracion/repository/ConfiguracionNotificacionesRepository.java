@@ -10,7 +10,7 @@ import java.util.Optional;
 /**
  * ============================================================================
  * CONFIGURACIÓN NOTIFICACIONES REPOSITORY
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Repositorio para acceder a la configuración de notificaciones del sistema.
  * 

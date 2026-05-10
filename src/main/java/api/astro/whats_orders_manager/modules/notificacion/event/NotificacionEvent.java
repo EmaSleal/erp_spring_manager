@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * ============================================================================
  * NOTIFICACIÓN EVENT
- * WhatsApp Orders Manager - Sprint 4 Fase 3.6
+ * ERP Orders Manager - Sprint 4 Fase 3.6
  * ============================================================================
  * Evento base para el sistema de notificaciones.
  * 

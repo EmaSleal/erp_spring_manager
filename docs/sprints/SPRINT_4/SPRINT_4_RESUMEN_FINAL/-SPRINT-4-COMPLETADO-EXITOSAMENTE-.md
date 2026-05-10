@@ -17,4 +17,4 @@
 
 ---
 
-**¡Gracias por usar WhatsApp Orders Manager!**
+**¡Gracias por usar ERP Orders Manager!**

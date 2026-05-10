@@ -11,7 +11,7 @@ El email de prueba incluye:
 
 ### Información Mostrada
 - ✅ Fecha y hora del envío
-- 💻 Sistema: WhatsApp Orders Manager v1.0
+- 💻 Sistema: ERP Orders Manager v1.0
 - 📧 Módulo: Servicio de Notificaciones
 - ✅ Estado: Operativo
 

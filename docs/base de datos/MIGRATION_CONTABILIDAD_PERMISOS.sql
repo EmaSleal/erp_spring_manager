@@ -1,6 +1,6 @@
 -- =====================================================
 -- MIGRACIÓN DE PERMISOS DE CONTABILIDAD
--- Sistema: WhatsApp Orders Manager
+-- Sistema: ERP Orders Manager
 -- Fecha: 17 de enero de 2026
 -- Descripción: Permisos para el módulo de contabilidad (Sprint 5 - Fase 2)
 -- =====================================================

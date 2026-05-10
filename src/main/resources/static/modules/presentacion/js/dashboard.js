@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * DASHBOARD.JS - Funcionalidad del Dashboard Principal
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  */
 

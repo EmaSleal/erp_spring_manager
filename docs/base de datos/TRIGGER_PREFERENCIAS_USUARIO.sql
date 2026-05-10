@@ -1,6 +1,6 @@
 -- ============================================================================
 -- TRIGGER: CREAR PREFERENCIAS AUTOMÁTICAMENTE AL CREAR USUARIO
--- WhatsApp Orders Manager
+-- ERP Orders Manager
 -- ============================================================================
 -- Este script crea un trigger que automáticamente genera preferencias de
 -- notificación predeterminadas cada vez que se inserta un nuevo usuario.

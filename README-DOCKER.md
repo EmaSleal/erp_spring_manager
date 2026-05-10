@@ -1,6 +1,6 @@
 # 🐳 Guía de Despliegue con Docker
 
-Este documento explica cómo ejecutar **WhatsApp Orders Manager** usando Docker y Docker Compose.
+Este documento explica cómo ejecutar **ERP Orders Manager** usando Docker y Docker Compose.
 
 ---
 
@@ -355,4 +355,4 @@ Para más información, consulta:
 
 **Versión:** 1.0  
 **Fecha:** 5 de enero de 2026  
-**Proyecto:** WhatsApp Orders Manager
+**Proyecto:** ERP Orders Manager

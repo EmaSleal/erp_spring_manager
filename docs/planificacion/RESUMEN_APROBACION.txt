@@ -1,6 +1,6 @@
 ================================================================================
 ✅ RESUMEN EJECUTIVO - APROBACIÓN COMPLETADA
-WhatsApp Orders Manager - Rediseño UI/UX estilo ERP
+ERP Orders Manager - Rediseño UI/UX estilo ERP
 ================================================================================
 Fecha de creación: 10 de octubre de 2025
 Fecha de aprobación: 11 de octubre de 2025
@@ -19,7 +19,7 @@ DOCUMENTOS CREADOS PARA REFERENCIA:
 OBJETIVO DEL PROYECTO
 ================================================================================
 
-Transformar WhatsApp Orders Manager en un ERP profesional con:
+Transformar ERP Orders Manager en un ERP profesional con:
 
 1. ✅ Dashboard principal con módulos tipo Odoo
 2. ✅ Barra de navegación superior con menú de usuario

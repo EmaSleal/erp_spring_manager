@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 /**
  * ============================================================================
  * PERMISOS CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador para la gestión y visualización de permisos del sistema.
  * Muestra la matriz de permisos por rol y estadísticas.

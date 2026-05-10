@@ -1,6 +1,6 @@
 ## 🎯 Objetivo
 
-Establecer estándares consistentes para el logging en todo el proyecto WhatsApp Orders Manager, facilitando la depuración, monitoreo y auditoría del sistema.
+Establecer estándares consistentes para el logging en todo el proyecto ERP Orders Manager, facilitando la depuración, monitoreo y auditoría del sistema.
 
 ---
 

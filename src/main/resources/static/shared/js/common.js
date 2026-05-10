@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * COMMON.JS - Funcionalidades Globales
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Utilidades compartidas por toda la aplicación
  */
@@ -10,7 +10,7 @@
 // CONFIGURACIÓN GLOBAL
 // ============================================================================
 const APP_CONFIG = {
-    name: 'WhatsApp Orders Manager',
+    name: 'ERP Orders Manager',
     version: '1.0.0',
     apiBaseUrl: window.location.origin,
     csrf: {

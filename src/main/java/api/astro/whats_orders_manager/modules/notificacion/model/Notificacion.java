@@ -19,7 +19,7 @@ import java.sql.Timestamp;
 /**
  * ============================================================================
  * NOTIFICACIÓN
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Modelo de entidad para almacenar el historial de notificaciones enviadas.
  * 

@@ -12,7 +12,7 @@ import java.sql.Timestamp;
 /**
  * ============================================================================
  * NOTIFICACIÓN DTO
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Data Transfer Object para transferir datos de notificaciones
  * entre las capas de la aplicación.

@@ -20,7 +20,7 @@ import java.sql.Timestamp;
 /**
  * ============================================================================
  * PREFERENCIA DE NOTIFICACIÓN
- * WhatsApp Orders Manager - Sprint 4 Fase 3
+ * ERP Orders Manager - Sprint 4 Fase 3
  * ============================================================================
  * Modelo de entidad para almacenar las preferencias de notificaciones
  * de cada usuario.

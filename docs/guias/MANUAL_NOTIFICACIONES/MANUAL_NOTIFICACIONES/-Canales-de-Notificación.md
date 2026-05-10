@@ -62,7 +62,7 @@
 │                                          │
 │  ────────────────────────────────────    │
 │  Este es un correo automático.           │
-│  WhatsApp Orders Manager © 2026          │
+│  ERP Orders Manager © 2026          │
 └──────────────────────────────────────────┘
 ```
 

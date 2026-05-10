@@ -22,6 +22,6 @@
 
 **Fecha de completitud:** 13 de octubre de 2025  
 **Desarrollado por:** GitHub Copilot  
-**Proyecto:** WhatsApp Orders Manager  
+**Proyecto:** ERP Orders Manager  
 **Sprint:** 2 - Fase 5  
 **Versión:** 1.0.0

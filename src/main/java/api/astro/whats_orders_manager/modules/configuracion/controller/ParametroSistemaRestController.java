@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 /**
  * ============================================================================
  * PARAMETRO SISTEMA REST CONTROLLER
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Controlador REST para gestión de parámetros del sistema
  * Endpoints protegidos por autenticación

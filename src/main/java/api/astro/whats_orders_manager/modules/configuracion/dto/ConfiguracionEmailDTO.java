@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * ============================================================================
  * CONFIGURACION EMAIL DTO
- * WhatsApp Orders Manager
+ * ERP Orders Manager
  * ============================================================================
  * Data Transfer Object para la configuración de email/SMTP.
  * 

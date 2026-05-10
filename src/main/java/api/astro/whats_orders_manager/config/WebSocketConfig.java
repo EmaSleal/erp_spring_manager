@@ -9,7 +9,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 /**
  * ============================================================================
  * WEBSOCKET CONFIGURATION
- * WhatsApp Orders Manager - Sprint 4 Fase 3.5
+ * ERP Orders Manager - Sprint 4 Fase 3.5
  * ============================================================================
  * Configuración de WebSocket con STOMP para notificaciones en tiempo real.
  * 
