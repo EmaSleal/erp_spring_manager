@@ -4,6 +4,8 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.configuracion.model.Presentacion;
 import api.astro.whats_orders_manager.modules.configuracion.repository.PresentacionRepository;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
+import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
@@ -32,6 +34,7 @@ public class DataInitializer implements ApplicationRunner {
     private final PresentacionRepository presentacionRepository;
     private final ClienteRepository clienteRepository;
     private final ProductoRepository productoRepository;
+    private final ConfiguracionEmpresaRepository configRepository;
 
     @Override
     @Transactional
@@ -93,5 +96,19 @@ public class DataInitializer implements ApplicationRunner {
             p.setGravado(false);
             productoRepository.save(p);
         }
+
+        ConfiguracionEmpresa config = configRepository.findById(1L).orElseGet(() -> {
+            log.info("DataInitializer: creating default ConfiguracionEmpresa");
+            ConfiguracionEmpresa c = new ConfiguracionEmpresa();
+            c.setNombreComercial("Empresa Genérica");
+            c.setNumeroIdentificacion("0000000000001");
+            c.setTelefono("1234567890");
+            c.setEmail("empresa@ejemplo.com");
+            return configRepository.save(c);
+        });
+
+        
+
+        
     }
 }
