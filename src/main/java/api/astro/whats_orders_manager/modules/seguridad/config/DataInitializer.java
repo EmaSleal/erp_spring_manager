@@ -44,6 +44,7 @@ public class DataInitializer implements ApplicationRunner {
             u.setBloqueado(false);
             u.setIntentosFallidos(0);
             u.setRequireCambioPassword(false);
+            u.setTelefono("1234567890");
             usuarioRepository.save(u);
         }
     }
