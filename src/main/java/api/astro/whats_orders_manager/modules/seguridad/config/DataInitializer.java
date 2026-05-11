@@ -38,13 +38,14 @@ public class DataInitializer implements ApplicationRunner {
             log.info("DataInitializer: creating test user");
             Usuario u = new Usuario();
             u.setNombre("usuario prueba");
+            u.setTelefono("1234567890");
             u.setPassword(passwordEncoder.encode("JhfKHZ2%mJMI"));
+            u.setRol("ADMIN");
             u.setRolEntity(rolAdmin);
             u.setActivo(true);
             u.setBloqueado(false);
             u.setIntentosFallidos(0);
             u.setRequireCambioPassword(false);
-            u.setTelefono("1234567890");
             usuarioRepository.save(u);
         }
     }
