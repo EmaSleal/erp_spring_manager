@@ -1,5 +1,12 @@
 package api.astro.whats_orders_manager.modules.seguridad.config;
 
+import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
+import api.astro.whats_orders_manager.modules.configuracion.model.Presentacion;
+import api.astro.whats_orders_manager.modules.configuracion.repository.PresentacionRepository;
+import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.seguridad.model.Rol;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.repository.RolRepository;
@@ -12,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -20,6 +29,9 @@ public class DataInitializer implements ApplicationRunner {
     private final RolRepository rolRepository;
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PresentacionRepository presentacionRepository;
+    private final ClienteRepository clienteRepository;
+    private final ProductoRepository productoRepository;
 
     @Override
     @Transactional
@@ -47,6 +59,39 @@ public class DataInitializer implements ApplicationRunner {
             u.setIntentosFallidos(0);
             u.setRequireCambioPassword(false);
             usuarioRepository.save(u);
+        }
+
+        Presentacion presentacionUnid = presentacionRepository.findAll().stream()
+                .filter(p -> "Unid".equals(p.getCodigoUnidadFE()))
+                .findFirst()
+                .orElseGet(() -> {
+                    log.info("DataInitializer: creating Presentacion 'Unid'");
+                    Presentacion p = new Presentacion();
+                    p.setNombre("Unidad");
+                    p.setCodigoUnidadFE("Unid");
+                    return presentacionRepository.save(p);
+                });
+
+        if (clienteRepository.count() == 0) {
+            log.info("DataInitializer: creating default cliente");
+            Cliente c = new Cliente();
+            c.setNombre("Cliente Genérico");
+            c.setIdentificacion("000000000");
+            c.setTipoCliente(InvoiceType.INSTITUCIONAL);
+            clienteRepository.save(c);
+        }
+
+        if (productoRepository.count() == 0) {
+            log.info("DataInitializer: creating default producto");
+            Producto p = new Producto();
+            p.setCodigo("PROD-001");
+            p.setDescripcion("Producto Genérico");
+            p.setPresentacion(presentacionUnid);
+            p.setActive(true);
+            p.setPrecioInstitucional(BigDecimal.ZERO);
+            p.setPrecioMayorista(BigDecimal.ZERO);
+            p.setGravado(false);
+            productoRepository.save(p);
         }
     }
 }
