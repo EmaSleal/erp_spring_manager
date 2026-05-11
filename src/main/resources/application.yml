@@ -1,8 +1,12 @@
+# spring port 9090
+server:
+    port: 9090
 spring:
   mvc:
     hiddenmethod:
       filter:
         enabled: true
+
   main:
     allow-bean-definition-overriding: true
     web-application-type: servlet
