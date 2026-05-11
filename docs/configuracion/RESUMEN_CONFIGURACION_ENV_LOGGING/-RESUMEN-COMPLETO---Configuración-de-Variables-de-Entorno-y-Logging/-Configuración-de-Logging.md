@@ -25,9 +25,9 @@
 
 **Ejemplo Real:**
 ```
-2025-10-26 14:30:15 [http-nio-8080-exec-1] INFO  a.a.w.controllers.AuthController - ✅ Login exitoso para usuario: admin
-2025-10-26 14:30:16 [http-nio-8080-exec-2] DEBUG org.hibernate.SQL - select u1_0.id, u1_0.nombre from usuario u1_0 where u1_0.username=?
-2025-10-26 14:30:16 [http-nio-8080-exec-2] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [admin]
+2025-10-26 14:30:15 [http-nio-9090-exec-1] INFO  a.a.w.controllers.AuthController - ✅ Login exitoso para usuario: admin
+2025-10-26 14:30:16 [http-nio-9090-exec-2] DEBUG org.hibernate.SQL - select u1_0.id, u1_0.nombre from usuario u1_0 where u1_0.username=?
+2025-10-26 14:30:16 [http-nio-9090-exec-2] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [admin]
 ```
 
 ---

@@ -48,7 +48,7 @@
 .\start.ps1
 
 # 3. Probar y verificar logs
-# Acceder a: http://localhost:8080
+# Acceder a: http://localhost:9090
 ```
 
 ---

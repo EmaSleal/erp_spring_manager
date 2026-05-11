@@ -10,7 +10,7 @@ Verificar que todas las funcionalidades implementadas funcionan como se espera.
 **Test 1: Login Exitoso**
 ```
 Pasos:
-1. Ir a http://localhost:8080/auth/login
+1. Ir a http://localhost:9090/auth/login
 2. Ingresar credenciales válidas
 3. Click en "Iniciar Sesión"
 
@@ -23,7 +23,7 @@ Resultado esperado:
 **Test 2: Login con Credenciales Incorrectas**
 ```
 Pasos:
-1. Ir a http://localhost:8080/auth/login
+1. Ir a http://localhost:9090/auth/login
 2. Ingresar credenciales inválidas
 3. Click en "Iniciar Sesión"
 

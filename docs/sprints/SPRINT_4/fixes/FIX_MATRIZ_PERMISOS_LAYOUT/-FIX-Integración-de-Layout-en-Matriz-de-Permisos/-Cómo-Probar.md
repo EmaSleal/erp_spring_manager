@@ -10,7 +10,7 @@
 
 ### 2. URL Directa:
 ```
-http://localhost:8080/admin/permisos
+http://localhost:9090/admin/permisos
 ```
 
 ### 3. Verificar Seguridad:

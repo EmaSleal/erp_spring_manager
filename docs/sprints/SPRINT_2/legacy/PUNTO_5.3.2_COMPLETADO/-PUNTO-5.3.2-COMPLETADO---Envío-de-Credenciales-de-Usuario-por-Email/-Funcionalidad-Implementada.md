@@ -46,7 +46,7 @@ public String guardarUsuario(...) {
         // Enviar credenciales por email si tiene email configurado
         if (guardado.getEmail() != null && !guardado.getEmail().isBlank()) {
             try {
-                String urlLogin = "http://localhost:8080/auth/login";
+                String urlLogin = "http://localhost:9090/auth/login";
                 emailService.enviarCredencialesUsuario(guardado, passwordNueva, urlLogin);
                 
                 redirectAttributes.addFlashAttribute("success", 

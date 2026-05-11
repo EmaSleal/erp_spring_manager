@@ -55,7 +55,7 @@ Una vez levantados los servicios (toma ~60 segundos), accede a:
          │                           │
          │  ┌──────────────────┐    │
          │  │  whats_orders_app│    │
-         │  │  Puerto: 8080    │    │
+         │  │  Puerto: 9090    │    │
          │  │  Expuesto: 9090  │    │
          │  └────────┬─────────┘    │
          │           │               │
@@ -78,7 +78,7 @@ Una vez levantados los servicios (toma ~60 segundos), accede a:
    - Volumen persistente: `mysql_data`
 
 2. **app** (Spring Boot)
-   - Puerto interno: `8080`
+   - Puerto interno: `9090`
    - Puerto externo: `9090`
    - Conecta a MySQL vía red interna Docker
    - Logs persistentes en `./logs`
@@ -186,7 +186,7 @@ Edita `docker-compose.yml`:
 services:
   app:
     ports:
-      - "PUERTO_EXTERNO:8080"  # Ejemplo: "3000:8080"
+      - "PUERTO_EXTERNO:9090"  # Ejemplo: "3000:9090"
 ```
 
 ### Configurar Memoria
@@ -265,7 +265,7 @@ Los servicios tienen health checks configurados:
 - Tiempo de inicio: 30s
 
 ### Aplicación Spring Boot
-- Endpoint: `http://localhost:8080/actuator/health`
+- Endpoint: `http://localhost:9090/actuator/health`
 - Intervalo: 30s
 - Tiempo de inicio: 60s
 
@@ -338,7 +338,7 @@ docker run --rm -v whats_orders_manager_mysql_data:/data -v ${PWD}:/backup ubunt
 
 - ✅ MySQL **NO está expuesto** al host (solo accesible desde la app)
 - ✅ Los datos de MySQL persisten en el volumen `mysql_data`
-- ✅ La aplicación se expone en **puerto 9090** (internamente usa 8080)
+- ✅ La aplicación se expone en **puerto 9090** (internamente usa 9090)
 - ✅ Los logs se guardan en `./logs` del host
 - ⚠️ Las credenciales por defecto son para desarrollo, **cámbialas en producción**
 

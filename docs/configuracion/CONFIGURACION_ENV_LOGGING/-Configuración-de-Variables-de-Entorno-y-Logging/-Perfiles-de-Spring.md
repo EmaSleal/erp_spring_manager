@@ -22,9 +22,9 @@ java -jar app.jar
 
 **Ejemplo de salida:**
 ```
-2025-10-26 14:30:15 [http-nio-8080-exec-1] DEBUG a.a.w.controllers.AuthController - Acceso a página de login
-2025-10-26 14:30:16 [http-nio-8080-exec-1] DEBUG org.hibernate.SQL - select u1_0.id, u1_0.nombre from usuario u1_0 where u1_0.username=?
-2025-10-26 14:30:16 [http-nio-8080-exec-1] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [admin]
+2025-10-26 14:30:15 [http-nio-9090-exec-1] DEBUG a.a.w.controllers.AuthController - Acceso a página de login
+2025-10-26 14:30:16 [http-nio-9090-exec-1] DEBUG org.hibernate.SQL - select u1_0.id, u1_0.nombre from usuario u1_0 where u1_0.username=?
+2025-10-26 14:30:16 [http-nio-9090-exec-1] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [admin]
 ```
 
 ---
@@ -51,8 +51,8 @@ java -jar app.jar
 
 **Ejemplo de salida:**
 ```
-2025-10-26 14:30:15 [http-nio-8080-exec-1] INFO  a.a.w.controllers.AuthController - ✅ Login exitoso para usuario: admin
-2025-10-26 14:30:20 [http-nio-8080-exec-2] WARN  a.a.w.controllers.AuthController - ❌ Login fallido para usuario: hacker - Razón: Credenciales inválidas
+2025-10-26 14:30:15 [http-nio-9090-exec-1] INFO  a.a.w.controllers.AuthController - ✅ Login exitoso para usuario: admin
+2025-10-26 14:30:20 [http-nio-9090-exec-2] WARN  a.a.w.controllers.AuthController - ❌ Login fallido para usuario: hacker - Razón: Credenciales inválidas
 ```
 
 ---

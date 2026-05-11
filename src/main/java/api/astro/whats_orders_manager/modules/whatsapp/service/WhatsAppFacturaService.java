@@ -30,7 +30,7 @@ public class WhatsAppFacturaService {
     private final WhatsAppService whatsAppService;
     private final FacturaRepository facturaRepository;
     
-    @Value("${app.base-url:http://localhost:8080}")
+    @Value("${app.base-url:http://localhost:9090}")
     private String baseUrl;
     
     public WhatsAppFacturaService(

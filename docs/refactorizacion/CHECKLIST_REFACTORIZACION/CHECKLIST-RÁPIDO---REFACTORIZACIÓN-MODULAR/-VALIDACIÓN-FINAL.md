@@ -11,12 +11,12 @@
 
 ### Aplicación
 - [ ] `mvn spring-boot:run` → Arranca sin errores
-- [ ] Login funciona: `http://localhost:8080/login`
-- [ ] Productos: `http://localhost:8080/productos`
-- [ ] Clientes: `http://localhost:8080/clientes`
-- [ ] Facturas: `http://localhost:8080/facturas`
-- [ ] WhatsApp: `http://localhost:8080/whatsapp/mensajes`
-- [ ] Reportes: `http://localhost:8080/reportes/dashboard`
+- [ ] Login funciona: `http://localhost:9090/login`
+- [ ] Productos: `http://localhost:9090/productos`
+- [ ] Clientes: `http://localhost:9090/clientes`
+- [ ] Facturas: `http://localhost:9090/facturas`
+- [ ] WhatsApp: `http://localhost:9090/whatsapp/mensajes`
+- [ ] Reportes: `http://localhost:9090/reportes/dashboard`
 
 ### Funcionalidades
 - [ ] Crear producto funciona

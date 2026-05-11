@@ -30,7 +30,7 @@ USER spring:spring
 COPY --from=build /app/target/*.jar app.jar
 
 # Exponer puerto interno
-EXPOSE 8080
+EXPOSE 9090
 
 # Variables de entorno por defecto (serán sobreescritas por docker-compose)
 ENV SPRING_PROFILES_ACTIVE=prod

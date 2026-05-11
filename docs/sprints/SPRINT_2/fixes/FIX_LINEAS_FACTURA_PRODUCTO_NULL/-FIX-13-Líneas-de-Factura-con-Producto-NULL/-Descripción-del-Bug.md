@@ -18,7 +18,7 @@ El usuario agregaba una línea nueva usando el botón "Agregar línea", pero **n
 **Log del error:**
 
 ```
-2025-10-20T12:08:47.310-06:00  INFO 17248 --- [nio-8080-exec-7] a.a.w.s.impl.LineaFacturaServiceImpl     : Actualizando líneas: [
+2025-10-20T12:08:47.310-06:00  INFO 17248 --- [nio-9090-exec-7] a.a.w.s.impl.LineaFacturaServiceImpl     : Actualizando líneas: [
   LineaFacturaR[
     id_linea_factura=null, 
     numero_linea=1, 
@@ -34,8 +34,8 @@ El usuario agregaba una línea nueva usando el botón "Agregar línea", pero **n
 
 Hibernate: call sp_actualizar_linea_factura(?, ?, ?, ?, ?, ?, ?, ?)
 
-2025-10-20T12:08:47.679-06:00  WARN 17248 --- [nio-8080-exec-7] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1048, SQLState: 23000
-2025-10-20T12:08:47.679-06:00 ERROR 17248 --- [nio-8080-exec-7] o.h.engine.jdbc.spi.SqlExceptionHelper   : Column 'id_producto' cannot be null
+2025-10-20T12:08:47.679-06:00  WARN 17248 --- [nio-9090-exec-7] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1048, SQLState: 23000
+2025-10-20T12:08:47.679-06:00 ERROR 17248 --- [nio-9090-exec-7] o.h.engine.jdbc.spi.SqlExceptionHelper   : Column 'id_producto' cannot be null
 ```
 
 **Captura del comportamiento:**

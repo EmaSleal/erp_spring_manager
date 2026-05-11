@@ -67,7 +67,7 @@ whatsapp:
 # CONFIGURACIÓN DE BASE URL
 # ========================================
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}
+  base-url: ${APP_BASE_URL:http://localhost:9090}
 
 # ========================================
 # CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA

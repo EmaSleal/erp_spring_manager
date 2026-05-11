@@ -3,7 +3,7 @@
 ### 1. Testing Manual con Endpoint
 ```bash
 # Ejecutar desde Postman o curl
-POST http://localhost:8080/configuracion/ejecutar-recordatorios
+POST http://localhost:9090/configuracion/ejecutar-recordatorios
 Authorization: Cookie (usuario ADMIN logueado)
 ```
 

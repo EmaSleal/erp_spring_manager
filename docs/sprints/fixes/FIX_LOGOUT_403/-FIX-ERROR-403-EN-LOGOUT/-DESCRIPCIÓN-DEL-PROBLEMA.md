@@ -11,7 +11,7 @@ Sun Oct 12 21:23:53 CST 2025
 There was an unexpected error (type=forbidden, status=403).
 ```
 
-**URL intentada:** `localhost:8080/auth/logout`
+**URL intentada:** `localhost:9090/auth/logout`
 
 ---
 

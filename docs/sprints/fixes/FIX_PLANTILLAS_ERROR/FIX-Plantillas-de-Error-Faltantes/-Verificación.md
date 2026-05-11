@@ -17,7 +17,7 @@ mvn clean compile
 ### Pruebas Pendientes (Después de Reiniciar Aplicación)
 
 1. **Prueba 404:**
-   - Navegar a URL inexistente: `http://localhost:8080/url-inexistente`
+   - Navegar a URL inexistente: `http://localhost:9090/url-inexistente`
    - Verificar que muestra la página personalizada 404.html
 
 2. **Prueba Endpoint Reenviar Credenciales:**
