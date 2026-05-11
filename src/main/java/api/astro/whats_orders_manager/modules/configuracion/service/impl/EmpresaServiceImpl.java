@@ -73,7 +73,6 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     @Cacheable(value = "empresa", key = "'principal'")
     public Empresa getEmpresaPrincipal() {
         log.debug("Obteniendo empresa principal (sin caché)");
