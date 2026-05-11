@@ -21,7 +21,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 60s
 
   # Aplicación Spring Boot
   app:
@@ -60,13 +60,17 @@ services:
     volumes:
       # Persistencia de logs (opcional)
       - ./logs:/app/logs
+      # Persistencia de certificados
+      - ./certificados:/app/certificados
+      # Persistencia de comprobantes
+      - ./comprobantes:/app/comprobantes
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 120s
 
   seed:
     image: mysql:8.0.32
