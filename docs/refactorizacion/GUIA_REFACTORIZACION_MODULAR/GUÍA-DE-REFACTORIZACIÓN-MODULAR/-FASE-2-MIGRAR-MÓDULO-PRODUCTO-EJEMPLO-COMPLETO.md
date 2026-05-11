@@ -152,7 +152,7 @@ mvn spring-boot:run
 
 **Verificar:**
 - ✅ Aplicación arranca sin errores
-- ✅ Endpoint de productos funciona: `http://localhost:8080/productos`
+- ✅ Endpoint de productos funciona: `http://localhost:9090/productos`
 - ✅ No hay errores en logs
 
 ### Paso 2.11: Commit

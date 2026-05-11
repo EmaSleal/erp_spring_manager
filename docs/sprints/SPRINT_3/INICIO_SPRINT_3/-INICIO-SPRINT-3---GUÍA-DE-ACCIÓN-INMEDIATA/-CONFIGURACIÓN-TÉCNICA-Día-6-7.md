@@ -22,7 +22,7 @@ META_WEBHOOK_VERIFY_TOKEN=mi_token_secreto_12345
 1. **Preparar URL pública:**
    - **Opción A:** ngrok (desarrollo)
      ```bash
-     ngrok http 8080
+     ngrok http 9090
      # URL: https://abc123.ngrok.io
      ```
    - **Opción B:** Servidor staging

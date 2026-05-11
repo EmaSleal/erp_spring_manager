@@ -9,7 +9,7 @@
    ```
 
 2. ✅ **Verificar logs**
-   - Acceder a `http://localhost:8080/auth/login`
+   - Acceder a `http://localhost:9090/auth/login`
    - Ver logs en consola
    - Verificar archivo `logs/whats-orders-manager.log`
 

@@ -4,7 +4,7 @@
 
 1. **Acceder a configuración:**
    ```
-   http://localhost:8080/configuracion?tab=notificaciones
+   http://localhost:9090/configuracion?tab=notificaciones
    ```
 
 2. **Modificar valores:**

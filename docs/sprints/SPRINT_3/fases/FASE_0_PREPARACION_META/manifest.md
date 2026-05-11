@@ -8,7 +8,7 @@
 - [Actualizar .env.local](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/Actualizar-.env.local.md)
 - [Archivo creado: .env.local ✅](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/Archivo-creado-.env.local-.md)
 - [Debe responder: test123](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/Debe-responder-test123.md)
-- [Ejecutado: ngrok http 8080 ✅](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/Ejecutado-ngrok-http-8080-.md)
+- [Ejecutado: ngrok http 9090 ✅](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/Ejecutado-ngrok-http-9090-.md)
 - [En .env.local ✅](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/En-.env.local-.md)
 - [Guardar en .env.local](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/Guardar-en-.env.local.md)
 - [METAWEBHOOKVERIFYTOKEN=eltokengenerado](sprints/SPRINT_3/fases/FASE_0_PREPARACION_META/META_WEBHOOK_VERIFY_TOKENel_token_generado.md)

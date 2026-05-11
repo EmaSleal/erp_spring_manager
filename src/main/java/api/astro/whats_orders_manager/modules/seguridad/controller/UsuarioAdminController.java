@@ -1168,7 +1168,7 @@ public class UsuarioAdminController {
             usuarioService.save(usuario);
             
             // Enviar credenciales por email
-            String urlLogin = "http://localhost:8080/auth/login"; // TODO: Mover a configuración
+            String urlLogin = "http://localhost:9090/auth/login"; // TODO: Mover a configuración
             emailService.enviarCredencialesUsuario(usuario, nuevaPassword, urlLogin);
             
             log.info("✅ Credenciales reenviadas exitosamente a: {}", usuario.getEmail());

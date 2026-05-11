@@ -9,7 +9,7 @@ Cada usuario puede inicializar sus propias preferencias:
 
 **cURL:**
 ```bash
-curl -X POST http://localhost:8080/api/notificaciones/preferencias/inicializar \
+curl -X POST http://localhost:9090/api/notificaciones/preferencias/inicializar \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
@@ -44,7 +44,7 @@ El administrador puede inicializar preferencias para todos los usuarios de una s
 
 **cURL:**
 ```bash
-curl -X POST http://localhost:8080/api/notificaciones/admin/inicializar-preferencias \
+curl -X POST http://localhost:9090/api/notificaciones/admin/inicializar-preferencias \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ADMIN_TOKEN"
 ```

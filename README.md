@@ -190,7 +190,7 @@ mvn spring-boot:run
 
 ### 6. Acceder
 
-Abrí el navegador en: **http://localhost:8080**
+Abrí el navegador en: **http://localhost:9090**
 
 Credenciales por defecto:
 - **Usuario:** `admin`
@@ -209,7 +209,7 @@ DB_USERNAME=tu_usuario
 DB_PASSWORD=tu_password
 
 # Puerto
-SERVER_PORT=8080
+SERVER_PORT=9090
 
 # Perfil de Spring
 SPRING_PROFILES_ACTIVE=production

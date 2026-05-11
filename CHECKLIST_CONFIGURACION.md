@@ -152,7 +152,7 @@ Abrir `.env.local` y verificar que todas las variables tienen valores:
   
   - [ ] Servidor iniciado
     ```
-    Tomcat started on port(s): 8080 (http)
+    Tomcat started on port(s): 9090 (http)
     ```
   
   - [ ] SQL queries visibles (perfil dev)
@@ -164,7 +164,7 @@ Abrir `.env.local` y verificar que todas las variables tienen valores:
 
 - [ ] Acceder a login
   ```
-  http://localhost:8080/auth/login
+  http://localhost:9090/auth/login
   ```
   
   Verificar en logs:
@@ -328,7 +328,7 @@ Abrir `.env.local` y verificar que todas las variables tienen valores:
    ```powershell
    .\start.ps1
    ```
-7. [ ] Acceder a `http://localhost:8080`
+7. [ ] Acceder a `http://localhost:9090`
 8. [ ] Hacer login
 9. [ ] Verificar logs
 10. [ ] Todo funciona ✅

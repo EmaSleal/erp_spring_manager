@@ -3,8 +3,8 @@
 Al intentar guardar la configuración de **facturación** y **empresa** en `/configuracion`, se producía un error 500:
 
 ```
-POST http://localhost:8080/api/configuracion/facturacion 500 (Internal Server Error)
-POST http://localhost:8080/api/configuracion/empresa 500 (Internal Server Error)
+POST http://localhost:9090/api/configuracion/facturacion 500 (Internal Server Error)
+POST http://localhost:9090/api/configuracion/empresa 500 (Internal Server Error)
 ```
 
 **Console Error:**

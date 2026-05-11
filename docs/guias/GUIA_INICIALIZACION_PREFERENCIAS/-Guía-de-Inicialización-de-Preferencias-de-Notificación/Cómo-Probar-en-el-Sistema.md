@@ -4,7 +4,7 @@
 
 **Request:**
 ```
-POST http://localhost:8080/api/notificaciones/admin/inicializar-preferencias
+POST http://localhost:9090/api/notificaciones/admin/inicializar-preferencias
 ```
 
 **Headers:**
@@ -39,11 +39,11 @@ fetch('/api/notificaciones/admin/inicializar-preferencias', {
 
 ```bash
 # Inicializar para todos los usuarios (requiere ser admin)
-curl -X POST http://localhost:8080/api/notificaciones/admin/inicializar-preferencias \
+curl -X POST http://localhost:9090/api/notificaciones/admin/inicializar-preferencias \
   -H "Content-Type: application/json"
 
 # Inicializar solo para usuario actual
-curl -X POST http://localhost:8080/api/notificaciones/preferencias/inicializar \
+curl -X POST http://localhost:9090/api/notificaciones/preferencias/inicializar \
   -H "Content-Type: application/json"
 ```
 

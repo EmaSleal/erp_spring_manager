@@ -3,7 +3,7 @@
 ### **Paso 1: Preparar Entorno**
 
 1. Asegurar servidor corriendo: `mvn spring-boot:run`
-2. Abrir aplicación: `http://localhost:8080`
+2. Abrir aplicación: `http://localhost:9090`
 3. Tener credenciales de prueba listas
 
 ### **Paso 2: Testing por Navegador**

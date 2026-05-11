@@ -12,7 +12,7 @@ El usuario realizó ajustes manuales en:
 ---
 
 **Estado Final:** ✅ READY FOR TESTING  
-**Servidor:** 🟢 Running on port 8080  
+**Servidor:** 🟢 Running on port 9090  
 **Próxima Acción:** Testing manual en dispositivos móviles
 
 ---

@@ -58,7 +58,7 @@
 - [x] ✅ Compilar proyecto sin errores - **BUILD SUCCESS** (6.8s)
 - [x] ✅ Ejecutar aplicación y verificar funcionamiento - **Started in 5.662 seconds**
 - [x] ✅ Verificar conexión a base de datos - **HikariPool-1 Start completed**
-- [x] ✅ Verificar que todas las rutas funcionen correctamente - Tomcat port 8080
+- [x] ✅ Verificar que todas las rutas funcionen correctamente - Tomcat port 9090
 
 ### Limpieza (COMPLETADO)
 - [x] ✅ Eliminar carpeta `dto/` raíz - **ELIMINADA**

@@ -51,8 +51,8 @@ services:
       JAVA_OPTS: "-Xmx1024m -Xms512m"
       SPRING_PROFILES_ACTIVE: prod
     ports:
-      # Puerto externo 9090 -> Puerto interno 8080
-      - "9090:8080"
+      # Puerto externo 9090 -> Puerto interno 9090
+      - "9090:9090"
     networks:
       - app-network
     volumes:
@@ -64,7 +64,7 @@ services:
       - ./comprobantes:/app/comprobantes
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3

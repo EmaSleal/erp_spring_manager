@@ -13,7 +13,7 @@ DEBUG - Datos globales agregados - Usuario: Juan Pérez, Rol: ADMIN, Iniciales: 
 **Causa:** `userAvatar` es null o la ruta es incorrecta  
 **Solución:** 
 1. Verificar que el campo `avatar` existe en BD
-2. Verificar que la ruta es accesible: `http://localhost:8080/uploads/avatars/juan.jpg`
+2. Verificar que la ruta es accesible: `http://localhost:9090/uploads/avatars/juan.jpg`
 3. Verificar configuración de recursos estáticos en Spring
 
 ### Problema 3: Avatar se ve distorsionado

@@ -33,7 +33,7 @@ org.springframework.transaction: DEBUG
 
 **Ejemplo:**
 ```
-2025-10-26 14:30:15 [http-nio-8080-exec-1] INFO  a.a.w.controllers.AuthController - ✅ Login exitoso para usuario: admin
+2025-10-26 14:30:15 [http-nio-9090-exec-1] INFO  a.a.w.controllers.AuthController - ✅ Login exitoso para usuario: admin
 ```
 
 ### Archivos de Log

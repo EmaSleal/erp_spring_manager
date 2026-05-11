@@ -27,19 +27,19 @@
 ```bash
 □ mvn spring-boot:run
 □ Aplicación arranca sin errores
-□ Puerto 8080 disponible
+□ Puerto 9090 disponible
 □ No hay stacktraces en consola
 ```
 
 #### 5. Endpoints Principales
 ```
-□ http://localhost:8080/ → Página principal
-□ http://localhost:8080/login → Login funciona
-□ http://localhost:8080/productos → Lista productos
-□ http://localhost:8080/clientes → Lista clientes
-□ http://localhost:8080/facturas → Lista facturas
-□ http://localhost:8080/whatsapp/mensajes → Vista WhatsApp
-□ http://localhost:8080/reportes/dashboard → Dashboard
+□ http://localhost:9090/ → Página principal
+□ http://localhost:9090/login → Login funciona
+□ http://localhost:9090/productos → Lista productos
+□ http://localhost:9090/clientes → Lista clientes
+□ http://localhost:9090/facturas → Lista facturas
+□ http://localhost:9090/whatsapp/mensajes → Vista WhatsApp
+□ http://localhost:9090/reportes/dashboard → Dashboard
 ```
 
 #### 6. Funcionalidades Críticas

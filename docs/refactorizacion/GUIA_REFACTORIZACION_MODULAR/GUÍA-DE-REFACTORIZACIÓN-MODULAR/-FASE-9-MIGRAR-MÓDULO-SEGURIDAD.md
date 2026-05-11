@@ -107,7 +107,7 @@ mvn test
 
 # Arrancar aplicación y probar login
 mvn spring-boot:run
-# Ir a http://localhost:8080/login
+# Ir a http://localhost:9090/login
 # Verificar que login funciona
 ```
 

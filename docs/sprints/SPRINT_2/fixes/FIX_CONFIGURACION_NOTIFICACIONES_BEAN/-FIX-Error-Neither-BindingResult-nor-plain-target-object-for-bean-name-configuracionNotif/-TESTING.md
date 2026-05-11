@@ -14,7 +14,7 @@
 
 3. **Acceder a configuración:**
    ```
-   http://localhost:8080/configuracion
+   http://localhost:9090/configuracion
    ```
 
 4. **Hacer clic en tab "Notificaciones"**

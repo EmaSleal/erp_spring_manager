@@ -39,10 +39,10 @@ ORDER BY r.nombre, p.codigo;
 ### 4. Probar Endpoints REST
 ```bash
 # Listar pagos
-GET http://localhost:8080/pagos/api
+GET http://localhost:9090/pagos/api
 
 # Crear pago
-POST http://localhost:8080/pagos/api
+POST http://localhost:9090/pagos/api
 Content-Type: application/json
 
 {

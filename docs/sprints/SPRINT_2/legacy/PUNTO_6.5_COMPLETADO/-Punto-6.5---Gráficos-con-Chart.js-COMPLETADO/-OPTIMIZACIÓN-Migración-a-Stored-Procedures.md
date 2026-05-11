@@ -420,8 +420,8 @@ CALL sp_obtener_productos_mas_vendidos(10);
 mvn spring-boot:run
 
 # Navegar a:
-# 1. http://localhost:8080/reportes - Verificar 3 gráficos del dashboard
-# 2. http://localhost:8080/reportes/ventas?fechaInicio=2025-01-01&fechaFin=2025-12-31
+# 1. http://localhost:9090/reportes - Verificar 3 gráficos del dashboard
+# 2. http://localhost:9090/reportes/ventas?fechaInicio=2025-01-01&fechaFin=2025-12-31
 #    - Verificar gráfico dinámico
 
 # Verificar en consola del navegador que no hay errores de Chart.js

@@ -4,7 +4,7 @@
 
 ```
 1. Abrir Chrome
-2. Navegar a http://localhost:8080
+2. Navegar a http://localhost:9090
 3. F12 (abrir DevTools)
 4. Login con: admin / password
 5. Validar Dashboard:

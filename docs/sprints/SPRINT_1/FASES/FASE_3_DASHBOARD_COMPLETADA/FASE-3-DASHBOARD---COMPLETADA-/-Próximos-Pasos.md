@@ -8,7 +8,7 @@
 
 ### Testing del Dashboard (Opcional antes de Fase 4)
 - [ ] Iniciar servidor: `./mvnw spring-boot:run`
-- [ ] Navegar a `http://localhost:8080/dashboard`
+- [ ] Navegar a `http://localhost:9090/dashboard`
 - [ ] Verificar estadísticas correctas
 - [ ] Probar clicks en módulos activos
 - [ ] Probar clicks en módulos inactivos (debe mostrar alerta)

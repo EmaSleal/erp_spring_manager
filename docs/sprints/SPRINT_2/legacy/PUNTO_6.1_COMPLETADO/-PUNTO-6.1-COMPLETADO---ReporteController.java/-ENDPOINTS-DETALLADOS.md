@@ -19,7 +19,7 @@ public String index(Model model, Authentication authentication)
 
 **Uso:**
 ```
-http://localhost:8080/reportes
+http://localhost:9090/reportes
 ```
 
 ---
@@ -59,9 +59,9 @@ public String reporteVentas(
 
 **Uso:**
 ```
-http://localhost:8080/reportes/ventas
-http://localhost:8080/reportes/ventas?fechaInicio=2025-10-01&fechaFin=2025-10-18
-http://localhost:8080/reportes/ventas?clienteId=5
+http://localhost:9090/reportes/ventas
+http://localhost:9090/reportes/ventas?fechaInicio=2025-10-01&fechaFin=2025-10-18
+http://localhost:9090/reportes/ventas?clienteId=5
 ```
 
 ---
@@ -94,9 +94,9 @@ public String reporteClientes(
 
 **Uso:**
 ```
-http://localhost:8080/reportes/clientes
-http://localhost:8080/reportes/clientes?activo=true
-http://localhost:8080/reportes/clientes?conDeuda=true
+http://localhost:9090/reportes/clientes
+http://localhost:9090/reportes/clientes?activo=true
+http://localhost:9090/reportes/clientes?conDeuda=true
 ```
 
 ---
@@ -129,9 +129,9 @@ public String reporteProductos(
 
 **Uso:**
 ```
-http://localhost:8080/reportes/productos
-http://localhost:8080/reportes/productos?stockBajo=true
-http://localhost:8080/reportes/productos?sinVentas=true
+http://localhost:9090/reportes/productos
+http://localhost:9090/reportes/productos?stockBajo=true
+http://localhost:9090/reportes/productos?sinVentas=true
 ```
 
 ---
@@ -164,9 +164,9 @@ Content-Disposition: attachment; filename="reporte_ventas.pdf"
 
 **Uso:**
 ```
-http://localhost:8080/reportes/export/pdf?tipo=ventas&fechaInicio=2025-10-01&fechaFin=2025-10-18
-http://localhost:8080/reportes/export/pdf?tipo=clientes
-http://localhost:8080/reportes/export/pdf?tipo=productos
+http://localhost:9090/reportes/export/pdf?tipo=ventas&fechaInicio=2025-10-01&fechaFin=2025-10-18
+http://localhost:9090/reportes/export/pdf?tipo=clientes
+http://localhost:9090/reportes/export/pdf?tipo=productos
 ```
 
 **Estado actual:** ⏳ Endpoint creado, implementación de PDF pendiente (punto 6.4.1)
@@ -201,9 +201,9 @@ Content-Disposition: attachment; filename="reporte_ventas.xlsx"
 
 **Uso:**
 ```
-http://localhost:8080/reportes/export/excel?tipo=ventas&fechaInicio=2025-10-01&fechaFin=2025-10-18
-http://localhost:8080/reportes/export/excel?tipo=clientes
-http://localhost:8080/reportes/export/excel?tipo=productos
+http://localhost:9090/reportes/export/excel?tipo=ventas&fechaInicio=2025-10-01&fechaFin=2025-10-18
+http://localhost:9090/reportes/export/excel?tipo=clientes
+http://localhost:9090/reportes/export/excel?tipo=productos
 ```
 
 **Estado actual:** ⏳ Endpoint creado, implementación de Excel pendiente (punto 6.4.2)

@@ -77,7 +77,7 @@ Contraseña: mK8#xP2q
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
 Accede aquí:
-http://localhost:8080/auth/login
+http://localhost:9090/auth/login
 
 🔒 Por seguridad, te recomendamos cambiar tu 
    contraseña en Perfil > Cambiar Contraseña

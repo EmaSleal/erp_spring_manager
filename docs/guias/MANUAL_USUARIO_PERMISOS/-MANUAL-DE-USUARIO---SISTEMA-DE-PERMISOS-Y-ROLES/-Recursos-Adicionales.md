@@ -9,8 +9,8 @@
 ### Para Administradores
 
 - 🔧 [Guía de Administración](./GUIA_ADMINISTRACION.md)
-- 🔐 [Matriz de Permisos Completa](http://localhost:8080/admin/permisos)
-- 📊 [Dashboard de Auditoría](http://localhost:8080/admin/auditoria)
+- 🔐 [Matriz de Permisos Completa](http://localhost:9090/admin/permisos)
+- 📊 [Dashboard de Auditoría](http://localhost:9090/admin/auditoria)
 
 ---
 

@@ -206,7 +206,7 @@ Se ha creado una cuenta para ti en el sistema:
 Usuario: juan.perez@empresa.com
 Contraseña: xK9m2#pL
 
-Accede en: http://localhost:8080/auth/login
+Accede en: http://localhost:9090/auth/login
 
 Por seguridad, te recomendamos cambiar tu contraseña 
 en el primer inicio de sesión.

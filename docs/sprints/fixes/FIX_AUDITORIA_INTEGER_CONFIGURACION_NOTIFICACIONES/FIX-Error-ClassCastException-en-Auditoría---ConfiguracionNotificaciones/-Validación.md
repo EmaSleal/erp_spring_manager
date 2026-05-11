@@ -20,7 +20,7 @@
    - ✅ **Resultado esperado:** Aplicación inicia sin errores
 
 4. **Probar guardar configuración:**
-   - Navegar a: `http://localhost:8080/configuracion?tab=notificaciones`
+   - Navegar a: `http://localhost:9090/configuracion?tab=notificaciones`
    - Modificar algún valor (ej: dias_recordatorio_preventivo)
    - Hacer clic en "Guardar Configuración"
    - ✅ **Resultado esperado:** Mensaje "Configuración guardada correctamente"

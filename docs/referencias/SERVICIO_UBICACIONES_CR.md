@@ -221,9 +221,9 @@ Después de ejecutar los scripts SQL:
 
 3. **Probar endpoints**:
    ```bash
-   curl http://localhost:8080/api/ubicaciones/provincias
-   curl http://localhost:8080/api/ubicaciones/cantones?provincia=1
-   curl http://localhost:8080/api/ubicaciones/estadisticas
+   curl http://localhost:9090/api/ubicaciones/provincias
+   curl http://localhost:9090/api/ubicaciones/cantones?provincia=1
+   curl http://localhost:9090/api/ubicaciones/estadisticas
    ```
 
 4. **Integrar en formularios**: Usar JavaScript para cargar dropdowns dinámicos en:

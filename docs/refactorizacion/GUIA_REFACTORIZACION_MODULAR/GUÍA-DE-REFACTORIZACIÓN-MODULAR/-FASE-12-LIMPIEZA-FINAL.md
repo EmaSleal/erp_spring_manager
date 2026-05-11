@@ -54,11 +54,11 @@ mvn package
 mvn spring-boot:run
 
 # Verificar endpoints principales:
-# - http://localhost:8080/
-# - http://localhost:8080/login
-# - http://localhost:8080/productos
-# - http://localhost:8080/facturas
-# - http://localhost:8080/whatsapp/mensajes
+# - http://localhost:9090/
+# - http://localhost:9090/login
+# - http://localhost:9090/productos
+# - http://localhost:9090/facturas
+# - http://localhost:9090/whatsapp/mensajes
 ```
 
 ### Paso 12.6: Commit Final
