@@ -81,6 +81,8 @@ public class DataInitializer implements ApplicationRunner {
             c.setNombre("Cliente Genérico");
             c.setIdentificacion("000000000");
             c.setTipoCliente(InvoiceType.INSTITUCIONAL);
+            c.setTelefono("1234567890");
+            c.setEmail("cliente@ejemplo.com");
             clienteRepository.save(c);
         }
 
