@@ -97,13 +97,15 @@ public class DataInitializer implements ApplicationRunner {
             productoRepository.save(p);
         }
 
-        ConfiguracionEmpresa config = configRepository.findById(1L).orElseGet(() -> {
+        ConfiguracionEmpresa config = configRepository.findById(1).orElseGet(() -> {
             log.info("DataInitializer: creating default ConfiguracionEmpresa");
             ConfiguracionEmpresa c = new ConfiguracionEmpresa();
             c.setNombreComercial("Empresa Genérica");
             c.setNumeroIdentificacion("0000000000001");
             c.setTelefono("1234567890");
             c.setEmail("empresa@ejemplo.com");
+            // Razon social no puede ser null en la BD; usar nombre comercial como valor por defecto
+            c.setRazonSocial(c.getNombreComercial());
             return configRepository.save(c);
         });
 

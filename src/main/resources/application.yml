@@ -187,4 +187,4 @@ logging:
     org.hibernate.SQL: WARN
   
   file:
-    name: /var/log/whats-orders-manager/application.log
+    name: /app/logs/application.log

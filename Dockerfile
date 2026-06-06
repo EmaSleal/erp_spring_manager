@@ -29,6 +29,11 @@ USER spring:spring
 # Copiar el JAR compilado desde la etapa de build
 COPY --from=build /app/target/*.jar app.jar
 
+# Asegurar directorio de logs y permisos (se crea como root antes de cambiar a usuario no-root)
+USER root
+RUN mkdir -p /app/logs && chown -R spring:spring /app/logs
+USER spring:spring
+
 # Exponer puerto interno
 EXPOSE 9090
 

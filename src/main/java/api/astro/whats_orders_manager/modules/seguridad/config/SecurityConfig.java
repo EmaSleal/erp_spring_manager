@@ -24,6 +24,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Recursos públicos (CSS, JS, imágenes, auth)
                         .requestMatchers("/", "/auth/**", "/css/**", "/js/**", "/images/**").permitAll()
+
+                        // Healthcheck para Docker Compose
+                        .requestMatchers("/actuator/health").permitAll()
                         
                         // ========================================
                         // WEBHOOK DE WHATSAPP - Público (Meta verifica)
