@@ -13,7 +13,7 @@ services:
     networks:
       - app-network
     # NO exponemos puerto al host (solo accesible internamente)
-    command: --default-authentication-plugin=mysql_native_password
+    command: --authentication_policy=mysql_native_password
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 10s
