@@ -18,8 +18,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 120s
 
   # Aplicación Spring Boot
   app:
@@ -56,8 +56,7 @@ services:
     networks:
       - app-network
     volumes:
-      # Persistencia de logs (opcional)
-      - ./logs:/app/logs
+      - app_logs:/app/logs
       # Persistencia de certificados
       - ./certificados:/app/certificados
       # Persistencia de comprobantes
@@ -99,4 +98,6 @@ networks:
 
 volumes:
   mysql_data:
+    driver: local
+  app_logs:
     driver: local
