@@ -77,6 +77,7 @@ services:
         condition: service_healthy
     volumes:
       - ./database/seeds:/seeds:ro
+      - ./database/routines:/routines:ro
     environment:
       MYSQL_PWD: password
     networks:
@@ -88,7 +89,13 @@ services:
           echo \"Running $$f\";
           mysql -h mysql -u root facturas_monrachem < $$f || exit 1;
         done;
-        echo 'Seeding complete.'
+        echo 'Seeding complete.';
+        for f in /routines/*.sql; do
+          [ -e \"$$f\" ] || continue;
+          echo \"Applying routine $$f\";
+          mysql -h mysql -u root facturas_monrachem < $$f || exit 1;
+        done;
+        echo 'Routines applied.'
       "
     restart: "no"
 
