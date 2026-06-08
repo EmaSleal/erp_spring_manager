@@ -15,11 +15,11 @@ services:
     # NO exponemos puerto al host (solo accesible internamente)
     command: --authentication_policy=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-ppassword"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 120s
+      start_period: 30s
 
   # Aplicación Spring Boot
   app:
