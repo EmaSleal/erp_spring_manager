@@ -8,7 +8,8 @@ DB_NAME="${DB_NAME:-facturas_monrachem}"
 export MYSQL_PWD="$DB_PASS"
 
 EXPORT_DIR="$(dirname "$0")/../export"
-mkdir -p "$EXPORT_DIR"
+ROUTINES_DIR="$(dirname "$0")/../routines"
+mkdir -p "$EXPORT_DIR" "$ROUTINES_DIR"
 
 DUMP_ARGS="--no-create-info --complete-insert --skip-extended-insert --skip-triggers"
 
@@ -44,6 +45,22 @@ read -p "Export producto table? [y/N] " exp_producto
 if [[ "$exp_producto" =~ ^[Yy] ]]; then
     mysqldump -h "$DB_HOST" -u "$DB_USER" $DUMP_ARGS "$DB_NAME" producto > "$EXPORT_DIR/producto.sql"
     echo "  producto -> $EXPORT_DIR/producto.sql"
+fi
+
+read -p "Export stored procedures? [y/N] " exp_sp
+if [[ "$exp_sp" =~ ^[Yy] ]]; then
+    out="$ROUTINES_DIR/stored_procedures.sql"
+    mysqldump -h "$DB_HOST" -u "$DB_USER" --no-data --no-create-info --no-tablespaces \
+        --routines --skip-triggers "$DB_NAME" > "$out"
+    echo "  stored procedures -> $out"
+fi
+
+read -p "Export triggers? [y/N] " exp_triggers
+if [[ "$exp_triggers" =~ ^[Yy] ]]; then
+    out="$ROUTINES_DIR/triggers.sql"
+    mysqldump -h "$DB_HOST" -u "$DB_USER" --no-data --no-create-info --no-tablespaces \
+        --skip-routines --add-drop-trigger "$DB_NAME" > "$out"
+    echo "  triggers -> $out"
 fi
 
 echo "Export complete. Files in: $EXPORT_DIR"
