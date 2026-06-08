@@ -29,7 +29,7 @@
 
 ## Descripción
 
-**ERP Orders Manager** es un sistema ERP orientado a pequeñas y medianas empresas de Costa Rica que gestionan pedidos a través de WhatsApp. Incluye:
+**ERP Orders Manager** es un sistema ERP orientado a pequeñas y medianas empresas de Costa Rica que gestionan facturas, usuarios y articulos. Incluye:
 
 - Dashboard con estadísticas en tiempo real
 - Gestión completa de clientes, productos y facturas
@@ -154,14 +154,14 @@
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/whats-orders-manager.git
-cd whats-orders-manager
+git clone https://github.com/tu-usuario/erp_spring_manager.git
+cd erp_spring_manager
 ```
 
 ### 2. Crear la base de datos
 
 ```sql
-CREATE DATABASE whatsapp_orders CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE erp_orders_manager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ### 3. Configurar variables de entorno
@@ -204,7 +204,7 @@ Credenciales por defecto:
 
 ```bash
 # Base de datos
-DB_URL=jdbc:mysql://localhost:3306/whatsapp_orders
+DB_URL=jdbc:mysql://localhost:3306/erp_orders_manager
 DB_USERNAME=tu_usuario
 DB_PASSWORD=tu_password
 
@@ -273,8 +273,8 @@ El `NumeroConsecutivo` en el XML se extrae de `clave.substring(21, 41)` — esto
 ## Estructura del Proyecto
 
 ```
-whats_orders_manager/
-├── src/main/java/api/astro/whats_orders_manager/
+erp_spring_manager/
+├── src/main/java/api/astro/erp_spring_manager/
 │   ├── config/                        # Security, Cache, Async
 │   └── modules/
 │       ├── cliente/                   # Clientes (CRUD, validaciones FE)
