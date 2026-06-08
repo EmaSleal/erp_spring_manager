@@ -1,6 +1,6 @@
 # Load .env.local from project root if it exists
 
-Get-Content ".\.env.local" | ForEach-Object {
+Get-Content "..\..\.env.local" | ForEach-Object {
     if ($_ -and !$_.StartsWith("#")) {
         $parts = $_ -split "=", 2
         if ($parts.Length -eq 2) {
@@ -24,8 +24,10 @@ $pass    = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "password" }
 $db      = if ($env:DB_NAME) { $env:DB_NAME } else { "facturas_monrachem" }
 $env:MYSQL_PWD = $pass
 
-$exportDir = Join-Path $PSScriptRoot "..\export"
-if (-not (Test-Path $exportDir)) { New-Item -ItemType Directory -Path $exportDir | Out-Null }
+$exportDir   = Join-Path $PSScriptRoot "..\export"
+$routinesDir = Join-Path $PSScriptRoot "..\routines"
+if (-not (Test-Path $exportDir))   { New-Item -ItemType Directory -Path $exportDir   | Out-Null }
+if (-not (Test-Path $routinesDir)) { New-Item -ItemType Directory -Path $routinesDir | Out-Null }
 
 $dumpArgs = @("--no-create-info", "--complete-insert", "--skip-extended-insert", "--skip-triggers")
 
@@ -63,6 +65,22 @@ if ($expProducto -match '^[Yy]') {
     $out = Join-Path $exportDir "producto.sql"
     & mysqldump -h $host_db -u $user @dumpArgs $db producto | Set-Content $out -Encoding UTF8
     Write-Host "  producto -> $out"
+}
+
+$expSp = Read-Host "Export stored procedures? [y/N]"
+if ($expSp -match '^[Yy]') {
+    $out = Join-Path $routinesDir "stored_procedures.sql"
+    & mysqldump -h $host_db -u $user --no-data --no-create-info --no-tablespaces `
+        --routines --skip-triggers $db | Set-Content $out -Encoding UTF8
+    Write-Host "  stored procedures -> $out"
+}
+
+$expTriggers = Read-Host "Export triggers? [y/N]"
+if ($expTriggers -match '^[Yy]') {
+    $out = Join-Path $routinesDir "triggers.sql"
+    & mysqldump -h $host_db -u $user --no-data --no-create-info --no-tablespaces `
+        --skip-routines --add-drop-trigger $db | Set-Content $out -Encoding UTF8
+    Write-Host "  triggers -> $out"
 }
 
 Write-Host "Export complete. Files in: $exportDir"
