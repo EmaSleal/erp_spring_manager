@@ -53,7 +53,7 @@ public class DataInitializer implements ApplicationRunner {
             log.info("DataInitializer: creating test user");
             Usuario u = new Usuario();
             u.setNombre("usuario prueba");
-            u.setTelefono("1234567890");
+            u.setTelefono("50612345678");
             u.setPassword(passwordEncoder.encode("JhfKHZ2%mJMI"));
             u.setRol("ADMIN");
             u.setRolEntity(rolAdmin);
@@ -76,12 +76,34 @@ public class DataInitializer implements ApplicationRunner {
                 });
 
         if (clienteRepository.count() == 0) {
-            log.info("DataInitializer: creating default cliente");
+
+
+            if (usuarioRepository.findByNombre("cliente prueba").isEmpty()) {
+                log.info("DataInitializer: creating test user");
+                Usuario u = new Usuario();
+                u.setNombre("cliente prueba");
+                u.setTelefono("50612345679");
+                u.setPassword(passwordEncoder.encode("JhfKHZ2%mJM"));
+                u.setRol("ADMIN");
+                u.setRolEntity(rolAdmin);
+                u.setActivo(true);
+                u.setBloqueado(false);
+                u.setIntentosFallidos(0);
+                u.setRequireCambioPassword(false);
+                usuarioRepository.save(u);
+
+                 log.info("DataInitializer: creating default cliente");
             Cliente c = new Cliente();
             c.setNombre("Cliente Genérico");
             c.setIdentificacion("000000000");
+            c.setEmail("cliente@ejemplo.com");
             c.setTipoCliente(InvoiceType.INSTITUCIONAL);
+            c.setUsuario(u);
             clienteRepository.save(c);
+            }
+
+
+           
         }
 
         if (productoRepository.count() == 0) {
