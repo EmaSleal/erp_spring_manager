@@ -71,7 +71,9 @@ $expSp = Read-Host "Export stored procedures? [y/N]"
 if ($expSp -match '^[Yy]') {
     $out = Join-Path $routinesDir "stored_procedures.sql"
     & mysqldump -h $host_db -u $user --no-data --no-create-info --no-tablespaces `
-        --routines --skip-triggers $db | Set-Content $out -Encoding UTF8
+        --routines --skip-triggers $db |
+        ForEach-Object { $_ -replace 'DEFINER=[^ ]*', '' } |
+        Set-Content $out -Encoding UTF8
     Write-Host "  stored procedures -> $out"
 }
 
@@ -79,7 +81,9 @@ $expTriggers = Read-Host "Export triggers? [y/N]"
 if ($expTriggers -match '^[Yy]') {
     $out = Join-Path $routinesDir "triggers.sql"
     & mysqldump -h $host_db -u $user --no-data --no-create-info --no-tablespaces `
-        --skip-routines --add-drop-trigger $db | Set-Content $out -Encoding UTF8
+        --skip-routines --add-drop-trigger $db |
+        ForEach-Object { $_ -replace 'DEFINER=[^ ]*', '' } |
+        Set-Content $out -Encoding UTF8
     Write-Host "  triggers -> $out"
 }
 
