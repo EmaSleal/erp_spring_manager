@@ -179,6 +179,9 @@ spring:
     activate:
       on-profile: prod
 
+server:
+  forward-headers-strategy: native
+
 logging:
   level:
     root: WARN

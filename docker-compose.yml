@@ -47,6 +47,8 @@ services:
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       
+      # URL pública (usada en links de WhatsApp y redirects)
+      APP_BASE_URL: https://erp-spring-dev.astro-solutions.net
       # Configuración de Java
       JAVA_OPTS: "-Xmx1024m -Xms512m"
       SPRING_PROFILES_ACTIVE: prod
