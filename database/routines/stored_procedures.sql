@@ -28,7 +28,7 @@
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ActualizarCliente`(
+CREATE  PROCEDURE `ActualizarCliente`(
     IN pIdCliente INT,
     IN pNombre VARCHAR(255),
     IN pIdUsuario INT,
@@ -58,7 +58,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ActualizarTotalFactura`(
+CREATE  PROCEDURE `ActualizarTotalFactura`(
     IN pIdFactura INT
 )
 BEGIN
@@ -85,7 +85,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `CrearFactura`(
+CREATE  PROCEDURE `CrearFactura`(
     IN pIdCliente INT,
     IN pFechaEntrega DATE,
     IN pDescripcion VARCHAR(255),
@@ -113,7 +113,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarCliente`(
+CREATE  PROCEDURE `InsertarCliente`(
     IN pNombre VARCHAR(255),
     IN pIdUsuario VARCHAR(50),
     OUT pIdCliente INT
@@ -151,7 +151,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarLineaFactura`(
+CREATE  PROCEDURE `InsertarLineaFactura`(
     IN pIdFactura INT,
     IN pIdProducto INT,
     IN pCantidad INT,
@@ -181,7 +181,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarPresentacion`(IN pNombre VARCHAR(50), OUT pIdPresentacion INT)
+CREATE  PROCEDURE `InsertarPresentacion`(IN pNombre VARCHAR(50), OUT pIdPresentacion INT)
 BEGIN
     
     SELECT id_presentacion INTO pIdPresentacion 
@@ -210,7 +210,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarProducto`(
+CREATE  PROCEDURE `InsertarProducto`(
     IN pDescripcion VARCHAR(255),
     IN pCodigo VARCHAR(50),
     IN pIdPresentacion INT,
@@ -260,7 +260,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `InsertarUsuario`(
+CREATE  PROCEDURE `InsertarUsuario`(
     IN pNombre VARCHAR(255),
     IN pTelefono VARCHAR(15),
     OUT pIdUsuario INT
@@ -288,7 +288,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerClientes`()
+CREATE  PROCEDURE `ObtenerClientes`()
 BEGIN
     SELECT id_cliente AS idCliente, nombre FROM cliente;
 END ;;
@@ -307,7 +307,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerFacturaCompleta`(
+CREATE  PROCEDURE `ObtenerFacturaCompleta`(
     IN pIdFactura INT
 )
 BEGIN
@@ -360,7 +360,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `ObtenerHistorialMensajes`(
+CREATE  PROCEDURE `ObtenerHistorialMensajes`(
     IN pPhoneNumber VARCHAR(50),
     IN pLimite INT
 )
@@ -386,7 +386,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerProductos`()
+CREATE  PROCEDURE `ObtenerProductos`()
 BEGIN
     SELECT PRO.id_producto, CONCAT(PRO.descripcion," (",PRES.nombre,")")  AS nombre, PRO.precio_institucional, PRO.precio_mayorista FROM producto PRO
     INNER JOIN presentacion PRES ON PRES.id_presentacion = PRO.id_presentacion
@@ -407,7 +407,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`localhost` PROCEDURE `ObtenerReportePorArticulo`(
+CREATE  PROCEDURE `ObtenerReportePorArticulo`(
     IN pFechaInicio DATE,
     IN pFechaFin DATE
 )
@@ -439,7 +439,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RegistrarWebhook`(
+CREATE  PROCEDURE `RegistrarWebhook`(
     IN pMessageId VARCHAR(255),
     IN pPhoneNumber VARCHAR(50),
     IN pMessageBody TEXT,
@@ -473,7 +473,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_actualizar_linea_factura`(
+CREATE  PROCEDURE `sp_actualizar_linea_factura`(
     IN p_id_linea_factura INT,
     IN p_numero_linea INT,
     IN p_id_factura INT, 
@@ -547,7 +547,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_CLIENTES_NUEVOS_POR_MES`(IN p_meses INT)
+CREATE  PROCEDURE `SP_CLIENTES_NUEVOS_POR_MES`(IN p_meses INT)
 BEGIN
     DECLARE v_fecha_inicio DATE;
     
@@ -585,7 +585,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_contar_comprobantes_por_estado`(
+CREATE  PROCEDURE `sp_contar_comprobantes_por_estado`(
     IN p_empresa_id INT,
     IN p_estado VARCHAR(20)
 )
@@ -610,7 +610,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_crear_preferencias_usuario`(
+CREATE  PROCEDURE `sp_crear_preferencias_usuario`(
     IN p_id_usuario INT
 )
 BEGIN
@@ -822,7 +822,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_desactivar_producto`(
+CREATE  PROCEDURE `sp_desactivar_producto`(
 	IN p_id_producto INT
 )
 BEGIN
@@ -845,7 +845,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_ESTADISTICAS_DASHBOARD`()
+CREATE  PROCEDURE `SP_ESTADISTICAS_DASHBOARD`()
 BEGIN
     SELECT 
         
@@ -892,7 +892,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_get_lineas_factura`(
+CREATE  PROCEDURE `sp_get_lineas_factura`(
 	IN idFactura INT
 )
 BEGIN
@@ -917,7 +917,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_listar_comprobantes_pendientes`()
+CREATE  PROCEDURE `sp_listar_comprobantes_pendientes`()
 BEGIN
     SELECT 
         ce.id,
@@ -953,7 +953,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_listar_comprobantes_por_empresa`(
+CREATE  PROCEDURE `sp_listar_comprobantes_por_empresa`(
     IN p_empresa_id INT,
     IN p_page INT,
     IN p_size INT
@@ -997,7 +997,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_listar_comprobantes_por_estado`(
+CREATE  PROCEDURE `sp_listar_comprobantes_por_estado`(
     IN p_empresa_id INT,
     IN p_estado VARCHAR(20),
     IN p_page INT,
@@ -1043,7 +1043,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_listar_comprobantes_por_fechas`(
+CREATE  PROCEDURE `sp_listar_comprobantes_por_fechas`(
     IN p_empresa_id INT,
     IN p_fecha_inicio DATETIME,
     IN p_fecha_fin DATETIME,
@@ -1090,7 +1090,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_clientes_nuevos_por_mes`(IN p_meses INT)
+CREATE  PROCEDURE `sp_obtener_clientes_nuevos_por_mes`(IN p_meses INT)
 BEGIN
     DECLARE v_fecha_inicio DATE;
     SET v_fecha_inicio = DATE_SUB(CURDATE(), INTERVAL p_meses MONTH);
@@ -1120,7 +1120,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_comprobante_por_clave`(
+CREATE  PROCEDURE `sp_obtener_comprobante_por_clave`(
     IN p_clave_numerica VARCHAR(50)
 )
 BEGIN
@@ -1150,7 +1150,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_comprobante_por_factura`(
+CREATE  PROCEDURE `sp_obtener_comprobante_por_factura`(
     IN p_id_factura INT
 )
 BEGIN
@@ -1180,7 +1180,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_productos_mas_vendidos`(IN p_limite INT)
+CREATE  PROCEDURE `sp_obtener_productos_mas_vendidos`(IN p_limite INT)
 BEGIN
     SELECT 
         p.descripcion AS producto,
@@ -1209,7 +1209,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_obtener_ventas_por_mes`(IN p_meses INT)
+CREATE  PROCEDURE `sp_obtener_ventas_por_mes`(IN p_meses INT)
 BEGIN
     DECLARE v_fecha_inicio DATE;
     SET v_fecha_inicio = DATE_SUB(CURDATE(), INTERVAL p_meses MONTH);
@@ -1239,7 +1239,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_PRODUCTOS_MAS_VENDIDOS`(IN p_limite INT)
+CREATE  PROCEDURE `SP_PRODUCTOS_MAS_VENDIDOS`(IN p_limite INT)
 BEGIN
     
     SELECT 
@@ -1277,7 +1277,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `sp_resumen_comprobantes_empresa`(
+CREATE  PROCEDURE `sp_resumen_comprobantes_empresa`(
     IN p_empresa_id INT,
     IN p_fecha_desde DATE,
     IN p_fecha_hasta DATE
@@ -1320,7 +1320,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`m4n0`@`%` PROCEDURE `SP_VENTAS_POR_CLIENTE_TOP`(IN p_limite INT)
+CREATE  PROCEDURE `SP_VENTAS_POR_CLIENTE_TOP`(IN p_limite INT)
 BEGIN
     
     SELECT 
@@ -1357,4 +1357,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-08 11:40:56
+-- Dump completed on 2026-06-08 21:59:55
