@@ -93,7 +93,7 @@ services:
         for f in /routines/*.sql; do
           [ -e \"$$f\" ] || continue;
           echo \"Applying routine $$f\";
-          mysql -h mysql -u root facturas_monrachem < $$f || exit 1;
+          sed 's/DEFINER=[^ ]*//g' \"$$f\" | mysql -h mysql -u root facturas_monrachem || exit 1;
         done;
         echo 'Routines applied.'
       "
