@@ -24,7 +24,7 @@
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 /*!50032 DROP TRIGGER IF EXISTS trg_after_insert_usuario */;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`m4n0`@`%`*/ /*!50003 TRIGGER `trg_after_insert_usuario` AFTER INSERT ON `usuario` FOR EACH ROW BEGIN
+/*!50003 CREATE*/ /*!50017  /*!50003 TRIGGER `trg_after_insert_usuario` AFTER INSERT ON `usuario` FOR EACH ROW BEGIN
     
     IF NEW.activo = true THEN
         
@@ -46,7 +46,7 @@ DELIMITER ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 /*!50032 DROP TRIGGER IF EXISTS trg_after_update_usuario */;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`m4n0`@`%`*/ /*!50003 TRIGGER `trg_after_update_usuario` AFTER UPDATE ON `usuario` FOR EACH ROW BEGIN
+/*!50003 CREATE*/ /*!50017  /*!50003 TRIGGER `trg_after_update_usuario` AFTER UPDATE ON `usuario` FOR EACH ROW BEGIN
     DECLARE v_tiene_email_nuevo BOOLEAN;
     DECLARE v_tiene_telefono_nuevo BOOLEAN;
     DECLARE v_tiene_email_viejo BOOLEAN;
@@ -159,4 +159,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-08 11:40:59
+-- Dump completed on 2026-06-08 21:59:57
