@@ -75,6 +75,8 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
             // Construir URL con query parameter
             String url = haciendaApiUrl + "?identificacion=" + numeroLimpio;
             
+            .log.debug("URL construida para consulta: {}", url);
+
             // Realizar petición GET
             ResponseEntity<HaciendaConsultaDTO> response = restClient.get()
                 .uri(url)
