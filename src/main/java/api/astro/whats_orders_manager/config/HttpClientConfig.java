@@ -32,6 +32,8 @@ public class HttpClientConfig {
             .setConnectTimeout(Duration.ofSeconds(10))
             .setReadTimeout(Duration.ofSeconds(30))
             .requestFactory(this::clientHttpRequestFactory)
+            .defaultHeader("User-Agent", "curl/7.81.0")
+            .defaultHeader("Accept", "*/*")
             .build();
     }
     
