@@ -117,14 +117,14 @@ public class FacturaServiceImpl implements FacturaService {
         log.info("Factura guardada exitosamente con ID: {} y número: {}", 
                 facturaGuardada.getIdFactura(), facturaGuardada.getNumeroFactura());
         
-        // Incrementar el número de factura DESPUÉS de guardar exitosamente
-        try {
-            configuracionFacturacionService.incrementarNumeroFactura();
-            log.debug("Número de factura incrementado. Próximo número: {}", config.getNumeroActual() + 1);
-        } catch (Exception e) {
-            log.error("Error al incrementar número de factura: {}", e.getMessage());
-            // No lanzamos la excepción para no revertir la transacción de la factura
-            // El número se puede ajustar manualmente si es necesario
+        // Incrementar el contador solo al crear (no en updates)
+        if (factura.getIdFactura() == null) {
+            try {
+                configuracionFacturacionService.incrementarNumeroFactura();
+                log.debug("Contador de factura incrementado. Próximo: {}", config.getNumeroActual() + 1);
+            } catch (Exception e) {
+                log.error("Error al incrementar número de factura: {}", e.getMessage());
+            }
         }
         
         // ✅ NUEVO: Publicar evento de factura generada
