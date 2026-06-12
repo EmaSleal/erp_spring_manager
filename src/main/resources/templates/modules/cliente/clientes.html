@@ -106,7 +106,7 @@
                                             </span>
                                         </td>
                                         <td class="text-center">
-                                            <div class="btn-group" role="group">
+                                            <div  role="group">
                                                 <a th:href="@{/facturas(clienteId=${cliente.idCliente})}" class="btn btn-sm btn-success"
                                                 title="Agregar factura para este cliente"
                                                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
