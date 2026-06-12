@@ -2,33 +2,25 @@ package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
-import api.astro.whats_orders_manager.modules.seguridad.enums.Permiso;
-import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
-import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
-import api.astro.whats_orders_manager.modules.producto.model.Producto;
-import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
-import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.shared.util.ResponseUtil;
-import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -37,10 +29,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import org.springframework.format.annotation.DateTimeFormat;
-
 import java.math.BigDecimal;
-import java.sql.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -60,8 +49,6 @@ public class FacturaController {
     
     private final FacturaService facturaService;
     private final ClienteService clienteService;
-    private final ProductoService productoService;
-    private final LineaFacturaService lineaFacturaService;
     private final PagoService pagoService;
     private final EmailService emailService;
     private final MonedaService monedaService;
@@ -85,14 +72,8 @@ public class FacturaController {
                 page, size, sortBy, sortDir);
         
         try {
-            // Crear objeto Sort
-            Sort sort = sortDir.equalsIgnoreCase("asc") 
-                ? Sort.by(sortBy).ascending() 
-                : Sort.by(sortBy).descending();
-            
-            // Crear Pageable
-            Pageable pageable = PageRequest.of(page, size, sort);
-            
+            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir);
+
             // Obtener página de facturas
             Page<Factura> facturasPage = facturaService.findAll(pageable);
             
@@ -110,10 +91,7 @@ public class FacturaController {
             model.addAttribute("mediosPago", api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MedioPagoFE.values());
             model.addAttribute("monedas", api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE.values());
             
-            // Agregar rol del usuario para controlar permisos en la vista
-            agregarRolUsuario(model, authentication);
-            
-            log.info("Facturas cargadas: {} de {} total", 
+            log.info("Facturas cargadas: {} de {} total",
                     facturasPage.getContent().size(), facturasPage.getTotalElements());
             
             return "modules/facturacion/facturas";
@@ -150,17 +128,6 @@ public class FacturaController {
             log.error("Error al obtener factura: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
-    }
-
-    /**
-     * Muestra el formulario para crear una nueva factura
-     */
-    @GetMapping("/nuevo")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')")
-    public String nuevaFactura(Model model, Authentication authentication) {
-        log.info("Mostrando formulario de nueva factura");
-        model.addAttribute("factura", new Factura());
-        return "modules/facturacion/form";
     }
 
     /**
@@ -203,56 +170,17 @@ public class FacturaController {
             Authentication authentication
     ) {
         log.info("Intentando eliminar factura ID: {}", id);
-        
         try {
-            // Validar que la factura existe
-            if (!facturaService.existsById(id)) {
-                log.warn("La factura con ID {} no existe", id);
-                redirectAttributes.addFlashAttribute("error", 
-                    "La factura no existe");
-                return "redirect:/facturas";
-            }
-            
-            // Bloquear si tiene pagos registrados
-            if (!pagoService.findByFacturaId(id).isEmpty()) {
-                log.warn("La factura con ID {} tiene pagos registrados", id);
-                redirectAttributes.addFlashAttribute("error",
-                    "No se puede eliminar: la factura tiene pagos registrados");
-                return "redirect:/facturas";
-            }
-
-            // Bloquear si está entregada
-            Factura factura = facturaService.findById(id).get();
-            if (Boolean.TRUE.equals(factura.getEntregado())) {
-                log.warn("La factura con ID {} está marcada como entregada", id);
-                redirectAttributes.addFlashAttribute("error",
-                    "No se puede eliminar: la factura está marcada como entregada");
-                return "redirect:/facturas";
-            }
-
-            List<LineaFactura> lineas = factura.getLineas();
-            if (lineas != null && !lineas.isEmpty()) {
-                lineas.forEach(linea -> {
-                    try {
-                        lineaFacturaService.deleteById(linea.getIdLineaFactura());
-                        log.debug("Línea de factura eliminada ID: {}", linea.getIdLineaFactura());
-                    } catch (Exception e) {
-                        log.error("Error al eliminar línea de factura ID {}: {}", linea.getIdLineaFactura(), e.getMessage(), e);
-                    }
-                });
-            }
-
-            facturaService.deleteById(id);
-            redirectAttributes.addFlashAttribute("success", 
-                "Factura eliminada exitosamente");
+            facturaService.eliminarConValidacion(id);
+            redirectAttributes.addFlashAttribute("success", "Factura eliminada exitosamente");
             log.info("Factura eliminada exitosamente ID: {}", id);
-            
+        } catch (NoSuchElementException | IllegalStateException e) {
+            log.warn("No se pudo eliminar factura {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
         } catch (Exception e) {
             log.error("Error al eliminar factura: {}", e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("error", 
-                "Error al eliminar la factura");
+            redirectAttributes.addFlashAttribute("error", "Error al eliminar la factura");
         }
-        
         return "redirect:/facturas";
     }
 
@@ -291,31 +219,6 @@ public class FacturaController {
     }
 
     /**
-     * Muestra el formulario para crear una nueva factura (vista completa)
-     */
-    @GetMapping("/nueva")
-    public String mostrarFormularioNuevaFactura(Model model) {
-        log.info("Mostrando formulario completo para nueva factura");
-        
-        try {
-            Factura nuevaFactura = new Factura();
-            List<Cliente> clientes = clienteService.findAll();
-            List<Producto> productos = productoService.findAll();
-
-            model.addAttribute("factura", nuevaFactura);
-            model.addAttribute("clientes", clientes);
-            model.addAttribute("productos", productos);
-            
-            return "modules/facturacion/add-form";
-            
-        } catch (Exception e) {
-            log.error("Error al cargar formulario de nueva factura: {}", e.getMessage(), e);
-            model.addAttribute("error", "Error al cargar el formulario");
-            return "shared/error/error";
-        }
-    }
-
-    /**
      * Actualiza el estado de entrega de una factura (API REST)
      */
     @PutMapping("/actualizar-estado/{id}")
@@ -327,32 +230,16 @@ public class FacturaController {
             @RequestParam(name = "fechaEntrega", required = false) String fechaEntregaStr
     ) {
         log.info("Actualizando estado de factura ID: {} a entregado={}", id, entregado);
-
         try {
-            Optional<Factura> facturaOpt = facturaService.findById(id);
-
-            if (facturaOpt.isEmpty()) {
-                log.warn("Factura no encontrada con ID: {}", id);
-                return ResponseEntity.notFound().build();
-            }
-
-            Factura factura = facturaOpt.get();
-            factura.setEntregado(entregado);
-            if (descripcion != null) {
-                factura.setDescripcion(descripcion);
-            }
-            if (fechaEntregaStr != null) {
-                factura.setFechaEntrega(fechaEntregaStr.isBlank() ? null : Date.valueOf(fechaEntregaStr));
-            }
-            facturaService.save(factura);
-
+            facturaService.actualizarEstado(id, entregado, descripcion, fechaEntregaStr);
             log.info("Estado de factura {} actualizado exitosamente", id);
             return ResponseEntity.ok("Estado actualizado correctamente");
-
+        } catch (NoSuchElementException e) {
+            log.warn("Factura no encontrada con ID: {}", id);
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Error al actualizar estado de factura: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                .body("Error al actualizar el estado");
+            return ResponseEntity.internalServerError().body("Error al actualizar el estado");
         }
     }
 
@@ -496,69 +383,23 @@ public class FacturaController {
     }
 
     /**
-     * API REST: Obtiene las facturas pendientes de un cliente
-     * @param idCliente ID del cliente
-     * @return Lista de facturas con saldo pendiente
+     * API REST: Returns pending invoices for a given client.
+     *
+     * @param idCliente client ID
+     * @return list of invoices with a pending balance greater than zero
      */
     @GetMapping("/api/cliente/{idCliente}")
     @ResponseBody
-    public ResponseEntity<List<java.util.Map<String, Object>>> obtenerFacturasPorCliente(@PathVariable Integer idCliente) {
+    public ResponseEntity<List<FacturaPendienteDTO>> obtenerFacturasPorCliente(@PathVariable Integer idCliente) {
         try {
             log.info("Obteniendo facturas del cliente ID: {}", idCliente);
-            
-            // Obtener todas las facturas del cliente
-            Optional<List<Factura>> facturasOpt = facturaService.findByClienteId(idCliente);
-            
-            // Si no hay facturas, devolver lista vacía
-            if (facturasOpt.isEmpty()) {
-                log.info("Cliente {} no tiene facturas", idCliente);
-                return ResponseEntity.ok(List.of());
-            }
-            
-            List<Factura> facturas = facturasOpt.get();
-            
-            // Filtrar solo las que tienen saldo pendiente
-            List<java.util.Map<String, Object>> facturasDTO = facturas.stream()
-                .filter(f -> f.calcularSaldoPendiente().compareTo(BigDecimal.ZERO) > 0)
-                .map(f -> {
-                    java.util.Map<String, Object> dto = new java.util.HashMap<>();
-                    dto.put("idFactura", f.getIdFactura());
-                    dto.put("numeroFactura", f.getNumeroFactura());
-                    dto.put("totalFactura", f.getTotal());
-                    dto.put("saldoPendiente", f.calcularSaldoPendiente());
-                    return dto;
-                })
-                .toList();
-            
-            log.info("Encontradas {} facturas con saldo pendiente para cliente {}", facturasDTO.size(), idCliente);
-            return ResponseEntity.ok(facturasDTO);
-            
+            List<FacturaPendienteDTO> result = facturaService.obtenerPendientesPorCliente(idCliente);
+            log.info("Encontradas {} facturas con saldo pendiente para cliente {}", result.size(), idCliente);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error al obtener facturas del cliente {}: {}", idCliente, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
-    // ==================== MÉTODOS PRIVADOS AUXILIARES ====================
-
-
-    /**
-     * Agrega el rol del usuario al modelo para control de permisos en la vista
-     */
-    private void agregarRolUsuario(Model model, Authentication authentication) {
-        if (authentication != null && authentication.getAuthorities() != null) {
-            String userRole = authentication.getAuthorities().stream()
-                    .findFirst()
-                    .map(auth -> auth.getAuthority().replace("ROLE_", ""))
-                    .orElse("USER");
-            model.addAttribute("userRole", userRole);
-            log.debug("Rol de usuario agregado al modelo: {}", userRole);
-        }
-    }
-
-    /**
-     * Obtiene el símbolo de moneda desde la configuración de facturación
-     * @return Símbolo de moneda (₡, $, €, etc.)
-     */
-  
 }

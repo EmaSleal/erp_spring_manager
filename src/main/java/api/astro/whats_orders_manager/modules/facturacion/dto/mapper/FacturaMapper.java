@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.dto.mapper;
 
 import api.astro.whats_orders_manager.modules.facturacion.dto.ClienteSimpleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.LineaFacturaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -123,8 +124,21 @@ public class FacturaMapper {
     }
     
     /**
+     * Converts a Factura entity to a FacturaPendienteDTO projection.
+     *
+     * @param f Factura entity
+     * @return DTO with the four pending-balance fields, or null if the entity is null
+     */
+    public FacturaPendienteDTO toPendingDTO(Factura f) {
+        if (f == null) return null;
+        return new FacturaPendienteDTO(
+            f.getIdFactura(), f.getNumeroFactura(),
+            f.getTotal(), f.calcularSaldoPendiente());
+    }
+
+    /**
      * Convierte una lista de Pagos a DTOs usando PagoMapper.
-     * 
+     *
      * @param pagos Lista de pagos
      * @return Lista de DTOs
      */

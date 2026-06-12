@@ -1,12 +1,17 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent;
+import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -17,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
@@ -33,12 +39,21 @@ public class FacturaServiceImpl implements FacturaService {
     
     @Autowired
     private FacturaRepository facturaRepository;
-    
+
     @Autowired
     private ConfiguracionFacturacionService configuracionFacturacionService;
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private PagoService pagoService;
+
+    @Autowired
+    private LineaFacturaService lineaFacturaService;
+
+    @Autowired
+    private FacturaMapper facturaMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -230,9 +245,45 @@ public class FacturaServiceImpl implements FacturaService {
         }
     }
 
-	@Override
-	public Optional<List<Factura>> findByClienteId(Integer idCliente) {
-		log.debug("Buscando facturas por ID de cliente: {}", idCliente);
+    @Override
+    public Optional<List<Factura>> findByClienteId(Integer idCliente) {
+        log.debug("Buscando facturas por ID de cliente: {}", idCliente);
         return facturaRepository.findByClienteId(idCliente);
-	}
+    }
+
+    @Override
+    @Transactional
+    public void eliminarConValidacion(Integer id) {
+        Factura factura = facturaRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("La factura no existe"));
+        if (!pagoService.findByFacturaId(id).isEmpty())
+            throw new IllegalStateException("No se puede eliminar: la factura tiene pagos registrados");
+        if (Boolean.TRUE.equals(factura.getEntregado()))
+            throw new IllegalStateException("No se puede eliminar: la factura está marcada como entregada");
+        List<LineaFactura> lineas = factura.getLineas();
+        if (lineas != null) lineas.forEach(l -> lineaFacturaService.deleteById(l.getIdLineaFactura()));
+        facturaRepository.deleteById(id);
+        log.info("Factura eliminada con validación, ID: {}", id);
+    }
+
+    @Override
+    @Transactional
+    public void actualizarEstado(Integer id, Boolean entregado, String descripcion, String fechaEntregaStr) {
+        Factura factura = facturaRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Factura no encontrada"));
+        factura.setEntregado(entregado);
+        if (descripcion != null) factura.setDescripcion(descripcion);
+        if (fechaEntregaStr != null)
+            factura.setFechaEntrega(fechaEntregaStr.isBlank() ? null : java.sql.Date.valueOf(fechaEntregaStr));
+        facturaRepository.save(factura); // direct repo save — avoids side effects in service.save()
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FacturaPendienteDTO> obtenerPendientesPorCliente(Integer idCliente) {
+        return facturaRepository.findByClienteId(idCliente).orElseGet(List::of).stream()
+            .filter(f -> f.calcularSaldoPendiente().compareTo(BigDecimal.ZERO) > 0)
+            .map(facturaMapper::toPendingDTO)
+            .toList();
+    }
 }
