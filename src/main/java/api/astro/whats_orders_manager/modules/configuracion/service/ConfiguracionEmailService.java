@@ -60,4 +60,14 @@ public interface ConfiguracionEmailService {
      * @return Configuración actualizada
      */
     ConfiguracionEmail cambiarEstado(boolean activo);
+
+    /**
+     * Creates or updates the email configuration.
+     * Delegates to actualizarConfiguracion, which calls obtenerOCrearConfiguracion
+     * internally to insert a default row if none exists, then applies non-null fields.
+     *
+     * @param configuracion configuration to save or update
+     * @return persisted configuration
+     */
+    ConfiguracionEmail saveOrUpdate(ConfiguracionEmail configuracion);
 }

@@ -3,8 +3,8 @@ package api.astro.whats_orders_manager.modules.configuracion.service.impl;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +16,10 @@ import java.util.Optional;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ConfiguracionEmpresaServiceImpl implements ConfiguracionEmpresaService {
 
-    @Autowired
-    private ConfiguracionEmpresaRepository configuracionRepository;
+    private final ConfiguracionEmpresaRepository configuracionRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -154,16 +154,21 @@ public class ConfiguracionEmpresaServiceImpl implements ConfiguracionEmpresaServ
     @Transactional(readOnly = true)
     public boolean validarDatosFiscales() {
         log.debug("Validando datos fiscales de la empresa");
-        
+
         Optional<ConfiguracionEmpresa> configuracionOpt = obtenerConfiguracion();
-        
+
         if (configuracionOpt.isEmpty()) {
             return false;
         }
-        
+
         boolean valido = configuracionOpt.get().tieneDatosFiscalesCompletos();
         log.debug("Datos fiscales válidos: {}", valido);
-        
+
         return valido;
+    }
+
+    @Override
+    public ConfiguracionEmpresa saveOrUpdate(ConfiguracionEmpresa configuracion) {
+        return actualizarConfiguracion(configuracion);
     }
 }
