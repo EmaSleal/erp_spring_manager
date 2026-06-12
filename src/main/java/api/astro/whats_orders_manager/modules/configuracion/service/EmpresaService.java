@@ -101,8 +101,18 @@ public interface EmpresaService {
     Empresa eliminarFavicon(Integer empresaId, Integer usuarioId) throws IOException;
 
     /**
+     * Saves a new empresa or updates an existing one, and assigns the appropriate audit field.
+     * Decides create vs. update based on whether {@code empresa.getIdEmpresa()} is non-null and &gt; 0.
+     *
+     * @param empresa    the empresa to persist
+     * @param usuarioId  ID of the user performing the operation; may be {@code null} (audit fields are skipped)
+     * @return the persisted empresa
+     */
+    Empresa saveOrUpdate(Empresa empresa, Integer usuarioId);
+
+    /**
      * Verifica si existe una empresa activa en el sistema
-     * 
+     *
      * @return true si existe al menos una empresa activa
      */
     boolean existeEmpresaActiva();

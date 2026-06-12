@@ -11,11 +11,12 @@ import api.astro.whats_orders_manager.modules.configuracion.service.Configuracio
 import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
 import api.astro.whats_orders_manager.modules.configuracion.service.UbicacionService;
-import jakarta.servlet.http.HttpSession;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -25,6 +26,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Controlador para la gestión de Configuración del Sistema
@@ -40,23 +42,31 @@ import java.util.List;
 @Slf4j
 public class ConfiguracionController {
 
-    @Autowired
-    private EmpresaService empresaService;
-    
-    @Autowired
-    private ConfiguracionFacturacionService configuracionFacturacionService;
-
-    @Autowired(required = false)
-    private RecordatorioPagoScheduler recordatorioPagoScheduler;
-
-    @Autowired
-    private ConfiguracionNotificacionesService configuracionNotificacionesService;
+    private final EmpresaService empresaService;
+    private final ConfiguracionFacturacionService configuracionFacturacionService;
+    private final ConfiguracionNotificacionesService configuracionNotificacionesService;
+    private final EmailService emailService;
+    private final UbicacionService ubicacionService;
+    private final UsuarioService usuarioService;
+    private final RecordatorioPagoScheduler recordatorioPagoScheduler;
 
     @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private UbicacionService ubicacionService;
+    public ConfiguracionController(
+            EmpresaService empresaService,
+            ConfiguracionFacturacionService configuracionFacturacionService,
+            ConfiguracionNotificacionesService configuracionNotificacionesService,
+            EmailService emailService,
+            UbicacionService ubicacionService,
+            UsuarioService usuarioService,
+            Optional<RecordatorioPagoScheduler> recordatorioPagoScheduler) {
+        this.empresaService = empresaService;
+        this.configuracionFacturacionService = configuracionFacturacionService;
+        this.configuracionNotificacionesService = configuracionNotificacionesService;
+        this.emailService = emailService;
+        this.ubicacionService = ubicacionService;
+        this.usuarioService = usuarioService;
+        this.recordatorioPagoScheduler = recordatorioPagoScheduler.orElse(null);
+    }
 
     /**
      * Página principal de configuración
@@ -66,12 +76,9 @@ public class ConfiguracionController {
      */
     @GetMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_VER')")
-    public String index(@RequestParam(required = false) String tab, Model model, HttpSession session, org.springframework.security.core.Authentication authentication) {
+    public String index(@RequestParam(required = false) String tab, Model model, Authentication authentication) {
         log.info("Accediendo a página de configuración - Tab: {}", tab != null ? tab : "empresa");
-        
-        // Obtener datos del usuario logueado
-        agregarDatosUsuarioAlModelo(model, session);
-        
+
         // Obtener empresa principal
         Empresa empresa = empresaService.getEmpresaPrincipal();
         model.addAttribute("empresa", empresa);
@@ -104,11 +111,9 @@ public class ConfiguracionController {
      * GET /configuracion/empresa
      */
     @GetMapping("/empresa")
-    public String empresaTab(Model model, HttpSession session) {
+    public String empresaTab(Model model) {
         log.info("Accediendo a tab de configuración de empresa");
-        
-        agregarDatosUsuarioAlModelo(model, session);
-        
+
         Empresa empresa = empresaService.getEmpresaPrincipal();
         model.addAttribute("empresa", empresa);
         
@@ -139,35 +144,26 @@ public class ConfiguracionController {
     public String guardarEmpresa(
             @Valid @ModelAttribute("empresa") Empresa empresa,
             BindingResult result,
-            HttpSession session,
             RedirectAttributes redirectAttributes,
-            org.springframework.security.core.Authentication authentication) {
-        
+            Authentication authentication) {
+
         log.info("Guardando datos de empresa: {}", empresa.getNombreEmpresa());
-        
+
         if (result.hasErrors()) {
             log.error("Errores de validación al guardar empresa");
             redirectAttributes.addFlashAttribute("error", "Por favor corrige los errores en el formulario");
             redirectAttributes.addFlashAttribute("activeTab", "empresa");
             return "redirect:/configuracion";
         }
-        
+
         try {
-            // Obtener ID del usuario logueado
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
-            Integer usuarioId = (usuario != null) ? usuario.getIdUsuario() : null;
+            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
             
-            // Si la empresa ya existe (tiene ID), actualizar; sino, crear
-            Empresa empresaGuardada;
-            if (empresa.getIdEmpresa() != null && empresa.getIdEmpresa() > 0) {
-                empresaGuardada = empresaService.update(empresa, usuarioId);
-                log.info("Empresa actualizada exitosamente: ID {}", empresaGuardada.getIdEmpresa());
-                redirectAttributes.addFlashAttribute("success", "Datos de la empresa actualizados exitosamente");
-            } else {
-                empresaGuardada = empresaService.save(empresa, usuarioId);
-                log.info("Empresa creada exitosamente: ID {}", empresaGuardada.getIdEmpresa());
-                redirectAttributes.addFlashAttribute("success", "Empresa creada exitosamente");
-            }
+            Empresa empresaGuardada = empresaService.saveOrUpdate(empresa, usuarioId);
+            log.info("Empresa guardada exitosamente: ID {}", empresaGuardada.getIdEmpresa());
+            redirectAttributes.addFlashAttribute("success", "Datos de la empresa guardados exitosamente");
             
             redirectAttributes.addFlashAttribute("activeTab", "empresa");
             
@@ -193,21 +189,21 @@ public class ConfiguracionController {
     public String subirLogo(
             @RequestParam("logo") MultipartFile file,
             @RequestParam("empresaId") Integer empresaId,
-            HttpSession session,
-            RedirectAttributes redirectAttributes) {
-        
+            RedirectAttributes redirectAttributes,
+            Authentication authentication) {
+
         log.info("Subiendo logo para empresa ID: {}", empresaId);
-        
+
         if (file.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Por favor selecciona un archivo");
             redirectAttributes.addFlashAttribute("activeTab", "empresa");
             return "redirect:/configuracion";
         }
-        
+
         try {
-            // Obtener ID del usuario logueado
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
-            Integer usuarioId = (usuario != null) ? usuario.getIdUsuario() : null;
+            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
             
             empresaService.guardarLogo(empresaId, file, usuarioId);
             
@@ -241,21 +237,21 @@ public class ConfiguracionController {
     public String subirFavicon(
             @RequestParam("favicon") MultipartFile file,
             @RequestParam("empresaId") Integer empresaId,
-            HttpSession session,
-            RedirectAttributes redirectAttributes) {
-        
+            RedirectAttributes redirectAttributes,
+            Authentication authentication) {
+
         log.info("Subiendo favicon para empresa ID: {}", empresaId);
-        
+
         if (file.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Por favor selecciona un archivo");
             redirectAttributes.addFlashAttribute("activeTab", "empresa");
             return "redirect:/configuracion";
         }
-        
+
         try {
-            // Obtener ID del usuario logueado
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
-            Integer usuarioId = (usuario != null) ? usuario.getIdUsuario() : null;
+            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
             
             empresaService.guardarFavicon(empresaId, file, usuarioId);
             
@@ -288,15 +284,15 @@ public class ConfiguracionController {
     @PostMapping("/empresa/eliminar-logo")
     public String eliminarLogo(
             @RequestParam("empresaId") Integer empresaId,
-            HttpSession session,
-            RedirectAttributes redirectAttributes) {
-        
+            RedirectAttributes redirectAttributes,
+            Authentication authentication) {
+
         log.info("Eliminando logo de empresa ID: {}", empresaId);
-        
+
         try {
-            // Obtener ID del usuario logueado
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
-            Integer usuarioId = (usuario != null) ? usuario.getIdUsuario() : null;
+            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
             
             empresaService.eliminarLogo(empresaId, usuarioId);
             
@@ -321,15 +317,15 @@ public class ConfiguracionController {
     @PostMapping("/empresa/eliminar-favicon")
     public String eliminarFavicon(
             @RequestParam("empresaId") Integer empresaId,
-            HttpSession session,
-            RedirectAttributes redirectAttributes) {
-        
+            RedirectAttributes redirectAttributes,
+            Authentication authentication) {
+
         log.info("Eliminando favicon de empresa ID: {}", empresaId);
-        
+
         try {
-            // Obtener ID del usuario logueado
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
-            Integer usuarioId = (usuario != null) ? usuario.getIdUsuario() : null;
+            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
             
             empresaService.eliminarFavicon(empresaId, usuarioId);
             
@@ -354,11 +350,9 @@ public class ConfiguracionController {
      * GET /configuracion/facturacion
      */
     @GetMapping("/facturacion")
-    public String facturacionTab(Model model, HttpSession session) {
+    public String facturacionTab(Model model) {
         log.info("Accediendo a tab de configuración de facturación");
-        
-        agregarDatosUsuarioAlModelo(model, session);
-        
+
         // Obtener empresa principal
         Empresa empresa = empresaService.getEmpresaPrincipal();
         model.addAttribute("empresa", empresa);
@@ -385,7 +379,6 @@ public class ConfiguracionController {
     public String guardarConfiguracionFacturacion(
             @Valid @ModelAttribute("configuracion") ConfiguracionFacturacion configuracion,
             BindingResult result,
-            HttpSession session,
             RedirectAttributes redirectAttributes) {
         
         log.info("Guardando configuración de facturación: Serie={}, IGV={}%", 
@@ -402,17 +395,9 @@ public class ConfiguracionController {
             // Validar configuración
             configuracionFacturacionService.validarConfiguracion(configuracion);
             
-            // Si la configuración ya existe (tiene ID), actualizar; sino, crear
-            ConfiguracionFacturacion configuracionGuardada;
-            if (configuracion.getId() != null && configuracion.getId() > 0) {
-                configuracionGuardada = configuracionFacturacionService.update(configuracion);
-                log.info("Configuración de facturación actualizada exitosamente: ID {}", configuracionGuardada.getId());
-                redirectAttributes.addFlashAttribute("success", "Configuración de facturación actualizada exitosamente");
-            } else {
-                configuracionGuardada = configuracionFacturacionService.save(configuracion);
-                log.info("Configuración de facturación creada exitosamente: ID {}", configuracionGuardada.getId());
-                redirectAttributes.addFlashAttribute("success", "Configuración de facturación creada exitosamente");
-            }
+            ConfiguracionFacturacion configuracionGuardada = configuracionFacturacionService.saveOrUpdate(configuracion);
+            log.info("Configuración de facturación guardada exitosamente: ID {}", configuracionGuardada.getId());
+            redirectAttributes.addFlashAttribute("success", "Configuración de facturación guardada exitosamente");
             
             redirectAttributes.addFlashAttribute("activeTab", "facturacion");
             
@@ -460,12 +445,9 @@ public class ConfiguracionController {
      * GET /configuracion/notificaciones
      */
     @GetMapping("/notificaciones")
-    public String notificaciones(Model model, HttpSession session) {
+    public String notificaciones(Model model) {
         log.info("Accediendo a configuración de notificaciones");
-        
-        // Obtener datos del usuario
-        agregarDatosUsuarioAlModelo(model, session);
-        
+
         // Obtener o crear configuración de notificaciones
         ConfiguracionNotificaciones configuracion = configuracionNotificacionesService.getOrCreateConfiguracion();
         model.addAttribute("configuracionNotif", configuracion);
@@ -486,10 +468,10 @@ public class ConfiguracionController {
             @Valid @ModelAttribute("configuracionNotif") ConfiguracionNotificaciones configuracion,
             BindingResult result,
             RedirectAttributes redirectAttributes,
-            HttpSession session) {
-        
+            Authentication authentication) {
+
         log.info("Guardando configuración de notificaciones");
-        
+
         try {
             // Validar errores
             if (result.hasErrors()) {
@@ -498,20 +480,12 @@ public class ConfiguracionController {
                 redirectAttributes.addFlashAttribute("activeTab", "notificaciones");
                 return "redirect:/configuracion?tab=notificaciones";
             }
-            
-            // Obtener usuario actual
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
-            if (usuario != null) {
-                configuracion.setUpdateBy(usuario.getIdUsuario());
-            }
-            
-            // Guardar o actualizar
-            ConfiguracionNotificaciones guardada;
-            if (configuracion.getIdConfiguracion() != null) {
-                guardada = configuracionNotificacionesService.update(configuracion);
-            } else {
-                guardada = configuracionNotificacionesService.save(configuracion);
-            }
+
+            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
+
+            ConfiguracionNotificaciones guardada = configuracionNotificacionesService.saveOrUpdate(configuracion, usuarioId);
             
             log.info("✅ Configuración de notificaciones guardada exitosamente: {}", guardada);
             redirectAttributes.addFlashAttribute("success", "Configuración de notificaciones guardada correctamente");
@@ -555,31 +529,4 @@ public class ConfiguracionController {
         }
     }
 
-    // ==================== MÉTODOS PRIVADOS ====================
-
-    /**
-     * Agrega los datos del usuario logueado al modelo
-     * Esto es necesario para el navbar
-     */
-    private void agregarDatosUsuarioAlModelo(Model model, HttpSession session) {
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-        
-        if (usuario != null) {
-            model.addAttribute("userName", usuario.getNombre());
-            model.addAttribute("userRole", usuario.getRol()); // rol es String
-            
-            // Generar iniciales para avatar
-            String[] nombres = usuario.getNombre().split(" ");
-            String iniciales = nombres.length >= 2 
-                ? (nombres[0].substring(0, 1) + nombres[1].substring(0, 1)).toUpperCase()
-                : usuario.getNombre().substring(0, Math.min(2, usuario.getNombre().length())).toUpperCase();
-            
-            model.addAttribute("userInitials", iniciales);
-            
-            // Avatar si existe
-            if (usuario.getAvatar() != null && !usuario.getAvatar().isEmpty()) {
-                model.addAttribute("userAvatar", usuario.getAvatar());
-            }
-        }
-    }
 }

@@ -1,7 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.service;
 
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionNotificaciones;
-import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
@@ -13,7 +12,6 @@ import java.util.Optional;
  * Servicio para gestionar la configuración de notificaciones del sistema.
  * ============================================================================
  */
-@Service
 public interface ConfiguracionNotificacionesService {
 
     /**
@@ -48,8 +46,18 @@ public interface ConfiguracionNotificacionesService {
     ConfiguracionNotificaciones update(ConfiguracionNotificaciones configuracion);
 
     /**
+     * Saves a new configuration or updates the existing one, and assigns {@code updateBy} audit field.
+     * Decides create vs. update based on whether {@code configuracion.getIdConfiguracion()} is non-null.
+     *
+     * @param configuracion the configuration to persist
+     * @param usuarioId     ID of the user performing the operation; may be {@code null} (audit field is skipped)
+     * @return the persisted configuration
+     */
+    ConfiguracionNotificaciones saveOrUpdate(ConfiguracionNotificaciones configuracion, Integer usuarioId);
+
+    /**
      * Verifica si las notificaciones por email están habilitadas
-     * 
+     *
      * @return true si están habilitadas
      */
     boolean notificacionesHabilitadas();
