@@ -67,12 +67,12 @@
                             <table class="table table-hover align-middle mb-0 data-table">
                                 <thead>
                                     <tr>
-                                        <th class="text-center" style="width: 80px;">ID</th>
-                                        <th>Nombre / Tipo</th>
-                                        <th class="text-center d-none d-lg-table-cell" style="width: 150px;">
+                                        <th class="text-center" style="width: 10%">ID</th>
+                                        <th style="width: 33%;">Nombre / Tipo</th>
+                                        <th class="text-center d-lg-table-cell" style="width: 33%;">
                                             <i class="bi bi-file-earmark-text me-1"></i>FE
                                         </th>
-                                        <th class="text-center" style="width: 200px;">Acciones</th>
+                                        <th class="text-center" style="width: 33%;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -91,7 +91,7 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="text-center d-none d-lg-table-cell">
+                                        <td class="text-center  d-lg-table-cell">
                                             <span th:if="${cliente.requiereFacturaElectronica == true}" 
                                                   class="badge bg-success"
                                                   data-bs-toggle="tooltip" 
@@ -112,18 +112,19 @@
                                                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
                                                     <i class="fas fa-file-invoice me-1"></i> Agregar Factura
                                                 </a>
-                                                <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
-                                                        class="btn btn-sm btn-warning"
-                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
-                                                    <i class="fas fa-edit"></i> Editar
-                                                </button>
                                                 <a th:href="@{/clientes/eliminar/{id}(id=${cliente.idCliente})}"
                                                    onclick="return confirm('¿Seguro que deseas eliminar este cliente?');"
                                                    class="btn btn-sm btn-danger"
                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_ELIMINAR')">
                                                     <i class="fas fa-trash"></i> Eliminar
                                                 </a>
-                                            </div>
+                                                <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
+                                                        class="btn btn-sm btn-warning"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </button>
+                                                
+                                            </div> 
                                         </td>
                                     </tr>
                                 </tbody>
