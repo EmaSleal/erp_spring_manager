@@ -107,6 +107,11 @@
                                         </td>
                                         <td class="text-center">
                                             <div class="btn-group" role="group">
+                                                <a th:href="@{/facturas(clienteId=${cliente.idCliente})}" class="btn btn-sm btn-success"
+                                                title="Agregar factura para este cliente"
+                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
+                                                    <i class="fas fa-file-invoice me-1"></i> Agregar Factura
+                                                </a>
                                                 <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
                                                         class="btn btn-sm btn-warning"
                                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
