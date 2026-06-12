@@ -356,6 +356,13 @@
                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
                                     <i class="fas fa-edit me-1"></i> Editar
                                 </a>
+                                <a th:href="@{/facturas/pdf/{id}(id=${factura.idFactura})}"
+                                   class="btn btn-sm btn-secondary"
+                                   target="_blank"
+                                   title="Descargar PDF"
+                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
+                                    <i class="fas fa-file-pdf me-1"></i> Descargar
+                                </a>
                             </div>
                         </div>
                     </div>
