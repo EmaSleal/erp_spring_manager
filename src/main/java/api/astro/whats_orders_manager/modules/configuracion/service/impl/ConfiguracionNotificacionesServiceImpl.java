@@ -120,6 +120,19 @@ public class ConfiguracionNotificacionesServiceImpl implements ConfiguracionNoti
     }
 
     @Override
+    @Transactional
+    @CacheEvict(value = "configuracionNotificaciones", allEntries = true)
+    public ConfiguracionNotificaciones saveOrUpdate(ConfiguracionNotificaciones configuracion, Integer usuarioId) {
+        if (usuarioId != null) {
+            configuracion.setUpdateBy(usuarioId);
+        }
+        if (configuracion.getIdConfiguracion() != null) {
+            return update(configuracion);
+        }
+        return save(configuracion);
+    }
+
+    @Override
     public boolean notificacionesHabilitadas() {
         ConfiguracionNotificaciones config = getOrCreateConfiguracion();
         return config.notificacionesHabilitadas();

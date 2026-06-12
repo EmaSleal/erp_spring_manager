@@ -114,7 +114,11 @@ public class EmpresaServiceImpl implements EmpresaService {
         }
         
         empresa.setActivo(true);
-        
+
+        if (usuarioId != null) {
+            empresa.setCreateBy(usuarioId);
+        }
+
         return empresaRepository.save(empresa);
     }
 
@@ -143,7 +147,11 @@ public class EmpresaServiceImpl implements EmpresaService {
         if (empresa.getFavicon() == null) {
             empresa.setFavicon(empresaExistente.getFavicon());
         }
-        
+
+        if (usuarioId != null) {
+            empresa.setUpdateBy(usuarioId);
+        }
+
         return empresaRepository.save(empresa);
     }
 
@@ -227,6 +235,16 @@ public class EmpresaServiceImpl implements EmpresaService {
         }
         
         return empresa;
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "empresa", allEntries = true)
+    public Empresa saveOrUpdate(Empresa empresa, Integer usuarioId) {
+        if (empresa.getIdEmpresa() != null && empresa.getIdEmpresa() > 0) {
+            return update(empresa, usuarioId);
+        }
+        return save(empresa, usuarioId);
     }
 
     @Override
