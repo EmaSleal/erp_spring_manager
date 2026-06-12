@@ -132,11 +132,20 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             doc.add(new Paragraph("\n"));
 
-            // Totals block
+            // Totals block — fallback to sum of lines if factura totals are null
+            BigDecimal subtotalPdf = factura.getSubtotal();
+            if (subtotalPdf == null && lineas != null) {
+                subtotalPdf = lineas.stream()
+                        .map(l -> l.getSubtotal() != null ? l.getSubtotal() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+            BigDecimal igvPdf = factura.getImpuesto() != null ? factura.getImpuesto() : BigDecimal.ZERO;
+            BigDecimal totalPdf = factura.getTotal() != null ? factura.getTotal() : (subtotalPdf != null ? subtotalPdf.add(igvPdf) : BigDecimal.ZERO);
+
             Table totals = new Table(UnitValue.createPercentArray(new float[]{3, 1})).useAllAvailableWidth();
-            addTotalRow(totals, "Subtotal:", formatDecimal(factura.getSubtotal()));
-            addTotalRow(totals, "Impuesto (IVA):", formatDecimal(factura.getImpuesto()));
-            addTotalRow(totals, "TOTAL:", formatDecimal(factura.getTotal()));
+            addTotalRow(totals, "Subtotal:", formatDecimal(subtotalPdf));
+            addTotalRow(totals, "Impuesto (IVA):", formatDecimal(igvPdf));
+            addTotalRow(totals, "TOTAL:", formatDecimal(totalPdf));
             doc.add(totals);
 
             doc.add(new Paragraph("\n"));
