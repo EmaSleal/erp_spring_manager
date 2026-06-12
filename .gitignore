@@ -77,3 +77,4 @@ build_manifest_tree.py
 database/export/*
 !database/export/.gitkeep
 
+.atl/
