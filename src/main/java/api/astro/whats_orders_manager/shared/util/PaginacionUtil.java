@@ -2,6 +2,9 @@ package api.astro.whats_orders_manager.shared.util;
 
 import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.ui.Model;
 
 import java.util.List;
@@ -54,6 +57,16 @@ public class PaginacionUtil {
                                    totalElementos, totalPaginas);
     }
     
+    /**
+     * Construye un Pageable a partir de parámetros de request
+     */
+    public static Pageable buildPageable(int page, int size, String sortBy, String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        return PageRequest.of(page, size, sort);
+    }
+
     /**
      * Agrega atributos de paginación al modelo de Thymeleaf
      * Útil para mantener consistencia en las vistas
