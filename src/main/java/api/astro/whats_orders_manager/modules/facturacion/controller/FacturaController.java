@@ -10,7 +10,6 @@ import api.astro.whats_orders_manager.modules.seguridad.enums.Permiso;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
-import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
@@ -229,6 +228,18 @@ public class FacturaController {
                 redirectAttributes.addFlashAttribute("error",
                     "No se puede eliminar: la factura está marcada como entregada");
                 return "redirect:/facturas";
+            }
+
+            List<LineaFactura> lineas = factura.getLineas();
+            if (lineas != null && !lineas.isEmpty()) {
+                lineas.forEach(linea -> {
+                    try {
+                        lineaFacturaService.deleteById(linea.getIdLineaFactura());
+                        log.debug("Línea de factura eliminada ID: {}", linea.getIdLineaFactura());
+                    } catch (Exception e) {
+                        log.error("Error al eliminar línea de factura ID {}: {}", linea.getIdLineaFactura(), e.getMessage(), e);
+                    }
+                });
             }
 
             facturaService.deleteById(id);
