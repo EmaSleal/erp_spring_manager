@@ -1,20 +1,20 @@
 package api.astro.whats_orders_manager.modules.configuracion.controller;
 
 import api.astro.whats_orders_manager.modules.configuracion.dto.CabysBusquedaDTO;
-import api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaConsultaDTO;
-import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.dto.ConfiguracionEmpresaDTO;
+import api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaConsultaDTO;
+import api.astro.whats_orders_manager.modules.configuracion.dto.mapper.ConfiguracionEmpresaMapper;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.configuracion.service.HaciendaApiService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * ============================================================================
@@ -23,7 +23,7 @@ import java.util.Optional;
  * ============================================================================
  * Controlador REST para gestión de configuración de empresa
  * Endpoints protegidos por autenticación
- * 
+ *
  * @author Astro Dev Team
  * @version 1.0
  * @since Sprint 4 - Fase 1.5
@@ -33,17 +33,16 @@ import java.util.Optional;
 @RequestMapping("/api/configuracion/empresa")
 @Slf4j
 @PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor
 public class ConfiguracionEmpresaRestController {
 
-    @Autowired
-    private ConfiguracionEmpresaService configuracionEmpresaService;
-
-    @Autowired
-    private HaciendaApiService haciendaConsultaService;
+    private final ConfiguracionEmpresaService configuracionEmpresaService;
+    private final HaciendaApiService haciendaConsultaService;
+    private final ConfiguracionEmpresaMapper mapper;
 
     /**
      * Busca códigos CABYS por descripción o palabra clave
-     * 
+     *
      * GET /api/configuracion/empresa/hacienda/cabys/buscar?q={termino}&top={cantidad}
      */
     @GetMapping("/hacienda/cabys/buscar")
@@ -52,9 +51,9 @@ public class ConfiguracionEmpresaRestController {
             @RequestParam(value = "top", defaultValue = "10") Integer top) {
         try {
             log.info("GET /api/configuracion/empresa/hacienda/cabys/buscar?q={}&top={}", termino, top);
-            
+
             CabysBusquedaDTO resultado = haciendaConsultaService.buscarCabys(termino, top);
-            
+
             if (resultado.getExitosa() && resultado.tieneResultados()) {
                 return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -64,11 +63,11 @@ public class ConfiguracionEmpresaRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of(
                         "success", false,
-                        "message", resultado.getMensajeError() != null ? 
+                        "message", resultado.getMensajeError() != null ?
                             resultado.getMensajeError() : "No se encontraron resultados"
                     ));
             }
-            
+
         } catch (Exception e) {
             log.error("Error al buscar códigos CABYS", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -81,17 +80,17 @@ public class ConfiguracionEmpresaRestController {
 
     /**
      * Consulta datos de un contribuyente en la API de Hacienda Costa Rica
-     * 
+     *
      * GET /api/configuracion/empresa/hacienda/consultar/{numeroIdentificacion}
      */
     @GetMapping("/hacienda/consultar/{numeroIdentificacion}")
     public ResponseEntity<?> consultarHacienda(@PathVariable String numeroIdentificacion) {
         try {
-            log.info("GET /api/configuracion/empresa/hacienda/consultar/{} - Consultando API Hacienda", 
+            log.info("GET /api/configuracion/empresa/hacienda/consultar/{} - Consultando API Hacienda",
                 numeroIdentificacion);
-            
+
             HaciendaConsultaDTO resultado = haciendaConsultaService.consultarContribuyente(numeroIdentificacion);
-            
+
             log.info("Resultado de consulta Hacienda: {}", resultado);
 
             if (resultado.getExitosa()) {
@@ -106,7 +105,7 @@ public class ConfiguracionEmpresaRestController {
                         "message", resultado.getMensajeError()
                     ));
             }
-            
+
         } catch (Exception e) {
             log.error("Error al consultar API de Hacienda", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -119,22 +118,21 @@ public class ConfiguracionEmpresaRestController {
 
     /**
      * Obtiene la configuración de la empresa
-     * 
+     *
      * GET /api/configuracion/empresa
      */
     @GetMapping
     public ResponseEntity<?> obtenerConfiguracion() {
         try {
             log.info("GET /api/configuracion/empresa - Obteniendo configuración de empresa");
-            
+
             ConfiguracionEmpresa configuracion = configuracionEmpresaService.obtenerOCrearConfiguracion();
-            ConfiguracionEmpresaDTO dto = convertirADTO(configuracion);
-            
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "data", dto
+                    "data", mapper.toDTO(configuracion)
             ));
-            
+
         } catch (Exception e) {
             log.error("Error al obtener configuración de empresa", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -147,31 +145,25 @@ public class ConfiguracionEmpresaRestController {
 
     /**
      * Crea una nueva configuración de empresa
-     * 
+     *
      * POST /api/configuracion/empresa
      */
     @PostMapping
     public ResponseEntity<?> crearConfiguracion(@RequestBody ConfiguracionEmpresaDTO dto) {
         try {
             log.info("POST /api/configuracion/empresa - Creando configuración de empresa");
-            
-            ConfiguracionEmpresa configuracion = convertirAEntidad(dto);
-            ConfiguracionEmpresa guardada;
-            
-            if (configuracion.getIdConfiguracion() != null && configuracion.getIdConfiguracion() > 0) {
-                guardada = configuracionEmpresaService.actualizarConfiguracion(configuracion);
-            } else {
-                guardada = configuracionEmpresaService.guardarConfiguracion(configuracion);
-            }
-            
+
+            ConfiguracionEmpresa configuracion = mapper.toEntity(dto);
+            ConfiguracionEmpresa guardada = configuracionEmpresaService.saveOrUpdate(configuracion);
+
             log.info("Configuración de empresa guardada: ID {}", guardada.getIdConfiguracion());
-            
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Configuración guardada exitosamente",
-                    "data", convertirADTO(guardada)
+                    "data", mapper.toDTO(guardada)
             ));
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Error de validación al crear configuración: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -191,31 +183,25 @@ public class ConfiguracionEmpresaRestController {
 
     /**
      * Actualiza la configuración de empresa existente
-     * 
+     *
      * PUT /api/configuracion/empresa
      */
     @PutMapping
     public ResponseEntity<?> actualizarConfiguracion(@RequestBody ConfiguracionEmpresaDTO dto) {
         try {
             log.info("PUT /api/configuracion/empresa - Actualizando configuración de empresa");
-            
-            ConfiguracionEmpresa configuracion = convertirAEntidad(dto);
-            ConfiguracionEmpresa guardada;
-            
-            if (configuracion.getIdConfiguracion() != null && configuracion.getIdConfiguracion() > 0) {
-                guardada = configuracionEmpresaService.actualizarConfiguracion(configuracion);
-            } else {
-                guardada = configuracionEmpresaService.guardarConfiguracion(configuracion);
-            }
-            
+
+            ConfiguracionEmpresa configuracion = mapper.toEntity(dto);
+            ConfiguracionEmpresa guardada = configuracionEmpresaService.saveOrUpdate(configuracion);
+
             log.info("Configuración de empresa actualizada: ID {}", guardada.getIdConfiguracion());
-            
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Configuración actualizada exitosamente",
-                    "data", convertirADTO(guardada)
+                    "data", mapper.toDTO(guardada)
             ));
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Error de validación al actualizar configuración: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -235,22 +221,22 @@ public class ConfiguracionEmpresaRestController {
 
     /**
      * Valida los datos fiscales de la empresa
-     * 
+     *
      * GET /api/configuracion/empresa/validar-fiscales
      */
     @GetMapping("/validar-fiscales")
     public ResponseEntity<?> validarDatosFiscales() {
         try {
             log.info("GET /api/configuracion/empresa/validar-fiscales");
-            
+
             boolean validos = configuracionEmpresaService.validarDatosFiscales();
-            
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "validos", validos,
                     "message", validos ? "Datos fiscales completos" : "Faltan datos fiscales"
             ));
-            
+
         } catch (Exception e) {
             log.error("Error al validar datos fiscales", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -259,87 +245,5 @@ public class ConfiguracionEmpresaRestController {
                             "message", "Error al validar: " + e.getMessage()
                     ));
         }
-    }
-
-    // ==================== MÉTODOS PRIVADOS ====================
-
-    /**
-     * Convierte ConfiguracionEmpresa a DTO
-     */
-    private ConfiguracionEmpresaDTO convertirADTO(ConfiguracionEmpresa entidad) {
-        ConfiguracionEmpresaDTO dto = new ConfiguracionEmpresaDTO();
-        
-        dto.setIdConfiguracion(entidad.getIdConfiguracion());
-        dto.setRazonSocial(entidad.getRazonSocial());
-        dto.setNombreComercial(entidad.getNombreComercial());
-        dto.setRfc(entidad.getRfc());
-        dto.setRegimenFiscal(entidad.getRegimenFiscal());
-        dto.setDireccionCalle(entidad.getDireccionCalle());
-        dto.setDireccionNumero(entidad.getDireccionNumero());
-        dto.setDireccionColonia(entidad.getDireccionColonia());
-        dto.setDireccionCiudad(entidad.getDireccionCiudad());
-        dto.setDireccionEstado(entidad.getDireccionEstado());
-        dto.setDireccionCodigoPostal(entidad.getDireccionCodigoPostal());
-        dto.setDireccionPais(entidad.getDireccionPais());
-        dto.setTelefono(entidad.getTelefono());
-        dto.setEmail(entidad.getEmail());
-        dto.setSitioWeb(entidad.getSitioWeb());
-        dto.setLogoUrl(entidad.getLogoUrl());
-        dto.setColorPrimario(entidad.getColorPrimario());
-        dto.setColorSecundario(entidad.getColorSecundario());
-        
-        // Campos calculados
-        dto.setDireccionCompleta(entidad.getDireccionCompleta());
-        dto.setTieneLogoConfigurado(entidad.tieneLogoConfigurado());
-        dto.setDatosFiscalesCompletos(entidad.tieneDatosFiscalesCompletos());
-
-        // Facturación Electrónica Costa Rica
-        dto.setNumeroIdentificacion(entidad.getNumeroIdentificacion());
-        dto.setTipoIdentificacion(entidad.getTipoIdentificacion());
-        dto.setCodigoProvincia(entidad.getCodigoProvincia());
-        dto.setCanton(entidad.getCanton());
-        dto.setDistrito(entidad.getDistrito());
-        dto.setBarrio(entidad.getBarrio());
-        dto.setOtrasSenas(entidad.getOtrasSenas());
-        dto.setCodigoActividad(entidad.getCodigoActividad());
-        dto.setNombreComercialFe(entidad.getNombreComercialFe());
-
-        return dto;
-    }
-
-    /**
-     * Convierte DTO a ConfiguracionEmpresa
-     */
-    private ConfiguracionEmpresa convertirAEntidad(ConfiguracionEmpresaDTO dto) {
-        return ConfiguracionEmpresa.builder()
-                .idConfiguracion(dto.getIdConfiguracion())
-                .razonSocial(dto.getRazonSocial())
-                .nombreComercial(dto.getNombreComercial())
-                .rfc(dto.getRfc())
-                .regimenFiscal(dto.getRegimenFiscal())
-                .direccionCalle(dto.getDireccionCalle())
-                .direccionNumero(dto.getDireccionNumero())
-                .direccionColonia(dto.getDireccionColonia())
-                .direccionCiudad(dto.getDireccionCiudad())
-                .direccionEstado(dto.getDireccionEstado())
-                .direccionCodigoPostal(dto.getDireccionCodigoPostal())
-                .direccionPais(dto.getDireccionPais())
-                .telefono(dto.getTelefono())
-                .email(dto.getEmail())
-                .sitioWeb(dto.getSitioWeb())
-                .logoUrl(dto.getLogoUrl())
-                .colorPrimario(dto.getColorPrimario())
-                .colorSecundario(dto.getColorSecundario())
-                // Facturación Electrónica Costa Rica
-                .numeroIdentificacion(dto.getNumeroIdentificacion())
-                .tipoIdentificacion(dto.getTipoIdentificacion())
-                .codigoProvincia(dto.getCodigoProvincia())
-                .canton(dto.getCanton())
-                .distrito(dto.getDistrito())
-                .barrio(dto.getBarrio())
-                .otrasSenas(dto.getOtrasSenas())
-                .codigoActividad(dto.getCodigoActividad())
-                .nombreComercialFe(dto.getNombreComercialFe())
-                .build();
     }
 }
