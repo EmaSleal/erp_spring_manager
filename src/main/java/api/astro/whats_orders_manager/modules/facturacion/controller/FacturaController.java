@@ -214,11 +214,20 @@ public class FacturaController {
                 return "redirect:/facturas";
             }
             
-            // Validar que no tenga líneas asociadas
-            if (lineaFacturaService.existsByFacturaId(id)) {
-                log.warn("La factura con ID {} tiene líneas asociadas", id);
-                redirectAttributes.addFlashAttribute("error", 
-                    "No se puede eliminar la factura porque tiene líneas asociadas");
+            // Bloquear si tiene pagos registrados
+            if (!pagoService.findByFacturaId(id).isEmpty()) {
+                log.warn("La factura con ID {} tiene pagos registrados", id);
+                redirectAttributes.addFlashAttribute("error",
+                    "No se puede eliminar: la factura tiene pagos registrados");
+                return "redirect:/facturas";
+            }
+
+            // Bloquear si está entregada
+            Factura factura = facturaService.findById(id).get();
+            if (Boolean.TRUE.equals(factura.getEntregado())) {
+                log.warn("La factura con ID {} está marcada como entregada", id);
+                redirectAttributes.addFlashAttribute("error",
+                    "No se puede eliminar: la factura está marcada como entregada");
                 return "redirect:/facturas";
             }
 
