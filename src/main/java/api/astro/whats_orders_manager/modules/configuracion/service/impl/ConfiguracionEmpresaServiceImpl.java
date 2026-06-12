@@ -135,7 +135,36 @@ public class ConfiguracionEmpresaServiceImpl implements ConfiguracionEmpresaServ
         if (configuracion.getColorSecundario() != null) {
             configuracionExistente.setColorSecundario(configuracion.getColorSecundario());
         }
-        
+
+        // Electronic invoicing — Costa Rica
+        if (configuracion.getNumeroIdentificacion() != null) {
+            configuracionExistente.setNumeroIdentificacion(configuracion.getNumeroIdentificacion());
+        }
+        if (configuracion.getTipoIdentificacion() != null) {
+            configuracionExistente.setTipoIdentificacion(configuracion.getTipoIdentificacion());
+        }
+        if (configuracion.getCodigoProvincia() != null) {
+            configuracionExistente.setCodigoProvincia(configuracion.getCodigoProvincia());
+        }
+        if (configuracion.getCanton() != null) {
+            configuracionExistente.setCanton(configuracion.getCanton());
+        }
+        if (configuracion.getDistrito() != null) {
+            configuracionExistente.setDistrito(configuracion.getDistrito());
+        }
+        if (configuracion.getBarrio() != null) {
+            configuracionExistente.setBarrio(configuracion.getBarrio());
+        }
+        if (configuracion.getOtrasSenas() != null) {
+            configuracionExistente.setOtrasSenas(configuracion.getOtrasSenas());
+        }
+        if (configuracion.getCodigoActividad() != null) {
+            configuracionExistente.setCodigoActividad(configuracion.getCodigoActividad());
+        }
+        if (configuracion.getNombreComercialFe() != null) {
+            configuracionExistente.setNombreComercialFe(configuracion.getNombreComercialFe());
+        }
+
         ConfiguracionEmpresa actualizada = configuracionRepository.save(configuracionExistente);
         log.info("Configuración de empresa actualizada correctamente");
         
