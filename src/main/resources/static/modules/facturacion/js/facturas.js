@@ -411,7 +411,7 @@ function editFactura(idFactura) {
 
 function confirmarEliminacion(event) {
     event.preventDefault();
-    const url = event.target.href;
+    const url = event.currentTarget.href;
     
     Swal.fire({
         title: '¿Eliminar factura?',

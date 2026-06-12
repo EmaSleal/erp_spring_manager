@@ -9,9 +9,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,9 +21,14 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class ClienteServiceImpl implements ClienteService {
-    
+
+    private static final String PASSWORD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int PASSWORD_LENGTH = 10;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final ClienteRepository clienteRepository;
     private final UsuarioService usuarioService;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public List<Cliente> findAll() { 
@@ -117,11 +124,20 @@ public class ClienteServiceImpl implements ClienteService {
     private Usuario crearNuevoUsuario(Cliente cliente) {
         Usuario nuevoUsuario = new Usuario();
         nuevoUsuario.setNombre(cliente.getNombre());
-        nuevoUsuario.setPassword("12345"); // TODO: Implementar generación segura de contraseña
+        nuevoUsuario.setPassword(passwordEncoder.encode(generateRandomPassword()));
         nuevoUsuario.setRol("CLIENTE");
         nuevoUsuario.setTelefono(cliente.getUsuario().getTelefono());
-        
+        nuevoUsuario.setRequireCambioPassword(true);
+
         return usuarioService.save(nuevoUsuario);
+    }
+
+    private String generateRandomPassword() {
+        StringBuilder password = new StringBuilder(PASSWORD_LENGTH);
+        for (int i = 0; i < PASSWORD_LENGTH; i++) {
+            password.append(PASSWORD_CHARS.charAt(SECURE_RANDOM.nextInt(PASSWORD_CHARS.length())));
+        }
+        return password.toString();
     }
 
     /**
