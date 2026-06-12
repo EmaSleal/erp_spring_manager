@@ -545,25 +545,33 @@ function mostrarPaso2() {
 
     addLinea(); // Agrega al menos una línea por defecto
 
-    // ✅ NUEVO: Obtener campos adicionales
     const descripcion = document.getElementById("descripcion");
     const entregado = document.getElementById("entregado");
     const serie = document.getElementById("serie");
     const numeroFactura = document.getElementById("numeroFactura");
     const fechaPago = document.getElementById("fechaPago");
+    const condicionVentaFE = document.getElementById("condicionVentaFE");
+    const medioPagoFE = document.getElementById("medioPagoFE");
+    const monedaFE = document.getElementById("monedaFE");
+    const tipoCambio = document.getElementById("tipoCambio");
+    const plazoCredito = document.getElementById("plazoCredito");
 
-    // Construir el objeto Factura con nuevos campos
     const factura = {
         cliente: {
             idCliente: parseInt(selectCliente.value)
         },
         fechaEntrega: fechaEntrega.value,
-        fechaPago: fechaPago.value || null, // ✅ NUEVO
-        serie: serie.value || null, // ✅ NUEVO
-        numeroFactura: numeroFactura.value || null, // ✅ NUEVO
+        fechaPago: fechaPago.value || null,
+        serie: serie.value || null,
+        numeroFactura: numeroFactura.value || null,
         descripcion: descripcion.value,
         tipoFactura: tipoFactura.value,
-        entregado: entregado.checked
+        entregado: entregado.checked,
+        condicionVentaFE: condicionVentaFE?.value || null,
+        medioPagoFE: medioPagoFE?.value || null,
+        monedaFE: monedaFE?.value || null,
+        tipoCambio: tipoCambio?.value ? parseFloat(tipoCambio.value) : null,
+        plazoCredito: plazoCredito?.value ? parseInt(plazoCredito.value) : null
     };
 
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
@@ -704,7 +712,13 @@ async function guardarLineas() {
             
             console.log('Actualizando estado a:', estadoEntregado);
             
-            return fetch(`/facturas/actualizar-estado/${facturaId}?entregado=${estadoEntregado}`, {
+            const descInput = document.getElementById('descripcion');
+            const fechaInput = document.getElementById('fechaEntrega');
+            const params = new URLSearchParams({ entregado: estadoEntregado });
+            params.append('descripcion', descInput ? descInput.value : '');
+            params.append('fechaEntrega', fechaInput ? fechaInput.value : '');
+
+            return fetch(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, {
                 method: 'PUT',
                 headers: { [csrfHeader]: csrfToken }
             });
@@ -720,8 +734,12 @@ async function guardarLineas() {
                 confirmButtonColor: '#28a745',
                 timer: 2000
             }).then(() => {
-                nuevaFacturaModal.hide();
-                location.reload();
+                if (nuevaFacturaModal) {
+                    nuevaFacturaModal.hide();
+                    location.reload();
+                } else {
+                    window.location.href = '/facturas';
+                }
             });
         }
     }).catch(error => {

@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
+import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.seguridad.service.impl.UserDetailsServiceImpl;
@@ -10,8 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -19,6 +23,8 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
     @Autowired
     private LineaFacturaRepository lineaFacturaRepository;
 
+    @Autowired
+    private FacturaRepository facturaRepository;
 
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
@@ -61,6 +67,24 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
                     userId,
                     linea.id_factura());
         }
+
+        // Recalcular totales por factura
+        Map<Integer, BigDecimal> subtotalesPorFactura = lineas.stream()
+                .collect(Collectors.groupingBy(
+                        LineaFacturaR::id_factura,
+                        Collectors.reducing(BigDecimal.ZERO, LineaFacturaR::subtotal, BigDecimal::add)
+                ));
+
+        subtotalesPorFactura.forEach((idFactura, subtotal) ->
+                facturaRepository.findByIdFactura(idFactura).ifPresent(factura -> {
+                    factura.setSubtotal(subtotal);
+                    factura.setIgv(BigDecimal.ZERO);
+                    factura.setTotal(subtotal);
+                    facturaRepository.save(factura);
+                    log.info("Totales actualizados para factura {}: subtotal={}, total={}", idFactura, subtotal, subtotal);
+                })
+        );
+
         return true;
     }
 

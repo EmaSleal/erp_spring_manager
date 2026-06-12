@@ -10,16 +10,17 @@ import api.astro.whats_orders_manager.modules.seguridad.enums.Permiso;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
-import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
+import api.astro.whats_orders_manager.shared.util.ResponseUtil;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +37,12 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
@@ -61,6 +66,7 @@ public class FacturaController {
     private final EmailService emailService;
     private final MonedaService monedaService;
     private final FacturaMapper facturaMapper;
+    private final FacturaPdfService facturaPdfService;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -207,12 +213,33 @@ public class FacturaController {
                 return "redirect:/facturas";
             }
             
-            // Validar que no tenga líneas asociadas
-            if (lineaFacturaService.existsByFacturaId(id)) {
-                log.warn("La factura con ID {} tiene líneas asociadas", id);
-                redirectAttributes.addFlashAttribute("error", 
-                    "No se puede eliminar la factura porque tiene líneas asociadas");
+            // Bloquear si tiene pagos registrados
+            if (!pagoService.findByFacturaId(id).isEmpty()) {
+                log.warn("La factura con ID {} tiene pagos registrados", id);
+                redirectAttributes.addFlashAttribute("error",
+                    "No se puede eliminar: la factura tiene pagos registrados");
                 return "redirect:/facturas";
+            }
+
+            // Bloquear si está entregada
+            Factura factura = facturaService.findById(id).get();
+            if (Boolean.TRUE.equals(factura.getEntregado())) {
+                log.warn("La factura con ID {} está marcada como entregada", id);
+                redirectAttributes.addFlashAttribute("error",
+                    "No se puede eliminar: la factura está marcada como entregada");
+                return "redirect:/facturas";
+            }
+
+            List<LineaFactura> lineas = factura.getLineas();
+            if (lineas != null && !lineas.isEmpty()) {
+                lineas.forEach(linea -> {
+                    try {
+                        lineaFacturaService.deleteById(linea.getIdLineaFactura());
+                        log.debug("Línea de factura eliminada ID: {}", linea.getIdLineaFactura());
+                    } catch (Exception e) {
+                        log.error("Error al eliminar línea de factura ID {}: {}", linea.getIdLineaFactura(), e.getMessage(), e);
+                    }
+                });
             }
 
             facturaService.deleteById(id);
@@ -295,30 +322,51 @@ public class FacturaController {
     @ResponseBody
     public ResponseEntity<String> actualizarEstadoFactura(
             @PathVariable Integer id,
-            @RequestParam Boolean entregado
+            @RequestParam Boolean entregado,
+            @RequestParam(required = false) String descripcion,
+            @RequestParam(name = "fechaEntrega", required = false) String fechaEntregaStr
     ) {
         log.info("Actualizando estado de factura ID: {} a entregado={}", id, entregado);
-        
+
         try {
             Optional<Factura> facturaOpt = facturaService.findById(id);
-            
+
             if (facturaOpt.isEmpty()) {
                 log.warn("Factura no encontrada con ID: {}", id);
                 return ResponseEntity.notFound().build();
             }
-            
+
             Factura factura = facturaOpt.get();
             factura.setEntregado(entregado);
-            // Las fechas de actualización se manejan automáticamente por @EntityListeners
+            if (descripcion != null) {
+                factura.setDescripcion(descripcion);
+            }
+            if (fechaEntregaStr != null) {
+                factura.setFechaEntrega(fechaEntregaStr.isBlank() ? null : Date.valueOf(fechaEntregaStr));
+            }
             facturaService.save(factura);
-            
+
             log.info("Estado de factura {} actualizado exitosamente", id);
             return ResponseEntity.ok("Estado actualizado correctamente");
-            
+
         } catch (Exception e) {
             log.error("Error al actualizar estado de factura: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
                 .body("Error al actualizar el estado");
+        }
+    }
+
+    @GetMapping("/pdf/{id}")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
+    public ResponseEntity<byte[]> descargarPdfFactura(@PathVariable Integer id, Authentication authentication) {
+        try {
+            byte[] pdf = facturaPdfService.generarPdfFactura(id);
+            return ResponseUtil.pdf(pdf, "factura-" + id + ".pdf");
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error al generar PDF de factura {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 

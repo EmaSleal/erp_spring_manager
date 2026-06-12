@@ -174,8 +174,11 @@
                                 <tr th:each="factura : ${facturas}">
                                     <td class="text-center" th:text="${factura.idFactura}">1</td>
                                     <td>
-                                        <div class="fw-semibold text-primary" th:text="${factura.numeroFactura}">F001-00001</div>
-                                        <small class="text-muted" th:if="${factura.serie != null}">
+                                        <a th:href="@{/facturas/pdf/{id}(id=${factura.idFactura})}" target="_blank"
+                                           class="fw-semibold text-primary text-decoration-none" title="Descargar PDF">
+                                            <span th:text="${factura.numeroFactura}">F001-00001</span>
+                                        </a>
+                                        <small class="text-muted d-block" th:if="${factura.serie != null}">
                                             Serie: <span th:text="${factura.serie}">F001</span>
                                         </small>
                                     </td>
@@ -268,13 +271,24 @@
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_WHATSAPP')">
                                                 <i class="fab fa-whatsapp"></i>
                                             </button>
-                                        <a th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
+                                        <!-- Sin pagos + no entregado: activo -->
+                                        <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && !factura.entregado}"
+                                           th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
                                            onclick="return confirmarEliminacion(event)"
                                            class="btn btn-sm btn-danger"
                                            title="Eliminar"
                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
                                             <i class="fas fa-trash"></i>
                                         </a>
+                                        <!-- Sin pagos + entregado: deshabilitado -->
+                                        <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado}"
+                                                class="btn btn-sm btn-danger"
+                                                disabled
+                                                title="No se puede eliminar una factura entregada"
+                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <!-- Con pagos: no se muestra nada -->
                                     </td>
                                 </tr>
                             </tbody>
@@ -353,6 +367,30 @@
                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
                                     <i class="fas fa-edit me-1"></i> Editar
                                 </a>
+                                <a th:href="@{/facturas/pdf/{id}(id=${factura.idFactura})}"
+                                   class="btn btn-sm btn-secondary"
+                                   target="_blank"
+                                   title="Descargar PDF"
+                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
+                                    <i class="fas fa-file-pdf me-1"></i> Descargar
+                                </a>
+                                <!-- Sin pagos + no entregado: activo -->
+                                <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && !factura.entregado}"
+                                   th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
+                                   onclick="return confirmarEliminacion(event)"
+                                   class="btn btn-sm btn-danger"
+                                   title="Eliminar"
+                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                    <i class="fas fa-trash me-1"></i> Eliminar
+                                </a>
+                                <!-- Sin pagos + entregado: deshabilitado -->
+                                <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado}"
+                                        class="btn btn-sm btn-danger"
+                                        disabled
+                                        title="No se puede eliminar una factura entregada"
+                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                    <i class="fas fa-trash me-1"></i> Eliminar
+                                </button>
                             </div>
                         </div>
                     </div>

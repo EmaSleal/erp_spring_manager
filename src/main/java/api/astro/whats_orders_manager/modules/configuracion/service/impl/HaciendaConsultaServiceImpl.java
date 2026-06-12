@@ -50,8 +50,9 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
     private Integer timeout;
     
     public HaciendaConsultaServiceImpl() {
-        // Crear RestClient con configuración básica
         this.restClient = RestClient.builder()
+            .defaultHeader("User-Agent", "curl/7.81.0")
+            .defaultHeader("Accept", "*/*")
             .build();
     }
     
@@ -75,6 +76,8 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
             // Construir URL con query parameter
             String url = haciendaApiUrl + "?identificacion=" + numeroLimpio;
             
+            log.debug("URL construida para consulta: {}", url);
+
             // Realizar petición GET
             ResponseEntity<HaciendaConsultaDTO> response = restClient.get()
                 .uri(url)
