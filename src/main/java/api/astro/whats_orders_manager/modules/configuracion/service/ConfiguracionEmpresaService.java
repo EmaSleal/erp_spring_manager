@@ -46,4 +46,14 @@ public interface ConfiguracionEmpresaService {
      * @return true si los datos fiscales están completos
      */
     boolean validarDatosFiscales();
+
+    /**
+     * Creates or updates the empresa configuration.
+     * Delegates to actualizarConfiguracion, which calls obtenerOCrearConfiguracion
+     * internally to insert a default row if none exists, then applies non-null fields.
+     *
+     * @param configuracion configuration to save or update
+     * @return persisted configuration
+     */
+    ConfiguracionEmpresa saveOrUpdate(ConfiguracionEmpresa configuracion);
 }

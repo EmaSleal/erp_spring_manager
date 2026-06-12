@@ -3,8 +3,8 @@ package api.astro.whats_orders_manager.modules.configuracion.service.impl;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmail;
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmailRepository;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmailService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -21,10 +21,10 @@ import java.util.Properties;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService {
 
-    @Autowired
-    private ConfiguracionEmailRepository configuracionRepository;
+    private final ConfiguracionEmailRepository configuracionRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -232,13 +232,18 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
     @Override
     public ConfiguracionEmail cambiarEstado(boolean activo) {
         log.debug("Cambiando estado de configuración de email a: {}", activo);
-        
+
         ConfiguracionEmail configuracion = obtenerOCrearConfiguracion();
         configuracion.setActivo(activo);
-        
+
         ConfiguracionEmail actualizada = configuracionRepository.save(configuracion);
         log.info("Estado de configuración de email cambiado a: {}", activo);
-        
+
         return actualizada;
+    }
+
+    @Override
+    public ConfiguracionEmail saveOrUpdate(ConfiguracionEmail configuracion) {
+        return actualizarConfiguracion(configuracion);
     }
 }
