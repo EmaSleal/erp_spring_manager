@@ -272,7 +272,7 @@
                                                 <i class="fab fa-whatsapp"></i>
                                             </button>
                                         <!-- Sin pagos + no entregado: activo -->
-                                        <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && !factura.entregado}"
+                                        <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado != true}"
                                            th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
                                            onclick="return confirmarEliminacion(event)"
                                            class="btn btn-sm btn-danger"
@@ -281,7 +281,7 @@
                                             <i class="fas fa-trash"></i>
                                         </a>
                                         <!-- Sin pagos + entregado: deshabilitado -->
-                                        <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado}"
+                                        <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado == true}"
                                                 class="btn btn-sm btn-danger"
                                                 disabled
                                                 title="No se puede eliminar una factura entregada"
@@ -375,7 +375,7 @@
                                     <i class="fas fa-file-pdf me-1"></i> Descargar
                                 </a>
                                 <!-- Sin pagos + no entregado: activo -->
-                                <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && !factura.entregado}"
+                                <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado != true}"
                                    th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
                                    onclick="return confirmarEliminacion(event)"
                                    class="btn btn-sm btn-danger"
@@ -384,7 +384,7 @@
                                     <i class="fas fa-trash me-1"></i> Eliminar
                                 </a>
                                 <!-- Sin pagos + entregado: deshabilitado -->
-                                <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado}"
+                                <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado == true}"
                                         class="btn btn-sm btn-danger"
                                         disabled
                                         title="No se puede eliminar una factura entregada"
