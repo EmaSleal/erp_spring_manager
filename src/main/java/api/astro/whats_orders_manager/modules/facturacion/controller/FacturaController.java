@@ -17,9 +17,11 @@ import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFac
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
+import api.astro.whats_orders_manager.shared.util.ResponseUtil;
 import api.astro.whats_orders_manager.modules.producto.service.ProductoService;
 import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +38,12 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
@@ -61,6 +67,7 @@ public class FacturaController {
     private final EmailService emailService;
     private final MonedaService monedaService;
     private final FacturaMapper facturaMapper;
+    private final FacturaPdfService facturaPdfService;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -295,30 +302,51 @@ public class FacturaController {
     @ResponseBody
     public ResponseEntity<String> actualizarEstadoFactura(
             @PathVariable Integer id,
-            @RequestParam Boolean entregado
+            @RequestParam Boolean entregado,
+            @RequestParam(required = false) String descripcion,
+            @RequestParam(name = "fechaEntrega", required = false) String fechaEntregaStr
     ) {
         log.info("Actualizando estado de factura ID: {} a entregado={}", id, entregado);
-        
+
         try {
             Optional<Factura> facturaOpt = facturaService.findById(id);
-            
+
             if (facturaOpt.isEmpty()) {
                 log.warn("Factura no encontrada con ID: {}", id);
                 return ResponseEntity.notFound().build();
             }
-            
+
             Factura factura = facturaOpt.get();
             factura.setEntregado(entregado);
-            // Las fechas de actualización se manejan automáticamente por @EntityListeners
+            if (descripcion != null) {
+                factura.setDescripcion(descripcion);
+            }
+            if (fechaEntregaStr != null) {
+                factura.setFechaEntrega(fechaEntregaStr.isBlank() ? null : Date.valueOf(fechaEntregaStr));
+            }
             facturaService.save(factura);
-            
+
             log.info("Estado de factura {} actualizado exitosamente", id);
             return ResponseEntity.ok("Estado actualizado correctamente");
-            
+
         } catch (Exception e) {
             log.error("Error al actualizar estado de factura: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
                 .body("Error al actualizar el estado");
+        }
+    }
+
+    @GetMapping("/pdf/{id}")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
+    public ResponseEntity<byte[]> descargarPdfFactura(@PathVariable Integer id, Authentication authentication) {
+        try {
+            byte[] pdf = facturaPdfService.generarPdfFactura(id);
+            return ResponseUtil.pdf(pdf, "factura-" + id + ".pdf");
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error al generar PDF de factura {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 

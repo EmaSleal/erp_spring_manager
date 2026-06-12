@@ -704,7 +704,13 @@ async function guardarLineas() {
             
             console.log('Actualizando estado a:', estadoEntregado);
             
-            return fetch(`/facturas/actualizar-estado/${facturaId}?entregado=${estadoEntregado}`, {
+            const descInput = document.getElementById('descripcion');
+            const fechaInput = document.getElementById('fechaEntrega');
+            const params = new URLSearchParams({ entregado: estadoEntregado });
+            params.append('descripcion', descInput ? descInput.value : '');
+            params.append('fechaEntrega', fechaInput ? fechaInput.value : '');
+
+            return fetch(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, {
                 method: 'PUT',
                 headers: { [csrfHeader]: csrfToken }
             });
@@ -720,8 +726,12 @@ async function guardarLineas() {
                 confirmButtonColor: '#28a745',
                 timer: 2000
             }).then(() => {
-                nuevaFacturaModal.hide();
-                location.reload();
+                if (nuevaFacturaModal) {
+                    nuevaFacturaModal.hide();
+                    location.reload();
+                } else {
+                    window.location.href = '/facturas';
+                }
             });
         }
     }).catch(error => {

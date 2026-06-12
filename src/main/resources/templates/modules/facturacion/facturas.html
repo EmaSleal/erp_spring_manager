@@ -174,8 +174,11 @@
                                 <tr th:each="factura : ${facturas}">
                                     <td class="text-center" th:text="${factura.idFactura}">1</td>
                                     <td>
-                                        <div class="fw-semibold text-primary" th:text="${factura.numeroFactura}">F001-00001</div>
-                                        <small class="text-muted" th:if="${factura.serie != null}">
+                                        <a th:href="@{/facturas/pdf/{id}(id=${factura.idFactura})}" target="_blank"
+                                           class="fw-semibold text-primary text-decoration-none" title="Descargar PDF">
+                                            <span th:text="${factura.numeroFactura}">F001-00001</span>
+                                        </a>
+                                        <small class="text-muted d-block" th:if="${factura.serie != null}">
                                             Serie: <span th:text="${factura.serie}">F001</span>
                                         </small>
                                     </td>
