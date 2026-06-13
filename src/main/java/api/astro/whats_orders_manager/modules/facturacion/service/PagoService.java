@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.ReporteCajaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
@@ -8,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -78,13 +80,23 @@ public interface PagoService {
      * Registra un nuevo pago para una factura.
      * Valida que el monto no exceda el saldo pendiente.
      * Actualiza automáticamente el estado de pago de la factura.
-     * 
+     *
      * @param pago Pago a registrar
      * @return Pago guardado
      * @throws IllegalArgumentException si el monto excede el saldo
      * @throws IllegalStateException si falta referencia obligatoria
      */
     Pago registrarPago(Pago pago);
+
+    /**
+     * Registers a new payment from a DTO.
+     * Resolves Cliente and Factura from the DTO IDs, then delegates to registrarPago(Pago).
+     *
+     * @param dto PagoDTO with payment data and entity IDs
+     * @return saved Pago entity
+     * @throws IllegalArgumentException if Cliente or Factura not found
+     */
+    Pago registrarPago(PagoDTO dto);
     
     /**
      * Confirma un pago pendiente.
@@ -247,4 +259,14 @@ public interface PagoService {
      * @return Cantidad de pagos
      */
     long countByMetodoPagoAndFecha(MetodoPago metodoPago, LocalDateTime fechaInicio, LocalDateTime fechaFin);
+
+    /**
+     * Assembles a daily cash report for the given date.
+     * Executes a single grouped query for totals (CONFIRMADO + CONCILIADO only)
+     * and fetches all payments in the day regardless of estado for detail.
+     *
+     * @param fecha the report date
+     * @return populated ReporteCajaDTO
+     */
+    ReporteCajaDTO buildReporteCaja(LocalDate fecha);
 }

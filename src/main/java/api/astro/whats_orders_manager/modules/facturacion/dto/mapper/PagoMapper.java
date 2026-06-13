@@ -2,17 +2,20 @@ package api.astro.whats_orders_manager.modules.facturacion.dto.mapper;
 
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Mapper para convertir entre entidades Pago y PagoDTO.
- * 
+ * Mapper for converting between Pago entities and PagoDTO.
+ * Spring-managed component — inject via constructor or @Autowired.
+ *
  * @author Sistema ERP
- * @version 1.0
+ * @version 2.0
  * @since Sprint 5 - Fase 1
  */
+@Component
 public class PagoMapper {
     
     /**
@@ -20,7 +23,7 @@ public class PagoMapper {
      * @param pago Entidad Pago
      * @return PagoDTO
      */
-    public static PagoDTO toDTO(Pago pago) {
+    public PagoDTO toDTO(Pago pago) {
         if (pago == null) {
             return null;
         }
@@ -89,7 +92,7 @@ public class PagoMapper {
      * @param dto PagoDTO
      * @return Entidad Pago
      */
-    public static Pago toEntity(PagoDTO dto) {
+    public Pago toEntity(PagoDTO dto) {
         if (dto == null) {
             return null;
         }
@@ -123,13 +126,13 @@ public class PagoMapper {
      * @param pagos Lista de entidades
      * @return Lista de DTOs
      */
-    public static List<PagoDTO> toDTOList(List<Pago> pagos) {
+    public List<PagoDTO> toDTOList(List<Pago> pagos) {
         if (pagos == null) {
             return null;
         }
-        
+
         return pagos.stream()
-            .map(PagoMapper::toDTO)
+            .map(this::toDTO)
             .collect(Collectors.toList());
     }
     
@@ -138,13 +141,13 @@ public class PagoMapper {
      * @param dtos Lista de DTOs
      * @return Lista de entidades
      */
-    public static List<Pago> toEntityList(List<PagoDTO> dtos) {
+    public List<Pago> toEntityList(List<PagoDTO> dtos) {
         if (dtos == null) {
             return null;
         }
-        
+
         return dtos.stream()
-            .map(PagoMapper::toEntity)
+            .map(this::toEntity)
             .collect(Collectors.toList());
     }
     
@@ -154,7 +157,7 @@ public class PagoMapper {
      * @param pago Entidad a actualizar
      * @param dto DTO con los nuevos datos
      */
-    public static void updateEntityFromDTO(Pago pago, PagoDTO dto) {
+    public void updateEntityFromDTO(Pago pago, PagoDTO dto) {
         if (pago == null || dto == null) {
             return;
         }

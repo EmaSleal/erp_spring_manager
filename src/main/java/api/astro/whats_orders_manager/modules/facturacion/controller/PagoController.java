@@ -12,15 +12,14 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.shared.dto.ResponseDTO;
 import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -55,6 +54,8 @@ public class PagoController {
     private final PagoService pagoService;
     private final FacturaService facturaService;
     private final ClienteService clienteService;
+    private final PagoMapper pagoMapper;
+    private final UsuarioService usuarioService;
     
     // ==================== VISTAS PRINCIPALES ====================
     
@@ -77,11 +78,7 @@ public class PagoController {
             page, size, sortBy, sortDir);
         
         try {
-            Sort sort = sortDir.equalsIgnoreCase("asc") 
-                ? Sort.by(sortBy).ascending() 
-                : Sort.by(sortBy).descending();
-            
-            Pageable pageable = PageRequest.of(page, size, sort);
+            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir);
             
             // Obtener directamente Page<PagoDTO> sin conversión manual
             Page<PagoDTO> pagosDTOsPage = pagoService.findAllAsDTO(pageable);
@@ -106,10 +103,7 @@ public class PagoController {
             model.addAttribute("ingresosDia", pagoService.sumIngresosDiaActual());
             model.addAttribute("cantidadPagosDia", pagoService.countPagosDelDia());
             
-            // Agregar rol del usuario para control de permisos en la vista
-            agregarRolUsuario(model, authentication);
-            
-            log.info("Pagos cargados: {} de {} total", 
+            log.info("Pagos cargados: {} de {} total",
                 pagosDTOsPage.getNumberOfElements(), pagosDTOsPage.getTotalElements());
             
             return "modules/facturacion/pagos/listar";
@@ -199,12 +193,9 @@ public class PagoController {
                 return "redirect:/pagos";
             }
             
-            PagoDTO pagoDTO = PagoMapper.toDTO(pagoOpt.get());
+            PagoDTO pagoDTO = pagoMapper.toDTO(pagoOpt.get());
             model.addAttribute("pago", pagoDTO);
-            
-            // Agregar rol del usuario para control de permisos en la vista
-            agregarRolUsuario(model, authentication);
-            
+
             return "modules/facturacion/pagos/detalle";
             
         } catch (Exception e) {
@@ -240,26 +231,9 @@ public class PagoController {
                     .body(ResponseDTO.error(errores));
             }
             
-            // Convertir DTO a entidad
-            Pago pago = PagoMapper.toEntity(pagoDTO);
-            
-            // Asignar el cliente (obligatorio)
-            Cliente cliente = clienteService.findById(pagoDTO.getIdCliente())
-                .orElseThrow(() -> new IllegalArgumentException(
-                    "Cliente no encontrado con ID: " + pagoDTO.getIdCliente()));
-            pago.setCliente(cliente);
-            
-            // Asignar la factura (opcional para adelantos)
-            if (pagoDTO.getIdFactura() != null) {
-                Factura factura = facturaService.findById(pagoDTO.getIdFactura())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                        "Factura no encontrada con ID: " + pagoDTO.getIdFactura()));
-                pago.setFactura(factura);
-            }
-            
-            // Registrar el pago (el servicio genera el número automáticamente)
-            Pago pagoGuardado = pagoService.registrarPago(pago);
-            PagoDTO responseDTO = PagoMapper.toDTO(pagoGuardado);
+            // Delegate entity resolution and registration to the service
+            Pago pagoGuardado = pagoService.registrarPago(pagoDTO);
+            PagoDTO responseDTO = pagoMapper.toDTO(pagoGuardado);
             
             log.info("Pago {} registrado exitosamente con ID: {}", 
                 pagoGuardado.getNumeroPago(), pagoGuardado.getIdPago());
@@ -292,7 +266,7 @@ public class PagoController {
         
         try {
             Pago pagoConfirmado = pagoService.confirmarPago(id);
-            PagoDTO responseDTO = PagoMapper.toDTO(pagoConfirmado);
+            PagoDTO responseDTO = pagoMapper.toDTO(pagoConfirmado);
             
             return ResponseEntity.ok(
                 ResponseDTO.success("Pago confirmado exitosamente", responseDTO));
@@ -323,7 +297,7 @@ public class PagoController {
         
         try {
             Pago pagoConciliado = pagoService.conciliarPago(id);
-            PagoDTO responseDTO = PagoMapper.toDTO(pagoConciliado);
+            PagoDTO responseDTO = pagoMapper.toDTO(pagoConciliado);
             
             return ResponseEntity.ok(
                 ResponseDTO.success("Pago conciliado exitosamente", responseDTO));
@@ -355,7 +329,7 @@ public class PagoController {
         
         try {
             Pago pagoRechazado = pagoService.rechazarPago(id, motivo);
-            PagoDTO responseDTO = PagoMapper.toDTO(pagoRechazado);
+            PagoDTO responseDTO = pagoMapper.toDTO(pagoRechazado);
             
             return ResponseEntity.ok(
                 ResponseDTO.success("Pago rechazado", responseDTO));
@@ -386,11 +360,12 @@ public class PagoController {
         log.info("Anulando pago ID: {} - Motivo: {} - Usuario: {}", id, motivo, authentication.getName());
         
         try {
-            // TODO: Obtener ID del usuario autenticado desde el servicio de usuarios
-            Integer usuarioId = 1; // Temporal - debe obtenerse del authentication
+            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+                .map(u -> u.getIdUsuario())
+                .orElse(null);
             
             Pago pagoAnulado = pagoService.anularPago(id, motivo, usuarioId);
-            PagoDTO responseDTO = PagoMapper.toDTO(pagoAnulado);
+            PagoDTO responseDTO = pagoMapper.toDTO(pagoAnulado);
             
             return ResponseEntity.ok(
                 ResponseDTO.success("Pago anulado exitosamente", responseDTO));
@@ -448,7 +423,7 @@ public class PagoController {
         
         try {
             List<Pago> pagos = pagoService.findByFacturaId(idFactura);
-            List<PagoDTO> pagosDTOs = PagoMapper.toDTOList(pagos);
+            List<PagoDTO> pagosDTOs = pagoMapper.toDTOList(pagos);
             
             return ResponseEntity.ok(pagosDTOs);
             
@@ -468,7 +443,7 @@ public class PagoController {
         
         try {
             List<Pago> pagosPendientes = pagoService.findPagosPendientesConciliacion();
-            List<PagoDTO> pagosDTOs = PagoMapper.toDTOList(pagosPendientes);
+            List<PagoDTO> pagosDTOs = pagoMapper.toDTOList(pagosPendientes);
             
             model.addAttribute("pagos", pagosDTOs);
             model.addAttribute("totalPendiente", 
@@ -499,56 +474,11 @@ public class PagoController {
         log.info("Generando reporte de caja para: {}", fechaReporte);
         
         try {
-            LocalDateTime inicio = fechaReporte.atStartOfDay();
-            LocalDateTime fin = fechaReporte.atTime(23, 59, 59);
-            
-            List<Pago> pagosDelDia = pagoService.findByFechaPagoBetween(inicio, fin);
-            List<PagoDTO> pagosDTOs = PagoMapper.toDTOList(pagosDelDia);
-            
-            ReporteCajaDTO reporte = ReporteCajaDTO.builder()
-                .fecha(fechaReporte)
-                .fechaGeneracion(LocalDateTime.now())
-                .pagosDetalle(pagosDTOs)
-                .build();
-            
-            // Calcular totales por método de pago
-            for (MetodoPago metodo : MetodoPago.values()) {
-                BigDecimal total = pagoService.sumByMetodoPagoAndFecha(metodo, inicio, fin);
-                long cantidad = pagoService.countByMetodoPagoAndFecha(metodo, inicio, fin);
-                
-                switch (metodo) {
-                    case EFECTIVO -> {
-                        reporte.setTotalEfectivo(total);
-                        reporte.setCantidadEfectivo(cantidad);
-                    }
-                    case TARJETA -> {
-                        reporte.setTotalTarjeta(total);
-                        reporte.setCantidadTarjeta(cantidad);
-                    }
-                    case CHEQUE -> {
-                        reporte.setTotalCheque(total);
-                        reporte.setCantidadCheque(cantidad);
-                    }
-                    case TRANSFERENCIA -> {
-                        reporte.setTotalTransferencia(total);
-                        reporte.setCantidadTransferencia(cantidad);
-                    }
-                    case RECAUDADO -> {
-                        reporte.setTotalRecaudado(total);
-                        reporte.setCantidadRecaudado(cantidad);
-                    }
-                    case OTROS -> {
-                        reporte.setTotalOtros(total);
-                        reporte.setCantidadOtros(cantidad);
-                    }
-                }
-            }
-            
-            reporte.calcularTotales();
-            
+            ReporteCajaDTO reporte = pagoService.buildReporteCaja(fechaReporte);
+
             model.addAttribute("reporte", reporte);
             model.addAttribute("fechaReporte", fechaReporte);
-            
+
             return "modules/facturacion/pagos/reporte-caja";
             
         } catch (Exception e) {
@@ -558,19 +488,5 @@ public class PagoController {
         }
     }
     
-    // ==================== MÉTODOS PRIVADOS ====================
-    
-    /**
-     * Agrega el rol del usuario al modelo para control de permisos en la vista.
-     */
-    private void agregarRolUsuario(Model model, Authentication authentication) {
-        if (authentication != null && authentication.getAuthorities() != null) {
-            String userRole = authentication.getAuthorities().stream()
-                    .findFirst()
-                    .map(auth -> auth.getAuthority().replace("ROLE_", ""))
-                    .orElse("USER");
-            model.addAttribute("userRole", userRole);
-            log.debug("Rol de usuario agregado al modelo: {}", userRole);
-        }
-    }
 }
+

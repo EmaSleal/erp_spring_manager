@@ -24,6 +24,12 @@ import java.util.stream.Collectors;
  */
 @Component
 public class FacturaMapper {
+
+    private final PagoMapper pagoMapper;
+
+    public FacturaMapper(PagoMapper pagoMapper) {
+        this.pagoMapper = pagoMapper;
+    }
     
     /**
      * Convierte una entidad Factura a FacturaDetalleDTO.
@@ -148,7 +154,7 @@ public class FacturaMapper {
         }
         
         return pagos.stream()
-                .map(PagoMapper::toDTO)
+                .map(pagoMapper::toDTO)
                 .collect(Collectors.toList());
     }
 }
