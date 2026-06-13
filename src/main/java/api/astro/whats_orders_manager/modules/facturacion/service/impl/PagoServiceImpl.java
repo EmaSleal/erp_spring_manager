@@ -3,6 +3,8 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.ReporteCajaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +52,9 @@ public class PagoServiceImpl implements PagoService {
     
     @Autowired
     private NumeroPagoGeneratorService numeroPagoGenerator;
+
+    @Autowired
+    private PagoMapper pagoMapper;
     
     // ==================== OPERACIONES CRUD ====================
     
@@ -215,6 +221,28 @@ public class PagoServiceImpl implements PagoService {
         return pagoGuardado;
     }
     
+    @Override
+    @Transactional
+    public Pago registrarPago(PagoDTO dto) {
+        log.info("Registrando pago desde DTO - Cliente: {}, Factura: {}", dto.getIdCliente(), dto.getIdFactura());
+
+        Pago pago = pagoMapper.toEntity(dto);
+
+        // Resolve Cliente (mandatory)
+        Cliente cliente = clienteRepository.findById(dto.getIdCliente())
+            .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado con ID: " + dto.getIdCliente()));
+        pago.setCliente(cliente);
+
+        // Resolve Factura (optional — null idFactura means advance payment)
+        if (dto.getIdFactura() != null) {
+            Factura factura = facturaRepository.findById(dto.getIdFactura())
+                .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada con ID: " + dto.getIdFactura()));
+            pago.setFactura(factura);
+        }
+
+        return registrarPago(pago);
+    }
+
     @Override
     @Transactional
     public Pago confirmarPago(Long idPago) {
@@ -469,11 +497,51 @@ public class PagoServiceImpl implements PagoService {
     
     @Override
     @Transactional(readOnly = true)
-    public long countByMetodoPagoAndFecha(MetodoPago metodoPago, 
-                                          LocalDateTime fechaInicio, 
+    public long countByMetodoPagoAndFecha(MetodoPago metodoPago,
+                                          LocalDateTime fechaInicio,
                                           LocalDateTime fechaFin) {
-        log.debug("Contando pagos por método {} entre {} y {}", 
+        log.debug("Contando pagos por método {} entre {} y {}",
             metodoPago, fechaInicio, fechaFin);
         return pagoRepository.countByMetodoPagoAndFecha(metodoPago, fechaInicio, fechaFin);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReporteCajaDTO buildReporteCaja(LocalDate fecha) {
+        log.info("Building cash report for date: {}", fecha);
+
+        LocalDateTime inicio = fecha.atStartOfDay();
+        LocalDateTime fin = fecha.atTime(23, 59, 59);
+        List<EstadoPago> estadosValidos = List.of(EstadoPago.CONFIRMADO, EstadoPago.CONCILIADO);
+
+        // Single grouped query replaces the 12-query fan-out (6 sums + 6 counts).
+        // Column order: [0] MetodoPago, [1] BigDecimal total (SUM), [2] Long count (COUNT)
+        List<Object[]> totales = pagoRepository.findTotalesByMetodoPagoAndFecha(inicio, fin, estadosValidos);
+
+        ReporteCajaDTO reporte = ReporteCajaDTO.builder()
+            .fecha(fecha)
+            .fechaGeneracion(LocalDateTime.now())
+            .build();
+
+        for (Object[] row : totales) {
+            MetodoPago metodo = (MetodoPago) row[0];
+            BigDecimal total = (BigDecimal) row[1];
+            Long cantidad = (Long) row[2];
+            switch (metodo) {
+                case EFECTIVO      -> { reporte.setTotalEfectivo(total);      reporte.setCantidadEfectivo(cantidad); }
+                case TARJETA       -> { reporte.setTotalTarjeta(total);       reporte.setCantidadTarjeta(cantidad); }
+                case CHEQUE        -> { reporte.setTotalCheque(total);        reporte.setCantidadCheque(cantidad); }
+                case TRANSFERENCIA -> { reporte.setTotalTransferencia(total); reporte.setCantidadTransferencia(cantidad); }
+                case RECAUDADO     -> { reporte.setTotalRecaudado(total);     reporte.setCantidadRecaudado(cantidad); }
+                case OTROS         -> { reporte.setTotalOtros(total);         reporte.setCantidadOtros(cantidad); }
+            }
+        }
+
+        // pagosDetalle: all payments in range regardless of estado (pre-existing behavior — do not filter)
+        List<PagoDTO> detalle = pagoMapper.toDTOList(findByFechaPagoBetween(inicio, fin));
+        reporte.setPagosDetalle(detalle);
+        reporte.calcularTotales();
+
+        return reporte;
     }
 }

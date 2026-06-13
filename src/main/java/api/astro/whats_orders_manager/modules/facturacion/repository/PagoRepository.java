@@ -201,6 +201,23 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     boolean existsByNumeroPago(@Param("numeroPago") String numeroPago);
     
     /**
+     * Returns grouped payment totals by MetodoPago for a date range and estado filter.
+     * Column order in Object[]: [0] MetodoPago, [1] BigDecimal total (SUM), [2] Long count (COUNT)
+     *
+     * @param inicio start of date range (inclusive)
+     * @param fin    end of date range (inclusive)
+     * @param estados list of valid estados to include
+     * @return list of Object[] rows with aggregated data
+     */
+    @Query("SELECT p.metodoPago, SUM(p.monto), COUNT(p) FROM Pago p " +
+           "WHERE p.fechaPago BETWEEN :inicio AND :fin AND p.estado IN :estados " +
+           "GROUP BY p.metodoPago")
+    List<Object[]> findTotalesByMetodoPagoAndFecha(
+        @Param("inicio") LocalDateTime inicio,
+        @Param("fin") LocalDateTime fin,
+        @Param("estados") List<EstadoPago> estados);
+
+    /**
      * Obtiene todos los pagos como DTOs con paginación.
      * Proyección optimizada para listar pagos sin cargar entidades completas.
      * 

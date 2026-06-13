@@ -54,6 +54,7 @@ public class FacturaController {
     private final MonedaService monedaService;
     private final FacturaMapper facturaMapper;
     private final FacturaPdfService facturaPdfService;
+    private final PagoMapper pagoMapper;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -320,7 +321,7 @@ public class FacturaController {
         
         try {
             List<Pago> pagos = pagoService.findByFacturaId(idFactura);
-            List<PagoDTO> pagosDTOs = PagoMapper.toDTOList(pagos);
+            List<PagoDTO> pagosDTOs = pagoMapper.toDTOList(pagos);
             
             return ResponseEntity.ok(pagosDTOs);
             
