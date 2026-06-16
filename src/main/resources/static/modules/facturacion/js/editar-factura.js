@@ -257,6 +257,15 @@ function sincronizarCardLinea(row) {
 }
 
 
+function filtrarDropdownProductos(input) {
+    const term = input.value.toLowerCase();
+    const items = input.closest('ul').querySelectorAll('.dropdown-item-wrapper');
+    items.forEach(li => {
+        const nombre = li.querySelector('a').dataset.nombre.toLowerCase();
+        li.style.display = nombre.includes(term) ? '' : 'none';
+    });
+}
+
 function seleccionarProductoCard(event, idLinea, idProducto, nombreProducto) {
     event.preventDefault();
     const card = document.querySelector(`.card input[name="idLinea"][value="${idLinea}"]`)?.closest('.card');
@@ -467,11 +476,19 @@ function createLineaCard(linea) {
                             aria-expanded="false">
                         ${es_linea_nueva ? '-- Seleccione un producto --' : (allProductos.find(p => String(p.id_producto) === String(idProducto))?.nombre ?? '-- Seleccione un producto --')}
                     </button>
-                    <ul class="dropdown-menu w-100" style="max-height:220px;overflow-y:auto;">
+                    <ul class="dropdown-menu w-100 p-2" style="max-height:280px;overflow-y:auto;">
+                        <li class="mb-2">
+                            <input type="text"
+                                   class="form-control form-control-sm dropdown-search"
+                                   placeholder="Buscar producto..."
+                                   oninput="filtrarDropdownProductos(this)"
+                                   onclick="event.stopPropagation()">
+                        </li>
                         ${allProductos.map(p => `
-                        <li>
+                        <li class="dropdown-item-wrapper">
                             <a class="dropdown-item" href="#"
                                data-id="${p.id_producto}"
+                               data-nombre="${p.nombre}"
                                onclick="seleccionarProductoCard(event, '${linea.id_linea_factura}', ${p.id_producto}, '${p.nombre}')">
                                 ${p.nombre} - $${p.precio_institucional}
                             </a>
