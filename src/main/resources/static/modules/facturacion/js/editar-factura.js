@@ -232,6 +232,12 @@ function sincronizarCardLinea(row) {
     const cardSelect = card.querySelector('select[name="producto"]');
     if (cardSelect && selectProducto) {
         cardSelect.value = selectProducto.value;
+        const idLinea = card.querySelector('input[name="idLinea"]')?.value;
+        const btnDropdown = idLinea ? card.querySelector(`#btn-producto-${idLinea}`) : null;
+        if (btnDropdown) {
+            const producto = allProductos.find(p => String(p.id_producto) === selectProducto.value);
+            btnDropdown.textContent = producto ? producto.nombre : '-- Seleccione un producto --';
+        }
     }
 
     const cardCantidad = card.querySelector('input[name="cantidad"]');
@@ -250,6 +256,19 @@ function sincronizarCardLinea(row) {
     }
 }
 
+
+function seleccionarProductoCard(event, idLinea, idProducto, nombreProducto) {
+    event.preventDefault();
+    const card = document.querySelector(`.card input[name="idLinea"][value="${idLinea}"]`)?.closest('.card');
+    if (!card) return;
+    const hiddenSelect = card.querySelector('select[name="producto"]');
+    if (hiddenSelect) {
+        hiddenSelect.value = idProducto;
+        hiddenSelect.dispatchEvent(new Event('change'));
+    }
+    const btn = card.querySelector(`#btn-producto-${idLinea}`);
+    if (btn) btn.textContent = nombreProducto;
+}
 
 function actualizarProductoSeleccionado(element) {
     const row = obtenerFilaLinea(element);
@@ -435,10 +454,30 @@ function createLineaCard(linea) {
                 </label>
                 <input type="hidden" name="idLinea" value="${linea.id_linea_factura}">
                 <input type="hidden" name="idProducto" value="${idProducto}">
-                <select name="producto" id="${selectId}" class="form-select form-select-sm" onchange="actualizarProductoSeleccionado(this)">
+                <!-- Hidden select keeps existing actualizarProductoSeleccionado/sincronizarCardLinea logic intact -->
+                <select name="producto" id="${selectId}" class="d-none" onchange="actualizarProductoSeleccionado(this)">
                     ${opcionDefault}
                     ${opciones}
                 </select>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm w-100 text-start dropdown-toggle"
+                            type="button"
+                            id="btn-producto-${linea.id_linea_factura}"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                        ${es_linea_nueva ? '-- Seleccione un producto --' : (allProductos.find(p => String(p.id_producto) === String(idProducto))?.nombre ?? '-- Seleccione un producto --')}
+                    </button>
+                    <ul class="dropdown-menu w-100" style="max-height:220px;overflow-y:auto;">
+                        ${allProductos.map(p => `
+                        <li>
+                            <a class="dropdown-item" href="#"
+                               data-id="${p.id_producto}"
+                               onclick="seleccionarProductoCard(event, '${linea.id_linea_factura}', ${p.id_producto}, '${p.nombre}')">
+                                ${p.nombre} - $${p.precio_institucional}
+                            </a>
+                        </li>`).join("")}
+                    </ul>
+                </div>
             </div>
 
             <!-- Fila: Cantidad y Precio -->
