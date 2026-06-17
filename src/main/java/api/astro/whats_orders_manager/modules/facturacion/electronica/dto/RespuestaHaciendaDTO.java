@@ -30,6 +30,8 @@ public class RespuestaHaciendaDTO {
     
     private String mensaje;
 
+    private String xmlRespuesta;
+
     private String indicadorEstado;
     
     private Boolean exitoso;

@@ -334,7 +334,15 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             comprobante.setCodigoRespuesta(respuesta.getCodigoMensaje().getCodigo());
             comprobante.setMensajeRespuesta(respuesta.getMensaje());
             comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-            
+            if (respuesta.getXmlRespuesta() != null && !respuesta.getXmlRespuesta().isBlank()) {
+                try {
+                    comprobante.setXmlRespuesta(new String(
+                        Base64.getDecoder().decode(respuesta.getXmlRespuesta()), StandardCharsets.UTF_8));
+                } catch (IllegalArgumentException e) {
+                    comprobante.setXmlRespuesta(respuesta.getXmlRespuesta());
+                }
+            }
+
             if (respuesta.getExitoso()) {
                 comprobante.setEstado(EstadoComprobante.ACEPTADO);
                 log.info("Comprobante aceptado por Hacienda");
@@ -428,7 +436,15 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             comprobante.setCodigoRespuesta(respuesta.getCodigoMensaje().getCodigo());
             comprobante.setMensajeRespuesta(respuesta.getMensaje());
             comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-            
+            if (respuesta.getXmlRespuesta() != null && !respuesta.getXmlRespuesta().isBlank()) {
+                try {
+                    comprobante.setXmlRespuesta(new String(
+                        Base64.getDecoder().decode(respuesta.getXmlRespuesta()), StandardCharsets.UTF_8));
+                } catch (IllegalArgumentException e) {
+                    comprobante.setXmlRespuesta(respuesta.getXmlRespuesta());
+                }
+            }
+
             // Determinar estado según respuesta
             if (respuesta.getExitoso()) {
                 comprobante.setEstado(EstadoComprobante.ACEPTADO);
