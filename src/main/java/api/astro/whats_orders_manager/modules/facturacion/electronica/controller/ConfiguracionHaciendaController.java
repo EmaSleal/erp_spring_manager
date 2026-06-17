@@ -231,18 +231,18 @@ public class ConfiguracionHaciendaController {
             if (originalName == null || (!originalName.endsWith(".p12") && !originalName.endsWith(".pfx"))) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Solo se permiten archivos .p12 o .pfx"));
             }
+            String safeName = originalName.replace(" ", "_");
             Path dir = Path.of(certificadosDir);
-            if (!Files.exists(dir)) {
-                Files.createDirectories(dir);
-            }
-            Path destino = dir.resolve(originalName);
+            Files.createDirectories(dir); // idempotent — no-op if already exists
+            Path destino = dir.resolve(safeName);
             Files.copy(archivo.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
             String ruta = destino.toAbsolutePath().toString();
             log.info("Certificado guardado en: {}", ruta);
             return ResponseEntity.ok(Map.of("ruta", ruta));
         } catch (IOException e) {
-            log.error("Error al guardar certificado: {}", e.getMessage());
-            return ResponseEntity.internalServerError().body(Map.of("error", "Error al guardar el archivo"));
+            log.error("Error al guardar certificado [{}]: {}", e.getClass().getSimpleName(), e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
         }
     }
 }
