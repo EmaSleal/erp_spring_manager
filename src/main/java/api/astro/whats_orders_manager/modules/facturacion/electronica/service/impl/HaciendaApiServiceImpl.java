@@ -400,15 +400,15 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             log.info("Hacienda ind-estado: '{}'", codigoMensaje);
             MensajeHacienda mensaje = determinarMensaje(codigoMensaje);
 
-            String mensajeTexto = root.has("respuesta-xml")
-                ? root.get("respuesta-xml").asText()
-                : (root.has("mensaje") ? root.get("mensaje").asText() : "");
-            
+            String xmlRespuesta  = root.has("respuesta-xml") ? root.get("respuesta-xml").asText() : null;
+            String mensajeTexto  = root.has("mensaje") ? root.get("mensaje").asText() : "";
+
             return RespuestaHaciendaDTO.builder()
                 .claveNumerica(claveNumerica)
                 .fechaRespuesta(LocalDateTime.now())
                 .codigoMensaje(mensaje)
                 .mensaje(mensajeTexto)
+                .xmlRespuesta(xmlRespuesta)
                 .indicadorEstado(codigoMensaje)
                 .exitoso(mensaje == MensajeHacienda.ACEPTADO)
                 .detalles(response.getBody())
