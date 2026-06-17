@@ -7,10 +7,16 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.service.Co
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +36,9 @@ import java.util.Map;
 public class ConfiguracionHaciendaController {
     
     private final ConfiguracionHaciendaService configuracionService;
+
+    @Value("${app.certificados.directorio:/app/certificados}")
+    private String certificadosDir;
     
     /**
      * Obtiene configuración activa de una empresa.
@@ -211,5 +220,29 @@ public class ConfiguracionHaciendaController {
         log.info("Eliminando configuración {}", id);
         configuracionService.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/upload-certificado")
+    public ResponseEntity<Map<String, String>> uploadCertificado(
+            @RequestParam("archivo") MultipartFile archivo) {
+        log.info("Subiendo certificado: {}", archivo.getOriginalFilename());
+        try {
+            String originalName = archivo.getOriginalFilename();
+            if (originalName == null || (!originalName.endsWith(".p12") && !originalName.endsWith(".pfx"))) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Solo se permiten archivos .p12 o .pfx"));
+            }
+            Path dir = Path.of(certificadosDir);
+            if (!Files.exists(dir)) {
+                Files.createDirectories(dir);
+            }
+            Path destino = dir.resolve(originalName);
+            Files.copy(archivo.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
+            String ruta = destino.toAbsolutePath().toString();
+            log.info("Certificado guardado en: {}", ruta);
+            return ResponseEntity.ok(Map.of("ruta", ruta));
+        } catch (IOException e) {
+            log.error("Error al guardar certificado: {}", e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", "Error al guardar el archivo"));
+        }
     }
 }
