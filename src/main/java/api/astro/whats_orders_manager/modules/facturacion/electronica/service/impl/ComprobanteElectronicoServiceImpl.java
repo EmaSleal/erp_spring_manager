@@ -14,6 +14,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.util.Clave
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
+import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.shared.service.EmailService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,7 +35,9 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -55,6 +61,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final HaciendaApiService haciendaApi;
     private final ClaveNumericaGenerator claveGenerator;
     private final ComprobanteElectronicoMapper mapper;
+    private final FacturaPdfService facturaPdfService;
+    private final EmailService emailService;
     
     @Value("${facturacion.comprobantes.directorio-base:./comprobantes}")
     private String directorioBase;
@@ -450,20 +458,121 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     @Transactional
     public boolean enviarPorEmail(Long id, String emailAdicional) {
         log.info("Enviando comprobante por email ID: {}", id);
-        
+
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        
-        // TODO: Integrar con servicio de email
-        // Adjuntar XML y PDF del comprobante
-        // Usar emailAdicional si se proporcionó
-        
-        comprobante.setEnviadoEmail(true);
-        comprobante.setFechaEnvioEmail(LocalDateTime.now());
-        repository.save(comprobante);
-        
-        log.info("Email enviado (TODO: implementar servicio real)");
-        return true;
+
+        Factura factura = comprobante.getFactura();
+        Cliente cliente = (factura != null) ? factura.getCliente() : null;
+
+        String destino = (emailAdicional != null && !emailAdicional.isBlank())
+            ? emailAdicional
+            : (cliente != null ? cliente.getEmail() : null);
+
+        if (destino == null || destino.isBlank()) {
+            throw new IllegalStateException("El cliente no tiene email registrado y no se proporcionó un email adicional");
+        }
+
+        try {
+            api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa empresa =
+                comprobante.getEmpresa();
+
+            String clave = comprobante.getClaveNumerica();
+            String tipoDesc = comprobante.getTipoComprobante().getDescripcion();
+
+            DateTimeFormatter fmtFecha = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+            DateTimeFormatter fmtHora  = DateTimeFormatter.ofPattern("HH:mm");
+            LocalDateTime emision = comprobante.getFechaEmision();
+
+            String moneda = (factura != null && factura.getMonedaFE() != null)
+                ? factura.getMonedaFE().name() : "";
+            String total = (factura != null && factura.getTotal() != null)
+                ? String.format("%,.2f", factura.getTotal()) : "0.00";
+            String consecutivo = comprobante.getConsecutivo();
+            String numFactura  = (factura != null) ? factura.getNumeroFactura() : "";
+
+            String clienteNombre = (cliente != null) ? cliente.getNombre() : "";
+            String clienteId     = (cliente != null && cliente.getNumeroIdentificacion() != null)
+                ? cliente.getNumeroIdentificacion() : "";
+            String clienteTel    = (cliente != null && cliente.getTelefono() != null)
+                ? cliente.getTelefono() : "";
+            String clienteEmail  = (cliente != null && cliente.getEmail() != null)
+                ? cliente.getEmail() : "";
+
+            String emisorNombre = (empresa != null && empresa.getRazonSocial() != null)
+                ? empresa.getRazonSocial() : "";
+            String emisorId     = (empresa != null && empresa.getNumeroIdentificacion() != null)
+                ? empresa.getNumeroIdentificacion() : "";
+            String emisorTel    = (empresa != null && empresa.getTelefono() != null)
+                ? empresa.getTelefono() : "";
+            String emisorEmail  = (empresa != null && empresa.getEmail() != null)
+                ? empresa.getEmail() : "";
+
+            String cuerpo = String.format(
+                "Estimado(a) cliente:%n%s%n%n" +
+                "Encontrará adjunto el comprobante electrónico para %s en formato XML " +
+                "y su representación en formato PDF, con las siguientes características:%n%n" +
+                "Datos del emisor:%n" +
+                "Nombre:                          %s%n" +
+                "Número de identificación:        %s%n" +
+                "Teléfono:                        %s%n" +
+                "Email:                           %s%n%n" +
+                "Datos del receptor:%n" +
+                "Nombre:                          %s%n" +
+                "Número de identificación:        %s%n" +
+                "Teléfono:                        %s%n" +
+                "Email:                           %s%n%n" +
+                "Datos de la Factura Electrónica:%n" +
+                "Consecutivo electrónico:         %s%n" +
+                "Clave numérica:                  %s%n" +
+                "Consecutivo interno:             %s%n" +
+                "Fecha:                           %s%n" +
+                "Hora:                            %s%n" +
+                "Moneda:                          %s%n" +
+                "Total:                           %s%n%n" +
+                "Adjuntos de la Factura Electrónica:%n" +
+                "XML:                             %s.xml%n" +
+                "XML Aceptación:                  %s_respuesta.xml%n" +
+                "PDF:                             %s.pdf%n",
+                clienteNombre, tipoDesc,
+                emisorNombre, emisorId, emisorTel, emisorEmail,
+                clienteNombre, clienteId, clienteTel, clienteEmail,
+                consecutivo, clave, numFactura,
+                emision.format(fmtFecha), emision.format(fmtHora),
+                moneda, total,
+                clave, clave, clave
+            );
+
+            String asunto = tipoDesc + " - " + numFactura;
+
+            Map<String, byte[]> adjuntos = new LinkedHashMap<>();
+
+            if (comprobante.getXmlComprobante() != null) {
+                adjuntos.put(clave + ".xml",
+                    comprobante.getXmlComprobante().getBytes(StandardCharsets.UTF_8));
+            }
+            if (comprobante.getXmlRespuesta() != null) {
+                adjuntos.put(clave + "_respuesta.xml",
+                    comprobante.getXmlRespuesta().getBytes(StandardCharsets.UTF_8));
+            }
+            if (factura != null) {
+                byte[] pdf = facturaPdfService.generarPdfFactura(factura.getIdFactura());
+                adjuntos.put(clave + ".pdf", pdf);
+            }
+
+            emailService.enviarEmailConMultiplesAdjuntos(destino, asunto, cuerpo, adjuntos);
+
+            comprobante.setEnviadoEmail(true);
+            comprobante.setFechaEnvioEmail(LocalDateTime.now());
+            repository.save(comprobante);
+
+            log.info("✅ Comprobante {} enviado por email a: {}", clave, destino);
+            return true;
+
+        } catch (Exception e) {
+            log.error("❌ Error al enviar comprobante por email ID {}: {}", id, e.getMessage());
+            throw new RuntimeException("Error al enviar comprobante por email: " + e.getMessage(), e);
+        }
     }
     
     @Override
