@@ -1,13 +1,12 @@
 package api.astro.whats_orders_manager.modules.facturacion.scheduler;
 
-import api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +34,7 @@ import java.util.List;
  * Criterios:
  * - entregado = true (producto/servicio entregado)
  * - tipoFactura = PENDIENTE (no ha sido pagada)
- * - cliente con usuario asociado
+ * - cliente con teléfono registrado
  * 
  * @author EmaSleal
  * @version 2.0 - Sprint 4 Fase 3.6 (Event-Driven)
@@ -43,14 +42,13 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@ConditionalOnClass(name = "api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent")
 public class RecordatorioPagoScheduler {
 
     @Autowired
     private FacturaRepository facturaRepository;
 
     @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private NotificacionService notificacionService;
     
     private static final int DIAS_AVISO_VENCIMIENTO = 3;
 
@@ -144,46 +142,37 @@ public class RecordatorioPagoScheduler {
      */
     private boolean publicarEventoFacturaVencida(Factura factura) {
         try {
-            var usuario = factura.getCliente() != null && factura.getCliente().getUsuario() != null
-                ? factura.getCliente().getUsuario()
-                : null;
-            
-            if (usuario == null) {
-                log.warn("⚠️ Factura {} sin usuario asociado, saltando", factura.getNumeroFactura());
+            String telefono = factura.getCliente() != null ? factura.getCliente().getTelefono() : null;
+            if (telefono == null || telefono.isBlank()) {
+                log.warn("Factura {} sin telefono de cliente, saltando", factura.getNumeroFactura());
                 return false;
             }
-            
+
             long diasVencida = ChronoUnit.DAYS.between(
-                factura.getFechaPago().toLocalDate(), 
+                factura.getFechaPago().toLocalDate(),
                 LocalDate.now()
             );
-            
-            eventPublisher.publishEvent(
-                NotificacionEvent.builder(this)
-                    .tipo(TipoNotificacion.FACTURA_VENCIDA)
-                    .usuario(usuario)
-                    .titulo("Factura Vencida")
-                    .mensaje(String.format(
-                        "La factura %s está vencida desde hace %d día(s). Total: %s",
-                        factura.getNumeroFactura(),
-                        diasVencida,
-                        factura.getTotal()
-                    ))
-                    .urlAccion("/facturas/detalle/" + factura.getIdFactura())
-                    .textoBoton("Ver Factura")
-                    .agregarDato("idFactura", factura.getIdFactura())
-                    .agregarDato("numeroFactura", factura.getNumeroFactura())
-                    .agregarDato("diasVencida", diasVencida)
-                    .agregarDato("total", factura.getTotal())
-                    .build()
+
+            String titulo = "Factura Vencida";
+            String mensaje = String.format(
+                "La factura %s está vencida desde hace %d día(s). Total: %s",
+                factura.getNumeroFactura(),
+                diasVencida,
+                factura.getTotal()
             );
-            
-            log.info("📢 Evento FACTURA_VENCIDA publicado: {} ({})", 
-                factura.getNumeroFactura(), usuario.getNombre());
+            notificacionService.enviarNotificacionExterna(
+                    telefono,
+                    TipoNotificacion.FACTURA_VENCIDA,
+                    CanalNotificacion.WHATSAPP,
+                    titulo,
+                    mensaje
+            );
+
+            log.info("Notificacion FACTURA_VENCIDA enviada: {}", factura.getNumeroFactura());
             return true;
-            
+
         } catch (Exception e) {
-            log.error("❌ Error al publicar evento para factura {}: {}", 
+            log.error("Error al notificar factura vencida {}: {}",
                 factura.getNumeroFactura(), e.getMessage());
             return false;
         }
@@ -194,46 +183,37 @@ public class RecordatorioPagoScheduler {
      */
     private boolean publicarEventoFacturaPorVencer(Factura factura) {
         try {
-            var usuario = factura.getCliente() != null && factura.getCliente().getUsuario() != null
-                ? factura.getCliente().getUsuario()
-                : null;
-            
-            if (usuario == null) {
-                log.warn("⚠️ Factura {} sin usuario asociado, saltando", factura.getNumeroFactura());
+            String telefono = factura.getCliente() != null ? factura.getCliente().getTelefono() : null;
+            if (telefono == null || telefono.isBlank()) {
+                log.warn("Factura {} sin telefono de cliente, saltando", factura.getNumeroFactura());
                 return false;
             }
-            
+
             long diasRestantes = ChronoUnit.DAYS.between(
                 LocalDate.now(),
                 factura.getFechaPago().toLocalDate()
             );
-            
-            eventPublisher.publishEvent(
-                NotificacionEvent.builder(this)
-                    .tipo(TipoNotificacion.FACTURA_PROXIMA_VENCER)
-                    .usuario(usuario)
-                    .titulo("Factura Próxima a Vencer")
-                    .mensaje(String.format(
-                        "La factura %s vence en %d día(s). Total: %s",
-                        factura.getNumeroFactura(),
-                        diasRestantes,
-                        factura.getTotal()
-                    ))
-                    .urlAccion("/facturas/detalle/" + factura.getIdFactura())
-                    .textoBoton("Ver Factura")
-                    .agregarDato("idFactura", factura.getIdFactura())
-                    .agregarDato("numeroFactura", factura.getNumeroFactura())
-                    .agregarDato("diasRestantes", diasRestantes)
-                    .agregarDato("total", factura.getTotal())
-                    .build()
+
+            String titulo = "Factura Próxima a Vencer";
+            String mensaje = String.format(
+                "La factura %s vence en %d día(s). Total: %s",
+                factura.getNumeroFactura(),
+                diasRestantes,
+                factura.getTotal()
             );
-            
-            log.info("📢 Evento FACTURA_PROXIMA_VENCER publicado: {} ({})", 
-                factura.getNumeroFactura(), usuario.getNombre());
+            notificacionService.enviarNotificacionExterna(
+                    telefono,
+                    TipoNotificacion.FACTURA_PROXIMA_VENCER,
+                    CanalNotificacion.WHATSAPP,
+                    titulo,
+                    mensaje
+            );
+
+            log.info("Notificacion FACTURA_PROXIMA_VENCER enviada: {}", factura.getNumeroFactura());
             return true;
-            
+
         } catch (Exception e) {
-            log.error("❌ Error al publicar evento para factura {}: {}", 
+            log.error("Error al notificar factura proxima a vencer {}: {}",
                 factura.getNumeroFactura(), e.getMessage());
             return false;
         }

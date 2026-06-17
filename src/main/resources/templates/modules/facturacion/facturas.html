@@ -263,8 +263,8 @@
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ENVIAR')">
                                                 <i class="fas fa-envelope"></i>
                                             </button>
-                                            <button th:if="${factura.cliente.usuario != null and factura.cliente.usuario.telefono != null}"
-                                                    th:attr="data-id=${factura.idFactura}, data-telefono=${factura.cliente.usuario.telefono}, data-cliente=${factura.cliente.nombre}"
+                                            <button th:if="${factura.cliente.telefono != null and factura.cliente.telefono != ''}"
+                                                    th:attr="data-id=${factura.idFactura}, data-telefono=${factura.cliente.telefono}, data-cliente=${factura.cliente.nombre}"
                                                     onclick="enviarFacturaPorWhatsApp(this)"
                                                     class="btn btn-sm btn-success"
                                                     title="Enviar por WhatsApp"

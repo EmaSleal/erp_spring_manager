@@ -54,11 +54,11 @@ public class WhatsAppFacturaService {
         Factura factura = facturaRepository.findById(idFactura)
                 .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada: " + idFactura));
         
-        // Validar que tenga cliente con usuario/teléfono
-        validarClienteConTelefono(factura);
-        
-        // Obtener teléfono del usuario asociado al cliente
-        String telefono = formatearTelefono(factura.getCliente().getUsuario().getTelefono());
+        // Validar que tenga cliente con teléfono
+        if (!puedeEnviarWhatsApp(factura)) return null;
+
+        // Obtener teléfono del cliente
+        String telefono = formatearTelefono(factura.getCliente().getTelefono());
         
         // Construir URL del PDF
         String urlPdf = construirUrlFacturaPdf(idFactura);
@@ -101,10 +101,9 @@ public class WhatsAppFacturaService {
             throw new IllegalStateException("La factura ya está pagada");
         }
         
-        // Validar cliente con teléfono
-        validarClienteConTelefono(factura);
-        
-        String telefono = formatearTelefono(factura.getCliente().getUsuario().getTelefono());
+        if (!puedeEnviarWhatsApp(factura)) return null;
+
+        String telefono = formatearTelefono(factura.getCliente().getTelefono());
         String mensaje = construirMensajeRecordatorio(factura);
         Integer idUsuario = obtenerIdUsuarioDeCliente(factura);
         
@@ -126,11 +125,11 @@ public class WhatsAppFacturaService {
         Factura factura = facturaRepository.findById(idFactura)
                 .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada: " + idFactura));
         
-        validarClienteConTelefono(factura);
-        
-        String telefono = formatearTelefono(factura.getCliente().getUsuario().getTelefono());
+        if (!puedeEnviarWhatsApp(factura)) return null;
+
+        String telefono = formatearTelefono(factura.getCliente().getTelefono());
         Integer idUsuario = obtenerIdUsuarioDeCliente(factura);
-        
+
         // Construir parámetros para la plantilla
         List<String> parametros = List.of(
                 factura.getCliente().getNombre(),
@@ -155,9 +154,9 @@ public class WhatsAppFacturaService {
         Factura factura = facturaRepository.findById(idFactura)
                 .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada: " + idFactura));
         
-        validarClienteConTelefono(factura);
-        
-        String telefono = formatearTelefono(factura.getCliente().getUsuario().getTelefono());
+        if (!puedeEnviarWhatsApp(factura)) return null;
+
+        String telefono = formatearTelefono(factura.getCliente().getTelefono());
         String mensaje = construirMensajeConfirmacionPago(factura);
         Integer idUsuario = obtenerIdUsuarioDeCliente(factura);
         
@@ -194,9 +193,9 @@ public class WhatsAppFacturaService {
         }
         
         Factura primeraFactura = facturasPendientes.get(0);
-        validarClienteConTelefono(primeraFactura);
-        
-        String telefono = formatearTelefono(primeraFactura.getCliente().getUsuario().getTelefono());
+        if (!puedeEnviarWhatsApp(primeraFactura)) return null;
+
+        String telefono = formatearTelefono(primeraFactura.getCliente().getTelefono());
         String mensaje = construirMensajeResumenCuenta(facturasPendientes);
         Integer idUsuario = obtenerIdUsuarioDeCliente(primeraFactura);
         
@@ -207,21 +206,20 @@ public class WhatsAppFacturaService {
     // MÉTODOS PRIVADOS - VALIDACIONES
     // ========================================
     
-    private void validarClienteConTelefono(Factura factura) {
+    private boolean puedeEnviarWhatsApp(Factura factura) {
         if (factura.getCliente() == null) {
-            throw new IllegalStateException("La factura no tiene cliente asociado");
+            log.warn("Cliente sin teléfono, omitiendo envío WhatsApp — factura sin cliente");
+            return false;
         }
-        
-        if (factura.getCliente().getUsuario() == null) {
-            throw new IllegalStateException("El cliente no tiene usuario asociado");
+        String tel = factura.getCliente().getTelefono();
+        if (tel == null || tel.isBlank()) {
+            log.warn("Cliente sin teléfono, omitiendo envío WhatsApp — cliente: {}",
+                    factura.getCliente().getNombre());
+            return false;
         }
-        
-        if (factura.getCliente().getUsuario().getTelefono() == null || 
-            factura.getCliente().getUsuario().getTelefono().isEmpty()) {
-            throw new IllegalStateException("El usuario no tiene teléfono registrado");
-        }
+        return true;
     }
-    
+
     // ========================================
     // MÉTODOS PRIVADOS - CONSTRUCCIÓN DE MENSAJES
     // ========================================
@@ -346,9 +344,7 @@ public class WhatsAppFacturaService {
     }
     
     private Integer obtenerIdUsuarioDeCliente(Factura factura) {
-        if (factura.getCliente() != null && factura.getCliente().getUsuario() != null) {
-            return factura.getCliente().getUsuario().getIdUsuario();
-        }
+        // Cliente no longer holds a Usuario reference — return null for attribution
         return null;
     }
 }

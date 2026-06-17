@@ -46,17 +46,26 @@
                             <i class="fas fa-phone text-success me-1"></i>
                             Teléfono (WhatsApp)
                         </label>
-                        <input type="tel" 
-                               class="form-control" 
-                               id="telefono" 
-                               th:field="*{usuario.telefono}" 
-                               placeholder="Ej: 55512345" 
-                               pattern="[0-9]{8}" 
+                        <input type="tel"
+                               class="form-control"
+                               id="telefono"
+                               th:field="*{telefono}"
+                               placeholder="Ej: 55512345"
+                               pattern="[0-9]{8}"
                                required>
                         <div class="form-text">8 dígitos sin espacios ni guiones</div>
                         <div class="invalid-feedback">
                             Por favor ingrese un teléfono válido de 8 dígitos.
                         </div>
+                    </div>
+
+                    <!-- Dirección -->
+                    <div class="mb-3">
+                        <label for="direccion" class="form-label">
+                            <i class="fas fa-map-marker-alt text-secondary me-1"></i>
+                            Dirección
+                        </label>
+                        <input type="text" class="form-control" id="direccion" th:field="*{direccion}" placeholder="Dirección física del cliente" maxlength="255">
                     </div>
 
                     <!-- Tipo de Cliente -->

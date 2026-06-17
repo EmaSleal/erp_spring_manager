@@ -1,12 +1,13 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
-import api.astro.whats_orders_manager.modules.notificacion.event.NotificacionEvent;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
+import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
@@ -14,7 +15,6 @@ import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaSe
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -44,7 +44,7 @@ public class FacturaServiceImpl implements FacturaService {
     private ConfiguracionFacturacionService configuracionFacturacionService;
 
     @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private NotificacionService notificacionService;
 
     @Autowired
     private PagoService pagoService;
@@ -215,33 +215,26 @@ public class FacturaServiceImpl implements FacturaService {
      */
     private void publicarEventoFacturaGenerada(Factura factura) {
         try {
-            // Determinar destinatario (empresa o cliente)
-            var usuario = factura.getCliente() != null && factura.getCliente().getUsuario() != null
-                ? factura.getCliente().getUsuario()
-                : null;
-            
-            if (usuario != null) {
-                eventPublisher.publishEvent(
-                    NotificacionEvent.builder(this)
-                        .tipo(TipoNotificacion.FACTURA_CREADA)
-                        .usuario(usuario)
-                        .titulo("Nueva Factura Generada")
-                        .mensaje("Se ha generado la factura " + factura.getNumeroFactura() + 
-                                " por un total de " + factura.getTotal())
-                        .urlAccion("/facturas/detalle/" + factura.getIdFactura())
-                        .textoBoton("Ver Factura")
-                        .agregarDato("idFactura", factura.getIdFactura())
-                        .agregarDato("numeroFactura", factura.getNumeroFactura())
-                        .agregarDato("total", factura.getTotal())
-                        .build()
-                );
-                log.info("📢 Evento de factura generada publicado: {}", factura.getNumeroFactura());
-            } else {
-                log.warn("⚠️ No se pudo publicar evento: factura sin cliente/usuario asociado");
+            String telefono = factura.getCliente() != null ? factura.getCliente().getTelefono() : null;
+            if (telefono == null || telefono.isBlank()) {
+                log.warn("No se pudo notificar factura generada: cliente sin telefono — factura {}",
+                        factura.getNumeroFactura());
+                return;
             }
+            String titulo = "Nueva Factura Generada";
+            String mensaje = "Se ha generado la factura " + factura.getNumeroFactura() +
+                    " por un total de " + factura.getTotal();
+            notificacionService.enviarNotificacionExterna(
+                    telefono,
+                    TipoNotificacion.FACTURA_CREADA,
+                    CanalNotificacion.WHATSAPP,
+                    titulo,
+                    mensaje
+            );
+            log.info("Notificacion externa enviada por factura generada: {}", factura.getNumeroFactura());
         } catch (Exception e) {
-            log.error("❌ Error al publicar evento de factura generada: {}", e.getMessage());
-            // No lanzar excepción para no afectar la creación de la factura
+            log.error("Error al notificar factura generada: {}", e.getMessage());
+            // Do not rethrow — notification failure must not affect invoice creation
         }
     }
 
