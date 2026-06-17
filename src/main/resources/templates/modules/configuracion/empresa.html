@@ -359,45 +359,52 @@
                         </h5>
                     </div>
 
+                    <!-- Logo -->
                     <div class="col-md-6 mb-3">
-                        <label for="logoUrl" class="form-label">
-                            <i class="fas fa-image me-1"></i> URL del Logo
-                        </label>
-                        <input type="url" 
-                               class="form-control" 
-                               id="logoUrl" 
-                               name="logoUrl"
-                               placeholder="https://ejemplo.com/logo.png"
-                               maxlength="500">
-                        <div class="form-text">URL pública de tu logo</div>
+                        <label class="form-label"><i class="fas fa-image me-1"></i> Logo</label>
+                        <div id="logo-preview-container" class="mb-2" style="display:none;">
+                            <img id="logo-preview" src="" alt="Logo actual" style="max-height:60px; border:1px solid #dee2e6; border-radius:4px; padding:4px;">
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="ConfiguracionEmpresa.eliminarLogo()">
+                                <i class="fas fa-trash"></i> Quitar
+                            </button>
+                        </div>
+                        <input type="file" class="form-control mb-1" id="logoFile" accept="image/*">
+                        <div class="form-text">PNG/JPG/WebP, máx. 2 MB. Se guarda en el servidor.</div>
+                        <label class="form-label mt-2"><small class="text-muted">O indicá una URL pública:</small></label>
+                        <input type="url" class="form-control form-control-sm" id="logoUrl" name="logoUrl"
+                               placeholder="https://ejemplo.com/logo.png" maxlength="500">
                     </div>
 
+                    <!-- Favicon -->
                     <div class="col-md-6 mb-3">
-                        <label for="faviconUrl" class="form-label">
-                            <i class="fas fa-bookmark me-1"></i> URL del Favicon
-                        </label>
-                        <input type="url" 
-                               class="form-control" 
-                               id="faviconUrl" 
-                               name="faviconUrl"
-                               placeholder="https://ejemplo.com/favicon.ico"
-                               maxlength="500">
-                        <div class="form-text">URL pública de tu favicon (32x32px)</div>
+                        <label class="form-label"><i class="fas fa-bookmark me-1"></i> Favicon</label>
+                        <div id="favicon-preview-container" class="mb-2" style="display:none;">
+                            <img id="favicon-preview" src="" alt="Favicon actual" style="max-height:32px; border:1px solid #dee2e6; border-radius:4px; padding:2px;">
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="ConfiguracionEmpresa.eliminarFavicon()">
+                                <i class="fas fa-trash"></i> Quitar
+                            </button>
+                        </div>
+                        <input type="file" class="form-control mb-1" id="faviconFile" accept="image/*,.ico">
+                        <div class="form-text">ICO/PNG 32×32, máx. 2 MB. Se guarda en el servidor.</div>
+                        <label class="form-label mt-2"><small class="text-muted">O indicá una URL pública:</small></label>
+                        <input type="url" class="form-control form-control-sm" id="faviconUrl" name="faviconUrl"
+                               placeholder="https://ejemplo.com/favicon.ico" maxlength="500">
                     </div>
 
+                    <!-- Color Primario -->
                     <div class="col-md-6 mb-3">
                         <label for="colorPrimario" class="form-label">
                             <i class="fas fa-fill-drip me-1"></i> Color Primario
                         </label>
                         <div class="input-group">
-                            <input type="color" 
-                                   class="form-control form-control-color" 
-                                   id="colorPrimario" 
+                            <input type="color"
+                                   class="form-control form-control-color"
+                                   id="colorPrimario"
                                    name="colorPrimario"
                                    value="#007bff"
                                    title="Seleccionar color primario">
-                            <input type="text" 
-                                   class="form-control" 
+                            <input type="text"
+                                   class="form-control"
                                    id="colorPrimarioText"
                                    value="#007bff"
                                    maxlength="7"
@@ -406,19 +413,20 @@
                         <div class="form-text">Color principal de tu marca</div>
                     </div>
 
+                    <!-- Color Secundario -->
                     <div class="col-md-6 mb-3">
                         <label for="colorSecundario" class="form-label">
                             <i class="fas fa-fill me-1"></i> Color Secundario
                         </label>
                         <div class="input-group">
-                            <input type="color" 
-                                   class="form-control form-control-color" 
-                                   id="colorSecundario" 
+                            <input type="color"
+                                   class="form-control form-control-color"
+                                   id="colorSecundario"
                                    name="colorSecundario"
                                    value="#6c757d"
                                    title="Seleccionar color secundario">
-                            <input type="text" 
-                                   class="form-control" 
+                            <input type="text"
+                                   class="form-control"
                                    id="colorSecundarioText"
                                    value="#6c757d"
                                    maxlength="7"
@@ -428,17 +436,116 @@
                     </div>
                 </div>
 
+                <!-- PDF Invoice Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-file-pdf text-danger me-2"></i>
+                            Configuración de Factura PDF
+                        </h5>
+                    </div>
+
+                    <!-- Descripción de Actividad -->
+                    <div class="col-md-12 mb-3">
+                        <label for="descripcionActividad" class="form-label">Descripción de Actividad Económica</label>
+                        <input type="text" class="form-control" id="descripcionActividad" maxlength="200"
+                               placeholder="Venta al por mayor de productos químicos">
+                        <div class="form-text">Complementa el código de actividad en el PDF</div>
+                    </div>
+
+                    <!-- Texto Legal -->
+                    <div class="col-md-12 mb-3">
+                        <label for="textoLegal" class="form-label">Texto Legal (pie de factura)</label>
+                        <textarea class="form-control" id="textoLegal" rows="3" maxlength="1000"
+                                  placeholder="Este documento genera intereses del 3%..."></textarea>
+                        <div class="form-text">Si está vacío, no aparece en el PDF</div>
+                    </div>
+
+                    <!-- Sello Tipo Empresa -->
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Sello de Tipo de Empresa (PYME, etc.)</label>
+                        <div id="sello-preview-container" class="mb-2" style="display:none;">
+                            <img id="sello-preview" src="" alt="Sello actual" style="max-height:80px;">
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2"
+                                    onclick="EmpresaPdf.eliminarSello()">
+                                <i class="fas fa-trash"></i> Quitar sello
+                            </button>
+                        </div>
+                        <input type="file" class="form-control" id="selloFile" accept="image/*">
+                        <div class="form-text">Imagen PNG/JPG. Si está vacío, no aparece en el PDF</div>
+                    </div>
+
+                    <!-- Save PDF config button -->
+                    <div class="col-12">
+                        <button type="button" class="btn btn-outline-danger" onclick="EmpresaPdf.guardarConfigPdf()">
+                            <i class="fas fa-file-pdf me-1"></i> Guardar config. PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bank Accounts -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-university text-success me-2"></i>
+                            Cuentas Bancarias (aparecen en el PDF)
+                        </h5>
+                    </div>
+                    <div class="col-12">
+                        <div id="lista-cuentas-bancarias"></div>
+                        <button type="button" class="btn btn-outline-success btn-sm mt-2"
+                                onclick="EmpresaPdf.mostrarFormCuenta()">
+                            <i class="fas fa-plus me-1"></i> Agregar cuenta
+                        </button>
+                        <!-- inline form -->
+                        <div id="form-cuenta-bancaria" class="card card-body mt-3" style="display:none;">
+                            <input type="hidden" id="cuentaId">
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control form-control-sm" id="cuentaEntidad"
+                                           placeholder="Banco Nacional - Colones">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control form-control-sm" id="cuentaIban"
+                                           placeholder="CR74015104210010004988">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control form-control-sm" id="cuentaBanco"
+                                           placeholder="100-01-042-000498-5">
+                                </div>
+                                <div class="col-md-2">
+                                    <select class="form-select form-select-sm" id="cuentaMoneda">
+                                        <option value="CRC">CRC</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-1 d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-success"
+                                            onclick="EmpresaPdf.guardarCuenta()">
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-secondary"
+                                            onclick="EmpresaPdf.cancelarCuenta()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Botones de acción -->
                 <div class="row">
                     <div class="col-12">
                         <div class="d-flex justify-content-end pt-3 border-top">
-                            <button type="button" 
-                                    class="btn btn-secondary me-2" 
+                            <button type="button"
+                                    class="btn btn-secondary me-2"
                                     id="btn-cancelar-empresa">
                                 <i class="fas fa-times me-2"></i>
                                 Cancelar
                             </button>
-                            <button type="submit" 
+                            <button type="submit"
                                     class="btn btn-primary">
                                 <i class="fas fa-save me-2"></i>
                                 Guardar Configuración

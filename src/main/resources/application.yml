@@ -75,6 +75,10 @@ app:
   base-url: ${APP_BASE_URL:http://localhost:9090}
   certificados:
     directorio: ${CERTIFICADOS_DIR:/app/certificados}
+  sellos:
+    directorio: ${SELLOS_DIR:/app/sellos}
+  uploads:
+    directorio: ${UPLOADS_DIR:/app/uploads}
 
 # ========================================
 # CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA
