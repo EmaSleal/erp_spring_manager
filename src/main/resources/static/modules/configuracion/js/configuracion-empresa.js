@@ -82,6 +82,31 @@ const ConfiguracionEmpresa = {
                 if (document.getElementById('faviconUrl')) {
                     document.getElementById('faviconUrl').value = datos.faviconUrl || '';
                 }
+
+                // Logo uploaded as file
+                if (datos.tieneLogoCargado && datos.logoPath) {
+                    const previewLogo = document.getElementById('logo-preview');
+                    const containerLogo = document.getElementById('logo-preview-container');
+                    if (previewLogo && containerLogo) {
+                        previewLogo.src = `/api/configuracion/empresa/assets/empresa/${datos.logoPath}`;
+                        containerLogo.style.display = 'block';
+                    }
+                } else {
+                    const containerLogo = document.getElementById('logo-preview-container');
+                    if (containerLogo) containerLogo.style.display = 'none';
+                }
+                // Favicon uploaded as file
+                if (datos.tieneFaviconCargado && datos.faviconPath) {
+                    const previewFav = document.getElementById('favicon-preview');
+                    const containerFav = document.getElementById('favicon-preview-container');
+                    if (previewFav && containerFav) {
+                        previewFav.src = `/api/configuracion/empresa/assets/empresa/${datos.faviconPath}`;
+                        containerFav.style.display = 'block';
+                    }
+                } else {
+                    const containerFav = document.getElementById('favicon-preview-container');
+                    if (containerFav) containerFav.style.display = 'none';
+                }
                 if (document.getElementById('colorPrimario')) {
                     document.getElementById('colorPrimario').value = datos.colorPrimario || '#007bff';
                     document.getElementById('colorPrimarioText').value = datos.colorPrimario || '#007bff';
@@ -241,6 +266,68 @@ const ConfiguracionEmpresa = {
         }
     },
     
+    subirLogo: async function(file) {
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+        const fd = new FormData();
+        fd.append('logo', file);
+        const headers = {};
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        try {
+            const res = await fetch('/api/configuracion/empresa/logo', { method: 'POST', headers, body: fd });
+            const data = await res.json();
+            if (!data.success) Configuracion.mostrarAlertaEn('alert-empresa-container', 'warning', data.message || 'Error al subir logo');
+        } catch (e) { console.error('Error subiendo logo:', e); }
+    },
+
+    subirFavicon: async function(file) {
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+        const fd = new FormData();
+        fd.append('favicon', file);
+        const headers = {};
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        try {
+            const res = await fetch('/api/configuracion/empresa/favicon', { method: 'POST', headers, body: fd });
+            const data = await res.json();
+            if (!data.success) Configuracion.mostrarAlertaEn('alert-empresa-container', 'warning', data.message || 'Error al subir favicon');
+        } catch (e) { console.error('Error subiendo favicon:', e); }
+    },
+
+    eliminarLogo: async function() {
+        const confirmado = await Swal.fire({ title: '¿Quitar logo?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar' });
+        if (!confirmado.isConfirmed) return;
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        try {
+            const res = await fetch('/api/configuracion/empresa/logo', { method: 'DELETE', headers });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('logo-preview-container').style.display = 'none';
+                Configuracion.mostrarAlertaEn('alert-empresa-container', 'success', 'Logo eliminado');
+            }
+        } catch (e) { console.error('Error eliminando logo:', e); }
+    },
+
+    eliminarFavicon: async function() {
+        const confirmado = await Swal.fire({ title: '¿Quitar favicon?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar' });
+        if (!confirmado.isConfirmed) return;
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        try {
+            const res = await fetch('/api/configuracion/empresa/favicon', { method: 'DELETE', headers });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('favicon-preview-container').style.display = 'none';
+                Configuracion.mostrarAlertaEn('alert-empresa-container', 'success', 'Favicon eliminado');
+            }
+        } catch (e) { console.error('Error eliminando favicon:', e); }
+    },
+
     /**
      * Guarda la configuración
      */
@@ -296,9 +383,22 @@ const ConfiguracionEmpresa = {
             }
             
             if (response.success) {
-                Configuracion.mostrarAlertaEn('alert-empresa-container', 'success', 
+                Configuracion.mostrarAlertaEn('alert-empresa-container', 'success',
                     response.message || 'Configuración guardada exitosamente');
-                
+
+                // Upload logo if a file was selected
+                const logoFile = document.getElementById('logoFile');
+                if (logoFile && logoFile.files && logoFile.files[0]) {
+                    await this.subirLogo(logoFile.files[0]);
+                    logoFile.value = '';
+                }
+                // Upload favicon if a file was selected
+                const faviconFile = document.getElementById('faviconFile');
+                if (faviconFile && faviconFile.files && faviconFile.files[0]) {
+                    await this.subirFavicon(faviconFile.files[0]);
+                    faviconFile.value = '';
+                }
+
                 // Recargar datos
                 setTimeout(() => this.cargarConfiguracion(), 1000);
             } else {
@@ -317,6 +417,7 @@ const ConfiguracionEmpresa = {
 document.addEventListener('shown.bs.tab', function (event) {
     if (event.target.id === 'empresa-tab') {
         ConfiguracionEmpresa.init();
+        EmpresaPdf.init();
     }
 });
 
@@ -325,5 +426,270 @@ document.addEventListener('DOMContentLoaded', function() {
     const empresaTab = document.getElementById('empresa-tab');
     if (empresaTab && empresaTab.classList.contains('active')) {
         ConfiguracionEmpresa.init();
+        EmpresaPdf.init();
     }
 });
+
+// ============================================================================
+// EMPRESA PDF - PDF invoice config and bank accounts
+// ============================================================================
+
+const EmpresaPdf = {
+
+    // ------------------------------------------------------------------ init
+
+    init: function () {
+        this.cargarConfigPdf();
+        this.cargarCuentas();
+    },
+
+    // --------------------------------------------------------- PDF config
+
+    cargarConfigPdf: async function () {
+        try {
+            const res = await Configuracion.get('/api/empresa/pdf-config');
+            if (res.success && res.data) {
+                const d = res.data;
+                const el = (id) => document.getElementById(id);
+                if (el('textoLegal'))           el('textoLegal').value           = d.textoLegal           || '';
+                if (el('descripcionActividad')) el('descripcionActividad').value = d.descripcionActividad || '';
+                if (d.tieneSello && d.selloTipoEmpresa) {
+                    const container = el('sello-preview-container');
+                    const img       = el('sello-preview');
+                    if (container && img) {
+                        img.src = '/api/empresa/assets/' + d.selloTipoEmpresa;
+                        container.style.display = '';
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error loading PDF config:', err);
+        }
+    },
+
+    guardarConfigPdf: async function () {
+        try {
+            const textoLegal           = document.getElementById('textoLegal')           ? document.getElementById('textoLegal').value           : '';
+            const descripcionActividad = document.getElementById('descripcionActividad') ? document.getElementById('descripcionActividad').value : '';
+
+            const res = await Configuracion.put('/api/empresa/pdf-config', { textoLegal, descripcionActividad });
+
+            if (!res.success) {
+                Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Error saving PDF config' });
+                return;
+            }
+
+            // Upload sello if a file was selected
+            const selloInput = document.getElementById('selloFile');
+            if (selloInput && selloInput.files && selloInput.files.length > 0) {
+                await this._subirSello(selloInput.files[0]);
+                selloInput.value = '';
+            }
+
+            Swal.fire({ icon: 'success', title: 'Saved', text: 'PDF config saved successfully', timer: 1500, showConfirmButton: false });
+            this.cargarConfigPdf();
+        } catch (err) {
+            console.error('Error saving PDF config:', err);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Unexpected error saving PDF config' });
+        }
+    },
+
+    _subirSello: async function (file) {
+        const csrfToken  = document.querySelector('meta[name="_csrf"]')        ? document.querySelector('meta[name="_csrf"]').content        : '';
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]') ? document.querySelector('meta[name="_csrf_header"]').content : 'X-CSRF-TOKEN';
+
+        const formData = new FormData();
+        formData.append('sello', file);
+
+        const response = await fetch('/api/empresa/sello', {
+            method: 'POST',
+            headers: { [csrfHeader]: csrfToken },
+            body: formData
+        });
+        return await response.json();
+    },
+
+    eliminarSello: async function () {
+        const confirm = await Swal.fire({
+            icon: 'warning',
+            title: '¿Quitar sello?',
+            text: 'Se eliminará el sello actual.',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, quitar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirm.isConfirmed) return;
+
+        try {
+            const res = await Configuracion.delete('/api/empresa/sello');
+            if (res.success) {
+                const container = document.getElementById('sello-preview-container');
+                if (container) container.style.display = 'none';
+                Swal.fire({ icon: 'success', title: 'Done', text: 'Sello removed', timer: 1200, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+            }
+        } catch (err) {
+            console.error('Error removing sello:', err);
+        }
+    },
+
+    // --------------------------------------------------------- Bank accounts
+
+    cargarCuentas: async function () {
+        try {
+            const res = await Configuracion.get('/api/empresa/cuentas-bancarias');
+            if (res.success) {
+                this._renderCuentas(res.data || []);
+            }
+        } catch (err) {
+            console.error('Error loading bank accounts:', err);
+        }
+    },
+
+    _renderCuentas: function (cuentas) {
+        const container = document.getElementById('lista-cuentas-bancarias');
+        if (!container) return;
+
+        if (!cuentas.length) {
+            container.innerHTML = '<p class="text-muted small">No hay cuentas bancarias configuradas.</p>';
+            return;
+        }
+
+        const rows = cuentas.map(c => `
+            <tr>
+                <td>${this._esc(c.entidad)}</td>
+                <td><code>${this._esc(c.cuentaIban)}</code></td>
+                <td>${this._esc(c.cuentaBanco)}</td>
+                <td><span class="badge bg-secondary">${this._esc(c.moneda)}</span></td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1"
+                            onclick="EmpresaPdf.mostrarFormCuenta(${c.idCuentaBancaria})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="EmpresaPdf.eliminarCuenta(${c.idCuentaBancaria})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`).join('');
+
+        container.innerHTML = `
+            <table class="table table-sm table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Entidad</th><th>IBAN</th><th>Cuenta Banco</th><th>Moneda</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    },
+
+    mostrarFormCuenta: async function (id) {
+        const form = document.getElementById('form-cuenta-bancaria');
+        if (!form) return;
+
+        document.getElementById('cuentaId').value      = '';
+        document.getElementById('cuentaEntidad').value  = '';
+        document.getElementById('cuentaIban').value     = '';
+        document.getElementById('cuentaBanco').value    = '';
+        document.getElementById('cuentaMoneda').value   = 'CRC';
+
+        if (id) {
+            // Load existing account data from the rendered table if possible
+            try {
+                const res = await Configuracion.get('/api/empresa/cuentas-bancarias');
+                if (res.success) {
+                    const cuenta = (res.data || []).find(c => c.idCuentaBancaria === id);
+                    if (cuenta) {
+                        document.getElementById('cuentaId').value     = cuenta.idCuentaBancaria;
+                        document.getElementById('cuentaEntidad').value = cuenta.entidad  || '';
+                        document.getElementById('cuentaIban').value    = cuenta.cuentaIban  || '';
+                        document.getElementById('cuentaBanco').value   = cuenta.cuentaBanco || '';
+                        document.getElementById('cuentaMoneda').value  = cuenta.moneda || 'CRC';
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading account for edit:', err);
+            }
+        }
+
+        form.style.display = '';
+        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+
+    cancelarCuenta: function () {
+        const form = document.getElementById('form-cuenta-bancaria');
+        if (form) form.style.display = 'none';
+    },
+
+    guardarCuenta: async function () {
+        const id      = document.getElementById('cuentaId').value;
+        const payload = {
+            entidad:     document.getElementById('cuentaEntidad').value.trim(),
+            cuentaIban:  document.getElementById('cuentaIban').value.trim(),
+            cuentaBanco: document.getElementById('cuentaBanco').value.trim(),
+            moneda:      document.getElementById('cuentaMoneda').value
+        };
+
+        if (!payload.entidad) {
+            Swal.fire({ icon: 'warning', title: 'Requerido', text: 'El nombre de la entidad es obligatorio' });
+            return;
+        }
+
+        try {
+            let res;
+            if (id) {
+                res = await Configuracion.put(`/api/empresa/cuentas-bancarias/${id}`, payload);
+            } else {
+                res = await Configuracion.post('/api/empresa/cuentas-bancarias', payload);
+            }
+
+            if (res.success) {
+                this.cancelarCuenta();
+                await this.cargarCuentas();
+                Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+            }
+        } catch (err) {
+            console.error('Error saving bank account:', err);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Unexpected error saving bank account' });
+        }
+    },
+
+    eliminarCuenta: async function (id) {
+        const confirm = await Swal.fire({
+            icon: 'warning',
+            title: '¿Eliminar cuenta?',
+            text: 'Se quitará esta cuenta bancaria del PDF.',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirm.isConfirmed) return;
+
+        try {
+            const res = await Configuracion.delete(`/api/empresa/cuentas-bancarias/${id}`);
+            if (res.success) {
+                await this.cargarCuentas();
+                Swal.fire({ icon: 'success', title: 'Eliminada', timer: 1200, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+            }
+        } catch (err) {
+            console.error('Error deleting bank account:', err);
+        }
+    },
+
+    // ---------------------------------------------------------------- utils
+
+    _esc: function (str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+};

@@ -42,6 +42,10 @@ public class ConfiguracionEmpresaMapper {
         dto.setEmail(entity.getEmail());
         dto.setSitioWeb(entity.getSitioWeb());
         dto.setLogoUrl(entity.getLogoUrl());
+        dto.setLogoPath(entity.getLogoPath());
+        dto.setFaviconPath(entity.getFaviconPath());
+        dto.setTieneLogoCargado(entity.tieneLogoCargado());
+        dto.setTieneFaviconCargado(entity.tieneFaviconCargado());
         dto.setColorPrimario(entity.getColorPrimario());
         dto.setColorSecundario(entity.getColorSecundario());
 
@@ -94,6 +98,8 @@ public class ConfiguracionEmpresaMapper {
                 .email(dto.getEmail())
                 .sitioWeb(dto.getSitioWeb())
                 .logoUrl(dto.getLogoUrl())
+                .logoPath(dto.getLogoPath())
+                .faviconPath(dto.getFaviconPath())
                 .colorPrimario(dto.getColorPrimario())
                 .colorSecundario(dto.getColorSecundario())
                 // Electronic invoicing — Costa Rica

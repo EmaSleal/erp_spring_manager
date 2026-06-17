@@ -90,6 +90,18 @@ public class ConfiguracionEmpresaDTO {
      */
     private String logoUrl;
 
+    /** Path of the uploaded logo file stored in the server. */
+    private String logoPath;
+
+    /** Path of the uploaded favicon file stored in the server. */
+    private String faviconPath;
+
+    /** True when a logo file has been uploaded to the server. */
+    private Boolean tieneLogoCargado;
+
+    /** True when a favicon file has been uploaded to the server. */
+    private Boolean tieneFaviconCargado;
+
     /**
      * Color primario del tema (hexadecimal)
      */

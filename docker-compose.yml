@@ -61,6 +61,8 @@ services:
       - app_logs:/app/logs
       - certificados_data:/app/certificados
       - comprobantes_data:/app/comprobantes
+      - sellos_data:/app/sellos
+      - uploads_data:/app/uploads
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/actuator/health"]
@@ -111,4 +113,8 @@ volumes:
   certificados_data:
     driver: local
   comprobantes_data:
+    driver: local
+  sellos_data:
+    driver: local
+  uploads_data:
     driver: local

@@ -43,7 +43,7 @@ public class ConfiguracionEmpresa implements Serializable {
     @Column(name = "nombre_comercial", length = 255)
     private String nombreComercial;
 
-    @Column(name = "rfc", length = 13)
+    @Column(name = "rfc", length = 35)
     private String rfc;
 
     @Column(name = "regimen_fiscal", length = 100)
@@ -118,6 +118,14 @@ public class ConfiguracionEmpresa implements Serializable {
 
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
+
+    /** Path of the uploaded logo file (under ${app.uploads.directorio}/empresa/). Takes priority over logoUrl when present. */
+    @Column(name = "logo_path", length = 255)
+    private String logoPath;
+
+    /** Path of the uploaded favicon file (under ${app.uploads.directorio}/empresa/). */
+    @Column(name = "favicon_path", length = 255)
+    private String faviconPath;
 
     @Builder.Default
     @Column(name = "color_primario", length = 7)
@@ -210,6 +218,14 @@ public class ConfiguracionEmpresa implements Serializable {
      */
     public boolean tieneLogoConfigurado() {
         return logoUrl != null && !logoUrl.isEmpty();
+    }
+
+    public boolean tieneLogoCargado() {
+        return logoPath != null && !logoPath.isEmpty();
+    }
+
+    public boolean tieneFaviconCargado() {
+        return faviconPath != null && !faviconPath.isEmpty();
     }
 
     /**
