@@ -626,8 +626,8 @@ function mostrarPaso2() {
         condicionVentaFE: condicionVentaFE?.value || null,
         medioPagoFE: medioPagoFE?.value || null,
         monedaFE: monedaFE?.value || null,
-        tipoCambio: tipoCambio?.value ? parseFloat(tipoCambio.value) : null,
-        plazoCredito: plazoCredito?.value ? parseInt(plazoCredito.value) : null
+        tipoCambio: tipoCambio?.value ? parseFloat(tipoCambio.value) : 1,
+        plazoCredito: plazoCredito?.value ? parseInt(plazoCredito.value) : 0
     };
 
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
