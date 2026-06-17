@@ -367,9 +367,12 @@
             status.className = 'text-muted';
             const formData = new FormData();
             formData.append('archivo', file);
+            const headers = {};
+            if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
             try {
                 const res = await fetch('/api/facturas/configuracion-hacienda/upload-certificado', {
                     method: 'POST',
+                    headers: headers,
                     body: formData
                 });
                 const data = await res.json();
