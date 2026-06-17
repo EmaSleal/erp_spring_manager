@@ -78,3 +78,5 @@ database/export/*
 !database/export/.gitkeep
 
 .atl/
+# Runtime upload directories
+uploads/
