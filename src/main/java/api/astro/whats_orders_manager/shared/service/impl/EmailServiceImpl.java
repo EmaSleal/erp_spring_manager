@@ -23,6 +23,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 /**
  * ============================================================================
@@ -168,6 +169,31 @@ public class EmailServiceImpl implements EmailService {
         } catch (Exception e) {
             log.error("❌ Error al enviar email HTML con adjunto a {}: {}", to, e.getMessage());
             throw new MessagingException("Error al enviar email HTML con adjunto: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Envía un email con múltiples archivos adjuntos
+     */
+    @Override
+    public void enviarEmailConMultiplesAdjuntos(String to, String subject, String body,
+            Map<String, byte[]> adjuntos) throws MessagingException {
+        log.info("Enviando email con {} adjunto(s) a: {}", adjuntos.size(), to);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, CHARSET);
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(body);
+            for (Map.Entry<String, byte[]> entry : adjuntos.entrySet()) {
+                helper.addAttachment(entry.getKey(), new ByteArrayResource(entry.getValue()));
+            }
+            mailSender.send(message);
+            log.info("✅ Email con adjuntos enviado exitosamente a: {}", to);
+        } catch (Exception e) {
+            log.error("❌ Error al enviar email con adjuntos a {}: {}", to, e.getMessage());
+            throw new MessagingException("Error al enviar email con adjuntos: " + e.getMessage(), e);
         }
     }
 

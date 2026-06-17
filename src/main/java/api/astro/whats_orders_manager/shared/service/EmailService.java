@@ -92,8 +92,20 @@ public interface EmailService {
     void enviarCredencialesUsuario(api.astro.whats_orders_manager.modules.seguridad.model.Usuario usuario, String contrasenaPlana, String urlLogin) throws MessagingException;
 
     /**
+     * Envía un email con múltiples archivos adjuntos
+     *
+     * @param to       Destinatario (email)
+     * @param subject  Asunto del email
+     * @param body     Cuerpo del email (texto plano)
+     * @param adjuntos Map nombre→bytes de cada adjunto (se respeta el orden de inserción)
+     * @throws MessagingException Si hay error al enviar
+     */
+    void enviarEmailConMultiplesAdjuntos(String to, String subject, String body,
+            java.util.Map<String, byte[]> adjuntos) throws MessagingException;
+
+    /**
      * Env├¡a un recordatorio de pago al cliente de una factura vencida
-     * 
+     *
      * @param factura Factura con pago vencido
      * @throws MessagingException Si hay error al enviar
      */
