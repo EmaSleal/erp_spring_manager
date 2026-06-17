@@ -17,15 +17,5 @@ public interface ClienteService {
     void deleteById(Integer id);
     long count();
     
-    /**
-     * Crea o actualiza un cliente junto con su usuario asociado
-     * Si el usuario ya existe (por teléfono), lo actualiza
-     * Si no existe, crea un nuevo usuario
-     * 
-     * @param cliente Cliente a guardar (debe incluir usuario con teléfono)
-     * @return Cliente guardado con su usuario asociado
-     * @throws IllegalArgumentException si el cliente o el usuario están incompletos
-     */
-    Cliente guardarClienteConUsuario(Cliente cliente);
 }
 

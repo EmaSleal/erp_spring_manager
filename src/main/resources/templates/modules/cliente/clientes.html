@@ -118,13 +118,13 @@
                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_ELIMINAR')">
                                                     <i class="fas fa-trash"></i> Eliminar
                                                 </a>
-                                                <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
+                                                <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
                                                         class="btn btn-sm btn-warning"
                                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
                                                     <i class="fas fa-edit"></i> Editar
                                                 </button>
-                                                
-                                            </div> 
+
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -170,11 +170,11 @@
                                     </div>
                                     
                                     <!-- Teléfono -->
-                                    <div class="mobile-card-row" th:if="${cliente.usuario?.telefono}">
+                                    <div class="mobile-card-row" th:if="${cliente.telefono}">
                                         <span class="mobile-card-label">Teléfono</span>
                                         <span class="mobile-card-value">
                                             <i class="bi bi-phone me-1"></i>
-                                            <span th:text="${cliente.usuario.telefono}">999999999</span>
+                                            <span th:text="${cliente.telefono}">999999999</span>
                                         </span>
                                     </div>
                                     
@@ -206,7 +206,7 @@
 
                                 <!-- Footer con acciones -->
                                 <div class="mobile-card-footer mobile-card-actions">
-                                    <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.usuario.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
+                                    <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
                                             class="btn btn-sm btn-warning"
                                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
                                         <i class="fas fa-edit me-1"></i> Editar

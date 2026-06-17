@@ -2,7 +2,6 @@ package api.astro.whats_orders_manager.modules.cliente.model;
 
 import api.astro.whats_orders_manager.modules.configuracion.model.ProvinciaCostaRica;
 import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
-import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -122,10 +121,11 @@ public class Cliente {
     @Column(name = "updateBy")
     private Integer updateBy;
 
-    @ManyToOne
-    //foreign key name FK_Cliente_Usuario
-    @JoinColumn(name = "idUsuario", referencedColumnName = "telefono")
-    private Usuario usuario;
+    @Column(name = "telefono", length = 20)
+    private String telefono;
+
+    @Column(name = "direccion", length = 255)
+    private String direccion;
 
     // Getters y Setters
 

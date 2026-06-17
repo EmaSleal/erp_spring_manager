@@ -76,34 +76,14 @@ public class DataInitializer implements ApplicationRunner {
                 });
 
         if (clienteRepository.count() == 0) {
-
-
-            if (usuarioRepository.findByNombre("cliente prueba").isEmpty()) {
-                log.info("DataInitializer: creating test user");
-                Usuario u = new Usuario();
-                u.setNombre("cliente prueba");
-                u.setTelefono("50612345679");
-                u.setPassword(passwordEncoder.encode("JhfKHZ2%mJM"));
-                u.setRol("ADMIN");
-                u.setRolEntity(rolAdmin);
-                u.setActivo(true);
-                u.setBloqueado(false);
-                u.setIntentosFallidos(0);
-                u.setRequireCambioPassword(false);
-                usuarioRepository.save(u);
-
-                 log.info("DataInitializer: creating default cliente");
+            log.info("DataInitializer: creating default cliente");
             Cliente c = new Cliente();
             c.setNombre("Cliente Genérico");
             c.setIdentificacion("000000000");
             c.setEmail("cliente@ejemplo.com");
             c.setTipoCliente(InvoiceType.INSTITUCIONAL);
-            c.setUsuario(u);
+            c.setTelefono("0000000000");
             clienteRepository.save(c);
-            }
-
-
-           
         }
 
         if (productoRepository.count() == 0) {

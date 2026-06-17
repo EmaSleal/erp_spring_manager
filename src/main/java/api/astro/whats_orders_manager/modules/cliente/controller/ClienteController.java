@@ -75,7 +75,7 @@ public class ClienteController {
         }
 
         try {
-            Cliente clienteGuardado = clienteService.guardarClienteConUsuario(cliente);
+            Cliente clienteGuardado = clienteService.save(cliente);
             return ResponseEntity.ok(Map.of("success", "Cliente guardado exitosamente: " + clienteGuardado.getNombre()));
 
         } catch (IllegalArgumentException e) {

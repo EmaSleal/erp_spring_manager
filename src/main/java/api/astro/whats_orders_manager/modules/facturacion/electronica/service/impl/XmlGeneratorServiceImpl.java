@@ -258,10 +258,10 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             xml.append("</Ubicacion>");
         }
 
-        if (cliente.getUsuario() != null && cliente.getUsuario().getTelefono() != null) {
+        if (cliente.getTelefono() != null && !cliente.getTelefono().isBlank()) {
             xml.append("<Telefono>");
             xml.append("<CodigoPais>506</CodigoPais>");
-            xml.append("<NumTelefono>").append(cliente.getUsuario().getTelefono().replaceAll("[^0-9]", "")).append("</NumTelefono>");
+            xml.append("<NumTelefono>").append(cliente.getTelefono().replaceAll("[^0-9]", "")).append("</NumTelefono>");
             xml.append("</Telefono>");
         }
 
