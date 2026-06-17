@@ -68,6 +68,20 @@
                         <input type="text" class="form-control" id="direccion" th:field="*{direccion}" placeholder="Dirección física del cliente" maxlength="255">
                     </div>
 
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label">
+                            <i class="fas fa-envelope text-info me-1"></i>
+                            Correo Electrónico
+                        </label>
+                        <input type="email"
+                               class="form-control"
+                               id="email"
+                               th:field="*{email}"
+                               placeholder="Ej: cliente@correo.com"
+                               maxlength="100">
+                    </div>
+
                     <!-- Tipo de Cliente -->
                     <div class="mb-3">
                         <label for="tipoCliente" class="form-label">

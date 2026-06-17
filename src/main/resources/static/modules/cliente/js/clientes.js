@@ -89,6 +89,7 @@ function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFactura
             document.getElementById('nombre').value = cliente.nombre || '';
             document.getElementById('telefono').value = cliente.telefono || '';
             document.getElementById('direccion').value = cliente.direccion || '';
+            document.getElementById('email').value = cliente.email || '';
             document.getElementById('tipoCliente').value = cliente.tipoCliente || '';
             
             // Establecer checkbox de Facturación Electrónica
