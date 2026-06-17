@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -182,6 +184,34 @@ public class Empresa implements Serializable {
     private String favicon;
 
     /**
+     * Ruta del sello de tipo de empresa (PYME, grande, etc.) para el PDF de facturas.
+     * Si es null no se imprime ningún sello.
+     */
+    @Size(max = 255)
+    @Column(name = "sello_tipo_empresa", length = 255)
+    private String selloTipoEmpresa;
+
+    /**
+     * Texto legal que aparece al pie de la factura (intereses, cheques, etc.).
+     * Si es null o vacío, no se imprime nada.
+     */
+    @Column(name = "texto_legal", columnDefinition = "TEXT")
+    private String textoLegal;
+
+    /**
+     * Descripción de la actividad económica principal (complementa codigoActividad).
+     */
+    @Size(max = 200)
+    @Column(name = "descripcion_actividad", length = 200)
+    private String descripcionActividad;
+
+    /**
+     * Cuentas bancarias de la empresa para mostrar en facturas.
+     */
+    @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<CuentaBancaria> cuentasBancarias = new ArrayList<>();
+
+    /**
      * Indica si este registro está activo
      * Solo debe haber un registro activo en la BD
      */
@@ -240,6 +270,14 @@ public class Empresa implements Serializable {
      */
     public boolean tieneFavicon() {
         return favicon != null && !favicon.isEmpty();
+    }
+
+    public boolean tieneSello() {
+        return selloTipoEmpresa != null && !selloTipoEmpresa.isEmpty();
+    }
+
+    public boolean tieneTextoLegal() {
+        return textoLegal != null && !textoLegal.isBlank();
     }
 
     /**
