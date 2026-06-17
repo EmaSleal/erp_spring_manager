@@ -27,7 +27,7 @@ public interface RespuestaHaciendaRepository extends JpaRepository<RespuestaHaci
     @Query("""
         SELECT new api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO(
             r.id, r.comprobante.id, r.comprobante.claveNumerica, r.fechaRespuesta,
-            r.codigoMensaje, r.mensaje, 
+            r.codigoMensaje, r.mensaje, r.xmlRespuesta,
             CASE WHEN r.exitoso = true THEN 'EXITOSO' ELSE 'FALLIDO' END,
             r.exitoso, r.detalles,
             r.codigoHttp, r.tiempoRespuestaMs, false, r.createdAt
