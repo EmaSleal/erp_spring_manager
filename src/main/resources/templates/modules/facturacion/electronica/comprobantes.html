@@ -285,6 +285,8 @@
     <!-- Scripts personalizados -->
     <script th:inline="javascript">
         const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
+        const csrfToken  = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
         let comprobantes = [];
 
         // Cargar estadísticas
@@ -887,32 +889,54 @@
                 });
         }
         
-        function enviarPorEmail(id) {
-            if (!confirm('¿Desea enviar este comprobante por email al cliente?')) {
-                return;
-            }
-            
+        async function enviarPorEmail(id) {
+            const result = await Swal.fire({
+                title: '¿Enviar por email?',
+                text: 'Se enviará el comprobante al email registrado del cliente.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, enviar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#0d6efd'
+            });
+
+            if (!result.isConfirmed) return;
+
+            Swal.fire({
+                title: 'Enviando...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
             fetch(`/api/facturas/electronica/comprobantes/${id}/enviar-email`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { [csrfHeader]: csrfToken }
             })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        mostrarAlerta(data.message, 'success');
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Enviado!',
+                            text: data.message,
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
                         bootstrap.Modal.getInstance(document.getElementById('detalleComprobanteModal')).hide();
                     } else {
-                        mostrarAlerta(data.message, 'danger');
+                        Swal.fire({ icon: 'error', title: 'Error al enviar', text: data.message });
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    mostrarAlerta('Error enviando email', 'danger');
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo enviar el comprobante por email.' });
                 });
         }
 
         function mostrarAlerta(mensaje, tipo) {
-            // Implementar sistema de alertas (puedes usar toastr o bootstrap alerts)
-            alert(mensaje);
+            const icon = tipo === 'success' ? 'success' : tipo === 'warning' ? 'warning' : 'error';
+            Swal.fire({ icon, text: mensaje, timer: 3000, showConfirmButton: false });
         }
         
         // Exportación
