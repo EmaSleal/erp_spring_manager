@@ -153,10 +153,17 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label for="rutaCertificado" class="form-label">Ruta del Certificado <span class="text-danger">*</span></label>
-                                <input type="text" id="rutaCertificado" class="form-control" required 
-                                       placeholder="/certificados/empresa.p12">
-                                <small class="text-muted">Ruta absoluta al archivo .p12</small>
+                                <label for="rutaCertificado" class="form-label">Certificado .p12 <span class="text-danger">*</span></label>
+                                <div class="input-group mb-1">
+                                    <input type="text" id="rutaCertificado" class="form-control" required
+                                           placeholder="/app/certificados/empresa.p12">
+                                    <label class="btn btn-outline-secondary mb-0" for="archivoCertificado" title="Subir archivo .p12">
+                                        <i class="fas fa-upload"></i>
+                                    </label>
+                                    <input type="file" id="archivoCertificado" class="d-none" accept=".p12,.pfx"
+                                           onchange="uploadCertificado(this)">
+                                </div>
+                                <small id="uploadCertStatus" class="text-muted">Ingresá la ruta o subí el archivo directamente</small>
                             </div>
                             
                             <div class="col-md-6">
@@ -350,6 +357,35 @@
             
             document.getElementById('modalTitle').textContent = 'Editar Configuración';
             new bootstrap.Modal(document.getElementById('configuracionModal')).show();
+        }
+
+        async function uploadCertificado(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const status = document.getElementById('uploadCertStatus');
+            status.textContent = 'Subiendo...';
+            status.className = 'text-muted';
+            const formData = new FormData();
+            formData.append('archivo', file);
+            try {
+                const res = await fetch('/api/facturas/configuracion-hacienda/upload-certificado', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    status.textContent = data.error || 'Error al subir el archivo';
+                    status.className = 'text-danger';
+                    return;
+                }
+                document.getElementById('rutaCertificado').value = data.ruta;
+                status.textContent = 'Archivo subido: ' + file.name;
+                status.className = 'text-success';
+            } catch (e) {
+                status.textContent = 'Error de conexión al subir el archivo';
+                status.className = 'text-danger';
+            }
+            input.value = '';
         }
 
         function guardarConfiguracion() {
