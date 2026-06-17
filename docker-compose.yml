@@ -59,10 +59,8 @@ services:
       - app-network
     volumes:
       - app_logs:/app/logs
-      # Persistencia de certificados
-      - ./certificados:/app/certificados
-      # Persistencia de comprobantes
-      - ./comprobantes:/app/comprobantes
+      - certificados_data:/app/certificados
+      - comprobantes_data:/app/comprobantes
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/actuator/health"]
@@ -109,4 +107,8 @@ volumes:
   mysql_data:
     driver: local
   app_logs:
+    driver: local
+  certificados_data:
+    driver: local
+  comprobantes_data:
     driver: local
