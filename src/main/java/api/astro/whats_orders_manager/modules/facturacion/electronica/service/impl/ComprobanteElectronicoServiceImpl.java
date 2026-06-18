@@ -25,7 +25,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -547,8 +550,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 "Moneda:                          %s%n" +
                 "Total:                           %s%n%n" +
                 "Adjuntos de la Factura Electrónica:%n" +
-                "XML:                             %s.xml%n" +
-                "XML Aceptación:                  %s_respuesta.xml%n" +
+                "XML (comprimidos):               %s_documentos.zip%n" +
                 "PDF:                             %s.pdf%n",
                 clienteNombre, tipoDesc,
                 emisorNombre, emisorId, emisorTel, emisorEmail,
@@ -556,21 +558,30 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 consecutivo, clave, numFactura,
                 emision.format(fmtFecha), emision.format(fmtHora),
                 moneda, total,
-                clave, clave, clave
+                clave, clave
             );
 
             String asunto = tipoDesc + " - " + numFactura;
 
             Map<String, byte[]> adjuntos = new LinkedHashMap<>();
 
-            if (comprobante.getXmlComprobante() != null) {
-                adjuntos.put(clave + ".xml",
-                    comprobante.getXmlComprobante().getBytes(StandardCharsets.UTF_8));
+            ByteArrayOutputStream zipBuffer = new ByteArrayOutputStream();
+            try (ZipOutputStream zos = new ZipOutputStream(zipBuffer)) {
+                if (comprobante.getXmlComprobante() != null) {
+                    zos.putNextEntry(new ZipEntry(clave + ".xml"));
+                    zos.write(comprobante.getXmlComprobante().getBytes(StandardCharsets.UTF_8));
+                    zos.closeEntry();
+                }
+                if (comprobante.getXmlRespuesta() != null) {
+                    zos.putNextEntry(new ZipEntry(clave + "_respuesta.xml"));
+                    zos.write(comprobante.getXmlRespuesta().getBytes(StandardCharsets.UTF_8));
+                    zos.closeEntry();
+                }
             }
-            if (comprobante.getXmlRespuesta() != null) {
-                adjuntos.put(clave + "_respuesta.xml",
-                    comprobante.getXmlRespuesta().getBytes(StandardCharsets.UTF_8));
+            if (zipBuffer.size() > 0) {
+                adjuntos.put(clave + "_documentos.zip", zipBuffer.toByteArray());
             }
+
             if (factura != null) {
                 byte[] pdf = facturaPdfService.generarPdfFactura(factura.getIdFactura());
                 adjuntos.put(clave + ".pdf", pdf);
