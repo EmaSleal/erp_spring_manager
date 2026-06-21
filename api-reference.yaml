@@ -1235,7 +1235,7 @@ paths:
   # CONVERSACION PEDIDO
   # ════════════════════════════════════════════════
 
-  /api/conversaciones/{telefonoCliente}:
+  /api/conversaciones/{telefonoVendedor}:
     get:
       tags: [WhatsApp]
       summary: Obtener conversación activa por teléfono del cliente
@@ -1243,10 +1243,10 @@ paths:
       x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
       description: |
         Retorna el estado actual de la conversación de pedido en construcción
-        para un cliente dado. La clave de negocio es el teléfono del CLIENTE FINAL,
-        no el del vendedor ni el del bot.
+        para un vendedor dado. La clave de negocio es el teléfono del VENDEDOR
+        (el número que aparece en cada evento del webhook de Meta).
       parameters:
-        - name: telefonoCliente
+        - name: telefonoVendedor
           in: path
           required: true
           schema:
@@ -1268,14 +1268,14 @@ paths:
       operationId: upsertConversacion
       x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
       x-business-rules:
-        - Si no existe fila con ese telefonoCliente, la crea; si existe, actualiza solo los campos enviados (null = no tocar).
-        - telefonoCliente es clave única — un cliente solo puede tener UNA conversación activa a la vez.
-        - Si llega un segundo vendedor para el mismo cliente, el PUT actualiza la misma fila sin crear duplicado.
+        - Si no existe fila con ese telefonoVendedor, la crea; si existe, actualiza solo los campos enviados (null = no tocar).
+        - telefonoVendedor es clave única — un vendedor solo puede tener UNA conversación activa a la vez.
         - lineasAcumuladas debe ser un JSON array válido; si no lo es, retorna 400.
-        - La operación es atómica (@Transactional) para evitar colisiones si dos mensajes llegan simultáneamente.
+        - La operación es atómica (@Transactional) para evitar colisiones si dos mensajes del mismo vendedor llegan casi simultáneos.
+        - Si idClientePropuesto en el body difiere del guardado, el backend persiste el nuevo valor sin cuestionarlo — la decisión de descarte o continuidad la toma el LLM en el prompt, no el backend.
         - idConversacion, createDate y updateDate son gestionados por el servidor; no incluirlos en el body.
       parameters:
-        - name: telefonoCliente
+        - name: telefonoVendedor
           in: path
           required: true
           schema:
@@ -1320,7 +1320,7 @@ paths:
         - Al eliminar la fila, la próxima conversación con ese mismo cliente arranca limpia.
         - 404 si no existía — no es error fatal en un flujo idempotente.
       parameters:
-        - name: telefonoCliente
+        - name: telefonoVendedor
           in: path
           required: true
           schema:
@@ -2077,20 +2077,23 @@ components:
       type: object
       description: |
         Registro de estado de un pedido en construcción vía conversación de WhatsApp.
-        Clave de negocio: `telefonoCliente` (único por cliente activo).
-        Un cliente solo puede tener una fila activa a la vez.
+        Clave de negocio: `telefonoVendedor` — el teléfono que llega en cada mensaje
+        del webhook de Meta es siempre el del VENDEDOR (quien escribe al bot).
+        Un vendedor solo puede tener una conversación activa a la vez.
+        El cliente final se resuelve después mediante `idClientePropuesto`.
       properties:
         idConversacion:
           type: integer
           readOnly: true
           description: ID autoincremental asignado por el servidor
-        telefonoCliente:
+        telefonoVendedor:
           type: string
-          description: Teléfono del cliente FINAL (no del vendedor). Formato Meta (+506XXXXXXXX).
+          description: Teléfono del vendedor que escribe al bot. Clave única. Formato Meta (+506XXXXXXXX).
           example: "+50688889999"
         idVendedor:
           type: integer
-          description: ID del usuario vendedor que está armando el pedido
+          nullable: true
+          description: FK opcional al Usuario vendedor — útil para joins. Si omitido, telefonoVendedor ya lo identifica.
           example: 3
         estadoConversacion:
           $ref: '#/components/schemas/EstadoConversacion'

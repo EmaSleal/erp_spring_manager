@@ -19,19 +19,19 @@ public class ConversacionPedidoServiceImpl implements ConversacionPedidoService 
     private final ObjectMapper objectMapper;
 
     @Override
-    public Optional<ConversacionPedido> findByTelefonoCliente(String telefonoCliente) {
-        return repository.findByTelefonoCliente(telefonoCliente);
+    public Optional<ConversacionPedido> findByTelefonoVendedor(String telefonoVendedor) {
+        return repository.findByTelefonoVendedor(telefonoVendedor);
     }
 
     @Override
     @Transactional
-    public ConversacionPedido upsert(String telefonoCliente, ConversacionPedido datos) {
+    public ConversacionPedido upsert(String telefonoVendedor, ConversacionPedido datos) {
         validarLineasAcumuladas(datos.getLineasAcumuladas());
 
-        ConversacionPedido conversacion = repository.findByTelefonoCliente(telefonoCliente)
+        ConversacionPedido conversacion = repository.findByTelefonoVendedor(telefonoVendedor)
                 .orElseGet(() -> {
                     ConversacionPedido nueva = new ConversacionPedido();
-                    nueva.setTelefonoCliente(telefonoCliente);
+                    nueva.setTelefonoVendedor(telefonoVendedor);
                     return nueva;
                 });
 
@@ -47,11 +47,11 @@ public class ConversacionPedidoServiceImpl implements ConversacionPedidoService 
 
     @Override
     @Transactional
-    public boolean deleteByTelefonoCliente(String telefonoCliente) {
-        if (!repository.existsByTelefonoCliente(telefonoCliente)) {
+    public boolean deleteByTelefonoVendedor(String telefonoVendedor) {
+        if (!repository.existsByTelefonoVendedor(telefonoVendedor)) {
             return false;
         }
-        repository.deleteByTelefonoCliente(telefonoCliente);
+        repository.deleteByTelefonoVendedor(telefonoVendedor);
         return true;
     }
 

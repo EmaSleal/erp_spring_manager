@@ -20,38 +20,38 @@ public class ConversacionPedidoController {
 
     private final ConversacionPedidoService service;
 
-    @GetMapping("/{telefonoCliente}")
-    public ResponseEntity<?> get(@PathVariable String telefonoCliente) {
-        return service.findByTelefonoCliente(telefonoCliente)
+    @GetMapping("/{telefonoVendedor}")
+    public ResponseEntity<?> get(@PathVariable String telefonoVendedor) {
+        return service.findByTelefonoVendedor(telefonoVendedor)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "No hay conversación activa para: " + telefonoCliente)));
+                        .body(Map.of("error", "No hay conversación activa para: " + telefonoVendedor)));
     }
 
-    @PutMapping("/{telefonoCliente}")
+    @PutMapping("/{telefonoVendedor}")
     public ResponseEntity<?> upsert(
-            @PathVariable String telefonoCliente,
+            @PathVariable String telefonoVendedor,
             @RequestBody ConversacionPedido body
     ) {
         try {
-            ConversacionPedido resultado = service.upsert(telefonoCliente, body);
+            ConversacionPedido resultado = service.upsert(telefonoVendedor, body);
             return ResponseEntity.ok(resultado);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            log.error("Error en upsert conversacion [{}]: {}", telefonoCliente, e.getMessage(), e);
+            log.error("Error en upsert conversacion [{}]: {}", telefonoVendedor, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al guardar la conversación"));
         }
     }
 
-    @DeleteMapping("/{telefonoCliente}")
-    public ResponseEntity<?> delete(@PathVariable String telefonoCliente) {
-        boolean eliminado = service.deleteByTelefonoCliente(telefonoCliente);
+    @DeleteMapping("/{telefonoVendedor}")
+    public ResponseEntity<?> delete(@PathVariable String telefonoVendedor) {
+        boolean eliminado = service.deleteByTelefonoVendedor(telefonoVendedor);
         if (!eliminado) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "No existe conversación para: " + telefonoCliente));
+                    .body(Map.of("error", "No existe conversación para: " + telefonoVendedor));
         }
-        return ResponseEntity.ok(Map.of("message", "Conversación eliminada: " + telefonoCliente));
+        return ResponseEntity.ok(Map.of("message", "Conversación eliminada: " + telefonoVendedor));
     }
 }
