@@ -83,6 +83,8 @@ tags:
     description: Items individuales dentro de una factura (escritura directa)
   - name: Pagos
     description: Ciclo de vida completo de pagos aplicados a facturas
+  - name: WhatsApp
+    description: Envío de facturas y seguimiento de cobro por WhatsApp (solo ROLE_ADMIN / ROLE_SUPER_ADMIN)
 
 paths:
 
@@ -1005,6 +1007,184 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # ════════════════════════════════════════════════
+  # WHATSAPP — FACTURACIÓN Y SEGUIMIENTO
+  # ════════════════════════════════════════════════
+
+  /api/whatsapp/facturas/enviar:
+    post:
+      tags: [WhatsApp]
+      summary: Enviar factura por WhatsApp
+      operationId: whatsappEnviarFactura
+      x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
+      x-business-rules:
+        - Genera el PDF de la factura y lo envía como documento al teléfono del cliente.
+        - El cliente debe tener un teléfono registrado y válido para WhatsApp.
+        - Si la factura ya fue enviada previamente puede retornar CONFLICT (409).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idFactura]
+              properties:
+                idFactura:
+                  type: integer
+                  example: 42
+      responses:
+        '200':
+          description: Factura enviada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppEnvioResponse'
+        '400':
+          description: idFactura inválido o cliente sin teléfono
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppErrorResponse'
+        '409':
+          description: Estado inválido (ej. factura ya enviada)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppErrorResponse'
+
+  /api/whatsapp/facturas/recordatorio:
+    post:
+      tags: [WhatsApp]
+      summary: Enviar recordatorio de pago
+      operationId: whatsappEnviarRecordatorio
+      x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
+      x-business-rules:
+        - Envía un mensaje de texto recordando al cliente que tiene una factura pendiente.
+        - Útil cuando la factura lleva tiempo sin pago (estadoPago PENDIENTE o PAGADO_PARCIAL).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idFactura]
+              properties:
+                idFactura:
+                  type: integer
+                  example: 42
+      responses:
+        '200':
+          description: Recordatorio enviado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppEnvioResponse'
+        '400':
+          description: idFactura inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppErrorResponse'
+
+  /api/whatsapp/facturas/confirmacion-pago:
+    post:
+      tags: [WhatsApp]
+      summary: Enviar confirmación de pago
+      operationId: whatsappConfirmarPago
+      x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
+      x-business-rules:
+        - Notifica al cliente que su pago fue recibido y confirmado.
+        - Llamar después de confirmar un pago (estadoPago pasa a CONFIRMADO o CONCILIADO).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idFactura]
+              properties:
+                idFactura:
+                  type: integer
+                  example: 42
+      responses:
+        '200':
+          description: Confirmación enviada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppEnvioResponse'
+        '400':
+          description: idFactura inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppErrorResponse'
+
+  /api/whatsapp/facturas/pendientes/{idCliente}:
+    get:
+      tags: [WhatsApp]
+      summary: Obtener facturas pendientes de un cliente
+      operationId: whatsappFacturasPendientes
+      x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
+      description: |
+        Retorna las facturas del cliente con saldo pendiente, junto con el total acumulado.
+        Útil para decidir a quién enviar recordatorios o resúmenes de cuenta.
+      parameters:
+        - name: idCliente
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 7
+      responses:
+        '200':
+          description: Lista de facturas pendientes con total acumulado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  cantidad:
+                    type: integer
+                    description: Número de facturas pendientes
+                  totalPendiente:
+                    type: number
+                    format: decimal
+                    description: Suma total de los montos pendientes
+                  facturas:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FacturaDetalleDTO'
+
+  /webhooklogs/buscar:
+    get:
+      tags: [WhatsApp]
+      summary: Buscar logs de webhook por teléfono
+      operationId: buscarWebhookLogs
+      x-permission: Solo requiere sesión activa
+      description: |
+        Retorna todos los eventos de webhook recibidos desde Meta para un número de teléfono.
+        Permite rastrear mensajes entrantes del cliente (respuestas, confirmaciones, etc.).
+        El número debe coincidir con el formato que usa Meta (ej. `+50688889999`).
+      parameters:
+        - name: phoneNumber
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "+50688889999"
+      responses:
+        '200':
+          description: Lista de logs del webhook para ese número
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WebhookLog'
+
 # ══════════════════════════════════════════════════
 # COMPONENTES / SCHEMAS
 # ══════════════════════════════════════════════════
@@ -1630,6 +1810,67 @@ components:
         - PARCIAL
         - ADELANTO
         - NOTA_CREDITO
+
+    # ─── WHATSAPP ─────────────────────────────────────
+
+    WhatsAppEnvioResponse:
+      type: object
+      description: Respuesta exitosa de un envío por WhatsApp
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Factura enviada exitosamente por WhatsApp"
+        idMensaje:
+          type: integer
+          description: ID interno del mensaje registrado en la BD
+        estado:
+          type: string
+          description: Estado del mensaje en WhatsApp (ENVIADO, PENDIENTE, FALLIDO)
+          example: "ENVIADO"
+        telefono:
+          type: string
+          description: Número al que se envió el mensaje
+          example: "+50688889999"
+
+    WhatsAppErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "El cliente no tiene teléfono registrado"
+
+    WebhookLog:
+      type: object
+      description: Evento de webhook entrante recibido desde Meta (mensaje del cliente)
+      properties:
+        id:
+          type: integer
+        messageId:
+          type: string
+          description: ID único del mensaje asignado por Meta
+          example: "wamid.ABCxyz123"
+        phoneNumber:
+          type: string
+          description: Número de teléfono del remitente
+          example: "+50688889999"
+        messageBody:
+          type: string
+          description: Texto plano del mensaje recibido
+          example: "Sí, ya realicé el pago"
+        wholeMessage:
+          type: string
+          format: json
+          description: Payload completo del webhook en formato JSON string
+        timestamp:
+          type: string
+          format: date-time
+          description: Fecha y hora en que se recibió el webhook
 
     # ─── AUTH ────────────────────────────────────────
 
