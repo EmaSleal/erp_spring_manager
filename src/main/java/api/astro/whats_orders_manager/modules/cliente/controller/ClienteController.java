@@ -14,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -65,15 +64,9 @@ public class ClienteController {
     @PostMapping("/guardar")
     @PreAuthorize("@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR', 'CLIENTE_EDITAR')")
     public ResponseEntity<Map<String, String>> guardarCliente(
-            @ModelAttribute Cliente cliente,
-            BindingResult result,
+            @RequestBody Cliente cliente,
             Authentication authentication
     ) {
-        if (result.hasErrors()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Errores de validación al guardar cliente"));
-        }
-
         try {
             Cliente clienteGuardado = clienteService.save(cliente);
             return ResponseEntity.ok(Map.of("success", "Cliente guardado exitosamente: " + clienteGuardado.getNombre()));

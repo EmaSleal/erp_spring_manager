@@ -1,0 +1,1479 @@
+openapi: 3.0.3
+
+info:
+  title: Whats Orders Manager — REST API Reference
+  description: |
+    Documentación de los endpoints REST del sistema ERP Orders Manager.
+
+    > **Nota de arquitectura**: Los controllers mezclan MVC (Thymeleaf) con REST en la misma
+    > clase. Esta especificación cubre **únicamente** los endpoints que retornan datos
+    > JSON o binarios. Los endpoints de navegación HTML no están incluidos.
+
+    ## Autenticación
+
+    Todos los endpoints requieren sesión activa (Spring Security con JSESSIONID).
+    Las mutaciones (POST/PUT/DELETE) requieren el token CSRF en la cabecera `X-CSRF-TOKEN`.
+
+    ## Sistema de Permisos
+
+    Cada endpoint verifica permisos por código vía `@PreAuthorize`. El usuario
+    autenticado debe tener el código asignado a su rol. Los endpoints sin anotación
+    solo requieren sesión activa.
+
+    | Código | Descripción |
+    |--------|-------------|
+    | `CLIENTE_VER` | Ver clientes |
+    | `CLIENTE_CREAR` | Crear clientes |
+    | `CLIENTE_EDITAR` | Editar clientes |
+    | `PRODUCTO_VER` | Ver productos |
+    | `FACTURA_VER` | Ver facturas y descargar PDF |
+    | `FACTURA_CREAR` | Crear facturas |
+    | `FACTURA_EDITAR` | Editar facturas |
+    | `FACTURA_ELIMINAR` | Eliminar facturas |
+    | `PAGO_VER` | Ver pagos y saldos |
+    | `PAGO_CREAR` | Registrar nuevos pagos |
+    | `PAGO_EDITAR` | Confirmar o rechazar pagos |
+    | `PAGO_CONCILIAR` | Conciliar pagos con banco |
+    | `PAGO_ANULAR` | Anular pagos |
+    | `PAGO_ELIMINAR` | Eliminar pagos |
+
+    ## Máquina de estados — Pago
+
+    ```
+    PENDIENTE ──→ CONFIRMADO ──→ CONCILIADO  ← terminal, no editable, no eliminable
+         │              │
+         └──────┬───────┘
+                ↓
+          RECHAZADO  ← terminal
+          ANULADO    ← terminal, no eliminable
+    ```
+
+    **Regla crítica de saldo**: solo los pagos en estado `CONFIRMADO` o `CONCILIADO`
+    descuentan del saldo pendiente de la factura. Los pagos `PENDIENTE`, `RECHAZADO`
+    y `ANULADO` no afectan el saldo.
+
+    ## Máquina de estados — Factura (estadoPago)
+
+    El campo `estadoPago` de la factura se recalcula automáticamente cada vez que
+    se registra, confirma, anula o elimina un pago.
+
+    | Estado | Condición |
+    |--------|-----------|
+    | `PENDIENTE` | Sin pagos válidos |
+    | `PAGADO_PARCIAL` | Pagos válidos pero saldo > 0 |
+    | `PAGADO_TOTAL` | saldoPendiente == 0 |
+    | `VENCIDO` | Saldo pendiente y fechaVencimiento superada |
+
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Desarrollo local
+
+tags:
+  - name: Clientes
+    description: Gestión del catálogo de clientes
+  - name: Productos
+    description: Catálogo de productos con precios diferenciados por tipo de cliente
+  - name: Facturas
+    description: Creación, consulta, estados y documentos de facturas
+  - name: Lineas de Factura
+    description: Items individuales dentro de una factura (escritura directa)
+  - name: Pagos
+    description: Ciclo de vida completo de pagos aplicados a facturas
+
+paths:
+
+  # ════════════════════════════════════════════════
+  # CLIENTES
+  # ════════════════════════════════════════════════
+
+  /clientes/detalle/{id}:
+    get:
+      tags: [Clientes]
+      summary: Obtener cliente por ID
+      operationId: getClienteById
+      x-permission: CLIENTE_VER
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+        '404':
+          description: Cliente no encontrado
+        '500':
+          description: Error interno del servidor
+
+  /clientes/guardar:
+    post:
+      tags: [Clientes]
+      summary: Crear o actualizar un cliente
+      operationId: guardarCliente
+      x-permission: CLIENTE_CREAR o CLIENTE_EDITAR
+      x-business-rules:
+        - Si `idCliente` está presente en el body, se actualiza el cliente existente; si es null, se crea uno nuevo.
+        - El campo `identificacion` debe ser único en todo el sistema.
+        - El campo `email` es necesario para poder enviar facturas por correo electrónico.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteForm'
+      responses:
+        '200':
+          description: Cliente guardado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: "Cliente guardado exitosamente: Empresa ABC S.A."
+        '400':
+          description: Error de validación (identificación duplicada u otro)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Error interno del servidor
+
+  # ════════════════════════════════════════════════
+  # PRODUCTOS
+  # ════════════════════════════════════════════════
+
+  /productos/guardar:
+    post:
+      tags: [Productos]
+      summary: Crear un nuevo producto
+      operationId: guardarProducto
+      x-permission: PRODUCTO_CREAR o PRODUCTO_EDITAR
+      x-business-rules:
+        - Si `gravado` o `aplicaOtroImpuesto` son null, se tratan como false.
+        - La `presentacion` debe referenciarse como objeto con `idPresentacion`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoRequest'
+      responses:
+        '200':
+          description: Producto creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductoRequest'
+        '500':
+          description: Error interno
+
+  /productos/actualizar:
+    post:
+      tags: [Productos]
+      summary: Actualizar un producto existente
+      operationId: actualizarProducto
+      x-permission: Solo requiere sesión activa
+      x-business-rules:
+        - Requiere `idProducto` en el body para identificar el registro a actualizar.
+        - Si `gravado` o `aplicaOtroImpuesto` son null, se tratan como false.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoRequest'
+      responses:
+        '200':
+          description: Producto actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductoRequest'
+        '500':
+          description: Error interno
+
+  /productos/records:
+    get:
+      tags: [Productos]
+      summary: Listar todos los productos (formato ligero)
+      operationId: getProductoRecords
+      x-permission: Solo requiere sesión activa
+      description: |
+        Retorna la lista completa de productos activos con ambos precios.
+        Usar `precio_institucional` para clientes tipo `INSTITUCIONAL` y
+        `precio_mayorista` para clientes tipo `MAYORISTA`.
+
+        Usar este endpoint para construir selectores de producto al crear líneas de factura.
+      responses:
+        '200':
+          description: Lista de productos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductoRecord'
+
+  # ════════════════════════════════════════════════
+  # FACTURAS
+  # ════════════════════════════════════════════════
+
+  /facturas/guardar:
+    post:
+      tags: [Facturas]
+      summary: Crear una nueva factura
+      operationId: guardarFactura
+      x-permission: FACTURA_CREAR
+      x-business-rules:
+        - Las fechas de auditoría (createDate, updateDate) se gestionan automáticamente.
+        - El número de factura se genera automáticamente por la lógica interna.
+        - La factura se crea sin líneas; agregarlas con PUT /lineas-factura/actualizar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacturaRequest'
+      responses:
+        '200':
+          description: Factura creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacturaDetalleDTO'
+        '500':
+          description: Error al guardar la factura
+
+  /facturas/detalle/{id}:
+    get:
+      tags: [Facturas]
+      summary: Obtener detalle completo de una factura
+      operationId: getFacturaDetalle
+      x-permission: FACTURA_VER
+      description: |
+        Retorna la factura con líneas de producto, pagos aplicados,
+        `totalPagado` y `saldoPendiente` calculados en tiempo real.
+
+        Los pagos `RECHAZADO` y `ANULADO` aparecen en el array `pagos`
+        pero **no** se incluyen en `totalPagado`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle de la factura
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacturaDetalleDTO'
+        '404':
+          description: Factura no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /facturas/actualizar-estado/{id}:
+    put:
+      tags: [Facturas]
+      summary: Actualizar estado de entrega de una factura
+      operationId: actualizarEstadoFactura
+      x-permission: Solo requiere sesión activa
+      x-business-rules:
+        - Esta operación actualiza el campo `entregado` y opcionalmente `descripcion` y `fechaEntrega`.
+        - No afecta el estado de pago ni los montos de la factura.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: entregado
+          in: query
+          required: true
+          schema:
+            type: boolean
+          description: true = marcar como entregada, false = desmarcar
+        - name: descripcion
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Nota o descripción del estado de entrega
+        - name: fechaEntrega
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2026-06-20"
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Estado actualizado correctamente"
+        '404':
+          description: Factura no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /facturas/pdf/{id}:
+    get:
+      tags: [Facturas]
+      summary: Descargar PDF de una factura
+      operationId: descargarPdfFactura
+      x-permission: FACTURA_VER
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: PDF generado correctamente
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: "attachment; filename=factura-42.pdf"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Factura no encontrada
+        '500':
+          description: Error al generar el PDF
+
+  /facturas/{id}/enviar-email:
+    post:
+      tags: [Facturas]
+      summary: Enviar factura por email al cliente
+      operationId: enviarFacturaPorEmail
+      x-permission: Solo requiere sesión activa
+      x-business-rules:
+        - El cliente asociado a la factura DEBE tener el campo `email` no vacío, de lo contrario retorna 400.
+        - El email incluye el PDF de la factura como adjunto.
+        - No requiere body; el email del destinatario se toma del cliente de la factura.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Email enviado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Factura enviada exitosamente a contacto@empresa.com"
+        '400':
+          description: El cliente no tiene email configurado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "El cliente no tiene email configurado"
+        '404':
+          description: Factura no encontrada
+        '500':
+          description: Error al enviar el email
+
+  /facturas/{idFactura}/pagos:
+    get:
+      tags: [Facturas]
+      summary: Obtener todos los pagos de una factura
+      operationId: getPagosByFacturaId
+      x-permission: PAGO_VER
+      description: |
+        Retorna **todos** los pagos de la factura, incluyendo `RECHAZADO` y `ANULADO`.
+        Para conocer el saldo real, usar `/facturas/{id}/saldo-pendiente` o
+        el campo `saldoPendiente` del detalle de factura.
+      parameters:
+        - name: idFactura
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PagoDTO'
+        '500':
+          description: Error interno del servidor
+
+  /facturas/{idFactura}/total-pagado:
+    get:
+      tags: [Facturas]
+      summary: Total pagado de una factura
+      operationId: getTotalPagado
+      x-permission: PAGO_VER
+      x-business-rules:
+        - Solo suma pagos en estado CONFIRMADO o CONCILIADO.
+        - Los pagos PENDIENTE, RECHAZADO y ANULADO no se incluyen en el cálculo.
+      parameters:
+        - name: idFactura
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Total pagado válido
+          content:
+            application/json:
+              schema:
+                type: number
+                format: decimal
+                example: 15000.00
+        '500':
+          description: Error interno del servidor
+
+  /facturas/{idFactura}/saldo-pendiente:
+    get:
+      tags: [Facturas]
+      summary: Saldo pendiente de una factura
+      operationId: getSaldoPendiente
+      x-permission: FACTURA_VER
+      x-business-rules:
+        - "Cálculo: saldoPendiente = total - totalPagado (solo CONFIRMADO + CONCILIADO)"
+        - Un saldo de 0.00 indica que la factura está completamente pagada.
+      parameters:
+        - name: idFactura
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Saldo pendiente
+          content:
+            application/json:
+              schema:
+                type: number
+                format: decimal
+                example: 5000.00
+        '404':
+          description: Factura no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /facturas/api/cliente/{idCliente}:
+    get:
+      tags: [Facturas]
+      summary: Facturas con saldo pendiente de un cliente
+      operationId: getFacturasPendientesByCliente
+      x-permission: Solo requiere sesión activa
+      x-business-rules:
+        - Retorna SOLO las facturas cuyo saldoPendiente es mayor a cero.
+        - Las facturas PAGADO_TOTAL no aparecen en este listado.
+        - Usar este endpoint para poblar el selector de facturas al registrar un pago.
+      parameters:
+        - name: idCliente
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Facturas con saldo pendiente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FacturaPendienteDTO'
+        '500':
+          description: Error interno del servidor
+
+  # ════════════════════════════════════════════════
+  # LÍNEAS DE FACTURA
+  # ════════════════════════════════════════════════
+
+  /lineas-factura/detalle/{id}:
+    get:
+      tags: [Lineas de Factura]
+      summary: Obtener líneas de una factura
+      operationId: getLineasByFactura
+      x-permission: Solo requiere sesión activa
+      description: |
+        El parámetro `{id}` es el ID de la **factura**, no de la línea.
+        Retorna todas las líneas ordenadas por `numero_linea`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la factura (id_factura)
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de líneas de la factura
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LineaFacturaR'
+
+  /lineas-factura/actualizar:
+    put:
+      tags: [Lineas de Factura]
+      summary: Actualizar líneas de factura en lote
+      operationId: actualizarLineas
+      x-permission: Solo requiere sesión activa
+      x-business-rules:
+        - Actualiza todas las líneas presentes en el array en una sola transacción.
+        - Las líneas no incluidas en el array no se tocan.
+        - Para agregar líneas nuevas, incluirlas sin `id_linea_factura` (o con null).
+        - El subtotal de cada línea debe calcularse antes de enviar (cantidad × precioUnitario).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/LineaFacturaR'
+      responses:
+        '200':
+          description: true si la actualización fue exitosa
+          content:
+            application/json:
+              schema:
+                type: boolean
+
+  /lineas-factura/eliminar/{id}:
+    delete:
+      tags: [Lineas de Factura]
+      summary: Eliminar una línea de factura
+      operationId: eliminarLineaFactura
+      x-permission: Solo requiere sesión activa
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la línea de factura (id_linea_factura)
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: true si la eliminación fue exitosa
+          content:
+            application/json:
+              schema:
+                type: boolean
+
+  # ════════════════════════════════════════════════
+  # PAGOS
+  # ════════════════════════════════════════════════
+
+  /pagos/registrar:
+    post:
+      tags: [Pagos]
+      summary: Registrar un nuevo pago
+      operationId: registrarPago
+      x-permission: PAGO_CREAR
+      x-business-rules:
+        - El `monto` NO puede exceder el `saldoPendiente` de la factura (retorna 400).
+        - Si `tipoPago` es TOTAL, PARCIAL o NOTA_CREDITO → `idFactura` es OBLIGATORIO.
+        - Si `tipoPago` es ADELANTO → `idFactura` puede ser null (anticipo sin factura asignada).
+        - Si `metodoPago` es CHEQUE o TRANSFERENCIA → `referenciaBancaria` es OBLIGATORIO.
+        - El campo `estado` puede ser PENDIENTE (requiere confirmación posterior) o CONFIRMADO.
+        - Al guardar, se recalcula automáticamente el `estadoPago` de la factura asociada.
+        - El `numeroPago` es autogenerado; no debe enviarse en el request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PagoRequest'
+      responses:
+        '200':
+          description: Pago registrado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: |
+            Alguna de las siguientes validaciones falló:
+            - monto excede saldoPendiente
+            - idFactura requerido pero ausente
+            - idCliente o idFactura no existen
+            - errores de validación Bean Validation (@NotNull, @Positive)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '500':
+          description: Error interno del servidor
+
+  /pagos/{id}/confirmar:
+    put:
+      tags: [Pagos]
+      summary: Confirmar un pago pendiente
+      operationId: confirmarPago
+      x-permission: PAGO_EDITAR
+      x-business-rules:
+        - Solo aplica a pagos en estado PENDIENTE.
+        - Transición de estado PENDIENTE → CONFIRMADO.
+        - Al confirmar, el pago empieza a contabilizarse en el saldo de la factura.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Pago confirmado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: El pago no está en estado PENDIENTE o no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '500':
+          description: Error interno del servidor
+
+  /pagos/{id}/conciliar:
+    put:
+      tags: [Pagos]
+      summary: Conciliar un pago con banco/caja
+      operationId: conciliarPago
+      x-permission: PAGO_CONCILIAR
+      x-business-rules:
+        - Transición de estado CONFIRMADO → CONCILIADO.
+        - Registra la fecha de conciliación automáticamente.
+        - Un pago CONCILIADO es terminal — no puede modificarse, rechazarse ni eliminarse.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Pago conciliado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Estado inválido para conciliar (solo acepta CONFIRMADO)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '500':
+          description: Error interno del servidor
+
+  /pagos/{id}/rechazar:
+    put:
+      tags: [Pagos]
+      summary: Rechazar un pago
+      operationId: rechazarPago
+      x-permission: PAGO_EDITAR
+      x-business-rules:
+        - Aplica a pagos en estado PENDIENTE o CONFIRMADO.
+        - Transición → RECHAZADO (estado terminal).
+        - El parámetro `motivo` es obligatorio.
+        - Al rechazar, el pago deja de contar en el saldo de la factura.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: motivo
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Motivo del rechazo (obligatorio)
+      responses:
+        '200':
+          description: Pago rechazado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Estado inválido o motivo faltante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '500':
+          description: Error interno del servidor
+
+  /pagos/{id}/anular:
+    put:
+      tags: [Pagos]
+      summary: Anular un pago con trazabilidad completa
+      operationId: anularPago
+      x-permission: PAGO_ANULAR
+      x-business-rules:
+        - Transición → ANULADO (estado terminal).
+        - Registra usuario, fecha y motivo de anulación para auditoría completa.
+        - Un pago ANULADO no puede editarse ni eliminarse; queda como registro histórico.
+        - El parámetro `motivo` es obligatorio.
+        - La anulación es distinta del rechazo; implica que el pago existió pero fue revertido.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: motivo
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Motivo de la anulación (obligatorio para auditoría)
+      responses:
+        '200':
+          description: Pago anulado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Estado inválido o motivo faltante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '500':
+          description: Error interno del servidor
+
+  /pagos/{id}:
+    delete:
+      tags: [Pagos]
+      summary: Eliminar un pago
+      operationId: eliminarPago
+      x-permission: PAGO_ELIMINAR
+      x-business-rules:
+        - Solo se pueden eliminar pagos en estado PENDIENTE o CONFIRMADO.
+        - Los pagos CONCILIADO y ANULADO NO pueden eliminarse (retorna 500).
+        - Al eliminar, se recalcula automáticamente el estadoPago de la factura.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Pago eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '500':
+          description: Error interno (puede indicar que el pago no puede eliminarse)
+
+  /pagos/factura/{idFactura}:
+    get:
+      tags: [Pagos]
+      summary: Obtener pagos por factura (alias)
+      operationId: getPagosByFactura
+      x-permission: PAGO_VER
+      description: |
+        Equivalente a `GET /facturas/{idFactura}/pagos`.
+        Retorna **todos** los pagos incluyendo `RECHAZADO` y `ANULADO`.
+      parameters:
+        - name: idFactura
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PagoDTO'
+        '500':
+          description: Error interno del servidor
+
+# ══════════════════════════════════════════════════
+# COMPONENTES / SCHEMAS
+# ══════════════════════════════════════════════════
+
+components:
+
+  schemas:
+
+    # ─── CLIENTES ─────────────────────────────────
+
+    Cliente:
+      type: object
+      description: Entidad completa de cliente
+      properties:
+        idCliente:
+          type: integer
+          readOnly: true
+        nombre:
+          type: string
+          example: "Empresa ABC S.A."
+        tipoCliente:
+          $ref: '#/components/schemas/InvoiceType'
+        email:
+          type: string
+          format: email
+          example: "contacto@empresa.com"
+          description: Requerido para envío de facturas por email
+        identificacion:
+          type: string
+          maxLength: 20
+          description: Identificación única del cliente en el sistema
+        tipoIdentificacion:
+          $ref: '#/components/schemas/TipoIdentificacion'
+        numeroIdentificacion:
+          type: string
+          maxLength: 12
+          description: Número limpio sin guiones para facturación electrónica CR
+        codigoActividad:
+          type: string
+          maxLength: 20
+          description: Código de actividad económica Hacienda CR (opcional)
+        telefono:
+          type: string
+          maxLength: 20
+        direccion:
+          type: string
+          maxLength: 255
+        canton:
+          type: string
+          maxLength: 2
+          description: Código de 2 dígitos del cantón dentro de la provincia
+        distrito:
+          type: string
+          maxLength: 2
+          description: Código de 2 dígitos del distrito dentro del cantón
+        otrasSenas:
+          type: string
+          maxLength: 250
+          description: Dirección descriptiva para facturación electrónica (máx 250 chars según XSD)
+        requiereFacturaElectronica:
+          type: boolean
+          default: true
+          description: Indica si el cliente requiere facturación electrónica CR
+        fechaRegistro:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ClienteForm:
+      type: object
+      description: Campos para crear/editar cliente via form-urlencoded
+      properties:
+        idCliente:
+          type: integer
+          description: Presente solo cuando se edita un cliente existente
+        nombre:
+          type: string
+        tipoCliente:
+          $ref: '#/components/schemas/InvoiceType'
+        email:
+          type: string
+          format: email
+        identificacion:
+          type: string
+        tipoIdentificacion:
+          $ref: '#/components/schemas/TipoIdentificacion'
+        numeroIdentificacion:
+          type: string
+        telefono:
+          type: string
+        direccion:
+          type: string
+        requiereFacturaElectronica:
+          type: boolean
+
+    ClienteSimple:
+      type: object
+      description: Proyección ligera del cliente (usada dentro de FacturaDetalleDTO)
+      properties:
+        idCliente:
+          type: integer
+        nombre:
+          type: string
+        email:
+          type: string
+
+    # ─── PRODUCTOS ────────────────────────────────
+
+    ProductoRequest:
+      type: object
+      description: Payload para crear o actualizar un producto
+      properties:
+        idProducto:
+          type: integer
+          description: Null para creación, requerido para actualización
+        codigo:
+          type: string
+          maxLength: 50
+        descripcion:
+          type: string
+          maxLength: 200
+        presentacion:
+          type: object
+          description: Referencia a la presentación por ID
+          properties:
+            idPresentacion:
+              type: integer
+        precioInstitucional:
+          type: number
+          format: decimal
+        precioMayorista:
+          type: number
+          format: decimal
+        active:
+          type: boolean
+          default: true
+        codigoCabys:
+          type: string
+          maxLength: 13
+          description: Código CABYS de 13 dígitos (obligatorio para FE Costa Rica)
+        descripcionCabys:
+          type: string
+          maxLength: 200
+        gravado:
+          type: boolean
+          default: false
+          description: true si el producto aplica IVA
+        porcentajeImpuesto:
+          type: number
+          format: decimal
+          example: 13.00
+        aplicaOtroImpuesto:
+          type: boolean
+          default: false
+
+    ProductoRecord:
+      type: object
+      description: Proyección ligera del producto para listados y selectores
+      properties:
+        id_producto:
+          type: integer
+        nombre:
+          type: string
+          example: "Esponja fibra verde grande"
+        precio_institucional:
+          type: number
+          format: decimal
+          description: Usar para clientes tipo INSTITUCIONAL
+          example: 600.00
+        precio_mayorista:
+          type: number
+          format: decimal
+          description: Usar para clientes tipo MAYORISTA
+          example: 500.00
+
+    Presentacion:
+      type: object
+      description: |
+        Unidad de medida o presentación del producto.
+        No tiene endpoint REST propio; se usa como referencia dentro de Producto.
+      properties:
+        idPresentacion:
+          type: integer
+          readOnly: true
+        nombre:
+          type: string
+          example: "Unidad"
+        codigoUnidadFE:
+          type: string
+          maxLength: 10
+          description: |
+            Código de unidad según catálogo Hacienda CR.
+            Ejemplos: Unid, Sp, m, kg, l, cm
+
+    # ─── FACTURAS ─────────────────────────────────
+
+    FacturaRequest:
+      type: object
+      description: |
+        Payload para crear una factura. Acepta la entidad Factura directamente
+        (no hay un DTO de request dedicado). Se recomienda enviar al menos
+        cliente, tipo y montos. Las líneas se agregan luego vía /lineas-factura/actualizar.
+      properties:
+        cliente:
+          type: object
+          properties:
+            idCliente:
+              type: integer
+              description: ID del cliente existente
+        tipoFactura:
+          $ref: '#/components/schemas/InvoiceType'
+        descripcion:
+          type: string
+        subtotal:
+          type: number
+          format: decimal
+        igv:
+          type: number
+          format: decimal
+          description: Impuesto (IVA)
+        total:
+          type: number
+          format: decimal
+        fechaVencimiento:
+          type: string
+          format: date
+          example: "2026-07-20"
+
+    FacturaDetalleDTO:
+      type: object
+      description: Detalle completo de una factura con líneas, pagos y saldos calculados
+      properties:
+        idFactura:
+          type: integer
+          readOnly: true
+        numeroFactura:
+          type: string
+          example: "F-0001-2026"
+          readOnly: true
+          description: Autogenerado por el sistema
+        serie:
+          type: string
+        cliente:
+          $ref: '#/components/schemas/ClienteSimple'
+        subtotal:
+          type: number
+          format: decimal
+        igv:
+          type: number
+          format: decimal
+        total:
+          type: number
+          format: decimal
+        tipoFactura:
+          $ref: '#/components/schemas/InvoiceType'
+        fechaEmision:
+          type: string
+          format: date
+        fechaPago:
+          type: string
+          format: date
+        fechaEntrega:
+          type: string
+          format: date
+        fechaVencimiento:
+          type: string
+          format: date
+        entregado:
+          type: boolean
+        estadoPago:
+          $ref: '#/components/schemas/EstadoPagoFactura'
+        descripcion:
+          type: string
+        lineas:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineaFacturaDTO'
+        pagos:
+          type: array
+          items:
+            $ref: '#/components/schemas/PagoDTO'
+          description: Todos los pagos incluyendo RECHAZADO y ANULADO
+        totalPagado:
+          type: number
+          format: decimal
+          description: Suma exclusiva de pagos CONFIRMADO + CONCILIADO
+          readOnly: true
+        saldoPendiente:
+          type: number
+          format: decimal
+          description: "total - totalPagado. Cero indica factura pagada en su totalidad."
+          readOnly: true
+
+    FacturaPendienteDTO:
+      type: object
+      description: Resumen de factura con saldo pendiente mayor a cero
+      properties:
+        idFactura:
+          type: integer
+        numeroFactura:
+          type: string
+        totalFactura:
+          type: number
+          format: decimal
+        saldoPendiente:
+          type: number
+          format: decimal
+
+    # ─── LÍNEAS DE FACTURA ────────────────────────
+
+    LineaFacturaDTO:
+      type: object
+      description: Línea de factura (proyección de lectura, sin referencias circulares)
+      properties:
+        idLineaFactura:
+          type: integer
+        numeroLinea:
+          type: integer
+        idProducto:
+          type: integer
+        codigoProducto:
+          type: string
+        descripcionProducto:
+          type: string
+        cantidad:
+          type: integer
+        precioUnitario:
+          type: number
+          format: decimal
+        subtotal:
+          type: number
+          format: decimal
+
+    LineaFacturaR:
+      type: object
+      description: |
+        Record directo de línea de factura. Usado tanto para lectura como para
+        escritura (PUT /lineas-factura/actualizar). Los campos de auditoría son
+        ignorados en escritura.
+      properties:
+        id_linea_factura:
+          type: integer
+          description: Null para líneas nuevas; presente para actualización
+        numero_linea:
+          type: integer
+        id_producto:
+          type: integer
+        id_factura:
+          type: integer
+        descripcion:
+          type: string
+        cantidad:
+          type: integer
+        precioUnitario:
+          type: number
+          format: decimal
+        subtotal:
+          type: number
+          format: decimal
+          description: Debe calcularse como cantidad × precioUnitario antes de enviar
+        create_by:
+          type: integer
+          readOnly: true
+        update_by:
+          type: integer
+          readOnly: true
+        create_date:
+          type: string
+          format: date-time
+          readOnly: true
+        update_date:
+          type: string
+          format: date-time
+          readOnly: true
+
+    # ─── PAGOS ────────────────────────────────────
+
+    PagoRequest:
+      type: object
+      required:
+        - idCliente
+        - tipoPago
+        - monto
+        - metodoPago
+        - fechaPago
+        - estado
+      description: Payload para registrar un nuevo pago
+      properties:
+        idCliente:
+          type: integer
+          description: ID del cliente que realiza el pago (siempre obligatorio)
+        idFactura:
+          type: integer
+          description: |
+            ID de la factura a pagar.
+            OBLIGATORIO si tipoPago = TOTAL, PARCIAL o NOTA_CREDITO.
+            Puede ser null si tipoPago = ADELANTO.
+        tipoPago:
+          $ref: '#/components/schemas/TipoPago'
+        monto:
+          type: number
+          format: decimal
+          minimum: 0.01
+          description: "No puede exceder el saldoPendiente de la factura. Mínimo: 0.01"
+          example: 15000.00
+        metodoPago:
+          $ref: '#/components/schemas/MetodoPago'
+        fechaPago:
+          type: string
+          format: date-time
+          example: "2026-06-20T10:30:00"
+        referenciaBancaria:
+          type: string
+          description: OBLIGATORIO si metodoPago = CHEQUE o TRANSFERENCIA
+        banco:
+          type: string
+        cuentaBancaria:
+          type: string
+        comprobanteUrl:
+          type: string
+        estado:
+          $ref: '#/components/schemas/EstadoPago'
+          description: "Estado inicial del pago. Usar PENDIENTE si requiere confirmación posterior, CONFIRMADO si se aplica de inmediato."
+        observaciones:
+          type: string
+
+    PagoDTO:
+      type: object
+      description: Representación completa de un pago (response)
+      properties:
+        idPago:
+          type: integer
+          format: int64
+          readOnly: true
+        numeroPago:
+          type: string
+          readOnly: true
+          description: Número único autogenerado por el sistema
+        idCliente:
+          type: integer
+        nombreCliente:
+          type: string
+        idFactura:
+          type: integer
+        numeroFactura:
+          type: string
+        totalFactura:
+          type: number
+          format: decimal
+        saldoPendiente:
+          type: number
+          format: decimal
+        tipoPago:
+          $ref: '#/components/schemas/TipoPago'
+        tipoPagoDescripcion:
+          type: string
+        monto:
+          type: number
+          format: decimal
+        metodoPago:
+          $ref: '#/components/schemas/MetodoPago'
+        metodoPagoDescripcion:
+          type: string
+        fechaPago:
+          type: string
+          format: date-time
+        referenciaBancaria:
+          type: string
+        banco:
+          type: string
+        cuentaBancaria:
+          type: string
+        estado:
+          $ref: '#/components/schemas/EstadoPago'
+        estadoDescripcion:
+          type: string
+        observaciones:
+          type: string
+        conciliado:
+          type: boolean
+          description: true si estado = CONCILIADO
+        fechaConciliacion:
+          type: string
+          format: date-time
+        anuladoPor:
+          type: integer
+          description: ID del usuario que anuló el pago (solo si estado = ANULADO)
+        anuladoEn:
+          type: string
+          format: date-time
+        motivoAnulacion:
+          type: string
+        fechaCreacion:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ResponseDTO:
+      type: object
+      description: Envelope estándar para respuestas de operaciones de pagos
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Pago registrado exitosamente"
+        data:
+          description: Payload de la operación. PagoDTO en operaciones de pago; null en eliminación.
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/PagoDTO'
+
+    # ─── ENUMS ────────────────────────────────────
+
+    InvoiceType:
+      type: string
+      description: |
+        Tipo de cliente / factura. Determina qué precio de producto aplicar.
+        - `INSTITUCIONAL` → usar `precio_institucional`
+        - `MAYORISTA` → usar `precio_mayorista`
+      enum:
+        - INSTITUCIONAL
+        - MAYORISTA
+
+    TipoIdentificacion:
+      type: string
+      description: |
+        Tipo de identificación según catálogo Hacienda CR para facturación electrónica.
+        | Valor | Código Hacienda | Descripción |
+        |-------|-----------------|-------------|
+        | CEDULA_FISICA | 01 | Cédula de identidad física |
+        | CEDULA_JURIDICA | 02 | Cédula jurídica (empresas) |
+        | DIMEX | 03 | DIMEX (extranjeros) |
+        | NITE | 04 | NITE (sin cédula) |
+      enum:
+        - CEDULA_FISICA
+        - CEDULA_JURIDICA
+        - DIMEX
+        - NITE
+
+    EstadoPago:
+      type: string
+      description: |
+        Estado del ciclo de vida de un pago.
+
+        | Estado | Terminal | Editable | Eliminable | Cuenta en saldo |
+        |--------|----------|----------|------------|-----------------|
+        | PENDIENTE | No | Sí | Sí | No |
+        | CONFIRMADO | No | Sí | Sí | Sí |
+        | CONCILIADO | Sí | No | No | Sí |
+        | RECHAZADO | Sí | No | No | No |
+        | ANULADO | Sí | No | No | No |
+
+      enum:
+        - PENDIENTE
+        - CONFIRMADO
+        - CONCILIADO
+        - RECHAZADO
+        - ANULADO
+      x-state-machine:
+        PENDIENTE: [CONFIRMADO, RECHAZADO, ANULADO]
+        CONFIRMADO: [CONCILIADO, RECHAZADO, ANULADO]
+        CONCILIADO: []
+        RECHAZADO: []
+        ANULADO: []
+
+    EstadoPagoFactura:
+      type: string
+      description: |
+        Estado de pago calculado de la factura. Se recalcula automáticamente
+        con cada operación de pago.
+
+        | Estado | Condición |
+        |--------|-----------|
+        | PENDIENTE | Sin pagos válidos (CONFIRMADO o CONCILIADO) |
+        | PAGADO_PARCIAL | Pagos válidos pero saldo > 0 |
+        | PAGADO_TOTAL | saldoPendiente == 0 |
+        | VENCIDO | Saldo pendiente y fechaVencimiento superada |
+
+      enum:
+        - PENDIENTE
+        - PAGADO_PARCIAL
+        - PAGADO_TOTAL
+        - VENCIDO
+
+    MetodoPago:
+      type: string
+      description: |
+        Método de pago según catálogo oficial Hacienda Costa Rica.
+
+        | Valor | Código | Requiere referenciaBancaria |
+        |-------|--------|----------------------------|
+        | EFECTIVO | 01 | No |
+        | TARJETA | 02 | No |
+        | CHEQUE | 03 | **Sí** |
+        | TRANSFERENCIA | 04 | **Sí** |
+        | RECAUDADO | 05 | No |
+        | OTROS | 99 | No |
+
+      enum:
+        - EFECTIVO
+        - TARJETA
+        - CHEQUE
+        - TRANSFERENCIA
+        - RECAUDADO
+        - OTROS
+
+    TipoPago:
+      type: string
+      description: |
+        Tipo de aplicación del pago a una factura.
+
+        | Valor | Requiere idFactura | Descripción |
+        |-------|--------------------|-------------|
+        | TOTAL | Sí | Cubre el 100% de la factura |
+        | PARCIAL | Sí | Cubre parte del monto |
+        | ADELANTO | No | Anticipo sin factura asignada |
+        | NOTA_CREDITO | Sí | Aplicación de nota de crédito |
+
+      enum:
+        - TOTAL
+        - PARCIAL
+        - ADELANTO
+        - NOTA_CREDITO
+
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+      description: Cookie de sesión gestionada por Spring Security
+
+security:
+  - sessionCookie: []

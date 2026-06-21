@@ -146,57 +146,51 @@ function openEditModal(idProducto, codigo, descripcion, presentacionId, precioIn
 
 function guardarProducto() {
     const form = document.getElementById('productoForm');
-    
-    // Validar formulario
+
     if (!form.checkValidity()) {
         form.classList.add('was-validated');
         return;
     }
-    
-    // Obtener datos del formulario
-    const idProducto = document.getElementById('idProducto').value;
-    
-    // IMPORTANTE: Habilitar campos deshabilitados temporalmente para que se envíen
-    const codigoInput = document.getElementById('codigo');
-    const presentacionInput = document.getElementById('presentacion');
-    const codigoWasDisabled = codigoInput.disabled;
-    const presentacionWasDisabled = presentacionInput.disabled;
-    
-    // Habilitar temporalmente los campos deshabilitados
-    codigoInput.disabled = false;
-    presentacionInput.disabled = false;
-    
-    // Crear FormData después de habilitar los campos
-    const formData = new FormData(form);
-    
-    // Restaurar el estado disabled si era necesario
-    codigoInput.disabled = codigoWasDisabled;
-    presentacionInput.disabled = presentacionWasDisabled;
-    
-    // Determinar URL según si es crear o editar
-    const url = idProducto ? '/productos/actualizar' : '/productos/guardar';
-    
-    // Enviar datos
+
+    const idProductoRaw = document.getElementById('idProducto').value;
+    const presentacionValue = document.getElementById('presentacion').value;
+
+    const productoData = {
+        idProducto: idProductoRaw ? parseInt(idProductoRaw) : null,
+        codigo: document.getElementById('codigo').value || null,
+        descripcion: document.getElementById('descripcion').value || null,
+        presentacion: presentacionValue ? { idPresentacion: parseInt(presentacionValue) } : null,
+        precioInstitucional: parseFloat(document.getElementById('precioInstitucional').value) || null,
+        precioMayorista: parseFloat(document.getElementById('precioMayorista').value) || null,
+        active: document.getElementById('active').checked,
+        codigoCabys: document.getElementById('codigoCabys').value || null,
+        descripcionCabys: document.getElementById('descripcionCabys').value || null,
+        gravado: document.getElementById('gravado').checked,
+        porcentajeImpuesto: parseFloat(document.getElementById('porcentajeImpuesto').value) || null,
+        aplicaOtroImpuesto: document.getElementById('aplicaOtroImpuesto').checked
+    };
+
+    const url = idProductoRaw ? '/productos/actualizar' : '/productos/guardar';
+    const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
+
     fetch(url, {
         method: 'POST',
-        body: formData
+        body: JSON.stringify(productoData),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        }
     })
     .then(response => {
         if (response.ok) {
-            // Cerrar modal
             productoModal.hide();
-            
-            // Mostrar mensaje de éxito
             Swal.fire({
                 icon: 'success',
                 title: '¡Éxito!',
-                text: idProducto ? 'Producto actualizado correctamente' : 'Producto agregado correctamente',
+                text: idProductoRaw ? 'Producto actualizado correctamente' : 'Producto agregado correctamente',
                 timer: 2000,
                 showConfirmButton: false
-            }).then(() => {
-                // Recargar página
-                window.location.reload();
-            });
+            }).then(() => window.location.reload());
         } else {
             throw new Error('Error al guardar el producto');
         }
