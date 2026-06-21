@@ -157,6 +157,68 @@ paths:
             Credenciales inválidas — redirect a `/auth/login?error`.
             El flash attribute `error` contiene el mensaje "nombre o contraseña incorrectos".
 
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión (API JSON)
+      operationId: apiLogin
+      x-permission: Público (sin sesión, sin CSRF)
+      description: |
+        Endpoint REST dedicado para clientes externos (apps móviles, integraciones, IA).
+        Autentica al usuario y retorna sus datos + permisos en JSON.
+
+        ## Diferencias respecto a /auth/login
+
+        - **Content-Type**: `application/json` (no form-urlencoded)
+        - **No requiere CSRF**: el endpoint está excluido del filtro CSRF de Spring Security
+        - **Respuesta**: JSON con datos del usuario y lista de permisos (no redirect 302)
+        - **Sesión**: igual que el login de formulario, la cookie `JSESSIONID` queda seteada
+          en la respuesta y debe enviarse en todas las peticiones subsiguientes
+
+        ## Campo username
+
+        Acepta el número de teléfono del usuario O su nombre de usuario registrado.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: "88889999"
+              password: "mi_clave_secreta"
+      responses:
+        '200':
+          description: |
+            Login exitoso. La cookie `JSESSIONID` queda seteada en la respuesta.
+            Incluirla en todas las peticiones subsiguientes.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "JSESSIONID=abc123; Path=/; HttpOnly"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Credenciales inválidas"
+        '403':
+          description: Usuario inactivo o bloqueado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Usuario inactivo o bloqueado"
+
   /logout:
     post:
       tags: [Auth]
@@ -1568,6 +1630,59 @@ components:
         - PARCIAL
         - ADELANTO
         - NOTA_CREDITO
+
+    # ─── AUTH ────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      description: Credenciales para el endpoint REST de login
+      properties:
+        username:
+          type: string
+          description: Número de teléfono del usuario (o nombre de usuario)
+          example: "88889999"
+        password:
+          type: string
+          format: password
+          example: "mi_clave_secreta"
+
+    LoginResponse:
+      type: object
+      description: Datos del usuario autenticado con sus permisos
+      properties:
+        id:
+          type: integer
+          description: ID interno del usuario (id_usuario)
+          example: 1
+        nombre:
+          type: string
+          description: Nombre completo del usuario
+          example: "Juan Pérez"
+        telefono:
+          type: string
+          description: Teléfono / username usado para autenticarse
+          example: "88889999"
+        rol:
+          type: string
+          description: Rol del usuario en el sistema (ADMIN, USER, VENDEDOR, VISUALIZADOR)
+          example: "ADMIN"
+        permisos:
+          type: array
+          description: Lista de códigos de permiso activos para este usuario
+          items:
+            type: string
+          example: ["CLIENTE_CREAR", "CLIENTE_EDITAR", "CLIENTE_VER", "FACTURA_CREAR", "FACTURA_VER", "PAGO_CREAR", "PAGO_VER"]
+
+    ErrorResponse:
+      type: object
+      description: Respuesta de error genérica
+      properties:
+        error:
+          type: string
+          example: "Credenciales inválidas"
 
   securitySchemes:
     sessionCookie:
