@@ -23,7 +23,7 @@ public class SecurityConfig {
                 // Configuración de autorización de requests
                 .authorizeHttpRequests(auth -> auth
                         // Recursos públicos (CSS, JS, imágenes, auth)
-                        .requestMatchers("/", "/auth/**", "/css/**", "/js/**", "/images/**").permitAll()
+                        .requestMatchers("/", "/auth/**", "/api/auth/login", "/css/**", "/js/**", "/images/**").permitAll()
 
                         // Healthcheck para Docker Compose
                         .requestMatchers("/actuator/health").permitAll()
@@ -82,9 +82,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 
-                // Deshabilitar CSRF para webhook de WhatsApp
+                // Deshabilitar CSRF para webhook de WhatsApp y API de auth (clientes externos sin sesión)
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/whatsapp/webhook")
+                        .ignoringRequestMatchers("/api/whatsapp/webhook", "/api/auth/login")
                 )
                 
                 // Configuración de login
