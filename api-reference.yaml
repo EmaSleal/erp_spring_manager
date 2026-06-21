@@ -253,6 +253,23 @@ paths:
   # CLIENTES
   # ════════════════════════════════════════════════
 
+  /clientes/todos:
+    get:
+      tags: [Clientes]
+      summary: Listar todos los clientes
+      operationId: getAllClientes
+      x-permission: CLIENTE_VER
+      description: Retorna la lista completa de clientes sin paginación. Útil para poblar selectores o para integración con IA.
+      responses:
+        '200':
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cliente'
+
   /clientes/detalle/{id}:
     get:
       tags: [Clientes]
@@ -1876,7 +1893,10 @@ components:
 
     WebhookLog:
       type: object
-      description: Evento de webhook entrante recibido desde Meta (mensaje del cliente)
+      description: |
+        Evento de webhook entrante recibido desde Meta (mensaje del cliente).
+        También sirve como registro de estado de una conversación activa para
+        la creación de facturas por WhatsApp.
       properties:
         id:
           type: integer
@@ -1891,7 +1911,7 @@ components:
         messageBody:
           type: string
           description: Texto plano del mensaje recibido
-          example: "Sí, ya realicé el pago"
+          example: "Sí, confirmado"
         wholeMessage:
           type: string
           format: json
@@ -1900,6 +1920,23 @@ components:
           type: string
           format: date-time
           description: Fecha y hora en que se recibió el webhook
+        estadoConversacion:
+          type: string
+          description: Estado actual del flujo conversacional para creación de facturas
+          example: "RECOLECTANDO_LINEAS"
+        lineasAcumuladas:
+          type: string
+          format: json
+          description: JSON con las líneas de factura acumuladas durante la conversación
+          example: '[{"descripcion":"Producto A","cantidad":2,"precio":5000}]'
+        idClientePropuesto:
+          type: integer
+          description: ID del cliente detectado o propuesto para la factura en curso
+          example: 7
+        esperandoConfirmacion:
+          type: boolean
+          description: true cuando el bot envió el resumen y espera que el cliente confirme
+          example: true
 
     # ─── AUTH ────────────────────────────────────────
 
