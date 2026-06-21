@@ -71,6 +71,8 @@ servers:
     description: Desarrollo local
 
 tags:
+  - name: Auth
+    description: Autenticación y gestión de sesión
   - name: Clientes
     description: Gestión del catálogo de clientes
   - name: Productos
@@ -83,6 +85,105 @@ tags:
     description: Ciclo de vida completo de pagos aplicados a facturas
 
 paths:
+
+  # ════════════════════════════════════════════════
+  # AUTH
+  # ════════════════════════════════════════════════
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      operationId: login
+      x-permission: Público (sin sesión)
+      description: |
+        Autentica al usuario y establece la cookie de sesión `JSESSIONID`.
+
+        ## Flujo de autenticación para clientes no-browser
+
+        1. `GET /auth/login` → extraer el token CSRF del campo hidden `<input name="_csrf">`
+        2. `POST /auth/login` → enviar `username`, `password` y `_csrf` como form-urlencoded
+        3. Si las credenciales son válidas → el servidor responde con redirect 302 a `/` y
+           setea la cookie `JSESSIONID` en la respuesta
+        4. Incluir esa cookie en todas las peticiones subsiguientes
+
+        ## Credenciales
+
+        El campo `username` corresponde al número de teléfono del usuario registrado en el sistema
+        (no a un email ni a un nombre de usuario clásico).
+
+        ## CSRF
+
+        Este endpoint requiere el token CSRF en el body. Obtenelo haciendo
+        `GET /auth/login` primero y parseando el HTML.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+                - _csrf
+              properties:
+                username:
+                  type: string
+                  description: Número de teléfono del usuario (es el identificador de login)
+                  example: "88889999"
+                password:
+                  type: string
+                  format: password
+                _csrf:
+                  type: string
+                  description: Token CSRF obtenido del GET /auth/login
+      responses:
+        '302':
+          description: |
+            Login exitoso — redirect a `/`.
+            La cookie `JSESSIONID` queda seteada en la respuesta.
+          headers:
+            Location:
+              schema:
+                type: string
+                example: "/"
+            Set-Cookie:
+              schema:
+                type: string
+                example: "JSESSIONID=abc123; Path=/; HttpOnly"
+        '302-error':
+          description: |
+            Credenciales inválidas — redirect a `/auth/login?error`.
+            El flash attribute `error` contiene el mensaje "nombre o contraseña incorrectos".
+
+  /logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión
+      operationId: logout
+      description: |
+        Invalida la sesión activa. Gestionado directamente por Spring Security.
+        Requiere el token CSRF en el body o en la cabecera `X-CSRF-TOKEN`.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - _csrf
+              properties:
+                _csrf:
+                  type: string
+      responses:
+        '302':
+          description: Sesión cerrada — redirect a `/auth/login?logout`
+          headers:
+            Location:
+              schema:
+                type: string
+                example: "/auth/login?logout"
 
   # ════════════════════════════════════════════════
   # CLIENTES
