@@ -17,6 +17,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -106,6 +107,13 @@ public class ClienteController {
             redirectAttributes.addFlashAttribute("error", "Error al cargar el cliente");
             return "redirect:/clientes";
         }
+    }
+
+    @GetMapping("/todos")
+    @ResponseBody
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_VER')")
+    public ResponseEntity<List<Cliente>> listarTodos(Authentication authentication) {
+        return ResponseEntity.ok(clienteService.findAll());
     }
 
     @GetMapping("/detalle/{id}")

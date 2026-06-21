@@ -28,5 +28,15 @@ public class WebhookLog {
 
     private Timestamp timestamp;
 
-    // Getters y Setters
+    @Column(name = "estado_conversacion", length = 100)
+    private String estadoConversacion;
+
+    @Column(name = "lineas_acumuladas", columnDefinition = "json")
+    private String lineasAcumuladas;
+
+    @Column(name = "id_cliente_propuesto")
+    private Integer idClientePropuesto;
+
+    @Column(name = "esperando_confirmacion")
+    private Boolean esperandoConfirmacion;
 }
