@@ -273,7 +273,7 @@ paths:
   /clientes/detalle/{id}:
     get:
       tags: [Clientes]
-      summary: Obtener cliente por ID
+      summary: Obtener cliente por ID 
       operationId: getClienteById
       x-permission: CLIENTE_VER
       parameters:
@@ -1231,6 +1231,114 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebhookLog'
 
+  # ════════════════════════════════════════════════
+  # CONVERSACION PEDIDO
+  # ════════════════════════════════════════════════
+
+  /api/conversaciones/{telefonoCliente}:
+    get:
+      tags: [WhatsApp]
+      summary: Obtener conversación activa por teléfono del cliente
+      operationId: getConversacion
+      x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
+      description: |
+        Retorna el estado actual de la conversación de pedido en construcción
+        para un cliente dado. La clave de negocio es el teléfono del CLIENTE FINAL,
+        no el del vendedor ni el del bot.
+      parameters:
+        - name: telefonoCliente
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "+50688889999"
+      responses:
+        '200':
+          description: Conversación encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversacionPedido'
+        '404':
+          description: No hay conversación activa para ese teléfono
+
+    put:
+      tags: [WhatsApp]
+      summary: Crear o actualizar conversación (upsert)
+      operationId: upsertConversacion
+      x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
+      x-business-rules:
+        - Si no existe fila con ese telefonoCliente, la crea; si existe, actualiza solo los campos enviados (null = no tocar).
+        - telefonoCliente es clave única — un cliente solo puede tener UNA conversación activa a la vez.
+        - Si llega un segundo vendedor para el mismo cliente, el PUT actualiza la misma fila sin crear duplicado.
+        - lineasAcumuladas debe ser un JSON array válido; si no lo es, retorna 400.
+        - La operación es atómica (@Transactional) para evitar colisiones si dos mensajes llegan simultáneamente.
+        - idConversacion, createDate y updateDate son gestionados por el servidor; no incluirlos en el body.
+      parameters:
+        - name: telefonoCliente
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "+50688889999"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversacionPedidoRequest'
+            example:
+              idVendedor: 3
+              estadoConversacion: "RECOLECTANDO_LINEAS"
+              lineasAcumuladas: '[{"idProducto":12,"descripcion":"Esponja fibra verde","cantidad":3,"precioUnitario":500.00,"subtotal":1500.00}]'
+              idClientePropuesto: 7
+              esperandoConfirmacion: false
+              ultimoMensajeBot: "Agregué 3 esponjas fibra verde a ₡500 c/u. ¿Algo más?"
+      responses:
+        '200':
+          description: Conversación creada o actualizada. Incluye idConversacion asignado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversacionPedido'
+        '400':
+          description: lineasAcumuladas no es un JSON válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      tags: [WhatsApp]
+      summary: Eliminar conversación finalizada
+      operationId: deleteConversacion
+      x-permission: ROLE_ADMIN | ROLE_SUPER_ADMIN
+      x-business-rules:
+        - Llamar cuando estadoConversacion pasa a CONFIRMADO (factura ya creada) o CANCELADO.
+        - Al eliminar la fila, la próxima conversación con ese mismo cliente arranca limpia.
+        - 404 si no existía — no es error fatal en un flujo idempotente.
+      parameters:
+        - name: telefonoCliente
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "+50688889999"
+      responses:
+        '200':
+          description: Conversación eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: No existía conversación para ese teléfono
+
 # ══════════════════════════════════════════════════
 # COMPONENTES / SCHEMAS
 # ══════════════════════════════════════════════════
@@ -1937,6 +2045,108 @@ components:
           type: boolean
           description: true cuando el bot envió el resumen y espera que el cliente confirme
           example: true
+
+    # ─── CONVERSACION PEDIDO ──────────────────────────
+
+    EstadoConversacion:
+      type: string
+      description: |
+        Estado del flujo conversacional para construcción de un pedido por WhatsApp.
+
+        | Estado | Descripción |
+        |--------|-------------|
+        | `INICIADO` | Primer mensaje recibido, sin líneas todavía |
+        | `RECOLECTANDO_LINEAS` | LLM agrega o ajusta líneas en `lineasAcumuladas` |
+        | `ESPERANDO_CONFIRMACION` | Resumen enviado al vendedor, esperando respuesta |
+        | `CONFIRMADO` | Vendedor aceptó — factura ya creada, fila lista para eliminar |
+        | `CANCELADO` | Vendedor canceló — fila lista para eliminar |
+      enum:
+        - INICIADO
+        - RECOLECTANDO_LINEAS
+        - ESPERANDO_CONFIRMACION
+        - CONFIRMADO
+        - CANCELADO
+      x-state-machine:
+        INICIADO: [RECOLECTANDO_LINEAS, CANCELADO]
+        RECOLECTANDO_LINEAS: [ESPERANDO_CONFIRMACION, CANCELADO]
+        ESPERANDO_CONFIRMACION: [RECOLECTANDO_LINEAS, CONFIRMADO, CANCELADO]
+        CONFIRMADO: []
+        CANCELADO: []
+
+    ConversacionPedido:
+      type: object
+      description: |
+        Registro de estado de un pedido en construcción vía conversación de WhatsApp.
+        Clave de negocio: `telefonoCliente` (único por cliente activo).
+        Un cliente solo puede tener una fila activa a la vez.
+      properties:
+        idConversacion:
+          type: integer
+          readOnly: true
+          description: ID autoincremental asignado por el servidor
+        telefonoCliente:
+          type: string
+          description: Teléfono del cliente FINAL (no del vendedor). Formato Meta (+506XXXXXXXX).
+          example: "+50688889999"
+        idVendedor:
+          type: integer
+          description: ID del usuario vendedor que está armando el pedido
+          example: 3
+        estadoConversacion:
+          $ref: '#/components/schemas/EstadoConversacion'
+        lineasAcumuladas:
+          type: string
+          format: json
+          description: |
+            JSON array de líneas en construcción. Cada elemento debe tener al menos
+            `idProducto`, `descripcion`, `cantidad`, `precioUnitario` y `subtotal`.
+          example: '[{"idProducto":12,"descripcion":"Esponja fibra verde","cantidad":3,"precioUnitario":500.00,"subtotal":1500.00}]'
+        idClientePropuesto:
+          type: integer
+          nullable: true
+          description: FK al Cliente detectado por el LLM. Null hasta que se resuelva el match.
+          example: 7
+        esperandoConfirmacion:
+          type: boolean
+          description: true cuando el bot ya envió el resumen y espera respuesta del vendedor
+          example: false
+        ultimoMensajeBot:
+          type: string
+          nullable: true
+          description: Último mensaje enviado por el bot al vendedor. Evita reconstruirlo desde WebhookLog.
+          example: "Agregué 3 esponjas fibra verde a ₡500 c/u. ¿Algo más?"
+        createDate:
+          type: string
+          format: date-time
+          readOnly: true
+        updateDate:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ConversacionPedidoRequest:
+      type: object
+      description: Body para crear o actualizar una conversación. Los campos null no modifican el valor existente.
+      properties:
+        idVendedor:
+          type: integer
+          example: 3
+        estadoConversacion:
+          $ref: '#/components/schemas/EstadoConversacion'
+        lineasAcumuladas:
+          type: string
+          format: json
+          example: '[{"idProducto":12,"descripcion":"Esponja fibra verde","cantidad":3,"precioUnitario":500.00,"subtotal":1500.00}]'
+        idClientePropuesto:
+          type: integer
+          nullable: true
+          example: 7
+        esperandoConfirmacion:
+          type: boolean
+          example: true
+        ultimoMensajeBot:
+          type: string
+          example: "¿Confirmás el pedido? Total: ₡1.500"
 
     # ─── AUTH ────────────────────────────────────────
 
