@@ -18,10 +18,10 @@ public class ConversacionPedido {
     @Column(name = "id_conversacion")
     private Integer idConversacion;
 
-    @Column(name = "telefono_cliente", nullable = false, unique = true, length = 20)
-    private String telefonoCliente;
+    @Column(name = "telefono_vendedor", nullable = false, unique = true, length = 20)
+    private String telefonoVendedor;
 
-    @Column(name = "id_vendedor", nullable = false)
+    @Column(name = "id_vendedor")
     private Integer idVendedor;
 
     @Enumerated(EnumType.STRING)

@@ -8,7 +8,7 @@ import java.util.Optional;
 
 @Repository
 public interface ConversacionPedidoRepository extends JpaRepository<ConversacionPedido, Integer> {
-    Optional<ConversacionPedido> findByTelefonoCliente(String telefonoCliente);
-    boolean existsByTelefonoCliente(String telefonoCliente);
-    void deleteByTelefonoCliente(String telefonoCliente);
+    Optional<ConversacionPedido> findByTelefonoVendedor(String telefonoVendedor);
+    boolean existsByTelefonoVendedor(String telefonoVendedor);
+    void deleteByTelefonoVendedor(String telefonoVendedor);
 }
