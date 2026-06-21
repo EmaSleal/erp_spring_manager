@@ -1185,6 +1185,35 @@ paths:
                 items:
                   $ref: '#/components/schemas/WebhookLog'
 
+  /webhooklogs/guardar:
+    post:
+      tags: [WhatsApp]
+      summary: Registrar un log de webhook manualmente
+      operationId: guardarWebhookLog
+      x-permission: Solo requiere sesión activa
+      description: |
+        Guarda un evento de webhook en la base de datos de forma manual.
+        Útil para registrar eventos externos, pruebas, o mensajes que no pasaron
+        por el webhook automático de Meta.
+        Si `timestamp` se omite, se asigna la fecha y hora actual del servidor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookLog'
+            example:
+              phoneNumber: "+50688889999"
+              messageBody: "Ya realicé el pago"
+              messageId: "wamid.manual_001"
+      responses:
+        '200':
+          description: Log guardado exitosamente con su ID asignado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookLog'
+
 # ══════════════════════════════════════════════════
 # COMPONENTES / SCHEMAS
 # ══════════════════════════════════════════════════
