@@ -299,10 +299,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const formData = new FormData(form);
 
+        const idClienteRaw = formData.get('idCliente');
+        const provinciaValue = formData.get('provincia');
+
+        const clienteData = {
+            idCliente: idClienteRaw ? parseInt(idClienteRaw) : null,
+            nombre: formData.get('nombre') || null,
+            telefono: formData.get('telefono') || null,
+            direccion: formData.get('direccion') || null,
+            email: formData.get('email') || null,
+            tipoCliente: formData.get('tipoCliente') || null,
+            requiereFacturaElectronica: formData.get('requiereFacturaElectronica') === 'true',
+            tipoIdentificacion: formData.get('tipoIdentificacion') || null,
+            numeroIdentificacion: formData.get('numeroIdentificacion') || null,
+            codigoActividad: formData.get('codigoActividad') || null,
+            provincia: provinciaValue ? { codigo: provinciaValue } : null,
+            canton: formData.get('canton') || null,
+            distrito: formData.get('distrito') || null,
+            otrasSenas: formData.get('otrasSenas') || null
+        };
+
+        const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
+
         fetch('/clientes/guardar', {
             method: 'POST',
-            body: new URLSearchParams(formData),
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            body: JSON.stringify(clienteData),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            }
         })
         .then(response => response.json())
         .then(data => {
