@@ -8,6 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Controller
@@ -22,10 +23,18 @@ public class WebhookLogController {
         return "modules/whatsapp/webhooklogs";
     }
 
-    // 🔹 Buscar logs por número de teléfono (devuelve JSON)
     @GetMapping("/buscar")
     @ResponseBody
     public List<WebhookLog> buscarPorTelefono(@RequestParam String phoneNumber) {
         return webhookLogService.findByPhoneNumber(phoneNumber);
+    }
+
+    @PostMapping("/guardar")
+    @ResponseBody
+    public ResponseEntity<WebhookLog> guardar(@RequestBody WebhookLog webhookLog) {
+        if (webhookLog.getTimestamp() == null) {
+            webhookLog.setTimestamp(new Timestamp(System.currentTimeMillis()));
+        }
+        return ResponseEntity.ok(webhookLogService.save(webhookLog));
     }
 }
