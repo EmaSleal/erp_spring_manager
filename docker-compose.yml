@@ -53,8 +53,8 @@ services:
       JAVA_OPTS: "-Xmx1024m -Xms512m"
       SPRING_PROFILES_ACTIVE: prod
     ports:
-      # Puerto externo 9090 -> Puerto interno 9090
-      - "9090:9090"
+      # Puerto externo 9091 -> Puerto interno 9090
+      - "9091:9090"
     networks:
       - app-network
     volumes:
