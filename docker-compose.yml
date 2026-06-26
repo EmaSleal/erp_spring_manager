@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   # Base de datos MySQL
-  mysql:
+  mysql-stage:
     image: mysql:8.0.32
-    container_name: whats_orders_mysql
+    container_name: whats_orders_stage_mysql
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: facturas_monrachem
@@ -22,17 +22,17 @@ services:
       start_period: 90s
 
   # Aplicación Spring Boot
-  app:
+  app-stage:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: whats_orders_app
+    container_name: whats_orders_stage_app
     depends_on:
-      mysql:
+      mysql-stage:
         condition: service_healthy
     environment:
       # Configuración de Base de Datos (apunta al contenedor MySQL)
-      DB_URL: jdbc:mysql://mysql:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_URL: jdbc:mysql://mysql-stage:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       DB_USERNAME: root
       DB_PASSWORD: password
       
@@ -71,11 +71,11 @@ services:
       retries: 3
       start_period: 300s
 
-  seed:
+  seed_stage:
     image: mysql:8.0.32
-    container_name: whats_orders_seed
+    container_name: whats_orders_stage_seed
     depends_on:
-      app:
+      app-stage:
         condition: service_healthy
     volumes:
       - ./database/seeds:/seeds:ro
@@ -89,13 +89,13 @@ services:
         echo 'Starting seed...';
         for f in /seeds/*.sql; do
           echo \"Running $$f\";
-          mysql -h mysql -u root facturas_monrachem < $$f || exit 1;
+          mysql -h mysql-stage -u root facturas_monrachem < $$f || exit 1;
         done;
         echo 'Seeding complete.';
         for f in /routines/*.sql; do
           [ -e \"$$f\" ] || continue;
           echo \"Applying routine $$f\";
-          sed 's/DEFINER=[^ ]*//g' \"$$f\" | mysql -h mysql -u root facturas_monrachem || exit 1;
+          sed 's/DEFINER=[^ ]*//g' \"$$f\" | mysql -h mysql-stage -u root facturas_monrachem || exit 1;
         done;
         echo 'Routines applied.'
       "
