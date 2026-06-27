@@ -137,23 +137,29 @@
                                 <div class="invalid-feedback">Ingrese un email válido</div>
                             </div>
 
-                            <div class="col-md-6 mb-3" th:if="${!modoEdicion}">
-                                <label for="password" class="form-label required-field">Contraseña</label>
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label"
+                                       th:classappend="${!modoEdicion ? 'required-field' : ''}">
+                                    <span th:text="${modoEdicion ? 'Nueva Contraseña' : 'Contraseña'}">Contraseña</span>
+                                </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
                                         <i class="fas fa-lock"></i>
                                     </span>
-                                    <input type="password" 
-                                           class="form-control" 
-                                           id="password" 
+                                    <input type="password"
+                                           class="form-control"
+                                           id="password"
                                            th:field="*{password}"
-                                           placeholder="Mínimo 6 caracteres"
+                                           th:placeholder="${modoEdicion ? 'Dejar vacío para mantener la actual' : 'Mínimo 6 caracteres'}"
                                            minlength="6"
-                                           required>
+                                           th:required="${!modoEdicion}">
                                     <span class="input-group-text password-toggle" onclick="togglePassword()">
                                         <i class="fas fa-eye" id="toggleIcon"></i>
                                     </span>
                                 </div>
+                                <small class="text-muted" th:if="${modoEdicion}">
+                                    Dejar en blanco para no cambiar la contraseña actual
+                                </small>
                                 <div class="invalid-feedback">Mínimo 6 caracteres</div>
                             </div>
                         </div>
