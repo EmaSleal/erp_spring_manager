@@ -67,4 +67,9 @@ public class ProductoServiceImpl implements ProductoService {
     @Override
     public long count() { return productoRepository.count(); }
 
+    @Override
+    public List<Producto> findByArticuloMaestro(Integer maestroId) {
+        return productoRepository.findByArticuloMaestro_IdArticuloMaestro(maestroId);
+    }
+
 }

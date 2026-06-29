@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Artículo Maestro</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/articulos}" class="text-decoration-none">Artículos Maestro</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page"
+                        th:text="${maestro.idArticuloMaestro != null} ? 'Editar artículo' : 'Nuevo artículo'">
+                        Artículo
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header -->
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-box-open text-warning me-2"></i>
+                        <span th:text="${maestro.idArticuloMaestro != null} ? 'Editar Artículo Maestro' : 'Nuevo Artículo Maestro'">
+                            Artículo Maestro
+                        </span>
+                    </h2>
+                </div>
+                <div class="page-header-actions">
+                    <a th:href="@{/articulos}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Volver
+                    </a>
+                </div>
+            </div>
+
+            <!-- CSRF token -->
+            <input type="hidden" id="csrfToken" th:value="${_csrf.token}" />
+            <input type="hidden" id="csrfHeader" th:value="${_csrf.headerName}" />
+            <!-- Master ID (0 when new) -->
+            <input type="hidden" id="maestroId"
+                   th:value="${maestro.idArticuloMaestro != null ? maestro.idArticuloMaestro : 0}" />
+
+            <!-- ============================================================
+                 SECTION 1 — Master common-fields form (always shown)
+                 ============================================================ -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Datos del Artículo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="maestroForm" novalidate>
+                        <div class="row g-3">
+
+                            <!-- Descripción -->
+                            <div class="col-md-8">
+                                <label for="descripcion" class="form-label">
+                                    <i class="fas fa-align-left text-warning me-1"></i>Descripción *
+                                </label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="descripcion"
+                                       name="descripcion"
+                                       th:value="${maestro.descripcion}"
+                                       required
+                                       maxlength="200"
+                                       placeholder="Descripción del artículo">
+                                <div class="invalid-feedback">La descripción es obligatoria.</div>
+                            </div>
+
+                            <!-- Estado activo -->
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="active"
+                                           name="active"
+                                           th:checked="${maestro.active == null or maestro.active}">
+                                    <label class="form-check-label" for="active">Artículo Activo</label>
+                                </div>
+                            </div>
+
+                            <!-- Separador FE -->
+                            <div class="col-12 mt-3">
+                                <hr>
+                                <h6 class="text-warning">
+                                    <i class="fas fa-file-invoice me-2"></i>Facturación Electrónica Costa Rica
+                                </h6>
+                            </div>
+
+                            <!-- Código CABYS -->
+                            <div class="col-md-6">
+                                <label for="codigoCabys" class="form-label">
+                                    <i class="fas fa-hashtag text-warning me-1"></i>Código CABYS
+                                </label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="codigoCabys"
+                                       name="codigoCabys"
+                                       th:value="${maestro.codigoCabys}"
+                                       maxlength="13"
+                                       pattern="\d{13}"
+                                       placeholder="1234567890123">
+                                <small class="text-muted">13 dígitos del catálogo CABYS</small>
+                            </div>
+
+                            <!-- Descripción CABYS -->
+                            <div class="col-md-6">
+                                <label for="descripcionCabys" class="form-label">
+                                    <i class="fas fa-tag text-warning me-1"></i>Descripción CABYS
+                                </label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="descripcionCabys"
+                                       name="descripcionCabys"
+                                       th:value="${maestro.descripcionCabys}"
+                                       maxlength="200"
+                                       placeholder="Descripción oficial del catálogo">
+                            </div>
+
+                            <!-- Gravado -->
+                            <div class="col-md-4">
+                                <label class="form-label d-block">
+                                    <i class="fas fa-percent text-warning me-1"></i>Impuesto IVA
+                                </label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="gravado"
+                                           name="gravado"
+                                           th:checked="${maestro.gravado}"
+                                           onchange="toggleImpuesto()">
+                                    <label class="form-check-label" for="gravado">Gravado</label>
+                                </div>
+                            </div>
+
+                            <!-- Porcentaje IVA -->
+                            <div class="col-md-4" id="divPorcentajeImpuesto">
+                                <label for="porcentajeImpuesto" class="form-label">
+                                    <i class="fas fa-percentage text-warning me-1"></i>% Impuesto
+                                </label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="porcentajeImpuesto"
+                                       name="porcentajeImpuesto"
+                                       th:value="${maestro.porcentajeImpuesto}"
+                                       step="0.01" min="0" max="100"
+                                       placeholder="13.00">
+                                <small class="text-muted">IVA estándar: 13%</small>
+                            </div>
+
+                            <!-- Aplica otro impuesto -->
+                            <div class="col-md-4">
+                                <label class="form-label d-block">
+                                    <i class="fas fa-file-invoice-dollar text-warning me-1"></i>Otros Impuestos
+                                </label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="aplicaOtroImpuesto"
+                                           name="aplicaOtroImpuesto"
+                                           th:checked="${maestro.aplicaOtroImpuesto}">
+                                    <label class="form-check-label" for="aplicaOtroImpuesto">
+                                        Aplica impuesto adicional
+                                    </label>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Save button -->
+                        <div class="mt-4 d-flex justify-content-end">
+                            <button type="button" class="btn btn-warning" id="btnGuardarMaestro">
+                                <i class="fas fa-save me-1"></i>
+                                <span th:text="${maestro.idArticuloMaestro != null} ? 'Actualizar Artículo' : 'Crear Artículo'">
+                                    Guardar
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 2 — Variants sub-table (only in edit mode)
+                 ============================================================ -->
+            <div th:if="${maestro.idArticuloMaestro != null}" class="card shadow-sm border-0">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list text-warning me-2"></i>Variantes
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-success" id="btnNuevaVariante">
+                        <i class="fas fa-plus me-1"></i>Agregar Variante
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="tablaVariantes">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Presentación</th>
+                                    <th class="text-end">P. Institucional</th>
+                                    <th class="text-end">P. Mayorista</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="variantesBody">
+                                <tr id="loadingRow">
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>Cargando variantes...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ============================================================
+         Bootstrap Modal — Variant Create/Edit
+         ============================================================ -->
+    <div class="modal fade" id="varianteModal" tabindex="-1" aria-labelledby="varianteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title" id="varianteModalLabel">
+                        <i class="fas fa-box me-2"></i>
+                        <span id="modalVarianteTitle">Variante</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="varianteForm" novalidate>
+                        <input type="hidden" id="varianteId" value="0" />
+
+                        <!-- Código -->
+                        <div class="mb-3">
+                            <label for="varianteCodigo" class="form-label">
+                                <i class="fas fa-barcode text-warning me-1"></i>Código
+                            </label>
+                            <input type="text" class="form-control" id="varianteCodigo"
+                                   placeholder="Código de la variante" maxlength="50">
+                        </div>
+
+                        <!-- Presentación -->
+                        <div class="mb-3">
+                            <label for="variantePresentacion" class="form-label">
+                                <i class="fas fa-cube text-warning me-1"></i>Presentación
+                            </label>
+                            <select class="form-select" id="variantePresentacion">
+                                <option value="">Seleccione una presentación</option>
+                                <option th:each="p : ${presentaciones}"
+                                        th:value="${p.idPresentacion}"
+                                        th:text="${p.nombre}">
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Precio Institucional -->
+                        <div class="mb-3">
+                            <label for="variantePrecioInstitucional" class="form-label">
+                                <i class="fas fa-dollar-sign text-warning me-1"></i>Precio Institucional
+                            </label>
+                            <input type="number" class="form-control" id="variantePrecioInstitucional"
+                                   step="0.01" min="0" placeholder="0.00">
+                        </div>
+
+                        <!-- Precio Mayorista -->
+                        <div class="mb-3">
+                            <label for="variantePrecioMayorista" class="form-label">
+                                <i class="fas fa-dollar-sign text-warning me-1"></i>Precio Mayorista
+                            </label>
+                            <input type="number" class="form-control" id="variantePrecioMayorista"
+                                   step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-warning" id="btnGuardarVariante">
+                        <i class="fas fa-save me-1"></i>Guardar Variante
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <script th:inline="javascript">
+        const MAESTRO_ID = parseInt(document.getElementById('maestroId').value, 10);
+        const CSRF_TOKEN = document.getElementById('csrfToken').value;
+        const CSRF_HEADER = document.getElementById('csrfHeader').value;
+
+        // =====================================================================
+        // Utilities
+        // =====================================================================
+
+        function jsonHeaders() {
+            return { 'Content-Type': 'application/json', [CSRF_HEADER]: CSRF_TOKEN };
+        }
+
+        function fmtMoney(val) {
+            if (val == null) return '-';
+            return Number(val).toLocaleString('es-CR', { style: 'currency', currency: 'CRC' });
+        }
+
+        function toggleImpuesto() {
+            const gravado = document.getElementById('gravado');
+            const divPct = document.getElementById('divPorcentajeImpuesto');
+            if (divPct) divPct.style.display = gravado && gravado.checked ? '' : 'none';
+        }
+
+        // Run on page load
+        toggleImpuesto();
+
+        // =====================================================================
+        // Master form save (POST create or PUT update)
+        // =====================================================================
+
+        document.getElementById('btnGuardarMaestro').addEventListener('click', function () {
+            const payload = {
+                descripcion: document.getElementById('descripcion').value,
+                active: document.getElementById('active').checked,
+                gravado: document.getElementById('gravado') ? document.getElementById('gravado').checked : false,
+                porcentajeImpuesto: document.getElementById('porcentajeImpuesto').value || null,
+                aplicaOtroImpuesto: document.getElementById('aplicaOtroImpuesto').checked,
+                codigoCabys: document.getElementById('codigoCabys').value || null,
+                descripcionCabys: document.getElementById('descripcionCabys').value || null
+            };
+
+            const isEdit = MAESTRO_ID > 0;
+            const url = isEdit ? '/api/articulos/' + MAESTRO_ID : '/api/articulos';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            fetch(url, { method: method, headers: jsonHeaders(), body: JSON.stringify(payload) })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (!isEdit && data.data && data.data.idArticuloMaestro) {
+                            window.location.href = '/articulos/' + data.data.idArticuloMaestro + '/editar';
+                        } else {
+                            window.location.href = '/articulos';
+                        }
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(err => alert('Error de red: ' + err));
+        });
+
+        // =====================================================================
+        // Variants table — only present in edit mode (MAESTRO_ID > 0)
+        // =====================================================================
+
+        if (MAESTRO_ID > 0) {
+            cargarVariantes();
+        }
+
+        function cargarVariantes() {
+            fetch('/api/articulos/' + MAESTRO_ID + '/variantes')
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('variantesBody');
+                    if (!data.success || data.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin variantes registradas</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = data.data.map(v => `
+                        <tr>
+                            <td>${v.codigo || '-'}</td>
+                            <td>${v.presentacion ? v.presentacion.nombre : '-'}</td>
+                            <td class="text-end">${fmtMoney(v.precioInstitucional)}</td>
+                            <td class="text-end">${fmtMoney(v.precioMayorista)}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-warning me-1"
+                                        onclick="abrirEditarVariante(${v.idProducto})"
+                                        title="Editar variante">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger"
+                                        onclick="eliminarVariante(${v.idProducto})"
+                                        title="Eliminar variante">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(err => {
+                    console.error('Error al cargar variantes:', err);
+                    document.getElementById('variantesBody').innerHTML =
+                        '<tr><td colspan="5" class="text-center text-danger">Error al cargar variantes</td></tr>';
+                });
+        }
+
+        // =====================================================================
+        // New variant modal
+        // =====================================================================
+
+        document.getElementById('btnNuevaVariante').addEventListener('click', function () {
+            document.getElementById('varianteId').value = '0';
+            document.getElementById('modalVarianteTitle').textContent = 'Nueva Variante';
+            document.getElementById('varianteCodigo').value = '';
+            document.getElementById('variantePresentacion').value = '';
+            document.getElementById('variantePrecioInstitucional').value = '';
+            document.getElementById('variantePrecioMayorista').value = '';
+            new bootstrap.Modal(document.getElementById('varianteModal')).show();
+        });
+
+        function abrirEditarVariante(vId) {
+            fetch('/api/articulos/' + MAESTRO_ID + '/variantes')
+                .then(res => res.json())
+                .then(data => {
+                    const v = data.data.find(x => x.idProducto === vId);
+                    if (!v) return alert('Variante no encontrada');
+                    document.getElementById('varianteId').value = v.idProducto;
+                    document.getElementById('modalVarianteTitle').textContent = 'Editar Variante';
+                    document.getElementById('varianteCodigo').value = v.codigo || '';
+                    document.getElementById('variantePresentacion').value =
+                        v.presentacion ? v.presentacion.idPresentacion : '';
+                    document.getElementById('variantePrecioInstitucional').value = v.precioInstitucional || '';
+                    document.getElementById('variantePrecioMayorista').value = v.precioMayorista || '';
+                    new bootstrap.Modal(document.getElementById('varianteModal')).show();
+                });
+        }
+
+        // =====================================================================
+        // Save variant (create or update)
+        // =====================================================================
+
+        document.getElementById('btnGuardarVariante').addEventListener('click', function () {
+            const vId = parseInt(document.getElementById('varianteId').value, 10);
+            const presentacionId = document.getElementById('variantePresentacion').value;
+            const payload = {
+                codigo: document.getElementById('varianteCodigo').value || null,
+                precioInstitucional: document.getElementById('variantePrecioInstitucional').value || null,
+                precioMayorista: document.getElementById('variantePrecioMayorista').value || null,
+                presentacion: presentacionId ? { idPresentacion: parseInt(presentacionId, 10) } : null
+            };
+
+            const isEdit = vId > 0;
+            const url = isEdit
+                ? '/api/articulos/' + MAESTRO_ID + '/variantes/' + vId
+                : '/api/articulos/' + MAESTRO_ID + '/variantes';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            fetch(url, { method: method, headers: jsonHeaders(), body: JSON.stringify(payload) })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('varianteModal')).hide();
+                        cargarVariantes();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(err => alert('Error de red: ' + err));
+        });
+
+        // =====================================================================
+        // Delete variant
+        // =====================================================================
+
+        function eliminarVariante(vId) {
+            if (!confirm('¿Confirmás la eliminación de esta variante?')) return;
+            fetch('/api/articulos/' + MAESTRO_ID + '/variantes/' + vId, {
+                method: 'DELETE',
+                headers: { [CSRF_HEADER]: CSRF_TOKEN }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    cargarVariantes();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => alert('Error de red: ' + err));
+        }
+    </script>
+</body>
+</html>

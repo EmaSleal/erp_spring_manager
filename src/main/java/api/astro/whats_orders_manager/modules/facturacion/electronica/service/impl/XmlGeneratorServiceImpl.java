@@ -5,6 +5,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.model.Comp
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 /**
  * Implementación del servicio de generación de XML.
@@ -284,9 +287,9 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             xml.append("<LineaDetalle>");
             xml.append("<NumeroLinea>").append(numeroLinea++).append("</NumeroLinea>");
 
-            // CodigoCABYS en mayúsculas — obligatorio en v4.4
-            String cabys = (producto.getCodigoCabys() != null && !producto.getCodigoCabys().isEmpty())
-                ? producto.getCodigoCabys() : "8522000000000";
+            // CodigoCABYS — resolved via master with null-safe fallback to Producto (XML-1)
+            String cabysRaw = resolveCodigoCabys(producto);
+            String cabys = (cabysRaw != null && !cabysRaw.isEmpty()) ? cabysRaw : "8522000000000";
             xml.append("<CodigoCABYS>").append(cabys).append("</CodigoCABYS>");
 
             BigDecimal cantidad = linea.getCantidad() != null ? BigDecimal.valueOf(linea.getCantidad()) : BigDecimal.ONE;
@@ -297,7 +300,8 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
                 unidadMedida = producto.getPresentacion().getCodigoUnidadFE();
             }
             xml.append("<UnidadMedida>").append(unidadMedida).append("</UnidadMedida>");
-            xml.append("<Detalle>").append(escaparXml(producto.getDescripcion())).append("</Detalle>");
+            // descripcion — resolved via master with null-safe fallback (XML-1)
+            xml.append("<Detalle>").append(escaparXml(resolveDescripcion(producto))).append("</Detalle>");
 
             BigDecimal precioUnitario = linea.getPrecioUnitario() != null ? linea.getPrecioUnitario() : BigDecimal.ZERO;
             BigDecimal montoTotal = precioUnitario.multiply(cantidad).setScale(5, RoundingMode.HALF_UP);
@@ -308,9 +312,11 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             xml.append("<SubTotal>").append(fmt(subtotal, 5)).append("</SubTotal>");
             xml.append("<BaseImponible>").append(fmt(subtotal, 5)).append("</BaseImponible>");
 
-            boolean esGravado = Boolean.TRUE.equals(producto.getGravado());
-            BigDecimal porcentajeIVA = esGravado && producto.getPorcentajeImpuesto() != null
-                ? producto.getPorcentajeImpuesto() : BigDecimal.ZERO;
+            // gravado + porcentajeImpuesto — resolved via master with null-safe fallback (XML-1)
+            boolean esGravado = Boolean.TRUE.equals(resolveGravado(producto));
+            BigDecimal porcentajeIVA = esGravado
+                ? Optional.ofNullable(resolvePorcentajeImpuesto(producto)).orElse(BigDecimal.ZERO)
+                : BigDecimal.ZERO;
             BigDecimal montoImpuesto = subtotal.multiply(porcentajeIVA)
                 .divide(new BigDecimal("100"), 5, RoundingMode.HALF_UP);
 
@@ -345,12 +351,14 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
 
         for (LineaFactura linea : factura.getLineas()) {
             var producto = linea.getProducto();
-            boolean esGravado = Boolean.TRUE.equals(producto.getGravado());
+            // gravado + porcentajeImpuesto — resolved via master with null-safe fallback (XML-1)
+            boolean esGravado = Boolean.TRUE.equals(resolveGravado(producto));
             BigDecimal subtotal = linea.getSubtotal() != null ? linea.getSubtotal() : BigDecimal.ZERO;
 
             if (esGravado) {
                 totalMercanciasGravadas = totalMercanciasGravadas.add(subtotal);
-                BigDecimal porc = producto.getPorcentajeImpuesto() != null ? producto.getPorcentajeImpuesto() : new BigDecimal("13");
+                BigDecimal porc = Optional.ofNullable(resolvePorcentajeImpuesto(producto))
+                        .orElse(new BigDecimal("13"));
                 totalImpuesto = totalImpuesto.add(subtotal.multiply(porc).divide(new BigDecimal("100"), 5, RoundingMode.HALF_UP));
                 codigoTarifaPrincipal = resolverCodigoTarifaIVA(porc);
             } else {
@@ -405,6 +413,61 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
 
         xml.append("<TotalComprobante>").append(fmt(totalComprobante, 5)).append("</TotalComprobante>");
         xml.append("</ResumenFactura>");
+    }
+
+    // =====================================================================
+    // FE field resolvers — null-safe navigation through ArticuloMaestro (XML-1)
+    // =====================================================================
+
+    /**
+     * Resolves descripcion: reads from master when present, falls back to deprecated Produto field.
+     * Transition safety guard — no NPE even when FK has not been backfilled yet.
+     */
+    @SuppressWarnings("deprecation")
+    private String resolveDescripcion(Producto produto) {
+        return Optional.ofNullable(produto.getArticuloMaestro())
+                .map(ArticuloMaestro::getDescripcion)
+                .orElse(produto.getDescripcion());
+    }
+
+    /** Resolves codigoCabys: reads from master when present, falls back to deprecated Produto field. */
+    @SuppressWarnings("deprecation")
+    private String resolveCodigoCabys(Producto produto) {
+        return Optional.ofNullable(produto.getArticuloMaestro())
+                .map(ArticuloMaestro::getCodigoCabys)
+                .orElse(produto.getCodigoCabys());
+    }
+
+    /** Resolves gravado: reads from master when present, falls back to deprecated Produto field. */
+    @SuppressWarnings("deprecation")
+    private Boolean resolveGravado(Producto produto) {
+        return Optional.ofNullable(produto.getArticuloMaestro())
+                .map(ArticuloMaestro::getGravado)
+                .orElse(produto.getGravado());
+    }
+
+    /** Resolves porcentajeImpuesto: reads from master when present, falls back to deprecated Producto field. */
+    @SuppressWarnings("deprecation")
+    private BigDecimal resolvePorcentajeImpuesto(Producto produto) {
+        return Optional.ofNullable(produto.getArticuloMaestro())
+                .map(ArticuloMaestro::getPorcentajeImpuesto)
+                .orElse(produto.getPorcentajeImpuesto());
+    }
+
+    /** Resolves descripcionCabys: reads from master when present, falls back to deprecated Producto field. */
+    @SuppressWarnings("deprecation")
+    private String resolveDescripcionCabys(Producto produto) {
+        return Optional.ofNullable(produto.getArticuloMaestro())
+                .map(ArticuloMaestro::getDescripcionCabys)
+                .orElse(produto.getDescripcionCabys());
+    }
+
+    /** Resolves aplicaOtroImpuesto: reads from master when present, falls back to deprecated Producto field. */
+    @SuppressWarnings("deprecation")
+    private Boolean resolveAplicaOtroImpuesto(Producto produto) {
+        return Optional.ofNullable(produto.getArticuloMaestro())
+                .map(ArticuloMaestro::getAplicaOtroImpuesto)
+                .orElse(produto.getAplicaOtroImpuesto());
     }
 
     // =====================================================================

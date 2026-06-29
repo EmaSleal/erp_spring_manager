@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.reportes.service.impl;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
 import api.astro.whats_orders_manager.modules.reportes.service.ExportService;
@@ -324,10 +325,10 @@ public class ExportServiceImpl implements ExportService {
         for (Producto producto : productos) {
             table.addCell(String.valueOf(producto.getIdProducto()));
             table.addCell(producto.getCodigo() != null ? producto.getCodigo() : "-");
-            table.addCell(producto.getDescripcion() != null ? producto.getDescripcion() : "-");
+            table.addCell(resolveDescripcion(producto) != null ? resolveDescripcion(producto) : "-");
             table.addCell(formatearMoneda(producto.getPrecioInstitucional()));
             table.addCell(formatearMoneda(producto.getPrecioMayorista()));
-            table.addCell(Boolean.TRUE.equals(producto.getActive()) ? "Activo" : "Inactivo");
+            table.addCell(Boolean.TRUE.equals(resolveActive(producto)) ? "Activo" : "Inactivo");
         }
         
         document.add(table);
@@ -649,7 +650,7 @@ public class ExportServiceImpl implements ExportService {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(producto.getIdProducto());
             row.createCell(1).setCellValue(producto.getCodigo() != null ? producto.getCodigo() : "-");
-            row.createCell(2).setCellValue(producto.getDescripcion() != null ? producto.getDescripcion() : "-");
+            row.createCell(2).setCellValue(resolveDescripcion(producto) != null ? resolveDescripcion(producto) : "-");
             
             Cell precioInstCell = row.createCell(3);
             precioInstCell.setCellValue(producto.getPrecioInstitucional() != null ? producto.getPrecioInstitucional().doubleValue() : 0);
@@ -659,7 +660,7 @@ public class ExportServiceImpl implements ExportService {
             precioMayCell.setCellValue(producto.getPrecioMayorista() != null ? producto.getPrecioMayorista().doubleValue() : 0);
             precioMayCell.setCellStyle(monedaStyle);
             
-            row.createCell(5).setCellValue(Boolean.TRUE.equals(producto.getActive()) ? "Activo" : "Inactivo");
+            row.createCell(5).setCellValue(Boolean.TRUE.equals(resolveActive(producto)) ? "Activo" : "Inactivo");
         }
     }
 
@@ -750,10 +751,10 @@ public class ExportServiceImpl implements ExportService {
             for (Producto producto : productos) {
                 csv.append(producto.getIdProducto()).append(",");
                 csv.append(escapeCSV(producto.getCodigo())).append(",");
-                csv.append(escapeCSV(producto.getDescripcion())).append(",");
+                csv.append(escapeCSV(resolveDescripcion(producto))).append(",");
                 csv.append(producto.getPrecioInstitucional() != null ? producto.getPrecioInstitucional().toString() : "0").append(",");
                 csv.append(producto.getPrecioMayorista() != null ? producto.getPrecioMayorista().toString() : "0").append(",");
-                csv.append(Boolean.TRUE.equals(producto.getActive()) ? "Activo" : "Inactivo").append("\n");
+                csv.append(Boolean.TRUE.equals(resolveActive(producto)) ? "Activo" : "Inactivo").append("\n");
             }
             
             baos.write(csv.toString().getBytes(StandardCharsets.UTF_8));
@@ -774,4 +775,33 @@ public class ExportServiceImpl implements ExportService {
         }
         return value;
     }
+    // =========================================================================
+    // FE field resolvers — null-safe navigation through ArticuloMaestro (XML-1)
+    // =========================================================================
+
+    /**
+     * Resolves descripcion for export reports: reads from master when present,
+     * falls back to deprecated Producto field.
+     */
+    @SuppressWarnings("deprecation")
+    private String resolveDescripcion(Producto producto) {
+        if (producto.getArticuloMaestro() != null) {
+            return producto.getArticuloMaestro().getDescripcion();
+        }
+        return producto.getDescripcion();
+    }
+
+    /**
+     * Resolves active status for export reports: reads from master when present,
+     * falls back to deprecated Producto field.
+     */
+    @SuppressWarnings("deprecation")
+    private Boolean resolveActive(Producto producto) {
+        if (producto.getArticuloMaestro() != null) {
+            return producto.getArticuloMaestro().getActive();
+        }
+        return producto.getActive();
+    }
+
+
 }

@@ -42,6 +42,8 @@ import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 
 @Service
 @RequiredArgsConstructor
@@ -275,17 +277,17 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                 if (linea.getProducto() != null && linea.getProducto().getPresentacion() != null) {
                     um = safe(linea.getProducto().getPresentacion().getNombre());
                 }
-                String codigoCabys = linea.getProducto() != null ? safe(linea.getProducto().getCodigoCabys()) : "";
+                String codigoCabys = linea.getProducto() != null ? safe(resolveCodigoCabys(linea.getProducto())) : "";
                 String codigo = linea.getProducto() != null ? safe(linea.getProducto().getCodigo()) : "";
-                String detalle = linea.getProducto() != null ? safe(linea.getProducto().getDescripcion()) : "";
+                String detalle = linea.getProducto() != null ? safe(resolveDescripcion(linea.getProducto())) : "";
                 String cantidad = linea.getCantidad() != null
                         ? String.format("%.2f", linea.getCantidad().doubleValue())
                         : "0.00";
                 String precio = linea.getPrecioUnitario() != null
                         ? String.format("%,.2f", linea.getPrecioUnitario())
                         : "0.00";
-                String pctIva = linea.getProducto() != null && linea.getProducto().getPorcentajeImpuesto() != null
-                        ? String.format("%.2f", linea.getProducto().getPorcentajeImpuesto())
+                String pctIva = linea.getProducto() != null && resolvePorcentajeImpuesto(linea.getProducto()) != null
+                        ? String.format("%.2f", resolvePorcentajeImpuesto(linea.getProducto()))
                         : "0.00";
                 String subtotal = linea.getSubtotal() != null
                         ? String.format("%,.2f", linea.getSubtotal())
@@ -426,6 +428,27 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     private String safe(String value) {
         return value != null ? value : "";
+    }
+
+    @SuppressWarnings("deprecation")
+    private String resolveDescripcion(api.astro.whats_orders_manager.modules.producto.model.Producto p) {
+        return Optional.ofNullable(p.getArticuloMaestro())
+                .map(ArticuloMaestro::getDescripcion)
+                .orElse(p.getDescripcion());
+    }
+
+    @SuppressWarnings("deprecation")
+    private String resolveCodigoCabys(api.astro.whats_orders_manager.modules.producto.model.Producto p) {
+        return Optional.ofNullable(p.getArticuloMaestro())
+                .map(ArticuloMaestro::getCodigoCabys)
+                .orElse(p.getCodigoCabys());
+    }
+
+    @SuppressWarnings("deprecation")
+    private java.math.BigDecimal resolvePorcentajeImpuesto(api.astro.whats_orders_manager.modules.producto.model.Producto p) {
+        return Optional.ofNullable(p.getArticuloMaestro())
+                .map(ArticuloMaestro::getPorcentajeImpuesto)
+                .orElse(p.getPorcentajeImpuesto());
     }
 
     private String resolveMonedaLabel(MonedaFE moneda) {

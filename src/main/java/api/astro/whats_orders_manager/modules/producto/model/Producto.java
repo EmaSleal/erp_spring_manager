@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.producto.model;
 
 import api.astro.whats_orders_manager.modules.configuracion.model.Presentacion;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -26,8 +27,22 @@ public class Producto {
     private Integer idProducto;
     @Column(name = "codigo")
     private String codigo;
+
+    /**
+     * @deprecated Transition fallback. Source of truth is ArticuloMaestro.
+     *             Kept for write-through safety during migration.
+     *             Read from articuloMaestro.getDescripcion() instead.
+     */
+    @Deprecated
     @Column(name = "descripcion")
     private String descripcion;
+
+    // Link to the master article that owns common/FE fields.
+    @ToString.Exclude
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idArticuloMaestro")
+    private ArticuloMaestro articuloMaestro;
 
     @ManyToOne
     @JoinColumn(name = "idPresentacion", referencedColumnName = "idPresentacion")
@@ -37,47 +52,62 @@ public class Producto {
     private BigDecimal precioInstitucional;
     @Column(name = "precioMayorista")
     private BigDecimal precioMayorista;
+
+    /**
+     * @deprecated Transition fallback. Source of truth is ArticuloMaestro.
+     *             Kept for write-through safety during migration.
+     */
+    @Deprecated
     @Column(name = "active")
     private Boolean active;
 
     // ========== CAMPOS PARA FACTURACIÓN ELECTRÓNICA COSTA RICA ==========
-    
+
     /**
-     * Código CABYS de 13 dígitos (obligatorio para FE Costa Rica)
-     * Ejemplo: "2132100000100"
+     * @deprecated Transition fallback. Source of truth is ArticuloMaestro.
+     *             Kept for write-through safety during migration.
+     *             Código CABYS de 13 dígitos (obligatorio para FE Costa Rica).
      */
+    @Deprecated
     @Column(name = "codigo_cabys", length = 13)
     private String codigoCabys;
-    
+
     /**
-     * Descripción oficial del CABYS según Hacienda
-     * Esta descripción se usará en la facturación electrónica
-     * Ejemplo: "Jugo de tomate concentrado"
+     * @deprecated Transition fallback. Source of truth is ArticuloMaestro.
+     *             Kept for write-through safety during migration.
+     *             Descripción oficial del CABYS según Hacienda.
      */
+    @Deprecated
     @Column(name = "descripcion_cabys", length = 200)
     private String descripcionCabys;
-    
+
     /**
-     * Indica si el producto está gravado con impuestos (IVA)
-     * true = Gravado, false = Exento
+     * @deprecated Transition fallback. Source of truth is ArticuloMaestro.
+     *             Kept for write-through safety during migration.
+     *             Indica si el producto está gravado con impuestos (IVA).
      */
+    @Deprecated
     @Column(name = "gravado")
     private Boolean gravado;
-    
+
     /**
-     * Porcentaje de impuesto aplicable (IVA)
-     * Ejemplo: 13 (13%)
+     * @deprecated Transition fallback. Source of truth is ArticuloMaestro.
+     *             Kept for write-through safety during migration.
+     *             Porcentaje de impuesto aplicable (IVA).
      */
+    @Deprecated
     @Column(name = "porcentaje_impuesto")
     private BigDecimal porcentajeImpuesto;
-    
+
     /**
-     * Indica si aplica otro impuesto adicional
-     * Ejemplo: impuesto selectivo de consumo
+     * @deprecated Transition fallback. Source of truth is ArticuloMaestro.
+     *             Kept for write-through safety during migration.
+     *             Indica si aplica otro impuesto adicional.
      */
+    @Deprecated
     @Column(name = "aplica_otro_impuesto")
     private Boolean aplicaOtroImpuesto;
-    
+
     // ========== FIN CAMPOS FACTURACIÓN ELECTRÓNICA ==========
 
     @CreatedDate
