@@ -76,9 +76,8 @@ public class ProductoController {
             sortDir
         );
         
-        log.info("Productos cargados: {} de {} total", productosPage.getContent().size(), productosPage.getTotalElements());
-        
-        return "modules/producto/productos";
+        log.info("Redirigiendo /productos → /articulos (artículo maestro ahora es la vista principal)");
+        return "redirect:/articulos";
     }
 
 //    @GetMapping("/nuevo")

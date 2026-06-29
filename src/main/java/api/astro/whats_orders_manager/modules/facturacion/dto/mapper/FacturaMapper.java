@@ -9,10 +9,12 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -108,10 +110,12 @@ public class FacturaMapper {
     
     /**
      * Convierte una entidad LineaFactura a DTO.
-     * 
+     * descripcion is read through articuloMaestro with null-safe fallback to the deprecated Produto field.
+     *
      * @param linea Línea de factura
      * @return DTO de la línea
      */
+    @SuppressWarnings("deprecation")
     public LineaFacturaDTO toLineaFacturaDTO(LineaFactura linea) {
         if (linea == null) {
             return null;
@@ -122,7 +126,10 @@ public class FacturaMapper {
                 .numeroLinea(linea.getNumeroLinea())
                 .idProducto(linea.getProducto().getIdProducto())
                 .codigoProducto(linea.getProducto().getCodigo())
-                .descripcionProducto(linea.getProducto().getDescripcion())
+                // descripcion resolved via master with null-safe fallback to Producto (XML-1)
+                .descripcionProducto(Optional.ofNullable(linea.getProducto().getArticuloMaestro())
+                        .map(ArticuloMaestro::getDescripcion)
+                        .orElseGet(() -> linea.getProducto().getDescripcion()))
                 .cantidad(linea.getCantidad())
                 .precioUnitario(linea.getPrecioUnitario())
                 .subtotal(linea.getSubtotal())

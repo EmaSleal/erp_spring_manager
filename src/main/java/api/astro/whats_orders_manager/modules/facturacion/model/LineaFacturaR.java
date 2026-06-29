@@ -1,8 +1,9 @@
 package api.astro.whats_orders_manager.modules.facturacion.model;
 
-
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.Optional;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 
 
 //id_producto, cantidad, precio_unitario, subtotal, create_by, update_by, create_date, update_date, id_linea_factura
@@ -26,7 +27,9 @@ public record LineaFacturaR(
                 lineaFactura.getNumeroLinea(),
                 lineaFactura.getProducto().getIdProducto(),
                 lineaFactura.getFactura().getIdFactura(),
-                lineaFactura.getProducto().getDescripcion(),
+                Optional.ofNullable(lineaFactura.getProducto().getArticuloMaestro())
+                        .map(ArticuloMaestro::getDescripcion)
+                        .orElseGet(() -> lineaFactura.getProducto().getDescripcion()),
                 lineaFactura.getCantidad(),
                 lineaFactura.getPrecioUnitario(),
                 lineaFactura.getSubtotal(),
