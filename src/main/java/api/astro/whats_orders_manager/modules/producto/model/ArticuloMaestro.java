@@ -35,7 +35,7 @@ public class ArticuloMaestro {
     @Column(name = "idArticuloMaestro")
     private Integer idArticuloMaestro;
 
-    @Column(name = "descripcion", nullable = false)
+    @Column(name = "descripcion", nullable = false, unique = true)
     private String descripcion;
 
     @Column(name = "active")
