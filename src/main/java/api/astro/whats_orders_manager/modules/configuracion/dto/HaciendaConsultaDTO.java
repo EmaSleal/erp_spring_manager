@@ -79,20 +79,20 @@ public class HaciendaConsultaDTO {
      * 
      * @return true si no está moroso ni omiso
      */
-    public boolean estaAlDia() {
+    public boolean isEstaAlDia() {
         if (situacion == null) {
             return false;
         }
-        return "NO".equalsIgnoreCase(situacion.getMoroso()) && 
+        return "NO".equalsIgnoreCase(situacion.getMoroso()) &&
                "NO".equalsIgnoreCase(situacion.getOmiso());
     }
-    
+
     /**
      * Verifica si está inscrito activamente
-     * 
+     *
      * @return true si está inscrito
      */
-    public boolean estaInscrito() {
+    public boolean isEstaInscrito() {
         if (situacion == null) {
             return false;
         }
