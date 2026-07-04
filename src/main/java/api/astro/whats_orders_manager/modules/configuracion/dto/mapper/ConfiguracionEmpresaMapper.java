@@ -63,6 +63,7 @@ public class ConfiguracionEmpresaMapper {
         dto.setBarrio(entity.getBarrio());
         dto.setOtrasSenas(entity.getOtrasSenas());
         dto.setCodigoActividad(entity.getCodigoActividad());
+        dto.setDescripcionActividad(entity.getDescripcionActividad());
         dto.setNombreComercialFe(entity.getNombreComercialFe());
 
         return dto;
@@ -111,6 +112,7 @@ public class ConfiguracionEmpresaMapper {
                 .barrio(dto.getBarrio())
                 .otrasSenas(dto.getOtrasSenas())
                 .codigoActividad(dto.getCodigoActividad())
+                .descripcionActividad(dto.getDescripcionActividad())
                 .nombreComercialFe(dto.getNombreComercialFe())
                 .build();
     }

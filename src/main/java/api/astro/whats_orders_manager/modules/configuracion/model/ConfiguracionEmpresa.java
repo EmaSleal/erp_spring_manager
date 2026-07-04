@@ -111,6 +111,9 @@ public class ConfiguracionEmpresa implements Serializable {
     @Column(name = "codigo_actividad", length = 6)
     private String codigoActividad;
 
+    @Column(name = "descripcion_actividad", length = 200)
+    private String descripcionActividad;
+
     @Column(name = "nombre_comercial_fe", length = 255)
     private String nombreComercialFe;
 
