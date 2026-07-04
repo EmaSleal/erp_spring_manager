@@ -134,7 +134,7 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
         return resultado != null && 
                resultado.getExitosa() != null && 
                resultado.getExitosa() && 
-               resultado.estaInscrito();
+               resultado.isEstaInscrito();
     }
         
     
