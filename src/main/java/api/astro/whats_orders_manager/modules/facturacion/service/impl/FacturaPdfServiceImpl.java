@@ -87,7 +87,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             doc.add(separator());
 
-            addClienteBlock(doc, cliente, factura, empresa);
+            addClienteBlock(doc, cliente, factura, configuracion);
 
             doc.add(separator());
 
@@ -140,16 +140,16 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                 log.warn("No se pudo cargar el logo '{}': {}", configuracion.getLogoPath(), e.getMessage());
             }
         }
-        col1.add(new Paragraph(safe(empresa.getNombreEmpresa())).setBold().setFontSize(13));
-        col1.add(new Paragraph("Cédula Jurídica: " + safe(empresa.getRuc())).setFontSize(9));
-        if (empresa.getDireccion() != null) {
-            col1.add(new Paragraph(empresa.getDireccion()).setFontSize(9));
+        col1.add(new Paragraph(safe(configuracion.getNombreEmpresa())).setBold().setFontSize(13));
+        col1.add(new Paragraph("Cédula Jurídica: " + safe(configuracion.getRuc())).setFontSize(9));
+        if (configuracion.getDireccion() != null) {
+            col1.add(new Paragraph(configuracion.getDireccion()).setFontSize(9));
         }
-        if (empresa.getTelefono() != null) {
-            col1.add(new Paragraph("Tel: " + empresa.getTelefono()).setFontSize(9));
+        if (configuracion.getTelefono() != null) {
+            col1.add(new Paragraph("Tel: " + configuracion.getTelefono()).setFontSize(9));
         }
-        if (empresa.getEmail() != null) {
-            col1.add(new Paragraph(empresa.getEmail()).setFontSize(9));
+        if (configuracion.getEmail() != null) {
+            col1.add(new Paragraph(configuracion.getEmail()).setFontSize(9));
         }
         header.addCell(col1);
 
@@ -183,9 +183,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         col3.add(new Paragraph("DOCUMENTO No.").setBold().setFontSize(8));
         col3.add(new Paragraph(safe(factura.getNumeroFactura())).setFontSize(9));
         col3.add(new Paragraph("ACTIVIDAD ECONOMICA").setBold().setFontSize(8));
-        String actEcon = safe(empresa.getCodigoActividad()) + " " + safe(empresa.getDescripcionActividad());
-        String actConfFe = safe(configuracion.getCodigoActividad());
-        if (!actConfFe.isEmpty()) actEcon += "  " + actConfFe;
+        String actEcon = safe(configuracion.getCodigoActividad()) + " " + safe(configuracion.getDescripcionActividad());
         col3.add(new Paragraph(actEcon.trim()).setFontSize(8));
         header.addCell(col3);
 
@@ -194,7 +192,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     // ─── Client block ─────────────────────────────────────────────────────────
 
-    private void addClienteBlock(Document doc, Cliente cliente, Factura factura, Empresa empresa) {
+    private void addClienteBlock(Document doc, Cliente cliente, Factura factura, ConfiguracionEmpresa configuracion) {
         float[] cols = {50f, 50f};
         Table table = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
 
@@ -249,7 +247,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                 .add("  " + safe(factura.getDescripcion()))
                 .setFontSize(9));
         table.addCell(ordenCell);
-        table.addCell(labelValueCell("Activ Econ.:", safe(empresa.getCodigoActividad())));
+        table.addCell(labelValueCell("Activ Econ.:", safe(configuracion.getCodigoActividad())));
 
         doc.add(table);
     }
