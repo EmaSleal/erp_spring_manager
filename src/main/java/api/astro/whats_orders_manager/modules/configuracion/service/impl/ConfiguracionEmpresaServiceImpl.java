@@ -161,6 +161,9 @@ public class ConfiguracionEmpresaServiceImpl implements ConfiguracionEmpresaServ
         if (configuracion.getCodigoActividad() != null) {
             configuracionExistente.setCodigoActividad(configuracion.getCodigoActividad());
         }
+        if (configuracion.getDescripcionActividad() != null) {
+            configuracionExistente.setDescripcionActividad(configuracion.getDescripcionActividad());
+        }
         if (configuracion.getNombreComercialFe() != null) {
             configuracionExistente.setNombreComercialFe(configuracion.getNombreComercialFe());
         }

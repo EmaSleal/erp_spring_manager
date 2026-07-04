@@ -59,7 +59,7 @@ const ConfiguracionEmpresa = {
                 const datos = response.data;
                 
                 // Cargar campos en el formulario
-                document.getElementById('idConfiguracionEmpresa').value = datos.id || '';
+                document.getElementById('idConfiguracionEmpresa').value = datos.idConfiguracion || '';
                 document.getElementById('razonSocial').value = datos.razonSocial || '';
                 document.getElementById('nombreComercial').value = datos.nombreComercial || '';
                 document.getElementById('rfc').value = datos.rfc || '';
@@ -125,6 +125,9 @@ const ConfiguracionEmpresa = {
                 }
                 if (document.getElementById('codigoActividad')) {
                     document.getElementById('codigoActividad').value = datos.codigoActividad || '';
+                }
+                if (document.getElementById('descripcionActividad')) {
+                    document.getElementById('descripcionActividad').value = datos.descripcionActividad || '';
                 }
                 if (document.getElementById('nombreComercialFe')) {
                     document.getElementById('nombreComercialFe').value = datos.nombreComercialFe || '';
@@ -214,6 +217,9 @@ const ConfiguracionEmpresa = {
                         // Código de actividad CAECR (formato 9999.9)
                         const codigo = actividadPrincipal.codigo;
                         document.getElementById('codigoActividad').value = codigo;
+                        if (actividadPrincipal.descripcion && document.getElementById('descripcionActividad')) {
+                            document.getElementById('descripcionActividad').value = actividadPrincipal.descripcion;
+                        }
                     }
                 }
                 
@@ -362,6 +368,7 @@ const ConfiguracionEmpresa = {
                 tipoIdentificacion: document.getElementById('tipoIdentificacion').value || null,
                 numeroIdentificacion: document.getElementById('numeroIdentificacion').value || null,
                 codigoActividad: document.getElementById('codigoActividad').value || null,
+                descripcionActividad: document.getElementById('descripcionActividad') ? (document.getElementById('descripcionActividad').value || null) : null,
                 nombreComercialFe: document.getElementById('nombreComercialFe').value || null,
                 codigoProvincia: document.getElementById('provincia').value || null,
                 canton: document.getElementById('canton').value || null,
@@ -374,8 +381,8 @@ const ConfiguracionEmpresa = {
             let response;
             
             if (idConfiguracion) {
-                // Actualizar - usar 'id' en lugar de 'idConfiguracion'
-                datos.id = parseInt(idConfiguracion);
+                // Actualizar
+                datos.idConfiguracion = parseInt(idConfiguracion);
                 response = await Configuracion.put(this.API_URL, datos);
             } else {
                 // Crear
