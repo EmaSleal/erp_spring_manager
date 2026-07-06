@@ -438,6 +438,8 @@ function aplicarFiltros() {
     const startDate = document.getElementById("startDate").value;
     const endDate = document.getElementById("endDate").value;
     const statusFilter = document.getElementById("statusFilter").value;
+    const estadoFEFilter = document.getElementById("estadoFEFilter").value;
+    const isPaidFilter = document.getElementById("isPaidFilter").value;
 
     let url = "/facturas?";
     const params = [];
@@ -450,6 +452,12 @@ function aplicarFiltros() {
     }
     if (statusFilter) {
         params.push(`status=${statusFilter}`);
+    }
+    if (estadoFEFilter) {
+        params.push(`estadoFE=${estadoFEFilter}`);
+    }
+    if (isPaidFilter) {
+        params.push(`isPaid=${isPaidFilter}`);
     }
 
     if (params.length > 0) {
@@ -465,6 +473,8 @@ function limpiarFiltros() {
     document.getElementById("startDate").value = '';
     document.getElementById("endDate").value = '';
     document.getElementById("statusFilter").value = '';
+    document.getElementById("estadoFEFilter").value = '';
+    document.getElementById("isPaidFilter").value = '';
     window.location.href = "/facturas";
 }
 

@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -72,7 +74,16 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Factura> findById(Integer id) { 
+    public Page<Factura> buscarConFiltros(Pageable pageable, LocalDate startDate, LocalDate endDate,
+                                           Boolean entregado, Boolean pagada, Boolean sinFE, EstadoComprobante estadoFE) {
+        log.debug("Buscando facturas con filtros - startDate: {}, endDate: {}, entregado: {}, pagada: {}, sinFE: {}, estadoFE: {}",
+            startDate, endDate, entregado, pagada, sinFE, estadoFE);
+        return facturaRepository.buscarConFiltros(startDate, endDate, entregado, pagada, sinFE, estadoFE, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Factura> findById(Integer id) {
         log.debug("Buscando factura por ID: {}", id);
         return facturaRepository.findById(id); 
     }

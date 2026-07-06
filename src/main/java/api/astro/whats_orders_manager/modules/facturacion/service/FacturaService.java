@@ -1,12 +1,14 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -15,6 +17,13 @@ import java.util.Optional;
 public interface FacturaService {
     List<Factura> findAll();
     Page<Factura> findAll(Pageable pageable);
+
+    /**
+     * Busca facturas paginadas aplicando los filtros del listado (fechas, entrega,
+     * estado de pago y estado de facturación electrónica).
+     */
+    Page<Factura> buscarConFiltros(Pageable pageable, LocalDate startDate, LocalDate endDate,
+                                    Boolean entregado, Boolean pagada, Boolean sinFE, EstadoComprobante estadoFE);
     Optional<Factura> findById(Integer id);
     Factura save(Factura factura);
     void deleteById(Integer id);
