@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDT
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -66,22 +68,62 @@ public class FacturaController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "idFactura") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
-            Model model, 
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean isPaid,
+            @RequestParam(required = false) String estadoFE,
+            Model model,
             Authentication authentication
     ) {
-        log.info("Listando facturas - Página: {}, Tamaño: {}, Ordenar por: {} {}", 
+        log.info("Listando facturas - Página: {}, Tamaño: {}, Ordenar por: {} {}",
                 page, size, sortBy, sortDir);
-        
+
         try {
             Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir);
 
-            // Obtener página de facturas
-            Page<Factura> facturasPage = facturaService.findAll(pageable);
-            
+            // Derivar el filtro de entrega a partir del valor plano del select
+            Boolean entregado = "entregado".equals(status) ? Boolean.TRUE
+                    : "pendiente".equals(status) ? Boolean.FALSE
+                    : null;
+
+            // sinFE y estadoFE son mutuamente excluyentes: "sin_fe" busca facturas sin
+            // comprobante electrónico; cualquier otro valor es un nombre de EstadoComprobante
+            Boolean sinFE = null;
+            EstadoComprobante estadoFEFiltro = null;
+            if (estadoFE != null && !estadoFE.isBlank()) {
+                if ("sin_fe".equals(estadoFE)) {
+                    sinFE = Boolean.TRUE;
+                } else {
+                    try {
+                        estadoFEFiltro = EstadoComprobante.valueOf(estadoFE);
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Valor de estadoFE inválido recibido: {}", estadoFE);
+                    }
+                }
+            }
+
+            boolean sinFiltros = startDate == null && endDate == null
+                    && (status == null || status.isBlank())
+                    && isPaid == null
+                    && (estadoFE == null || estadoFE.isBlank());
+
+            // Obtener página de facturas (con o sin filtros)
+            Page<Factura> facturasPage = sinFiltros
+                    ? facturaService.findAll(pageable)
+                    : facturaService.buscarConFiltros(pageable, startDate, endDate, entregado, isPaid, sinFE, estadoFEFiltro);
+
             // Convertir a DTO y agregar atributos de paginación usando PaginacionUtil
             PaginacionDTO<Factura> paginacion = PaginacionUtil.fromPage(facturasPage);
             PaginacionUtil.agregarAtributosConOrdenamiento(model, paginacion, "facturas", sortBy, sortDir);
-            
+
+            // Preservar los filtros activos para el formulario y los enlaces de paginación
+            model.addAttribute("startDate", startDate);
+            model.addAttribute("endDate", endDate);
+            model.addAttribute("status", status);
+            model.addAttribute("isPaid", isPaid);
+            model.addAttribute("estadoFE", estadoFE);
+
             // Agregar datos adicionales para la vista
             model.addAttribute("clientes", clienteService.findAll());
             model.addAttribute("tiposFactura", InvoiceType.values());
