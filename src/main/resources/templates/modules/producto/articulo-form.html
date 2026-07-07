@@ -212,25 +212,38 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" id="tablaVariantes">
-                            <thead>
-                                <tr>
-                                    <th>Código</th>
-                                    <th>Presentación</th>
-                                    <th class="text-end">P. Institucional</th>
-                                    <th class="text-end">P. Mayorista</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="variantesBody">
-                                <tr id="loadingRow">
-                                    <td colspan="5" class="text-center text-muted py-3">
-                                        <i class="fas fa-spinner fa-spin me-2"></i>Cargando variantes...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="responsive-table-container">
+
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="tablaVariantes">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Presentación</th>
+                                        <th class="text-end">P. Institucional</th>
+                                        <th class="text-end">P. Mayorista</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="variantesBody">
+                                    <tr id="loadingRow">
+                                        <td colspan="5" class="text-center text-muted py-3">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>Cargando variantes...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- MÓVIL: Vista de tarjetas -->
+                        <div class="mobile-card-view" id="variantesCards">
+                            <div class="mobile-card-empty">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Cargando variantes...</p>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -382,13 +395,44 @@
             cargarVariantes();
         }
 
+        function renderVarianteCard(v) {
+            return `
+                <div class="mobile-card card-warning">
+                    <div class="mobile-card-header">
+                        <h6 class="mobile-card-title">${v.codigo || 'Sin código'}</h6>
+                        <span class="badge bg-info text-dark mobile-card-badge">${v.presentacion ? v.presentacion.nombre : '-'}</span>
+                    </div>
+                    <div class="mobile-card-body">
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">P. Institucional</span>
+                            <span class="mobile-card-value">${fmtMoney(v.precioInstitucional)}</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">P. Mayorista</span>
+                            <span class="mobile-card-value">${fmtMoney(v.precioMayorista)}</span>
+                        </div>
+                    </div>
+                    <div class="mobile-card-footer mobile-card-actions">
+                        <button class="btn btn-sm btn-warning" onclick="abrirEditarVariante(${v.idProducto})">
+                            <i class="fas fa-edit me-1"></i>Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarVariante(${v.idProducto})">
+                            <i class="fas fa-trash me-1"></i>Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
         function cargarVariantes() {
             fetch('/api/articulos/' + MAESTRO_ID + '/variantes')
                 .then(res => res.json())
                 .then(data => {
                     const tbody = document.getElementById('variantesBody');
+                    const cardsView = document.getElementById('variantesCards');
                     if (!data.success || data.data.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin variantes registradas</td></tr>';
+                        cardsView.innerHTML = '<div class="mobile-card-empty"><i class="fas fa-inbox"></i><p>Sin variantes registradas</p></div>';
                         return;
                     }
                     tbody.innerHTML = data.data.map(v => `
@@ -411,11 +455,14 @@
                             </td>
                         </tr>
                     `).join('');
+                    cardsView.innerHTML = data.data.map(renderVarianteCard).join('');
                 })
                 .catch(err => {
                     console.error('Error al cargar variantes:', err);
                     document.getElementById('variantesBody').innerHTML =
                         '<tr><td colspan="5" class="text-center text-danger">Error al cargar variantes</td></tr>';
+                    document.getElementById('variantesCards').innerHTML =
+                        '<div class="mobile-card-empty text-danger"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar variantes</p></div>';
                 });
         }
 

@@ -207,7 +207,7 @@ public class DashboardController {
                 esAdmin || esUser || esVendedor || esVisualizador
         ));
 
-        //Contabilidad (solo ADMIN y USER)
+        //Contabilidad (solo ADMIN, según permiso CONTABILIDAD_VER en rol_permiso)
         modulos.add(crearModulo(
                 "Contabilidad",
                 "Gestión contable",
@@ -215,7 +215,7 @@ public class DashboardController {
                 "#FF5722",
                 "/contabilidad",
                 true,
-                esAdmin || esUser
+                esAdmin
         ));
 
         // Usuarios (solo ADMIN)

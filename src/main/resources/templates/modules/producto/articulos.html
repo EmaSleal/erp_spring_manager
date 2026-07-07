@@ -56,69 +56,124 @@
             <!-- Table Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Descripción</th>
-                                    <th class="text-center" style="width: 110px;">Estado</th>
-                                    <th class="text-center" style="width: 110px;">Variantes</th>
-                                    <th class="text-center" style="width: 160px;">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:if="${#lists.isEmpty(maestros)}">
-                                    <td colspan="4" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
-                                        No hay artículos registrados
-                                    </td>
-                                </tr>
-                                <tr th:each="maestro : ${maestros}">
-                                    <td>
-                                        <strong th:text="${maestro.descripcion}">Descripción</strong>
-                                        <div class="text-muted small" th:if="${maestro.codigoCabys != null}">
-                                            CABYS: <span th:text="${maestro.codigoCabys}"></span>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge"
-                                              th:classappend="${maestro.active} ? 'bg-success' : 'bg-secondary'"
-                                              th:text="${maestro.active} ? 'Activo' : 'Inactivo'">
-                                            Activo
+                    <div class="responsive-table-container">
+
+                        <!-- DESKTOP: Tabla tradicional -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Descripción</th>
+                                        <th class="text-center" style="width: 110px;">Estado</th>
+                                        <th class="text-center" style="width: 110px;">Variantes</th>
+                                        <th class="text-center" style="width: 160px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${#lists.isEmpty(maestros)}">
+                                        <td colspan="4" class="text-center text-muted py-4">
+                                            <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                            No hay artículos registrados
+                                        </td>
+                                    </tr>
+                                    <tr th:each="maestro : ${maestros}">
+                                        <td>
+                                            <strong th:text="${maestro.descripcion}">Descripción</strong>
+                                            <div class="text-muted small" th:if="${maestro.codigoCabys != null}">
+                                                CABYS: <span th:text="${maestro.codigoCabys}"></span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge"
+                                                  th:classappend="${maestro.active} ? 'bg-success' : 'bg-secondary'"
+                                                  th:text="${maestro.active} ? 'Activo' : 'Inactivo'">
+                                                Activo
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info text-dark"
+                                                  th:text="${varianteCounts[maestro.idArticuloMaestro] ?: 0}">
+                                                0
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <!-- Editar -->
+                                            <a th:href="@{/articulos/{id}/editar(id=${maestro.idArticuloMaestro})}"
+                                               class="btn btn-sm btn-warning me-1"
+                                               data-bs-toggle="tooltip" title="Editar artículo">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <!-- Desactivar / Reactivar -->
+                                            <button type="button"
+                                                    th:if="${maestro.active}"
+                                                    th:data-id="${maestro.idArticuloMaestro}"
+                                                    class="btn btn-sm btn-secondary btn-desactivar"
+                                                    data-bs-toggle="tooltip" title="Desactivar">
+                                                <i class="fas fa-ban"></i>
+                                            </button>
+                                            <button type="button"
+                                                    th:unless="${maestro.active}"
+                                                    th:data-id="${maestro.idArticuloMaestro}"
+                                                    class="btn btn-sm btn-success btn-reactivar"
+                                                    data-bs-toggle="tooltip" title="Reactivar">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- MÓVIL: Vista de tarjetas -->
+                        <div class="mobile-card-view">
+                            <div th:if="${#lists.isEmpty(maestros)}" class="mobile-card-empty">
+                                <i class="fas fa-inbox"></i>
+                                <p>No hay artículos registrados</p>
+                            </div>
+
+                            <div th:each="maestro : ${maestros}" class="mobile-card card-warning">
+                                <div class="mobile-card-header">
+                                    <h6 class="mobile-card-title" th:text="${maestro.descripcion}">Descripción</h6>
+                                    <span class="badge mobile-card-badge"
+                                          th:classappend="${maestro.active} ? 'bg-success' : 'bg-secondary'"
+                                          th:text="${maestro.active} ? 'Activo' : 'Inactivo'">
+                                        Activo
+                                    </span>
+                                </div>
+                                <div class="mobile-card-body">
+                                    <div class="mobile-card-row" th:if="${maestro.codigoCabys != null}">
+                                        <span class="mobile-card-label">CABYS</span>
+                                        <span class="mobile-card-value" th:text="${maestro.codigoCabys}">-</span>
+                                    </div>
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Variantes</span>
+                                        <span class="mobile-card-value">
+                                            <span class="badge bg-info text-dark"
+                                                  th:text="${varianteCounts[maestro.idArticuloMaestro] ?: 0}">0</span>
                                         </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge bg-info text-dark"
-                                              th:text="${varianteCounts[maestro.idArticuloMaestro] ?: 0}">
-                                            0
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <!-- Editar -->
-                                        <a th:href="@{/articulos/{id}/editar(id=${maestro.idArticuloMaestro})}"
-                                           class="btn btn-sm btn-warning me-1"
-                                           data-bs-toggle="tooltip" title="Editar artículo">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <!-- Desactivar / Reactivar -->
-                                        <button type="button"
-                                                th:if="${maestro.active}"
-                                                th:data-id="${maestro.idArticuloMaestro}"
-                                                class="btn btn-sm btn-secondary btn-desactivar"
-                                                data-bs-toggle="tooltip" title="Desactivar">
-                                            <i class="fas fa-ban"></i>
-                                        </button>
-                                        <button type="button"
-                                                th:unless="${maestro.active}"
-                                                th:data-id="${maestro.idArticuloMaestro}"
-                                                class="btn btn-sm btn-success btn-reactivar"
-                                                data-bs-toggle="tooltip" title="Reactivar">
-                                            <i class="fas fa-check-circle"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                    </div>
+                                </div>
+                                <div class="mobile-card-footer mobile-card-actions">
+                                    <a th:href="@{/articulos/{id}/editar(id=${maestro.idArticuloMaestro})}"
+                                       class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit me-1"></i>Editar
+                                    </a>
+                                    <button type="button"
+                                            th:if="${maestro.active}"
+                                            th:data-id="${maestro.idArticuloMaestro}"
+                                            class="btn btn-sm btn-secondary btn-desactivar">
+                                        <i class="fas fa-ban me-1"></i>Desactivar
+                                    </button>
+                                    <button type="button"
+                                            th:unless="${maestro.active}"
+                                            th:data-id="${maestro.idArticuloMaestro}"
+                                            class="btn btn-sm btn-success btn-reactivar">
+                                        <i class="fas fa-check-circle me-1"></i>Reactivar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
