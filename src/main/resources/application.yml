@@ -183,6 +183,7 @@ logging:
 ---
 spring:
   config:
+    import: optional:file:.env[.properties]
     activate:
       on-profile: prod
 
