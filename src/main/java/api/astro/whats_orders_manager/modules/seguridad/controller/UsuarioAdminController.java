@@ -263,7 +263,11 @@ public class UsuarioAdminController {
             
             // Convertir DTO a entidad
             Usuario usuario = usuarioDTO.toEntity();
-            
+
+            if (usuarioDTO.getPassword() != null && !usuarioDTO.getPassword().isBlank()) {
+                usuario.setPassword(passwordEncoder.encode(usuarioDTO.getPassword()));
+            }
+
             // Guardar
             Usuario usuarioGuardado = usuarioService.save(usuario);
             
@@ -340,7 +344,11 @@ public class UsuarioAdminController {
                 // Mantener avatar actual si no se subió uno nuevo
                 usuario.setAvatar(usuarioDTO.getAvatar());
             }
-            
+
+            if (usuarioDTO.getPassword() != null && !usuarioDTO.getPassword().isBlank()) {
+                usuario.setPassword(passwordEncoder.encode(usuarioDTO.getPassword()));
+            }
+
             // Guardar
             Usuario usuarioActualizado = usuarioService.save(usuario);
             

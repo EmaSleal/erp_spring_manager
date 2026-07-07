@@ -19,4 +19,9 @@ public interface ProductoService {
     List<ProductoRecord> findAllRecords();
     Producto EditProducto(Producto producto);
     long count();
+
+    /**
+     * Return all Producto variants linked to the given ArticuloMaestro ID.
+     */
+    List<Producto> findByArticuloMaestro(Integer maestroId);
 }

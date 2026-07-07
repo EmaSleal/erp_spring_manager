@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Artículos Maestro</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-boxes me-1"></i>Artículos Maestro
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header -->
+            <div class="page-header mb-4">
+                <div class="page-header-content">
+                    <h2 class="page-title">
+                        <i class="fas fa-boxes text-warning me-2"></i>
+                        <span class="d-none d-md-inline">Gestión de </span>Artículos Maestro
+                    </h2>
+                    <p class="page-subtitle d-none d-md-block">Administrá el catálogo de artículos y sus variantes</p>
+                </div>
+                <div class="page-header-actions">
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-md-inline ms-2">Volver</span>
+                    </a>
+                    <a th:href="@{/articulos/nuevo}" class="btn btn-success"
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo artículo">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline ms-2">Nuevo Artículo</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th class="text-center" style="width: 110px;">Estado</th>
+                                    <th class="text-center" style="width: 110px;">Variantes</th>
+                                    <th class="text-center" style="width: 160px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:if="${#lists.isEmpty(maestros)}">
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                        No hay artículos registrados
+                                    </td>
+                                </tr>
+                                <tr th:each="maestro : ${maestros}">
+                                    <td>
+                                        <strong th:text="${maestro.descripcion}">Descripción</strong>
+                                        <div class="text-muted small" th:if="${maestro.codigoCabys != null}">
+                                            CABYS: <span th:text="${maestro.codigoCabys}"></span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge"
+                                              th:classappend="${maestro.active} ? 'bg-success' : 'bg-secondary'"
+                                              th:text="${maestro.active} ? 'Activo' : 'Inactivo'">
+                                            Activo
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info text-dark"
+                                              th:text="${varianteCounts[maestro.idArticuloMaestro] ?: 0}">
+                                            0
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <!-- Editar -->
+                                        <a th:href="@{/articulos/{id}/editar(id=${maestro.idArticuloMaestro})}"
+                                           class="btn btn-sm btn-warning me-1"
+                                           data-bs-toggle="tooltip" title="Editar artículo">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <!-- Desactivar / Reactivar -->
+                                        <button type="button"
+                                                th:if="${maestro.active}"
+                                                th:data-id="${maestro.idArticuloMaestro}"
+                                                class="btn btn-sm btn-secondary btn-desactivar"
+                                                data-bs-toggle="tooltip" title="Desactivar">
+                                            <i class="fas fa-ban"></i>
+                                        </button>
+                                        <button type="button"
+                                                th:unless="${maestro.active}"
+                                                th:data-id="${maestro.idArticuloMaestro}"
+                                                class="btn btn-sm btn-success btn-reactivar"
+                                                data-bs-toggle="tooltip" title="Reactivar">
+                                            <i class="fas fa-check-circle"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <!-- CSRF token for fetch calls -->
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+            function cambiarEstado(id, accion) {
+                if (!confirm('¿Confirmás la acción "' + accion + '" para este artículo?')) return;
+                fetch('/api/articulos/' + id + '/' + accion, {
+                    method: 'PATCH',
+                    headers: { [csrfHeader]: csrfToken }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(err => alert('Error de red: ' + err));
+            }
+
+            document.querySelectorAll('.btn-desactivar').forEach(btn => {
+                btn.addEventListener('click', () => cambiarEstado(btn.dataset.id, 'desactivar'));
+            });
+
+            document.querySelectorAll('.btn-reactivar').forEach(btn => {
+                btn.addEventListener('click', () => cambiarEstado(btn.dataset.id, 'reactivar'));
+            });
+        });
+    </script>
+</body>
+</html>

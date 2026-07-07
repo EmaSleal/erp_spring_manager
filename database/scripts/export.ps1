@@ -34,7 +34,8 @@ $dumpArgs = @("--no-create-info", "--complete-insert", "--skip-extended-insert",
 $baseTables = @(
     "cat_provincia_cr", "cat_canton_cr", "cat_distrito_cr",
     "parametro_sistema", "permiso", "rol", "rol_permiso",
-    "plantilla_notificacion", "plantilla_whatsapp", "presentacion"
+    "plantilla_notificacion", "plantilla_whatsapp", "presentacion",
+    "articulo_maestro"
 )
 
 Write-Host "Exporting base tables..."

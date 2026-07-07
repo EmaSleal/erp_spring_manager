@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -71,6 +72,7 @@ public class Pago {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idFactura")
     @ToString.Exclude
+    @JsonIgnore
     private Factura factura;
     
     /**

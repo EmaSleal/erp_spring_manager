@@ -137,5 +137,6 @@ public class ConfiguracionEmpresaDTO {
     private String barrio;
     private String otrasSenas;
     private String codigoActividad;
+    private String descripcionActividad;
     private String nombreComercialFe;
 }

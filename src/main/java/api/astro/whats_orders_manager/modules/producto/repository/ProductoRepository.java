@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.producto.repository;
 
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.model.ProductoRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,5 +30,11 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
      */
     @Query(value = "CALL sp_obtener_productos_mas_vendidos(:limite)", nativeQuery = true)
     List<Object[]> obtenerProductosMasVendidos(@Param("limite") int limite);
+
+    /**
+     * Returns all Producto variants linked to the given ArticuloMaestro PK.
+     * Used by ArticuloMaestroServiceImpl for write-through, deactivate, reactivate, and delete guard.
+     */
+    List<Producto> findByArticuloMaestro_IdArticuloMaestro(Integer idArticuloMaestro);
 
 }

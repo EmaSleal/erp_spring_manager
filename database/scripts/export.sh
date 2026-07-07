@@ -17,6 +17,7 @@ BASE_TABLES=(
     cat_provincia_cr cat_canton_cr cat_distrito_cr
     parametro_sistema permiso rol rol_permiso
     plantilla_notificacion plantilla_whatsapp presentacion
+    articulo_maestro
 )
 
 echo "Exporting base tables..."
