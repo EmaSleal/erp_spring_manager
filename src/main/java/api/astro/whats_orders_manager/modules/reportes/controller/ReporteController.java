@@ -151,7 +151,7 @@ public class ReporteController {
             
             // Calcular estadísticas
             Map<String, Object> estadisticas = reporteService.calcularEstadisticasVentas(facturas);
-            
+
             // Agregar al modelo
             model.addAttribute("facturas", facturas);
             model.addAttribute("estadisticas", estadisticas);
@@ -159,6 +159,19 @@ public class ReporteController {
             model.addAttribute("fechaInicio", fechaInicio);
             model.addAttribute("fechaFin", fechaFin);
             model.addAttribute("clienteId", clienteId);
+
+            // Datos livianos para el gráfico (solo fecha + total, sin serializar entidades JPA)
+            Map<String, BigDecimal> ventasPorDia = new java.util.LinkedHashMap<>();
+            java.time.format.DateTimeFormatter formatoFecha = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            for (Factura factura : facturas) {
+                LocalDate fechaEmision = factura.getFechaEmision();
+                if (fechaEmision == null) continue;
+                String label = fechaEmision.format(formatoFecha);
+                BigDecimal total = factura.getTotal() != null ? factura.getTotal() : BigDecimal.ZERO;
+                ventasPorDia.merge(label, total, BigDecimal::add);
+            }
+            model.addAttribute("ventasPorDiaLabels", new ArrayList<>(ventasPorDia.keySet()));
+            model.addAttribute("ventasPorDiaData", new ArrayList<>(ventasPorDia.values()));
             
             log.info("Reporte de ventas generado exitosamente - {} facturas", facturas.size());
             return "modules/reportes/ventas";

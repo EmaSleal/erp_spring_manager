@@ -197,8 +197,8 @@
 }
 
 .badge-activo {
-    background-color: #28a745;
-    color: white;
+    background-color: white;
+    color: #28a745;
 }
 
 .badge-inactivo {
@@ -211,11 +211,23 @@
    ============================================================================ */
 
 .stats-summary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    
     color: white;
     padding: 1.5rem;
     border-radius: 10px;
     margin-bottom: 1.5rem;
+}
+
+.stats-summary-productos {
+    background: rgba(255,193,7, 1);
+}
+
+.stats-summary-ventas {
+    background: rgba(13,110,253, 1);
+}
+
+.stats-summary-clientes {
+    background: rgba(25,135,84, 1);
 }
 
 .stats-summary .stats-item {
