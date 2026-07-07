@@ -100,7 +100,7 @@
         </div>
 
         <!-- Estadísticas del Reporte -->
-        <div th:if="${estadisticas != null}" class="stats-summary slide-down">
+        <div th:if="${estadisticas != null}" class="stats-summary stats-summary-ventas slide-down">
             <div class="row">
                 <div class="col-md-3 col-6">
                     <div class="stats-item">
@@ -447,24 +447,11 @@
             // Símbolo de moneda desde Thymeleaf
             const simboloMoneda = /*[[${simboloMoneda ?: '₡'}]]*/ '₡';
 
-            // Datos de ventas (Thymeleaf inline)
-            const facturas = /*[[${facturas}]]*/ [];
-            
-            if (facturas.length === 0) return;
+            // Datos de ventas por día, ya agrupados en el servidor (sin exponer entidades JPA)
+            const labels = /*[[${ventasPorDiaLabels}]]*/ [];
+            const data = /*[[${ventasPorDiaData}]]*/ [];
 
-            // Agrupar ventas por día
-            const ventasPorDia = {};
-            facturas.forEach(factura => {
-                const fecha = new Date(factura.fechaEmision).toLocaleDateString('es-PE');
-                if (!ventasPorDia[fecha]) {
-                    ventasPorDia[fecha] = 0;
-                }
-                ventasPorDia[fecha] += parseFloat(factura.total || 0);
-            });
-
-            // Convertir a arrays
-            const labels = Object.keys(ventasPorDia);
-            const data = Object.values(ventasPorDia);
+            if (labels.length === 0) return;
 
             // Crear gradiente
             const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 300);

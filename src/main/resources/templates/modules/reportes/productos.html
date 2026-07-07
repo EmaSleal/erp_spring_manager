@@ -41,7 +41,7 @@
         </div>
 
         <!-- Filtros -->
-        <div class="filter-section">
+        <div class="filter-section mb-4">
             <form th:action="@{/reportes/productos}" method="get">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -81,7 +81,7 @@
         </div>
 
         <!-- Estadísticas -->
-        <div th:if="${estadisticas != null}" class="stats-summary slide-down" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+        <div th:if="${estadisticas != null}" class="stats-summary stats-summary-productos  slide-down mb-4">
             <div class="row">
                 <div class="col-md-3">
                     <div class="stats-item">

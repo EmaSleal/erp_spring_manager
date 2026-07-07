@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -43,6 +44,7 @@ public class ComprobanteElectronico {
      */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factura_id")
+    @JsonIgnore
     private Factura factura;
     
     /**

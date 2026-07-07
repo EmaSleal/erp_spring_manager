@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.model;
 
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -31,6 +32,7 @@ public class LineaFactura {
 
     @ManyToOne
     @JoinColumn(name = "idFactura", nullable = false)
+    @JsonIgnore
     private Factura factura;
 
     @ManyToOne
