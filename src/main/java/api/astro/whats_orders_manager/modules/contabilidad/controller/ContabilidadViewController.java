@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.contabilidad.controller;
 import api.astro.whats_orders_manager.modules.seguridad.dto.ModuloDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -30,6 +31,7 @@ public class ContabilidadViewController {
      * GET /contabilidad
      */
     @GetMapping
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_VER')")
     public String mostrarContabilidad(Model model, Authentication authentication) {
         log.info("Accediendo a módulo de Contabilidad");
         
