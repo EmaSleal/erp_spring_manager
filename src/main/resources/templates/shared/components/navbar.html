@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <!-- ============================================================================
      NAVBAR COMPONENT - Barra de Navegación Superior
@@ -8,36 +7,38 @@
      ============================================================================ -->
 
 <nav th:fragment="navbar" class="navbar">
-    
-    <!-- Botón Hamburguesa (Móvil) -->
-    <button class="navbar-hamburger" id="sidebarToggle" aria-label="Toggle sidebar">
-        <i class="fas fa-bars"></i>
-    </button>
+
+
 
     <!-- SECCIÓN IZQUIERDA: Logo y Nombre -->
     <div class="navbar-left">
+        <!-- Botón Hamburguesa (Móvil) -->
+        <button class="navbar-hamburger" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+
         <a th:href="@{/dashboard}" class="navbar-brand">
             <i class="fas fa-comments navbar-logo"></i>
-            <span class="navbar-app-name">ERP Orders Manager</span>
+            <span class="navbar-app-name">ERP OM</span>
         </a>
     </div>
 
     <!-- SECCIÓN CENTRO: Botón Dashboard y Breadcrumbs -->
-    <div class="navbar-center">
+    <!-- <div class="navbar-center">
         <a th:href="@{/dashboard}" class="btn-dashboard">
             <i class="fas fa-home"></i>
             <span>Dashboard</span>
         </a>
 
-        <!-- Breadcrumbs (se llenan dinámicamente con JS) -->
+         Breadcrumbs (se llenan dinámicamente con JS) 
         <div class="breadcrumbs">
-            <!-- JavaScript en navbar.js actualiza esto -->
+            JavaScript en navbar.js actualiza esto 
         </div>
-    </div>
+    </div> -->
 
     <!-- SECCIÓN DERECHA: Notificaciones, Usuario y Dropdown -->
     <div class="navbar-right">
-        
+
         <!-- ✅ NUEVO: Badge de Notificaciones -->
         <div class="navbar-notifications" sec:authorize="isAuthenticated()">
             <button class="navbar-notifications-trigger" id="notificacionesBtn" title="Notificaciones">
@@ -45,60 +46,27 @@
                 <span class="notifications-badge" id="notificationsBadge" style="display: none;">0</span>
             </button>
 
-            <!-- Dropdown de Notificaciones -->
-            <div class="navbar-notifications-dropdown" id="notificacionesDropdown">
-                <!-- Header -->
-                <div class="notifications-dropdown-header">
-                    <h3>
-                        <i class="fas fa-bell"></i>
-                        Notificaciones
-                    </h3>
-                    <a th:href="@{/notificaciones/preferencias}" class="btn-preferences" title="Configurar preferencias">
-                        <i class="fas fa-cog"></i>
-                    </a>
-                </div>
 
-                <!-- Lista de Notificaciones -->
-                <div class="notifications-list" id="notificationsList">
-                    <!-- JavaScript cargará las notificaciones aquí -->
-                    <div class="notifications-loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Cargando notificaciones...</p>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="notifications-dropdown-footer">
-                    <a th:href="@{/notificaciones}" class="btn-ver-todas">
-                        Ver todas las notificaciones
-                        <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
         </div>
 
         <!-- Dropdown de Usuario con Bootstrap -->
         <div class="navbar-user dropdown" sec:authorize="isAuthenticated()">
             <!-- Trigger del dropdown con atributos Bootstrap -->
-            <button class="navbar-user-trigger" 
-                    type="button"
-                    data-bs-toggle="dropdown" 
-                    aria-expanded="false">
+            <button class="navbar-user-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <!-- Avatar: imagen o iniciales como fallback -->
-                <div class="user-avatar" th:classappend="${userAvatar != null and userAvatar != '' ? 'has-image' : 'has-initials'}">
+                <div class="user-avatar"
+                    th:classappend="${userAvatar != null and userAvatar != '' ? 'has-image' : 'has-initials'}">
                     <!-- Si hay avatar, mostrar imagen -->
-                    <img th:if="${userAvatar != null and userAvatar != ''}" 
-                         th:src="${userAvatar}" 
-                         th:alt="${userName}"
-                         class="avatar-img"
-                         onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-initials').style.display='flex';" />
+                    <img th:if="${userAvatar != null and userAvatar != ''}" th:src="${userAvatar}" th:alt="${userName}"
+                        class="avatar-img"
+                        onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-initials').style.display='flex';" />
                     <!-- Si no hay avatar, mostrar iniciales -->
-                    <span th:if="${userAvatar == null or userAvatar == ''}" 
-                          class="avatar-initials"
-                          th:text="${userInitials != null ? userInitials : 'U'}">U</span>
+                    <span th:if="${userAvatar == null or userAvatar == ''}" class="avatar-initials"
+                        th:text="${userInitials != null ? userInitials : 'U'}">U</span>
                 </div>
                 <!-- Nombre del usuario (oculto en móvil) -->
-                <span class="user-name" th:text="${userName != null ? userName : #authentication.principal.username}">Usuario</span>
+                <span class="user-name"
+                    th:text="${userName != null ? userName : #authentication.principal.username}">Usuario</span>
                 <!-- Icono dropdown -->
                 <i class="fas fa-chevron-down user-dropdown-icon"></i>
             </button>
@@ -109,21 +77,22 @@
                 <div class="dropdown-header">
                     <div class="dropdown-user-info">
                         <!-- Avatar grande en dropdown: imagen o iniciales -->
-                        <div class="dropdown-user-avatar" th:classappend="${userAvatar != null and userAvatar != '' ? 'has-image' : 'has-initials'}">
+                        <div class="dropdown-user-avatar"
+                            th:classappend="${userAvatar != null and userAvatar != '' ? 'has-image' : 'has-initials'}">
                             <!-- Si hay avatar, mostrar imagen -->
-                            <img th:if="${userAvatar != null and userAvatar != ''}" 
-                                 th:src="${userAvatar}" 
-                                 th:alt="${userName}"
-                                 class="avatar-img"
-                                 onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-initials').style.display='flex';" />
+                            <img th:if="${userAvatar != null and userAvatar != ''}" th:src="${userAvatar}"
+                                th:alt="${userName}" class="avatar-img"
+                                onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-initials').style.display='flex';" />
                             <!-- Si no hay avatar, mostrar iniciales -->
-                            <span th:if="${userAvatar == null or userAvatar == ''}" 
-                                  class="avatar-initials"
-                                  th:text="${userInitials != null ? userInitials : 'U'}">U</span>
+                            <span th:if="${userAvatar == null or userAvatar == ''}" class="avatar-initials"
+                                th:text="${userInitials != null ? userInitials : 'U'}">U</span>
                         </div>
                         <div class="dropdown-user-details">
-                            <div class="dropdown-user-name" th:text="${userName != null ? userName : #authentication.principal.username}">Usuario</div>
-                            <div class="dropdown-user-role" th:text="${userRole != null ? userRole : 'USER'}">ROLE_ADMIN</div>
+                            <div class="dropdown-user-name"
+                                th:text="${userName != null ? userName : #authentication.principal.username}">Usuario
+                            </div>
+                            <div class="dropdown-user-role" th:text="${userRole != null ? userRole : 'USER'}">ROLE_ADMIN
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -136,31 +105,33 @@
                             <span>Ver mi perfil</span>
                         </a>
                     </li>
-                    
+
                     <li class="navbar-menu-item" sec:authorize="hasRole('ADMIN')">
                         <a th:href="@{/configuracion}" class="navbar-menu-link">
                             <i class="fas fa-cog"></i>
                             <span>Configuración</span>
                         </a>
                     </li>
-                    
+
                     <li class="navbar-menu-item">
                         <a th:href="@{/perfil/editar}" class="navbar-menu-link">
                             <i class="fas fa-edit"></i>
                             <span>Editar perfil</span>
                         </a>
                     </li>
-                    
+
                     <li class="navbar-menu-item">
                         <a href="#" class="navbar-menu-link">
                             <i class="fas fa-question-circle"></i>
                             <span>Ayuda</span>
                         </a>
                     </li>
-                    
+
                     <!-- Divider -->
-                    <li><div class="navbar-menu-divider"></div></li>
-                    
+                    <li>
+                        <div class="navbar-menu-divider"></div>
+                    </li>
+
                     <!-- Logout -->
                     <li class="navbar-menu-item">
                         <a href="#" class="navbar-menu-link navbar-menu-logout" id="logoutBtn">
@@ -179,8 +150,40 @@
                 <span>Iniciar Sesión</span>
             </a>
         </div>
+
+    </div>
+    <!-- Dropdown de Notificaciones -->
+    <div class="navbar-notifications-dropdown" id="notificacionesDropdown">
+        <!-- Header -->
+        <div class="notifications-dropdown-header">
+            <h3 class="text-white">
+                <i class="fas fa-bell"></i>
+                Notificaciones
+            </h3>
+            <a th:href="@{/notificaciones/preferencias}" class="btn-preferences" title="Configurar preferencias">
+                <i class="fas fa-cog"></i>
+            </a>
+        </div>
+
+        <!-- Lista de Notificaciones -->
+        <div class="notifications-list" id="notificationsList">
+            <!-- JavaScript cargará las notificaciones aquí -->
+            <div class="notifications-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Cargando notificaciones...</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="notifications-dropdown-footer">
+            <a th:href="@{/notificaciones}" class="btn-ver-todas">
+                Ver todas las notificaciones
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
     </div>
 
 </nav>
 <div th:replace="~{shared/layout :: scripts}"></div>
+
 </html>

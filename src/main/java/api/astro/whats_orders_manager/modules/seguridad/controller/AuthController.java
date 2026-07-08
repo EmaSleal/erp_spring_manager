@@ -90,10 +90,29 @@ public class AuthController {
             return "redirect:/auth/register";
         }
 
-        // Verificar si el usuario ya existe
+        // Verificar si el nombre de usuario ya existe
         if (usuarioRepository.findByNombre(usuario.getNombre()).isPresent()) {
-            log.warn("Registro fallido - Usuario ya existe: {}", usuario.getNombre());
-            redirectAttributes.addFlashAttribute("error", "El número de teléfono ya está registrado");
+            log.warn("Registro fallido - Nombre de usuario ya existe: {}", usuario.getNombre());
+            redirectAttributes.addFlashAttribute("error", "Ese nombre de usuario ya está registrado");
+            return "redirect:/auth/register";
+        }
+
+        // Verificar si el teléfono ya existe
+        if (usuarioRepository.findByTelefono(usuario.getTelefono()).isPresent()) {
+            log.warn("Registro fallido - Teléfono ya registrado: {}", usuario.getTelefono());
+            redirectAttributes.addFlashAttribute("error", "Ese número de teléfono ya está registrado");
+            return "redirect:/auth/register";
+        }
+
+        // Normalizar email vacío a null para no violar la restricción de unicidad
+        if (usuario.getEmail() != null && usuario.getEmail().isBlank()) {
+            usuario.setEmail(null);
+        }
+
+        // Verificar si el email ya existe (si fue informado)
+        if (usuario.getEmail() != null && usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
+            log.warn("Registro fallido - Email ya registrado: {}", usuario.getEmail());
+            redirectAttributes.addFlashAttribute("error", "Ese correo electrónico ya está registrado");
             return "redirect:/auth/register";
         }
 

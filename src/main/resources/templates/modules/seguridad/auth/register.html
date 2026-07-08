@@ -134,6 +134,20 @@
                 <small class="form-text text-muted">8 dígitos sin espacios ni guiones</small>
             </div>
 
+            <!-- Email -->
+            <div class="mb-3">
+                <label for="email" class="form-label">
+                    <i class="fas fa-envelope me-2"></i>Correo Electrónico
+                </label>
+                <input type="email"
+                       class="form-control"
+                       id="email"
+                       th:field="*{email}"
+                       placeholder="juan.perez@correo.com"
+                       maxlength="100">
+                <small class="form-text text-muted">Opcional, pero necesario para recuperar tu contraseña</small>
+            </div>
+
             <!-- Password -->
             <div class="mb-3">
                 <label for="password" class="form-label">

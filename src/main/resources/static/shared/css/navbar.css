@@ -20,7 +20,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--spacing-lg);
+    padding: 0 var(--spacing-md);
     box-shadow: var(--shadow-md);
     z-index: 1000;
 }
@@ -89,9 +89,9 @@
     font-size: 1.5rem;
 }
 
-.navbar-app-name {
-    display: none; /* Oculto en móvil */
-}
+/* .navbar-app-name {
+    display: none; 
+} */
 
 /* ============================================================================
    SECCIÓN CENTRO - Botón Dashboard y Breadcrumbs
@@ -173,7 +173,7 @@
 .navbar-right {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    /* gap: var(--spacing-md); */
 }
 
 .navbar-user {
@@ -451,7 +451,7 @@
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
-    width: 380px;
+    width: 22rem;
     max-width: 90vw;
     background-color: white;
     border-radius: var(--radius-lg);
@@ -462,6 +462,7 @@
     transition: all var(--transition-medium);
     z-index: 1100;
     overflow: hidden;
+    margin-right: var(--spacing-md);
 }
 
 .navbar-notifications-dropdown.show {
@@ -683,9 +684,9 @@
    RESPONSIVE - TABLET
    ============================================================================ */
 @media (min-width: 768px) {
-    .navbar-app-name {
+    /* .navbar-app-name {
         display: block;
-    }
+    } */
     
     .user-name {
         display: block;
