@@ -16,7 +16,7 @@
 /* ============================================================================
    MODO DESKTOP - Tabla Normal
    ============================================================================ */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
     .responsive-table-container .table {
         display: table;
     }
@@ -26,10 +26,22 @@
     }
 }
 
+@media (max-width: 1024px) {
+    .responsive-table-container .mobile-card-view {
+        display: block;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+}
+
+
 /* ============================================================================
    MODO MÓVIL - Vista de Tarjetas
    ============================================================================ */
-@media (max-width: 767px) {
+
+
+@media (max-width: 1024px) {
     /* Ocultar tabla completa */
     .responsive-table-container .table {
         display: none;
@@ -38,16 +50,19 @@
     /* Mostrar vista de tarjetas */
     .responsive-table-container .mobile-card-view {
         display: block;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
     }
     
     /* Tarjeta individual */
     .mobile-card {
         background: white;
-        border: 1px solid var(--border-color);
+        border: 3px solid var(--border-color);
         border-radius: var(--border-radius-lg);
         padding: var(--spacing-lg);
         margin-bottom: var(--spacing-md);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 10px 5px 4px rgba(0, 0, 0, 0.05);
         transition: all var(--transition-fast);
     }
     
@@ -114,11 +129,11 @@
     
     /* Footer de la tarjeta (acciones) */
     .mobile-card-footer {
-        display: flex;
-        gap: var(--spacing-sm);
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         padding-top: var(--spacing-md);
         border-top: 1px solid var(--background-color);
+        gap: var(--spacing-md);
     }
     
     .mobile-card-footer .btn {
