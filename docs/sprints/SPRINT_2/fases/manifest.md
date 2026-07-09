@@ -1,7 +1,0 @@
-# fases
-
-- [FASE 3 USUARIOS](sprints/SPRINT_2/fases/FASE_3_USUARIOS/manifest.md)
-- [FASE 4 ROLES PERMISOS](sprints/SPRINT_2/fases/FASE_4_ROLES_PERMISOS/manifest.md)
-- [FASE 5 NOTIFICACIONES](sprints/SPRINT_2/fases/FASE_5_NOTIFICACIONES/manifest.md)
-- [FASE 7 INTEGRACION](sprints/SPRINT_2/fases/FASE_7_INTEGRACION/manifest.md)
-- [FASE 8 TESTING OPTIMIZACION](sprints/SPRINT_2/fases/FASE_8_TESTING_OPTIMIZACION/manifest.md)

@@ -1,6 +1,6 @@
 -- ============================================================================
 -- STORED PROCEDURES PARA REPORTES Y GRÁFICOS
--- ERP Orders Manager - Sprint 2 Fase 6
+-- WhatsApp Orders Manager - Sprint 2 Fase 6
 -- ============================================================================
 -- Descripción: Procedimientos almacenados optimizados para obtener datos
 --              estadísticos de reportes y gráficos de forma eficiente.
