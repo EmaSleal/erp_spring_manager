@@ -1,3 +1,0 @@
-# decisiones
-
-- [DECISION CHATS LIGADOS USUARIO](sprints/SPRINT_3/decisiones/DECISION_CHATS_LIGADOS_USUARIO/manifest.md)
