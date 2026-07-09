@@ -1,4 +1,0 @@
-## 🏗️ SPRINT 1 - PROGRESO HISTÓRICO
-
----
-
