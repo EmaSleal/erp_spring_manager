@@ -233,12 +233,7 @@ function openModal(button) {
         })
         .catch(error => {
             console.error('Error al cargar la factura:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se pudo cargar el detalle de la factura.',
-                confirmButtonText: 'Aceptar'
-            });
+            showToast('error', 'No se pudo cargar el detalle de la factura.');
         });
 }
 
@@ -315,24 +310,12 @@ async function enviarAHacienda(button) {
         const comprobante = confirmed.value.comprobante;
 
         // Mostrar resultado
-        await Swal.fire({
-            title: '¡Enviado!',
-            html: `
-                <div class="alert alert-success">
-                    <h6><i class="bi bi-check-circle me-2"></i>Comprobante enviado exitosamente</h6>
-                    <p class="mb-1"><strong>Clave:</strong> <code>${comprobante.claveNumerica}</code></p>
-                    <p class="mb-1"><strong>Estado:</strong> <span class="badge bg-${getEstadoBadgeClass(comprobante.estado)}">${comprobante.estado}</span></p>
-                </div>
-                <p class="mt-3">Será redirigido a la vista de comprobantes electrónicos...</p>
-            `,
-            icon: 'success',
-            timer: 3000,
-            timerProgressBar: true,
-            showConfirmButton: false
-        });
+        showToast('success', 'Comprobante enviado exitosamente');
 
         // Redirigir a comprobantes
-        window.location.href = `/facturas/comprobantes?id=${comprobante.id}`;
+        setTimeout(() => {
+            window.location.href = `/facturas/comprobantes?id=${comprobante.id}`;
+        }, 3000);
     }
 }
 
@@ -363,71 +346,47 @@ function verComprobante(comprobanteId) {
     window.location.href = `/facturas/comprobantes?id=${comprobanteId}`;
 }
 // ========================================
-function deleteFactura(idFactura) {
-    Swal.fire({
-        title: '¿Eliminar factura?',
-        text: "Esta acción no se puede deshacer. ¿Está seguro de eliminar esta factura?",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch(`/facturas/${idFactura}`, {
-                method: "DELETE"
-            })
-            .then(response => {
-                if (response.ok) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Eliminada!',
-                        text: 'La factura ha sido eliminada correctamente.',
-                        timer: 2000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    throw new Error('Error al eliminar');
-                }
-            })
-            .catch(error => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo eliminar la factura.',
-                    confirmButtonText: 'Aceptar'
-                });
-            });
-        }
-    });
+async function deleteFactura(idFactura) {
+    const confirmed = await showConfirmDialog(
+        '¿Eliminar factura?',
+        'Esta acción no se puede deshacer. ¿Está seguro de eliminar esta factura?',
+        'Sí, eliminar'
+    );
+    if (confirmed) {
+        fetch(`/facturas/${idFactura}`, {
+            method: "DELETE"
+        })
+        .then(response => {
+            if (response.ok) {
+                showToast('success', 'La factura ha sido eliminada correctamente.');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                throw new Error('Error al eliminar');
+            }
+        })
+        .catch(error => {
+            showToast('error', 'No se pudo eliminar la factura.');
+        });
+    }
 }
 
 function editFactura(idFactura) {
     window.location.href = `/facturas/editar/${idFactura}`;
 }
 
-function confirmarEliminacion(event) {
+async function confirmarEliminacion(event) {
     event.preventDefault();
     const url = event.currentTarget.href;
-    
-    Swal.fire({
-        title: '¿Eliminar factura?',
-        text: "Esta acción no se puede deshacer.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            window.location.href = url;
-        }
-    });
-    
+
+    const confirmed = await showConfirmDialog(
+        '¿Eliminar factura?',
+        'Esta acción no se puede deshacer.',
+        'Sí, eliminar'
+    );
+    if (confirmed) {
+        window.location.href = url;
+    }
+
     return false;
 }
 
@@ -529,13 +488,7 @@ function enviarFacturaPorEmail(button) {
         allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
         if (result.isConfirmed) {
-            Swal.fire({
-                icon: 'success',
-                title: '✅ Email Enviado',
-                html: `La factura ha sido enviada exitosamente a:<br><strong>${email}</strong>`,
-                timer: 3000,
-                showConfirmButton: false
-            });
+            showToast('success', `Email enviado exitosamente a: ${email}`);
         }
     });
 }
@@ -590,13 +543,7 @@ function enviarFacturaPorWhatsApp(button) {
         allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
         if (result.isConfirmed && result.value) {
-            Swal.fire({
-                icon: 'success',
-                title: '✅ WhatsApp Enviado',
-                html: `La factura ha sido enviada exitosamente a:<br><strong>${cliente}</strong><br><small class="text-muted">${telefono}</small><br><br><span class="badge bg-${result.value.estado === 'PENDIENTE' ? 'warning' : 'success'}">${result.value.estado}</span>`,
-                timer: 4000,
-                showConfirmButton: false
-            });
+            showToast('success', `WhatsApp enviado exitosamente a: ${cliente} (${telefono})`);
         }
     });
 }
@@ -609,12 +556,7 @@ function enviarFacturaAHacienda() {
     const facturaId = document.getElementById('modal-idFactura').innerText;
     
     if (!facturaId) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo obtener el ID de la factura',
-            confirmButtonText: 'Entendido'
-        });
+        showToast('error', 'No se pudo obtener el ID de la factura');
         return;
     }
     
@@ -669,39 +611,24 @@ function enviarFacturaAHacienda() {
                 
                 if (data.success || response.ok) {
                     // Éxito
-                    await Swal.fire({
-                        icon: 'success',
-                        title: '¡Enviado!',
-                        text: data.message || 'El comprobante ha sido enviado exitosamente a Hacienda',
-                        confirmButtonText: 'Entendido'
-                    });
-                    
+                    showToast('success', data.message || 'El comprobante ha sido enviado exitosamente a Hacienda');
+
                     // Cerrar modal y recargar
                     const modal = bootstrap.Modal.getInstance(document.getElementById('facturaModal'));
                     modal.hide();
                     window.location.reload();
                 } else {
                     // Error
-                    await Swal.fire({
-                        icon: 'error',
-                        title: 'Error al enviar',
-                        text: data.message || 'No se pudo enviar el comprobante a Hacienda',
-                        confirmButtonText: 'Entendido'
-                    });
-                    
+                    showToast('error', data.message || 'No se pudo enviar el comprobante a Hacienda');
+
                     btnEnviar.disabled = false;
                     btnEnviar.innerHTML = '<i class="fas fa-cloud-upload me-1"></i>Enviar a Hacienda';
                 }
             } catch (error) {
                 console.error('Error:', error);
-                
-                await Swal.fire({
-                    icon: 'error',
-                    title: 'Error de conexión',
-                    text: 'No se pudo conectar con el servidor. Por favor, intente nuevamente.',
-                    confirmButtonText: 'Entendido'
-                });
-                
+
+                showToast('error', 'No se pudo conectar con el servidor. Por favor, intente nuevamente.');
+
                 btnEnviar.disabled = false;
                 btnEnviar.innerHTML = '<i class="fas fa-cloud-upload me-1"></i>Enviar a Hacienda';
             }

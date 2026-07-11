@@ -570,22 +570,12 @@ function mostrarPaso2() {
     const tipoFactura = document.getElementById("tipoFactura");
 
     if (!selectCliente.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Cliente requerido',
-            text: 'Por favor seleccione un cliente',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Por favor seleccione un cliente');
         return;
     }
 
     if (!fechaEntrega.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Fecha requerida',
-            text: 'Por favor seleccione una fecha de entrega',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Por favor seleccione una fecha de entrega');
         return;
     }
 
@@ -648,12 +638,7 @@ function mostrarPaso2() {
             });
         } else {
             document.getElementById("btnGuardar").disabled = true;
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al crear la factura',
-                confirmButtonColor: '#d33'
-            });
+            showToast('error', 'Error al crear la factura');
             return null;
         }
     }).catch(error => {
@@ -674,24 +659,14 @@ async function guardarLineas() {
     }
 
     if (!facturaId) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Factura pendiente',
-            text: 'Espere a que se cree la factura antes de guardar las líneas',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Espere a que se cree la factura antes de guardar las líneas');
         return;
     }
 
     const rows = document.querySelectorAll("#lineas-body tr");
-    
+
     if (rows.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Sin líneas',
-            text: 'Debe agregar al menos una línea de producto',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Debe agregar al menos una línea de producto');
         return;
     }
 
@@ -738,12 +713,7 @@ async function guardarLineas() {
     
     // Validar que haya al menos una línea válida
     if (lineas.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Sin productos',
-            text: 'Debe seleccionar al menos un producto válido',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Debe seleccionar al menos un producto válido');
         return;
     }
     
@@ -783,29 +753,19 @@ async function guardarLineas() {
         }
     }).then(res => {
         if (res && res.ok) {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Éxito!',
-                text: 'Factura guardada correctamente',
-                confirmButtonColor: '#28a745',
-                timer: 2000
-            }).then(() => {
+            showToast('success', 'Factura guardada correctamente');
+            setTimeout(() => {
                 if (nuevaFacturaModal) {
                     nuevaFacturaModal.hide();
                     location.reload();
                 } else {
                     window.location.href = '/facturas';
                 }
-            });
+            }, 2000);
         }
     }).catch(error => {
         console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Error al guardar la factura: ' + error.message,
-            confirmButtonColor: '#d33'
-        });
+        showToast('error', 'Error al guardar la factura: ' + error.message);
     });
 }
 
