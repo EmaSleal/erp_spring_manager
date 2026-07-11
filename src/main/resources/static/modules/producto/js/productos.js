@@ -184,44 +184,27 @@ function guardarProducto() {
     .then(response => {
         if (response.ok) {
             productoModal.hide();
-            Swal.fire({
-                icon: 'success',
-                title: '¡Éxito!',
-                text: idProductoRaw ? 'Producto actualizado correctamente' : 'Producto agregado correctamente',
-                timer: 2000,
-                showConfirmButton: false
-            }).then(() => window.location.reload());
+            showToast('success', idProductoRaw ? 'Producto actualizado correctamente' : 'Producto agregado correctamente');
+            setTimeout(() => window.location.reload(), 2000);
         } else {
             throw new Error('Error al guardar el producto');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo guardar el producto. Intente nuevamente.',
-            confirmButtonText: 'Aceptar'
-        });
+        showToast('error', 'No se pudo guardar el producto. Intente nuevamente.');
     });
 }
 
-function eliminarProducto(idProducto, descripcion) {
-    Swal.fire({
-        title: '¿Eliminar producto?',
-        text: `¿Está seguro de eliminar "${descripcion}"? Esta acción no se puede deshacer.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Redirigir a la URL de eliminación
-            window.location.href = `/productos/eliminar/${idProducto}`;
-        }
-    });
+async function eliminarProducto(idProducto, descripcion) {
+    const confirmed = await showConfirmDialog(
+        '¿Eliminar producto?',
+        `¿Está seguro de eliminar "${descripcion}"? Esta acción no se puede deshacer.`,
+        'Sí, eliminar'
+    );
+    if (confirmed) {
+        window.location.href = `/productos/eliminar/${idProducto}`;
+    }
 }
 
 // ========================================

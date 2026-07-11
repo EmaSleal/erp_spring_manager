@@ -128,10 +128,7 @@ function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFactura
         })
         .catch(error => {
             console.error('Error al cargar el cliente:', error);
-            Toast.fire({
-                icon: 'error',
-                title: 'Error al cargar los datos del cliente'
-            });
+            showToast('error', 'Error al cargar los datos del cliente');
         });
 }
 
@@ -140,28 +137,12 @@ document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click'
     const numeroIdentificacion = document.getElementById('numeroIdentificacionCliente').value.trim();
     
     if (!numeroIdentificacion || numeroIdentificacion.length < 9) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Número requerido',
-            text: 'Ingrese un número de identificación válido (mínimo 9 dígitos)',
-            confirmButtonText: 'OK'
-        });
+        showToast('warning', 'Ingrese un número de identificación válido (mínimo 9 dígitos)');
         return;
     }
-    
+
     // Mostrar loading
-    const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true
-    });
-    
-    Toast.fire({
-        icon: 'info',
-        title: 'Consultando Hacienda...'
-    });
+    showToast('info', 'Consultando Hacienda...');
     
     // Consultar API
     fetch(`/api/configuracion/empresa/hacienda/consultar/${numeroIdentificacion}`)
@@ -201,48 +182,33 @@ document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click'
                 }
                 
                 // Mostrar éxito
-                Toast.fire({
-                    icon: 'success',
-                    title: '¡Datos autocompletados!'
-                });
+                showToast('success', '¡Datos autocompletados!');
                 
                 // Advertencia si no está al día
                 if (!hacienda.estaAlDia || !hacienda.estaInscrito) {
                     setTimeout(() => {
-                        let mensaje = 'Advertencia tributaria:\n';
+                        let mensaje = 'Situación Tributaria:';
                         if (!hacienda.estaInscrito) {
-                            mensaje += '• No está inscrito en Hacienda\n';
+                            mensaje += ' No inscrito en Hacienda.';
                         }
                         if (hacienda.situacion) {
                             if (hacienda.situacion.moroso === 'SI') {
-                                mensaje += '• Estado: MOROSO\n';
+                                mensaje += ' Estado: MOROSO.';
                             }
                             if (hacienda.situacion.omiso === 'SI') {
-                                mensaje += '• Estado: OMISO\n';
+                                mensaje += ' Estado: OMISO.';
                             }
                         }
-                        
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Situación Tributaria',
-                            text: mensaje,
-                            confirmButtonText: 'Entendido'
-                        });
+                        showToast('warning', mensaje);
                     }, 500);
                 }
             } else {
-                Toast.fire({
-                    icon: 'error',
-                    title: data.message || 'Identificación no encontrada'
-                });
+                showToast('error', data.message || 'Identificación no encontrada');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            Toast.fire({
-                icon: 'error',
-                title: 'Error al consultar Hacienda'
-            });
+            showToast('error', 'Error al consultar Hacienda');
         });
 });
 
@@ -280,12 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const otrasSenas = (document.getElementById('otrasSenasCliente')?.value || '').trim();
         if (otrasSenas.length > 0 && otrasSenas.length < 5) {
             document.getElementById('otrasSenasCliente').classList.add('is-invalid');
-            Swal.fire({
-                icon: 'warning',
-                title: 'Dirección muy corta',
-                text: 'Otras señas debe tener al menos 5 caracteres o dejarlo vacío.',
-                confirmButtonText: 'Entendido'
-            });
+            showToast('warning', 'Otras señas debe tener al menos 5 caracteres o dejarlo vacío.');
             return;
         }
         document.getElementById('otrasSenasCliente')?.classList.remove('is-invalid');
@@ -333,30 +294,15 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 if (clienteModal) clienteModal.hide();
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Guardado!',
-                    text: data.success,
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => location.reload());
+                showToast('success', data.success);
+                setTimeout(() => location.reload(), 2000);
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error al guardar',
-                    text: data.error || 'Ocurrió un error al guardar el cliente',
-                    confirmButtonText: 'Entendido'
-                });
+                showToast('error', data.error || 'Ocurrió un error al guardar el cliente');
             }
         })
         .catch(error => {
             console.error('Error al guardar cliente:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error de conexión',
-                text: 'No se pudo conectar con el servidor. Intente de nuevo.',
-                confirmButtonText: 'Entendido'
-            });
+            showToast('error', 'No se pudo conectar con el servidor. Intente de nuevo.');
         })
         .finally(() => {
             if (btnGuardar) {

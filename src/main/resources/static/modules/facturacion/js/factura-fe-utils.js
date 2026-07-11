@@ -109,63 +109,38 @@ function validarCamposFE() {
     
     // Validar condición de venta
     if (!condicionVentaFE || !condicionVentaFE.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Campo requerido',
-            text: 'Debe seleccionar una condición de venta',
-            confirmButtonText: 'Entendido'
-        });
+        showToast('warning', 'Debe seleccionar una condición de venta');
         condicionVentaFE?.focus();
         return false;
     }
-    
+
     // Validar medio de pago
     if (!medioPagoFE || !medioPagoFE.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Campo requerido',
-            text: 'Debe seleccionar un medio de pago',
-            confirmButtonText: 'Entendido'
-        });
+        showToast('warning', 'Debe seleccionar un medio de pago');
         medioPagoFE?.focus();
         return false;
     }
-    
+
     // Validar moneda
     if (!monedaFE || !monedaFE.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Campo requerido',
-            text: 'Debe seleccionar una moneda',
-            confirmButtonText: 'Entendido'
-        });
+        showToast('warning', 'Debe seleccionar una moneda');
         monedaFE?.focus();
         return false;
     }
-    
+
     // Si es crédito, validar plazo
     if (condicionVentaFE.value === 'CREDITO') {
         if (!plazoCredito || !plazoCredito.value || plazoCredito.value <= 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Campo requerido',
-                text: 'Debe ingresar el plazo de crédito en días (mayor a 0)',
-                confirmButtonText: 'Entendido'
-            });
+            showToast('warning', 'Debe ingresar el plazo de crédito en días (mayor a 0)');
             plazoCredito?.focus();
             return false;
         }
     }
-    
+
     // Si la moneda no es CRC, validar tipo de cambio
     if (monedaFE.value !== 'CRC') {
         if (!tipoCambio || !tipoCambio.value || parseFloat(tipoCambio.value) <= 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Campo requerido',
-                text: 'Debe ingresar el tipo de cambio (mayor a 0)',
-                confirmButtonText: 'Entendido'
-            });
+            showToast('warning', 'Debe ingresar el tipo de cambio (mayor a 0)');
             tipoCambio?.focus();
             return false;
         }

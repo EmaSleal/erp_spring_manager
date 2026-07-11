@@ -10,12 +10,7 @@ function buscarCabys() {
     const termino = document.getElementById('cabysBusqueda').value.trim();
     
     if (!termino) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Búsqueda vacía',
-            text: 'Por favor ingrese un término de búsqueda',
-            confirmButtonText: 'Aceptar'
-        });
+        showToast('warning', 'Por favor ingrese un término de búsqueda');
         return;
     }
     
@@ -44,25 +39,14 @@ function buscarCabys() {
         if (data.success && data.data && data.data.cabys) {
             mostrarResultadosCabys(data.data.cabys);
         } else {
-            Swal.fire({
-                icon: 'info',
-                title: 'Sin resultados',
-                text: data.message || 'No se encontraron códigos CABYS para el término buscado',
-                confirmButtonText: 'Aceptar'
-            });
+            showToast('info', data.message || 'No se encontraron códigos CABYS para el término buscado');
         }
     })
     .catch(error => {
         console.error('Error al buscar CABYS:', error);
         btnBuscar.disabled = false;
         btnBuscar.innerHTML = textoOriginal;
-        
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con la API de Hacienda. Intente nuevamente.',
-            confirmButtonText: 'Aceptar'
-        });
+        showToast('error', 'No se pudo conectar con la API de Hacienda. Intente nuevamente.');
     });
 }
 
@@ -109,18 +93,7 @@ function mostrarResultadosCabys(cabys) {
     divResultados.style.display = 'block';
     
     // Toast informativo
-    const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true
-    });
-    
-    Toast.fire({
-        icon: 'success',
-        title: `Se encontraron ${cabys.length} códigos CABYS`
-    });
+    showToast('success', `Se encontraron ${cabys.length} códigos CABYS`);
 }
 
 /**
@@ -145,18 +118,7 @@ function seleccionarCabys(cabys) {
     document.getElementById('cabysBusqueda').value = '';
     
     // Toast de confirmación
-    const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true
-    });
-    
-    Toast.fire({
-        icon: 'success',
-        title: 'Código CABYS seleccionado'
-    });
+    showToast('success', 'Código CABYS seleccionado');
 }
 
 /**

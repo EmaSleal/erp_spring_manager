@@ -6,6 +6,9 @@
     <title th:text="${modoEdicion ? 'Editar Usuario' : 'Nuevo Usuario'}">Formulario Usuario</title>
 </head>
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+
     <!-- Estilos personalizados para esta página -->
     <style>
         .form-section {
