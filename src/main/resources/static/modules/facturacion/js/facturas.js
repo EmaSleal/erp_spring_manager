@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function openModal(button) {
     const facturaId = button.getAttribute("data-id");
 
-    fetch(`/facturas/detalle/${facturaId}`)
-        .then(response => response.json())
-        .then(data => {
+    httpGet(`/facturas/detalle/${facturaId}`, {
+        showLoading: false,
+        onSuccess: (data) => {
             console.log('Datos de factura recibidos:', data);
             console.log('Líneas de factura:', data.lineas);
             
@@ -230,11 +230,11 @@ function openModal(button) {
 
             // Mostrar el modal con Bootstrap
             facturaModal.show();
-        })
-        .catch(error => {
-            console.error('Error al cargar la factura:', error);
+        },
+        onError: () => {
             showToast('error', 'No se pudo cargar el detalle de la factura.');
-        });
+        }
+    });
 }
 
 // ========================================
@@ -353,19 +353,9 @@ async function deleteFactura(idFactura) {
         'Sí, eliminar'
     );
     if (confirmed) {
-        fetch(`/facturas/${idFactura}`, {
-            method: "DELETE"
-        })
-        .then(response => {
-            if (response.ok) {
-                showToast('success', 'La factura ha sido eliminada correctamente.');
-                setTimeout(() => location.reload(), 2000);
-            } else {
-                throw new Error('Error al eliminar');
-            }
-        })
-        .catch(error => {
-            showToast('error', 'No se pudo eliminar la factura.');
+        httpDelete(`/facturas/${idFactura}`, {
+            successMessage: 'La factura ha sido eliminada correctamente.',
+            reloadOnSuccess: true
         });
     }
 }

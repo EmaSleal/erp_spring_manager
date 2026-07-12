@@ -171,28 +171,16 @@ function guardarProducto() {
     };
 
     const url = idProductoRaw ? '/productos/actualizar' : '/productos/guardar';
-    const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
 
-    fetch(url, {
-        method: 'POST',
-        body: JSON.stringify(productoData),
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        }
-    })
-    .then(response => {
-        if (response.ok) {
+    httpPost(url, productoData, {
+        onSuccess: () => {
             productoModal.hide();
             showToast('success', idProductoRaw ? 'Producto actualizado correctamente' : 'Producto agregado correctamente');
             setTimeout(() => window.location.reload(), 2000);
-        } else {
-            throw new Error('Error al guardar el producto');
+        },
+        onError: () => {
+            showToast('error', 'No se pudo guardar el producto. Intente nuevamente.');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('error', 'No se pudo guardar el producto. Intente nuevamente.');
     });
 }
 

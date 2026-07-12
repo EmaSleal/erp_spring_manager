@@ -19,34 +19,25 @@ function buscarCabys() {
     const textoOriginal = btnBuscar.innerHTML;
     btnBuscar.disabled = true;
     btnBuscar.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Buscando...';
-    
-    // Obtener CSRF token
-    const csrfToken = document.querySelector('input[name="_csrf"]').value;
-    
+
     // Llamar al endpoint
-    fetch(`/api/configuracion/empresa/hacienda/cabys/buscar?q=${encodeURIComponent(termino)}&top=10`, {
-        method: 'GET',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Content-Type': 'application/json'
+    httpGet(`/api/configuracion/empresa/hacienda/cabys/buscar?q=${encodeURIComponent(termino)}&top=10`, {
+        showLoading: false,
+        onSuccess: (data) => {
+            btnBuscar.disabled = false;
+            btnBuscar.innerHTML = textoOriginal;
+
+            if (data.data && data.data.cabys) {
+                mostrarResultadosCabys(data.data.cabys);
+            } else {
+                showToast('info', data.message || 'No se encontraron códigos CABYS para el término buscado');
+            }
+        },
+        onError: () => {
+            btnBuscar.disabled = false;
+            btnBuscar.innerHTML = textoOriginal;
+            showToast('error', 'No se pudo conectar con la API de Hacienda. Intente nuevamente.');
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        btnBuscar.disabled = false;
-        btnBuscar.innerHTML = textoOriginal;
-        
-        if (data.success && data.data && data.data.cabys) {
-            mostrarResultadosCabys(data.data.cabys);
-        } else {
-            showToast('info', data.message || 'No se encontraron códigos CABYS para el término buscado');
-        }
-    })
-    .catch(error => {
-        console.error('Error al buscar CABYS:', error);
-        btnBuscar.disabled = false;
-        btnBuscar.innerHTML = textoOriginal;
-        showToast('error', 'No se pudo conectar con la API de Hacienda. Intente nuevamente.');
     });
 }
 

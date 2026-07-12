@@ -85,29 +85,24 @@ async function cargarFacturasCliente() {
     }
     
     try {
-        const response = await fetch(`/facturas/api/cliente/${idCliente}`);
-        if (response.ok) {
-            const facturas = await response.json();
-            
-            if (facturas.length === 0) {
-                showToast('info', 'El cliente no tiene facturas con saldo pendiente');
-            }
-            
-            facturas.forEach(factura => {
-                const option = document.createElement('option');
-                option.value = factura.idFactura;
-                option.textContent = `${factura.numeroFactura} - Saldo: ₡${formatNumber(factura.saldoPendiente, 2)}`;
-                option.dataset.numeroFactura = factura.numeroFactura;
-                option.dataset.totalFactura = factura.totalFactura;
-                option.dataset.saldoPendiente = factura.saldoPendiente;
-                facturaSelect.appendChild(option);
-            });
-            
-            // Event listener para mostrar info de factura seleccionada
-            facturaSelect.addEventListener('change', mostrarInfoFactura);
-        } else {
-            showToast('error', 'Error al cargar facturas del cliente');
+        const facturas = await httpGet(`/facturas/api/cliente/${idCliente}`, { showLoading: false });
+
+        if (facturas.length === 0) {
+            showToast('info', 'El cliente no tiene facturas con saldo pendiente');
         }
+
+        facturas.forEach(factura => {
+            const option = document.createElement('option');
+            option.value = factura.idFactura;
+            option.textContent = `${factura.numeroFactura} - Saldo: ₡${formatNumber(factura.saldoPendiente, 2)}`;
+            option.dataset.numeroFactura = factura.numeroFactura;
+            option.dataset.totalFactura = factura.totalFactura;
+            option.dataset.saldoPendiente = factura.saldoPendiente;
+            facturaSelect.appendChild(option);
+        });
+
+        // Event listener para mostrar info de factura seleccionada
+        facturaSelect.addEventListener('change', mostrarInfoFactura);
     } catch (error) {
         console.error('Error al cargar facturas:', error);
         showToast('error', 'Error de conexión al cargar facturas');

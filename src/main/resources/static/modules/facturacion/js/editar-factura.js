@@ -43,20 +43,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Cargar todos los productos
-    fetch(`/productos/records`)
-        .then(response => response.json())
-        .then(data => {
+    httpGet(`/productos/records`, {
+        showLoading: false,
+        onSuccess: (data) => {
             allProductos = data;
             if (facturaId) {
                 cargarLineas();
             }
-        });
+        }
+    });
 
     function cargarLineas() {
         if (facturaId) {
-            fetch(`/lineas-factura/detalle/${facturaId}`)
-                .then(response => response.json())
-                .then(data => {
+            httpGet(`/lineas-factura/detalle/${facturaId}`, {
+                showLoading: false,
+                onSuccess: (data) => {
                     const tableBody = document.getElementById("lineas-body");
                     tableBody.innerHTML = "";
                     data.forEach(linea => {
@@ -92,10 +93,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     
                     // Actualizar vista de cards en móvil después de cargar líneas
                     actualizarVistaLineas();
-                    
+
                     // Actualizar resumen de totales
                     actualizarResumenTotales();
-                });
+                }
+            });
         }
     }
 });
@@ -620,26 +622,15 @@ function mostrarPaso2() {
         plazoCredito: plazoCredito?.value ? parseInt(plazoCredito.value) : 0
     };
 
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-
-    facturaCreadaPromise = fetch('/facturas/guardar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', [csrfHeader]: csrfToken },
-        body: JSON.stringify(factura)
-    }).then(res => {
-        if (res.ok) {
-            return res.json().then(data => {
-                newFactura = data;
-                facturaId = newFactura.idFactura;
-                console.log('Factura creada:', newFactura);
-                document.getElementById("btnGuardar").disabled = false;
-                return data;
-            });
-        } else {
+    facturaCreadaPromise = httpPost('/facturas/guardar', factura, {
+        onSuccess: (data) => {
+            newFactura = data;
+            facturaId = newFactura.idFactura;
+            console.log('Factura creada:', newFactura);
+            document.getElementById("btnGuardar").disabled = false;
+        },
+        onError: () => {
             document.getElementById("btnGuardar").disabled = true;
-            showToast('error', 'Error al crear la factura');
-            return null;
         }
     }).catch(error => {
         document.getElementById("btnGuardar").disabled = true;
@@ -722,46 +713,34 @@ async function guardarLineas() {
         console.log(`Se omitieron ${lineasVacias} línea(s) vacía(s)`);
     }
 
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-
     // Primero guardar las líneas
-    fetch('/lineas-factura/actualizar', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', [csrfHeader]: csrfToken },
-        body: JSON.stringify(lineas)
-    }).then(res => {
-        if (res.ok) {
+    httpPut('/lineas-factura/actualizar', lineas, {
+        onSuccess: () => {
             // Luego actualizar el estado de la factura
             const entregadoSelect = document.getElementById("entregado");
             const estadoEntregado = entregadoSelect ? (entregadoSelect.value === 'true') : false;
-            
+
             console.log('Actualizando estado a:', estadoEntregado);
-            
+
             const descInput = document.getElementById('descripcion');
             const fechaInput = document.getElementById('fechaEntrega');
             const params = new URLSearchParams({ entregado: estadoEntregado });
             params.append('descripcion', descInput ? descInput.value : '');
             params.append('fechaEntrega', fechaInput ? fechaInput.value : '');
 
-            return fetch(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, {
-                method: 'PUT',
-                headers: { [csrfHeader]: csrfToken }
-            });
-        } else {
-            throw new Error('Error al guardar las líneas');
-        }
-    }).then(res => {
-        if (res && res.ok) {
-            showToast('success', 'Factura guardada correctamente');
-            setTimeout(() => {
-                if (nuevaFacturaModal) {
-                    nuevaFacturaModal.hide();
-                    location.reload();
-                } else {
-                    window.location.href = '/facturas';
+            httpPut(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, null, {
+                successMessage: 'Factura guardada correctamente',
+                onSuccess: () => {
+                    setTimeout(() => {
+                        if (nuevaFacturaModal) {
+                            nuevaFacturaModal.hide();
+                            location.reload();
+                        } else {
+                            window.location.href = '/facturas';
+                        }
+                    }, 2000);
                 }
-            }, 2000);
+            });
         }
     }).catch(error => {
         console.error('Error:', error);
