@@ -21,6 +21,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * ============================================================================
@@ -55,13 +56,8 @@ public class ProductoController {
     ) {
         log.info("Listando productos - Página: {}, Tamaño: {}, Ordenar por: {} {}", page, size, sortBy, sortDir);
         
-        // Crear objeto Sort
-        Sort sort = sortDir.equalsIgnoreCase("asc") 
-            ? Sort.by(sortBy).ascending() 
-            : Sort.by(sortBy).descending();
-        
-        // Crear Pageable y obtener página de productos
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir,
+                Set.of("idProducto", "nombre", "precio"), "idProducto");
         Page<Producto> productosPage = productoService.findAll(pageable);
         
         // Agregar presentaciones al modelo
