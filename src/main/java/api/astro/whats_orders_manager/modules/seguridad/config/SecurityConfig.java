@@ -79,7 +79,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/clientes/**").hasAnyRole("ADMIN", "USER", "VENDEDOR")
                         .requestMatchers("/api/productos/**").hasAnyRole("ADMIN", "USER", "VENDEDOR")
                         .requestMatchers("/api/facturas/**").hasAnyRole("ADMIN", "USER", "VENDEDOR")
-                        
+                        .requestMatchers("/api/configuracion/**").hasRole("ADMIN")
+
                         // Cualquier otro request requiere autenticación
                         .anyRequest().authenticated()
                 )
