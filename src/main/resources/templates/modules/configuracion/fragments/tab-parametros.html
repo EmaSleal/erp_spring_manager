@@ -26,15 +26,7 @@
             <!-- Barra de filtros y búsqueda -->
             <div class="row mb-4">
                 <div class="col-md-4">
-                    <div class="input-group">
-                        <span class="input-group-text bg-light">
-                            <i class="fas fa-search"></i>
-                        </span>
-                        <input type="text" 
-                               class="form-control" 
-                               id="search-parametros" 
-                               placeholder="Buscar parámetro...">
-                    </div>
+                    <div th:replace="~{shared/fragments/search-bar :: searchBar('search-parametros', 'Buscar parámetro...', null)}"></div>
                 </div>
 
                 <div class="col-md-4">
