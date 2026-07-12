@@ -390,48 +390,7 @@
                     <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
-                        <div class="text-muted text-center text-md-start">
-                            Mostrando <span th:text="${#lists.size(pagos)}"></span> de 
-                            <span th:text="${totalItems}"></span> pagos
-                        </div>
-                        <nav aria-label="Paginación de pagos">
-                            <ul class="pagination mb-0">
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=0, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-double-left"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-left"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item" 
-                                    th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
-                                    th:if="${pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2}"
-                                    th:classappend="${pageNumber == currentPage} ? 'active'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${pageNumber}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                       th:text="${pageNumber + 1}">1</a>
-                                </li>
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-right"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${totalPages - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-double-right"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
+                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'pagos', '/pagos', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir})}"></div>
                 </div>
             </div>
         </div>

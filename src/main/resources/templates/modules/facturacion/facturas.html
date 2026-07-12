@@ -409,57 +409,7 @@
                 <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
-                        <div class="text-muted text-center text-md-start">
-                            Mostrando <span th:text="${#lists.size(facturas)}"></span> de 
-                            <span th:text="${totalItems}"></span> facturas
-                        </div>
-                        <nav aria-label="Paginación de facturas">
-                            <ul class="pagination mb-0">
-                                <!-- Primera página -->
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/facturas(page=0, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, startDate=${startDate}, endDate=${endDate}, status=${status}, isPaid=${isPaid}, estadoFE=${estadoFE})}">
-                                        <i class="fas fa-angle-double-left"></i>
-                                    </a>
-                                </li>
-                                
-                                <!-- Página anterior -->
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/facturas(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, startDate=${startDate}, endDate=${endDate}, status=${status}, isPaid=${isPaid}, estadoFE=${estadoFE})}">
-                                        <i class="fas fa-angle-left"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Números de página -->
-                                <li class="page-item" 
-                                    th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
-                                    th:if="${pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2}"
-                                    th:classappend="${pageNumber == currentPage} ? 'active'">
-                                    <a class="page-link" 
-                                       th:href="@{/facturas(page=${pageNumber}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, startDate=${startDate}, endDate=${endDate}, status=${status}, isPaid=${isPaid}, estadoFE=${estadoFE})}"
-                                       th:text="${pageNumber + 1}">1</a>
-                                </li>
-
-                                <!-- Página siguiente -->
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/facturas(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, startDate=${startDate}, endDate=${endDate}, status=${status}, isPaid=${isPaid}, estadoFE=${estadoFE})}">
-                                        <i class="fas fa-angle-right"></i>
-                                    </a>
-                                </li>
-                                
-                                <!-- Última página -->
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/facturas(page=${totalPages - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, startDate=${startDate}, endDate=${endDate}, status=${status}, isPaid=${isPaid}, estadoFE=${estadoFE})}">
-                                        <i class="fas fa-angle-double-right"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
+                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'facturas', '/facturas', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir} + (${startDate} != null ? '&amp;startDate=' + ${startDate} : '') + (${endDate} != null ? '&amp;endDate=' + ${endDate} : '') + (${status} != null ? '&amp;status=' + ${status} : '') + (${isPaid} != null ? '&amp;isPaid=' + ${isPaid} : '') + (${estadoFE} != null ? '&amp;estadoFE=' + ${estadoFE} : ''))}"></div>
                 </div>
             </div>
         </div>

@@ -325,64 +325,7 @@
 
                     <!-- Paginación -->
                     <div class="card-footer" th:if="${totalPages > 1}">
-                        <nav aria-label="Paginación de usuarios">
-                            <ul class="pagination justify-content-center mb-0">
-                                <!-- Primera página -->
-                                <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=0, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-double-left"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Página anterior -->
-                                <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${currentPage - 1}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-left"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Páginas numeradas -->
-                                <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                                    th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
-                                    th:classappend="${i == currentPage ? 'active' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${i}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                        th:text="${i + 1}">
-                                        1
-                                    </a>
-                                </li>
-
-                                <!-- Página siguiente -->
-                                <li class="page-item"
-                                    th:classappend="${currentPage >= totalPages - 1 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${currentPage + 1}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-right"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Última página -->
-                                <li class="page-item"
-                                    th:classappend="${currentPage >= totalPages - 1 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${totalPages - 1}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-double-right"></i>
-                                    </a>
-                                </li>
-                            </ul>
-
-                            <!-- Info de paginación -->
-                            <div class="text-center mt-2">
-                                <small class="text-muted">
-                                    Página <strong th:text="${currentPage + 1}">1</strong> de <strong
-                                        th:text="${totalPages}">1</strong>
-                                    (Mostrando <strong th:text="${usuarios.size()}">0</strong> de <strong
-                                        th:text="${totalUsuarios}">0</strong> usuarios)
-                                </small>
-                            </div>
-                        </nav>
+                        <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${size}, 'usuarios', '/admin/usuarios', (${currentRol} != null ? '&amp;rol=' + ${currentRol} : '') + (${currentActivo} != null ? '&amp;activo=' + ${currentActivo} : '') + (${currentBloqueado} != null ? '&amp;bloqueado=' + ${currentBloqueado} : '') + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir})}"></div>
                     </div>
                 </div>
 

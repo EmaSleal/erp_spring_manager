@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  Reusable pagination fragment.
+
+  Parameters:
+    currentPage  - 0-based current page index
+    totalPages   - total number of pages
+    totalItems   - total number of records
+    pageSize     - records per page
+    itemLabel    - noun label for the "Showing X of Y <label>" text (e.g. "clientes")
+    baseUrl      - base URL without query params (e.g. "/clientes")
+    extraParams  - additional query string fragment starting with & (e.g. "&sortBy=nombre&sortDir=asc")
+                   pass empty string '' when there are no extra params
+-->
+<div th:fragment="pagination(currentPage, totalPages, totalItems, pageSize, itemLabel, baseUrl, extraParams)"
+     th:if="${totalPages > 1}"
+     class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
+
+    <!-- "Showing X of Y" info -->
+    <div class="text-muted text-center text-md-start">
+        Mostrando
+        <span th:text="${currentPage * pageSize + 1}">1</span>
+        &ndash;
+        <span th:text="${(currentPage * pageSize + pageSize) > totalItems ? totalItems : (currentPage * pageSize + pageSize)}">10</span>
+        de
+        <span th:text="${totalItems}">0</span>
+        <span th:text="${itemLabel}">registros</span>
+    </div>
+
+    <!-- Pagination nav -->
+    <nav th:attr="aria-label=${'Paginación de ' + itemLabel}">
+        <ul class="pagination mb-0">
+
+            <!-- First page -->
+            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                <a class="page-link"
+                   th:href="${baseUrl + '?page=0' + extraParams}">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+            </li>
+
+            <!-- Previous page -->
+            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                <a class="page-link"
+                   th:href="${baseUrl + '?page=' + (currentPage - 1) + extraParams}">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            </li>
+
+            <!-- Numbered pages (window of 5 around current) -->
+            <li class="page-item"
+                th:each="p : ${#numbers.sequence(0, totalPages - 1)}"
+                th:if="${p >= currentPage - 2 and p <= currentPage + 2}"
+                th:classappend="${p == currentPage} ? 'active'">
+                <a class="page-link"
+                   th:href="${baseUrl + '?page=' + p + extraParams}"
+                   th:text="${p + 1}">1</a>
+            </li>
+
+            <!-- Next page -->
+            <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                <a class="page-link"
+                   th:href="${baseUrl + '?page=' + (currentPage + 1) + extraParams}">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+            </li>
+
+            <!-- Last page -->
+            <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                <a class="page-link"
+                   th:href="${baseUrl + '?page=' + (totalPages - 1) + extraParams}">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+
+</div>
+</body>
+</html>
