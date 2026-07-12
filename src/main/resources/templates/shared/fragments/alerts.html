@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  alerts(successMsg, errorMsg)
+  Renders a dismissible success alert and/or a dismissible error alert.
+  Pass null for either slot to suppress that alert.
+
+  Usage:
+    <div th:replace="~{shared/fragments/alerts :: alerts(${success}, ${error})}"></div>
+    <div th:replace="~{shared/fragments/alerts :: alerts(${message}, ${error})}"></div>
+    <div th:replace="~{shared/fragments/alerts :: alerts(${param.success}, ${param.error})}"></div>
+-->
+<th:block th:fragment="alerts(successMsg, errorMsg)">
+    <div th:if="${successMsg != null and !#strings.isEmpty(successMsg)}"
+         class="alert alert-success alert-dismissible fade show"
+         role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        <span th:text="${successMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMsg != null and !#strings.isEmpty(errorMsg)}"
+         class="alert alert-danger alert-dismissible fade show"
+         role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${errorMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+</th:block>
+
+<!--
+  alertsMulti(successMsg, errorMsg, errorMsg2, errorMsg3)
+  Same as alerts() but supports up to two additional error slots.
+  Used by perfil/editar.html which has errorPassword and errorAvatar alongside error.
+
+  Usage:
+    <div th:replace="~{shared/fragments/alerts :: alertsMulti(${success}, ${error}, ${errorPassword}, ${errorAvatar})}"></div>
+-->
+<th:block th:fragment="alertsMulti(successMsg, errorMsg, errorMsg2, errorMsg3)">
+    <div th:if="${successMsg != null and !#strings.isEmpty(successMsg)}"
+         class="alert alert-success alert-dismissible fade show mb-3"
+         role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        <span th:text="${successMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMsg != null and !#strings.isEmpty(errorMsg)}"
+         class="alert alert-danger alert-dismissible fade show mb-3"
+         role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${errorMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMsg2 != null and !#strings.isEmpty(errorMsg2)}"
+         class="alert alert-danger alert-dismissible fade show mb-3"
+         role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${errorMsg2}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMsg3 != null and !#strings.isEmpty(errorMsg3)}"
+         class="alert alert-danger alert-dismissible fade show mb-3"
+         role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${errorMsg3}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+</th:block>
+
+</body>
+</html>

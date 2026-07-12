@@ -56,15 +56,7 @@
                 </div>
                 
                 <!-- Alertas -->
-                <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle"></i> <span th:text="${success}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                
-                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-triangle"></i> <span th:text="${error}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                <div th:replace="~{shared/fragments/alerts :: alerts(${success}, ${error})}"></div>
                 
                 <!-- Tarjetas de estadísticas -->
                 <div class="row mb-4">
