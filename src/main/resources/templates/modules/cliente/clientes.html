@@ -19,35 +19,18 @@
     <main class="main-content">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs (oculto en móvil) -->
-            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/dashboard}" class="text-decoration-none">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <i class="fas fa-users me-1"></i>Clientes
-                    </li>
-                </ol>
-            </nav>
+            <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-users', 'Clientes')}"></div>
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-users text-primary me-2"></i>
-                        <span class="d-none d-md-inline">Gestión de </span>Clientes
-                    </h2>
-                    <p class="page-subtitle d-none d-md-block">Administra tu base de clientes</p>
-                </div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'text-primary', 'Gestión de', 'Clientes', 'Administra tu base de clientes')}"></div>
                 <div class="page-header-actions">
                     <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
                         <i class="fas fa-arrow-left"></i>
                         <span class="d-none d-md-inline ms-2">Volver a Dashboard</span>
                     </a>
-                    <button id="open-modal" class="btn btn-primary" 
+                    <button id="open-modal" class="btn btn-primary"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo cliente">
                         <i class="fas fa-plus"></i>

@@ -16,28 +16,11 @@
     <main class="main-content">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs -->
-            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/dashboard}" class="text-decoration-none">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <i class="fas fa-boxes me-1"></i>Artículos Maestro
-                    </li>
-                </ol>
-            </nav>
+            <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-boxes', 'Artículos Maestro')}"></div>
 
             <!-- Header -->
             <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-boxes text-warning me-2"></i>
-                        <span class="d-none d-md-inline">Gestión de </span>Artículos Maestro
-                    </h2>
-                    <p class="page-subtitle d-none d-md-block">Administrá el catálogo de artículos y sus variantes</p>
-                </div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-boxes', 'text-warning', 'Gestión de', 'Artículos Maestro', 'Administrá el catálogo de artículos y sus variantes')}"></div>
                 <div class="page-header-actions">
                     <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">

@@ -20,28 +20,11 @@
     <main class="main-content">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs (oculto en móvil) -->
-            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/dashboard}" class="text-decoration-none">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <i class="fas fa-file-invoice-dollar me-1"></i>Facturas
-                    </li>
-                </ol>
-            </nav>
+            <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-file-invoice-dollar', 'Facturas')}"></div>
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-file-invoice-dollar text-primary me-2"></i>
-                        <span class="d-none d-md-inline">Gestión de </span>Facturas
-                    </h2>
-                    <p class="page-subtitle d-none d-md-block">Administra las facturas y pedidos de tus clientes</p>
-                </div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice-dollar', 'text-primary', 'Gestión de', 'Facturas', 'Administra las facturas y pedidos de tus clientes')}"></div>
                 <div class="page-header-actions">
                     <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
@@ -54,7 +37,7 @@
                         <i class="fas fa-money-bill-wave"></i>
                         <span class="d-none d-sm-inline ms-2">Gestión de Pagos</span>
                     </a>
-                    <button type="button" class="btn btn-primary" onclick="openNuevaFacturaModal()" 
+                    <button type="button" class="btn btn-primary" onclick="openNuevaFacturaModal()"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Crear nueva factura">
                         <i class="fas fa-plus"></i>

@@ -16,39 +16,10 @@
     <main class="main-content">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs -->
-            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/dashboard}" class="text-decoration-none">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/articulos}" class="text-decoration-none">Artículos Maestro</a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page"
-                        th:text="${maestro.idArticuloMaestro != null} ? 'Editar artículo' : 'Nuevo artículo'">
-                        Artículo
-                    </li>
-                </ol>
-            </nav>
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/articulos', 'fas fa-boxes', 'Artículos Maestro', 'fas fa-box-open', ${maestro.idArticuloMaestro != null} ? 'Editar artículo' : 'Nuevo artículo')}"></div>
 
             <!-- Header -->
-            <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-box-open text-warning me-2"></i>
-                        <span th:text="${maestro.idArticuloMaestro != null} ? 'Editar Artículo Maestro' : 'Nuevo Artículo Maestro'">
-                            Artículo Maestro
-                        </span>
-                    </h2>
-                </div>
-                <div class="page-header-actions">
-                    <a th:href="@{/articulos}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i> Volver
-                    </a>
-                </div>
-            </div>
+            <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-box-open', 'text-warning', '', ${maestro.idArticuloMaestro != null} ? 'Editar Artículo Maestro' : 'Nuevo Artículo Maestro', '', '/articulos', 'Artículos Maestro')}"></div>
 
             <!-- CSRF token -->
             <input type="hidden" id="csrfToken" th:value="${_csrf.token}" />
