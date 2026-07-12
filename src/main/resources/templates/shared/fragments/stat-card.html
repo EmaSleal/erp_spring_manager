@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- statCard(bgColor, label, value, icon, iconContainerClass)
+     Reusable KPI card with server-rendered value.
+     bgColor            - Bootstrap background class (e.g. 'bg-success')
+     label              - Descriptive label text
+     value              - Thymeleaf value expression passed as literal (rendered via th:utext)
+     icon               - Full FA icon classes including size (e.g. 'fas fa-cash-register fa-3x')
+     iconContainerClass - CSS class for the icon wrapper div (e.g. 'text-white-50' or 'stats-icon') -->
+<div th:fragment="statCard(bgColor, label, value, icon, iconContainerClass)"
+     class="card border-0 shadow-sm text-white"
+     th:classappend="${bgColor}">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="text-white-50 mb-2" th:text="${label}">Label</h6>
+                <h3 class="mb-0 text-white" th:utext="${value}">0</h3>
+            </div>
+            <div th:class="${iconContainerClass}">
+                <i th:class="${icon}"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- statCardJs(bgColor, textColor, labelColor, elementId, label, icon)
+     KPI card whose value is populated by JavaScript via element id.
+     bgColor   - Bootstrap background class (e.g. 'bg-success', 'bg-warning')
+     textColor - Bootstrap text class for body (e.g. 'text-white', 'text-dark')
+     labelColor - CSS class for the label (e.g. 'text-white-50', 'text-dark-50')
+     elementId  - id attribute for the value element (JS sets textContent on this)
+     label      - Descriptive label text
+     icon       - Full FA icon classes including size (e.g. 'fas fa-check-circle fa-2x') -->
+<div th:fragment="statCardJs(bgColor, textColor, labelColor, elementId, label, icon)"
+     class="card border-0 shadow-sm"
+     th:classappend="${bgColor} + ' ' + ${textColor}">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-1" th:class="${labelColor} + ' mb-1'" th:text="${label}">Label</h6>
+                <h3 class="mb-0" th:class="'mb-0 ' + ${textColor}" th:id="${elementId}">0</h3>
+            </div>
+            <i class="opacity-50" th:class="${icon} + ' opacity-50'"></i>
+        </div>
+    </div>
+</div>
+
+</html>

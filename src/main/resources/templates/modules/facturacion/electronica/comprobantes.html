@@ -48,56 +48,16 @@
             <!-- Estadísticas Cards -->
             <div class="row mb-4">
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-success text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-1">Aceptados</h6>
-                                    <h3 class="mb-0 text-white" id="stat-aceptados">0</h3>
-                                </div>
-                                <i class="fas fa-check-circle fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-success', 'text-white', 'text-white-50', 'stat-aceptados', 'Aceptados', 'fas fa-check-circle fa-2x')}"></div>
                 </div>
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-warning text-dark">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-dark-50 mb-1">Procesando</h6>
-                                    <h3 class="mb-0 text-dark" id="stat-procesando">0</h3>
-                                </div>
-                                <i class="fas fa-spinner fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-warning', 'text-dark', 'text-dark-50', 'stat-procesando', 'Procesando', 'fas fa-spinner fa-2x')}"></div>
                 </div>
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-danger text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-1">Rechazados</h6>
-                                    <h3 class="mb-0 text-white" id="stat-rechazados">0</h3>
-                                </div>
-                                <i class="fas fa-times-circle fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-danger', 'text-white', 'text-white-50', 'stat-rechazados', 'Rechazados', 'fas fa-times-circle fa-2x')}"></div>
                 </div>
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-info text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-1">Firmados</h6>
-                                    <h3 class="mb-0 text-white" id="stat-firmados">0</h3>
-                                </div>
-                                <i class="fas fa-certificate fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-info', 'text-white', 'text-white-50', 'stat-firmados', 'Firmados', 'fas fa-certificate fa-2x')}"></div>
                 </div>
             </div>
 
