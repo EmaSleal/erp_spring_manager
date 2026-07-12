@@ -43,9 +43,7 @@
                     <p class="text-muted mb-0">Actualiza los datos de la factura y sus líneas de productos</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a th:href="@{/facturas}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Facturas
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/facturas', 'Volver a Facturas')}"></a>
                 </div>
             </div>
 

@@ -49,9 +49,7 @@
                     <p class="text-muted mb-0">Complete los datos del rol y seleccione los permisos</p>
                 </div>
                 <div>
-                    <a th:href="@{/admin/roles}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/admin/roles', 'Volver')}"></a>
                 </div>
             </div>
 

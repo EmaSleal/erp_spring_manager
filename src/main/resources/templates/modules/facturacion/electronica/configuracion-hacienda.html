@@ -25,11 +25,7 @@
             <div class="page-header mb-4">
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-cog', 'text-warning', '', 'Configuración Hacienda', 'Gestiona las credenciales y configuración para Hacienda CR')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/facturas/comprobantes}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver a Comprobantes">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver</span>
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/facturas/comprobantes', 'Volver', 'Volver a Comprobantes')}"></a>
                     <button type="button" class="btn btn-primary" onclick="nuevaConfiguracionModal()"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Nueva configuración">

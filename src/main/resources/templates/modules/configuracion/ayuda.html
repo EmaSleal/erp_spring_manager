@@ -133,9 +133,7 @@
                     <p class="text-muted">Guía completa para configurar tu sistema</p>
                 </div>
                 <div>
-                    <a th:href="@{/configuracion}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Volver
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/configuracion', 'Volver')}"></a>
                 </div>
             </div>
 

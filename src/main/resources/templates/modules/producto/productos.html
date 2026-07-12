@@ -22,11 +22,7 @@
             <div class="page-header mb-4">
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-box', 'text-warning', 'Gestión de', 'Productos', 'Administra tu catálogo de productos')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver a Dashboard</span>
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver a Dashboard', 'Volver al Dashboard')}"></a>
                     <button type="button" class="btn btn-success" onclick="openAddModal()"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo producto">

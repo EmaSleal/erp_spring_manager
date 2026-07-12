@@ -46,9 +46,7 @@
                     </p>
                 </div>
                 <div>
-                    <a th:href="@{/contabilidad/cuentas}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver al Listado
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/contabilidad/cuentas', 'Volver al Listado')}"></a>
                 </div>
             </div>
 

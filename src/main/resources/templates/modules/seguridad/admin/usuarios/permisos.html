@@ -89,9 +89,7 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a th:href="@{/admin/usuarios}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/admin/usuarios', 'Volver')}"></a>
                 </div>
             </div>
 
