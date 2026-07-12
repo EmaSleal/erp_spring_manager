@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  searchBar(inputId, placeholder, onInput)
+  Renders an input-group search bar for client-side JS filtering.
+  - inputId:     id attribute on the input element
+  - placeholder: placeholder text for the input
+  - onInput:     JS expression string for the oninput handler (e.g. 'filtrarProductos()').
+                 Pass null or empty string to omit the oninput attribute.
+
+  Usage:
+    <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar...', 'filtrarProductos()')}"></div>
+    <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar permiso...', null)}"></div>
+-->
+<div th:fragment="searchBar(inputId, placeholder, onInput)" class="input-group">
+    <span class="input-group-text bg-white">
+        <i class="fas fa-search text-muted"></i>
+    </span>
+    <input type="text"
+           th:id="${inputId}"
+           class="form-control border-start-0"
+           th:placeholder="${placeholder}"
+           th:oninput="${onInput != null and !#strings.isEmpty(onInput)} ? ${onInput} : null" />
+</div>
+
+<!--
+  searchBarForm(inputId, inputName, placeholder, value)
+  Renders an input-group search bar for server-side form submission.
+  - inputId:    id attribute on the input element
+  - inputName:  name attribute submitted with the form
+  - placeholder: placeholder text for the input
+  - value:      th:value expression string for pre-populating the input from a model attribute
+
+  Usage:
+    <div th:replace="~{shared/fragments/search-bar :: searchBarForm('buscar', 'buscar', 'Código, nombre o descripción...', ${busqueda})}"></div>
+-->
+<div th:fragment="searchBarForm(inputId, inputName, placeholder, value)" class="input-group">
+    <span class="input-group-text">
+        <i class="bi bi-search"></i>
+    </span>
+    <input type="text"
+           th:id="${inputId}"
+           th:name="${inputName}"
+           class="form-control"
+           th:placeholder="${placeholder}"
+           th:value="${value}" />
+</div>
+
+</body>
+</html>

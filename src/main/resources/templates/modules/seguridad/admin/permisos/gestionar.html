@@ -135,13 +135,7 @@
                                 <!-- Búsqueda general -->
                                 <div class="col-md-4">
                                     <label for="buscar" class="form-label">Buscar</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">
-                                            <i class="bi bi-search"></i>
-                                        </span>
-                                        <input type="text" class="form-control" id="buscar" name="buscar"
-                                            th:value="${busqueda}" placeholder="Código, nombre o descripción...">
-                                    </div>
+                                    <div th:replace="~{shared/fragments/search-bar :: searchBarForm('buscar', 'buscar', 'Código, nombre o descripción...', ${busqueda})}"></div>
                                 </div>
                                 
                                 <!-- Filtro por categoría -->

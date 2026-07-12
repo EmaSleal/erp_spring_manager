@@ -41,15 +41,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">
-                                    <i class="fas fa-search text-muted"></i>
-                                </span>
-                                <input type="text" id="searchInput"
-                                       class="form-control border-start-0"
-                                       placeholder="Buscar por nombre, código o descripción..."
-                                       oninput="filtrarProductos()" />
-                            </div>
+                            <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar por nombre, código o descripción...', 'filtrarProductos()')}"></div>
                         </div>
                     </div>
                 </div>
