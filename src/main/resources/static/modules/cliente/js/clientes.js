@@ -19,15 +19,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const editId = urlParams.get('edit');
     if (editId) {
         // Cargar el cliente desde el servidor y abrir el modal
-        fetch(`/clientes/detalle/${editId}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Cliente no encontrado');
-                }
-                return response.json();
-            })
-            .then(cliente => {
-                // Abrir modal de edición con los datos del cliente
+        httpGet(`/clientes/detalle/${editId}`, {
+            showLoading: false,
+            onSuccess: (cliente) => {
                 openEditModal(
                     cliente.idCliente,
                     cliente.nombre,
@@ -42,15 +36,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     cliente.distrito,
                     cliente.otrasSenas
                 );
-                
-                // Limpiar el parámetro de la URL sin recargar la página
                 window.history.replaceState({}, '', window.location.pathname);
-            })
-            .catch(error => {
-                console.error('Error al cargar el cliente:', error);
-                // Limpiar el parámetro de la URL en caso de error
+            },
+            onError: () => {
                 window.history.replaceState({}, '', window.location.pathname);
-            });
+            }
+        });
     }
 });
 
@@ -76,14 +67,9 @@ document.getElementById('open-modal')?.addEventListener('click', function () {
 // Abrir modal para editar cliente existente
 function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFacturaElectronica, tipoIdentificacion, numeroIdentificacion, codigoActividad, provincia, canton, distrito, otrasSenas) {
     // Cargar datos completos del cliente desde el servidor
-    fetch(`/clientes/detalle/${clienteId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Cliente no encontrado');
-            }
-            return response.json();
-        })
-        .then(cliente => {
+    httpGet(`/clientes/detalle/${clienteId}`, {
+        showLoading: false,
+        onSuccess: (cliente) => {
             document.getElementById('modal-title').innerText = 'Editar Cliente';
             document.getElementById('idCliente').value = cliente.idCliente || '';
             document.getElementById('nombre').value = cliente.nombre || '';
@@ -91,7 +77,7 @@ function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFactura
             document.getElementById('direccion').value = cliente.direccion || '';
             document.getElementById('email').value = cliente.email || '';
             document.getElementById('tipoCliente').value = cliente.tipoCliente || '';
-            
+
             // Establecer checkbox de Facturación Electrónica
             const requiereFECheckbox = document.getElementById('requiereFacturaElectronica');
             if (requiereFECheckbox) {
@@ -99,12 +85,12 @@ function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFactura
                 // Dispara manualmente el evento change para sincronizar la visualización
                 requiereFECheckbox.dispatchEvent(new Event('change', { bubbles: true }));
             }
-            
+
             // Cargar datos de facturación electrónica
             document.getElementById('tipoIdentificacionCliente').value = cliente.tipoIdentificacion || '';
             document.getElementById('numeroIdentificacionCliente').value = cliente.numeroIdentificacion || '';
             document.getElementById('codigoActividadCliente').value = cliente.codigoActividad || '';
-            
+
             // Cargar ubicación
             const provinciaCodigo = cliente.provincia?.codigo || '';
             const cantonCodigo = cliente.canton || '';
@@ -121,15 +107,15 @@ function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFactura
             document.getElementById('cantonCliente').value = cantonCodigo;
             document.getElementById('distritoCliente').value = distritoCodigo;
             document.getElementById('otrasSenasCliente').value = cliente.otrasSenas || '';
-            
+
             if (clienteModal) {
                 clienteModal.show();
             }
-        })
-        .catch(error => {
-            console.error('Error al cargar el cliente:', error);
+        },
+        onError: () => {
             showToast('error', 'Error al cargar los datos del cliente');
-        });
+        }
+    });
 }
 
 // Consultar datos de Hacienda para clientes
@@ -145,20 +131,20 @@ document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click'
     showToast('info', 'Consultando Hacienda...');
     
     // Consultar API
-    fetch(`/api/configuracion/empresa/hacienda/consultar/${numeroIdentificacion}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.data) {
+    httpGet(`/api/configuracion/empresa/hacienda/consultar/${numeroIdentificacion}`, {
+        showLoading: false,
+        onSuccess: (data) => {
+            if (data.data) {
                 const hacienda = data.data;
 
                 console.log('Datos recibidos de Hacienda:', hacienda);
-                
+
                 // Autocompletar nombre si no está lleno
                 const inputNombre = document.getElementById('nombre');
                 if (!inputNombre.value || inputNombre.value.trim() === '') {
                     inputNombre.value = hacienda.nombre;
                 }
-                
+
                 // Tipo de identificación
                 if (hacienda.tipoIdentificacion) {
                     const selectTipo = document.getElementById('tipoIdentificacionCliente');
@@ -180,10 +166,10 @@ document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click'
                         }
                     }
                 }
-                
+
                 // Mostrar éxito
                 showToast('success', '¡Datos autocompletados!');
-                
+
                 // Advertencia si no está al día
                 if (!hacienda.estaAlDia || !hacienda.estaInscrito) {
                     setTimeout(() => {
@@ -202,14 +188,12 @@ document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click'
                         showToast('warning', mensaje);
                     }, 500);
                 }
-            } else {
-                showToast('error', data.message || 'Identificación no encontrada');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        },
+        onError: () => {
             showToast('error', 'Error al consultar Hacienda');
-        });
+        }
+    });
 });
 
 // Cerrar modal (opcional - Bootstrap ya maneja esto)
@@ -280,31 +264,16 @@ document.addEventListener('DOMContentLoaded', function() {
             otrasSenas: formData.get('otrasSenas') || null
         };
 
-        const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
-
-        fetch('/clientes/guardar', {
-            method: 'POST',
-            body: JSON.stringify(clienteData),
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+        httpPost('/clientes/guardar', clienteData, {
+            onSuccess: (data) => {
                 if (clienteModal) clienteModal.hide();
-                showToast('success', data.success);
+                showToast('success', data.success || data.message);
                 setTimeout(() => location.reload(), 2000);
-            } else {
+            },
+            onError: (data) => {
                 showToast('error', data.error || 'Ocurrió un error al guardar el cliente');
             }
-        })
-        .catch(error => {
-            console.error('Error al guardar cliente:', error);
-            showToast('error', 'No se pudo conectar con el servidor. Intente de nuevo.');
-        })
-        .finally(() => {
+        }).finally(() => {
             if (btnGuardar) {
                 btnGuardar.disabled = false;
                 btnGuardar.innerHTML = originalHtml;

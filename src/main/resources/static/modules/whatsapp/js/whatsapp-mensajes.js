@@ -41,27 +41,10 @@ function limpiarFiltros() {
 // ========================================
 function verDetalleMensaje(button) {
     const mensajeId = button.getAttribute("data-id");
-    
-    // Obtener token CSRF
-    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
-    
-    // Crear headers
-    const headers = {};
-    if (csrfToken && csrfHeader) {
-        headers[csrfHeader] = csrfToken;
-    }
 
-    fetch(`/api/whatsapp/mensajes/${mensajeId}`, {
-        headers: headers
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Mensaje no encontrado');
-            }
-            return response.json();
-        })
-        .then(data => {
+    httpGet(`/api/whatsapp/mensajes/${mensajeId}`, {
+        showLoading: false,
+        onSuccess: (data) => {
             // Datos básicos
             document.getElementById("modal-idWhatsApp").innerText = data.idMensajeWhatsapp || 'N/A';
             document.getElementById("modal-telefono").innerText = data.telefono;
@@ -119,12 +102,11 @@ function verDetalleMensaje(button) {
             
             // Mostrar modal
             mensajeModal.show();
-            
-        })
-        .catch(error => {
-            console.error('Error al cargar detalle del mensaje:', error);
+        },
+        onError: () => {
             mostrarAlerta('Error al cargar el detalle del mensaje', 'danger');
-        });
+        }
+    });
 }
 
 // ========================================
@@ -135,36 +117,16 @@ function reintentarFallidos() {
         return;
     }
     
-    // Obtener token CSRF
-    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
-    
-    // Crear headers
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-    if (csrfToken && csrfHeader) {
-        headers[csrfHeader] = csrfToken;
-    }
-    
-    fetch('/api/whatsapp/mensajes/reintentar', {
-        method: 'POST',
-        headers: headers
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
+    httpPost('/api/whatsapp/mensajes/reintentar', null, {
+        onSuccess: (data) => {
             mostrarAlerta(data.message, 'success');
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
-        } else {
-            mostrarAlerta(data.message, 'danger');
+        },
+        onError: () => {
+            mostrarAlerta('Error al reintentar mensajes fallidos', 'danger');
         }
-    })
-    .catch(error => {
-        console.error('Error al reintentar mensajes:', error);
-        mostrarAlerta('Error al reintentar mensajes fallidos', 'danger');
     });
 }
 

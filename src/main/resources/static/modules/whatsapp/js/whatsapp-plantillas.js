@@ -45,27 +45,10 @@ function limpiarFiltros() {
  */
 function verDetallePlantilla(button) {
     const idPlantilla = button.getAttribute('data-id');
-    
-    // Obtener token CSRF
-    const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-    
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-    headers[header] = token;
-    
-    fetch(`/api/whatsapp/plantillas/${idPlantilla}`, {
-        method: 'GET',
-        headers: headers
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Error al obtener detalle de plantilla');
-        }
-        return response.json();
-    })
-    .then(data => {
+
+    httpGet(`/api/whatsapp/plantillas/${idPlantilla}`, {
+        showLoading: false,
+        onSuccess: (data) => {
         // Llenar datos en el modal
         document.getElementById('detalle_nombre').textContent = data.nombre || '-';
         document.getElementById('detalle_codigoMeta').textContent = data.codigoMeta || '-';
@@ -136,10 +119,10 @@ function verDetallePlantilla(button) {
         
         // Mostrar modal
         detallePlantillaModal.show();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        mostrarAlerta('Error al cargar detalle de plantilla', 'danger');
+        },
+        onError: () => {
+            mostrarAlerta('Error al cargar detalle de plantilla', 'danger');
+        }
     });
 }
 
@@ -165,45 +148,26 @@ function crearPlantilla() {
         return;
     }
     
-    // Obtener token CSRF
-    const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-    
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-    headers[header] = token;
-    
-    fetch('/api/whatsapp/plantillas', {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(plantilla)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Error al crear plantilla');
+    httpPost('/api/whatsapp/plantillas', plantilla, {
+        onSuccess: () => {
+            mostrarAlerta('Plantilla creada exitosamente', 'success');
+
+            // Cerrar modal
+            const modalElement = document.getElementById('crearPlantillaModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            modal.hide();
+
+            // Resetear formulario
+            form.reset();
+
+            // Recargar página después de 2 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        },
+        onError: () => {
+            mostrarAlerta('Error al crear plantilla', 'danger');
         }
-        return response.json();
-    })
-    .then(data => {
-        mostrarAlerta('Plantilla creada exitosamente', 'success');
-        
-        // Cerrar modal
-        const modalElement = document.getElementById('crearPlantillaModal');
-        const modal = bootstrap.Modal.getInstance(modalElement);
-        modal.hide();
-        
-        // Resetear formulario
-        form.reset();
-        
-        // Recargar página después de 2 segundos
-        setTimeout(() => {
-            window.location.reload();
-        }, 2000);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        mostrarAlerta('Error al crear plantilla', 'danger');
     });
 }
 
@@ -218,40 +182,22 @@ function toggleActivar(button, activar) {
         return;
     }
     
-    // Obtener token CSRF
-    const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-    
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-    headers[header] = token;
-    
-    const endpoint = activar 
+    const endpoint = activar
         ? `/api/whatsapp/plantillas/${idPlantilla}/activar`
         : `/api/whatsapp/plantillas/${idPlantilla}/desactivar`;
-    
-    fetch(endpoint, {
-        method: 'PUT',
-        headers: headers
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Error al ${accion} plantilla`);
+
+    httpPut(endpoint, null, {
+        onSuccess: () => {
+            mostrarAlerta(`Plantilla ${activar ? 'activada' : 'desactivada'} exitosamente`, 'success');
+
+            // Recargar página después de 1 segundo
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        },
+        onError: () => {
+            mostrarAlerta(`Error al ${accion} plantilla`, 'danger');
         }
-        return response.json();
-    })
-    .then(data => {
-        mostrarAlerta(`Plantilla ${activar ? 'activada' : 'desactivada'} exitosamente`, 'success');
-        
-        // Recargar página después de 1 segundo
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        mostrarAlerta(`Error al ${accion} plantilla`, 'danger');
     });
 }
 
