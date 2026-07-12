@@ -46,9 +46,7 @@
                     </p>
                 </div>
                 <div>
-                    <a th:href="@{/notificaciones}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Notificaciones
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/notificaciones', 'Volver a Notificaciones')}"></a>
                 </div>
             </div>
 

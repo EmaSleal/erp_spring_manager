@@ -25,11 +25,7 @@
             <div class="page-header mb-4">
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-signature', 'text-primary', 'Comprobantes', 'Electrónicos', 'Gestión de facturación electrónica - Hacienda CR')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/facturas}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver a Facturas">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver</span>
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/facturas', 'Volver', 'Volver a Facturas')}"></a>
                     <a th:href="@{/facturas/configuracion-hacienda}" class="btn btn-warning"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Configuración de Hacienda">

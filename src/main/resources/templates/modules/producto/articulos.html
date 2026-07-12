@@ -22,11 +22,7 @@
             <div class="page-header mb-4">
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-boxes', 'text-warning', 'Gestión de', 'Artículos Maestro', 'Administrá el catálogo de artículos y sus variantes')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver</span>
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver', 'Volver al Dashboard')}"></a>
                     <a th:href="@{/articulos/nuevo}" class="btn btn-success"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo artículo">

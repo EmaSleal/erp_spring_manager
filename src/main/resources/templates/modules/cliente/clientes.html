@@ -25,11 +25,7 @@
             <div class="page-header mb-4">
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'text-primary', 'Gestión de', 'Clientes', 'Administra tu base de clientes')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver a Dashboard</span>
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver a Dashboard', 'Volver al Dashboard')}"></a>
                     <button id="open-modal" class="btn btn-primary"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo cliente">

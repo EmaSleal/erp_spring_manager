@@ -378,9 +378,7 @@
                         <a th:href="@{/perfil/editar}" class="btn btn-primary btn-edit">
                             <i class="fas fa-edit me-2"></i>Editar Perfil
                         </a>
-                        <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
-                        </a>
+                        <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/dashboard', 'Volver al Dashboard')}"></a>
                     </div>
                 </div>
                 

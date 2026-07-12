@@ -41,9 +41,7 @@
                     <p class="text-muted mb-0">Administra los roles y permisos del sistema</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/dashboard', 'Volver')}"></a>
                     <a th:href="@{/admin/roles/nuevo}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Nuevo Rol
                     </a>
