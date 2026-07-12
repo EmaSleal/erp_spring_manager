@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.model;
 
+import api.astro.whats_orders_manager.modules.configuracion.converter.SmtpPasswordConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -46,8 +47,9 @@ public class ConfiguracionEmail implements Serializable {
     @Column(name = "smtp_usuario", nullable = false, length = 255)
     private String smtpUsuario;
 
+    @Convert(converter = SmtpPasswordConverter.class)
     @Column(name = "smtp_password", nullable = false, length = 255)
-    private String smtpPassword; // Se guardará encriptado
+    private String smtpPassword;
 
     // ==================== CONFIGURACIÓN DE SEGURIDAD ====================
     

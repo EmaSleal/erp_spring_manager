@@ -71,6 +71,10 @@ whatsapp:
 # ========================================
 # CONFIGURACIÓN DE BASE URL
 # ========================================
+smtp:
+  encryption:
+    key: ${SMTP_ENCRYPTION_KEY:}
+
 app:
   base-url: ${APP_BASE_URL:http://localhost:9090}
   certificados:
