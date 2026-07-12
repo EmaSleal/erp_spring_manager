@@ -304,29 +304,7 @@
                 </nav>
                 
                 <!-- Success/Error Messages -->
-                <div th:if="${success}" class="alert alert-success alert-custom alert-dismissible fade show mb-3" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <span th:text="${success}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                
-                <div th:if="${error}" class="alert alert-danger alert-custom alert-dismissible fade show mb-3" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <span th:text="${error}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                
-                <div th:if="${errorPassword}" class="alert alert-danger alert-custom alert-dismissible fade show mb-3" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <span th:text="${errorPassword}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                
-                <div th:if="${errorAvatar}" class="alert alert-danger alert-custom alert-dismissible fade show mb-3" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <span th:text="${errorAvatar}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                <div th:replace="~{shared/fragments/alerts :: alertsMulti(${success}, ${error}, ${errorPassword}, ${errorAvatar})}"></div>
                 
                 <!-- Edit Profile Card -->
                 <div class="edit-profile-card">
