@@ -36,6 +36,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Controlador para la gestión de Pagos de Facturas.
@@ -78,8 +79,9 @@ public class PagoController {
             page, size, sortBy, sortDir);
         
         try {
-            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir);
-            
+            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir,
+                    Set.of("idPago", "fechaPago", "monto", "estado", "metodoPago"), "fechaPago");
+
             // Obtener directamente Page<PagoDTO> sin conversión manual
             Page<PagoDTO> pagosDTOsPage = pagoService.findAllAsDTO(pageable);
             

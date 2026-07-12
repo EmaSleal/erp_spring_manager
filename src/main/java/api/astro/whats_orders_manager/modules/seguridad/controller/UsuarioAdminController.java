@@ -39,6 +39,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
+import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 
 /**
  * ============================================================================
@@ -95,10 +96,8 @@ public class UsuarioAdminController {
         
         try {
             // Crear paginación
-            Sort sort = sortDir.equalsIgnoreCase("asc") 
-                    ? Sort.by(sortBy).ascending() 
-                    : Sort.by(sortBy).descending();
-            Pageable pageable = PageRequest.of(page, size, sort);
+            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir,
+                    Set.of("idUsuario", "nombre", "rol"), "idUsuario");
             
             // Obtener usuarios (SIN FILTROS - traer todos para paginar correctamente)
             Page<Usuario> usuariosPage;

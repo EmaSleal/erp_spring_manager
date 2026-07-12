@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -41,7 +42,8 @@ public class ClienteController {
             Authentication authentication
     ) {
         try {
-            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir);
+            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir,
+                    Set.of("idCliente", "nombre", "email", "telefono"), "idCliente");
             Page<Cliente> clientesPage = clienteService.findAll(pageable);
 
             PaginacionDTO<Cliente> paginacion = PaginacionUtil.fromPage(clientesPage);
