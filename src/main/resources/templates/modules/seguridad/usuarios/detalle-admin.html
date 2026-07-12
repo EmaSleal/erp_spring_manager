@@ -288,10 +288,8 @@
                     </div>
                     <div class="card-body">
                         <div id="actividadesContainer">
-                            <div th:if="${#lists.isEmpty(actividades)}" class="text-center text-muted py-5">
-                                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
-                                <p>No hay actividades registradas</p>
-                            </div>
+                            <div th:if="${#lists.isEmpty(actividades)}"
+                                 th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay actividades registradas')}"></div>
 
                             <div class="activity-item" 
                                  th:each="actividad : ${actividades}"

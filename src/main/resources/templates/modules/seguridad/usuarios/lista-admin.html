@@ -195,12 +195,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr th:if="${usuarios.isEmpty()}">
-                                        <td colspan="7" class="text-center py-4">
-                                            <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
-                                            <p class="text-muted mb-0">No se encontraron usuarios</p>
-                                        </td>
-                                    </tr>
+                                    <tr th:if="${usuarios.isEmpty()}"
+                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron usuarios')}"></tr>
                                     <tr th:each="usuario, iter : ${usuarios}">
                                         <td th:text="${(currentPage * size) + iter.index + 1}">1</td>
                                         <td>

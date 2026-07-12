@@ -220,12 +220,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr th:if="${#lists.isEmpty(permisos)}">
-                                        <td colspan="7" class="text-center text-muted py-5">
-                                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                                            <p class="mb-0">No se encontraron permisos con los filtros aplicados</p>
-                                        </td>
-                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(permisos)}"
+                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron permisos con los filtros aplicados')}"></tr>
                                     
                                     <tr th:each="permiso, stat : ${permisos}">
                                         <td th:text="${stat.count}">1</td>
