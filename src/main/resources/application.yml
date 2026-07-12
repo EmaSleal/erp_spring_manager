@@ -196,6 +196,11 @@ logging:
     api.astro.whats_orders_manager: INFO
     api.astro.whats_orders_manager.controllers: INFO
     org.hibernate.SQL: WARN
-  
+
   file:
     name: /app/logs/application.log
+
+management:
+  health:
+    mail:
+      enabled: false
