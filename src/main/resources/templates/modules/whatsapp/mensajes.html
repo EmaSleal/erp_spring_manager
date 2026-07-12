@@ -267,12 +267,8 @@
                             </div>
                         </div>
                         
-                        <div th:if="${#lists.isEmpty(conversaciones)}" 
-                             class="list-group-item text-center text-muted py-5">
-                            <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                            <p class="mb-0">No hay conversaciones para mostrar</p>
-                            <small>Envía tu primer mensaje para comenzar</small>
-                        </div>
+                        <div th:if="${#lists.isEmpty(conversaciones)}"
+                             th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay conversaciones para mostrar')}"></div>
                     </div>
                 </div>
             </div>

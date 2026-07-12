@@ -240,12 +240,8 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr th:if="${#lists.isEmpty(plantillas)}">
-                                    <td colspan="8" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                                        No hay plantillas para mostrar
-                                    </td>
-                                </tr>
+                                <tr th:if="${#lists.isEmpty(plantillas)}"
+                                    th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-inbox', 'No hay plantillas para mostrar')}"></tr>
                             </tbody>
                         </table>
                     </div>

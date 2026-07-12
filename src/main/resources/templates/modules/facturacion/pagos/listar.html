@@ -210,12 +210,8 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr th:if="${#lists.isEmpty(pagos)}">
-                                    <td colspan="9" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                                        No se encontraron pagos registrados
-                                    </td>
-                                </tr>
+                                <tr th:if="${#lists.isEmpty(pagos)}"
+                                    th:replace="~{shared/fragments/empty-state :: emptyStateRow(9, 'fas fa-inbox', 'No se encontraron pagos registrados')}"></tr>
                             </tbody>
                         </table>
                     </div>
@@ -334,10 +330,8 @@
                         </div>
                         
                         <!-- Mensaje vacío -->
-                        <div th:if="${#lists.isEmpty(pagos)}" class="mobile-card-empty">
-                            <i class="bi bi-inbox"></i>
-                            <p>No se encontraron pagos registrados</p>
-                        </div>
+                        <div th:if="${#lists.isEmpty(pagos)}"
+                             th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-inbox', 'No se encontraron pagos registrados')}"></div>
                     </div>
                     
                     </div>
