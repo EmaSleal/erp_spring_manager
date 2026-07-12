@@ -115,7 +115,7 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
         if (configuracion.getSmtpUsuario() != null) {
             configuracionExistente.setSmtpUsuario(configuracion.getSmtpUsuario());
         }
-        if (configuracion.getSmtpPassword() != null) {
+        if (configuracion.getSmtpPassword() != null && !configuracion.getSmtpPassword().equals("********")) {
             configuracionExistente.setSmtpPassword(configuracion.getSmtpPassword());
         }
         if (configuracion.getSmtpSsl() != null) {
