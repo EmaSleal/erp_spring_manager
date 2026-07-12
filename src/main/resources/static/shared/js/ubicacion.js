@@ -23,15 +23,11 @@
     }
 
     async function fetchCantones(provinciaCodigo) {
-        const response = await fetch(`/api/ubicaciones/cantones?provincia=${encodeURIComponent(provinciaCodigo)}`);
-        if (!response.ok) throw new Error('Error al cargar cantones');
-        return response.json();
+        return httpGet(`/api/ubicaciones/cantones?provincia=${encodeURIComponent(provinciaCodigo)}`, { showLoading: false });
     }
 
     async function fetchDistritos(provinciaCodigo, cantonCodigo) {
-        const response = await fetch(`/api/ubicaciones/distritos?provincia=${encodeURIComponent(provinciaCodigo)}&canton=${encodeURIComponent(cantonCodigo)}`);
-        if (!response.ok) throw new Error('Error al cargar distritos');
-        return response.json();
+        return httpGet(`/api/ubicaciones/distritos?provincia=${encodeURIComponent(provinciaCodigo)}&canton=${encodeURIComponent(cantonCodigo)}`, { showLoading: false });
     }
 
     async function cargarCantonesEn(provinciaCodigo, cantonSelectId, distritoSelectId, emptyLabel = '-- Seleccione --', cantonSeleccionado = '', distritoSeleccionado = '') {
@@ -107,9 +103,7 @@
         const distritoSeleccionado = modal?.dataset.distritoCliente || '';
 
         try {
-            const response = await fetch('/api/ubicaciones/provincias');
-            if (!response.ok) throw new Error('Error al cargar provincias');
-            const provincias = await response.json();
+            const provincias = await httpGet('/api/ubicaciones/provincias', { showLoading: false });
 
             setOptions(provinciaSelect, provincias, '-- Opcional --');
 
