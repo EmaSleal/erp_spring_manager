@@ -176,7 +176,7 @@
                                         <small class="text-muted">ID: <span th:text="${factura.cliente.idCliente}">123</span></small>
                                     </td>
                                     <td class="text-end">
-                                        <span class="fw-bold" th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</span>
+                                        <span class="fw-bold" th:text="${(factura.monedaFE != null ? factura.monedaFE.simbolo : '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</span>
                                     </td>
                                     <td class="text-center">
                                         <span th:if="${factura.entregado}" class="badge bg-success">
@@ -325,7 +325,7 @@
                                 <div class="mobile-card-row">
                                     <span class="mobile-card-label">Total</span>
                                     <span class="mobile-card-value">
-                                        <strong class="text-success" th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</strong>
+                                        <strong class="text-success" th:text="${(factura.monedaFE != null ? factura.monedaFE.simbolo : '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</strong>
                                     </span>
                                 </div>
                                 

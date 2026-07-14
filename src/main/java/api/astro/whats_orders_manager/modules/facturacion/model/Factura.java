@@ -185,6 +185,18 @@ public class Factura {
         BigDecimal totalPagado = calcularTotalPagado();
         return total != null ? total.subtract(totalPagado) : BigDecimal.ZERO;
     }
+
+    // Returns the invoice total converted to CRC for consolidated report aggregation.
+    // Uses tipoCambio stored at invoice creation time; falls back to 1 if absent.
+    @Transient
+    public BigDecimal getTotalEnCRC() {
+        BigDecimal t = total != null ? total : BigDecimal.ZERO;
+        if (monedaFE == null || monedaFE == api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE.CRC) {
+            return t;
+        }
+        BigDecimal tc = (tipoCambio != null && tipoCambio.compareTo(BigDecimal.ZERO) > 0) ? tipoCambio : BigDecimal.ONE;
+        return t.multiply(tc).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
     
     /**
      * Actualiza el estado de pago de la factura basado en los pagos aplicados.
