@@ -6,8 +6,8 @@ services:
     image: mysql:8.0.32
     container_name: whats_orders_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: facturas_monrachem
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-facturas_monrachem}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -15,7 +15,7 @@ services:
     # NO exponemos puerto al host (solo accesible internamente)
     command: --authentication_policy=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -32,15 +32,14 @@ services:
         condition: service_healthy
     environment:
       # Configuración de Base de Datos (apunta al contenedor MySQL)
-      DB_URL: jdbc:mysql://mysql:3306/facturas_monrachem?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      DB_USERNAME: root
-      DB_PASSWORD: password
-      
-      # Configuración de Email (mantener las del application.yml)
-      EMAIL_HOST: smtp.gmail.com
-      EMAIL_PORT: 587
-      EMAIL_USERNAME: EMAIL_PLACEHOLDER
-      EMAIL_PASSWORD: "REDACTED"
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-facturas_monrachem}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USERNAME: ${EMAIL_USERNAME:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
       
       # Configuración de WhatsApp (ajustar según necesidad)
       WHATSAPP_API_URL: ${WHATSAPP_API_URL:-https://graph.facebook.com/v17.0}
@@ -81,7 +80,7 @@ services:
       - ./database/seeds:/seeds:ro
       - ./database/routines:/routines:ro
     environment:
-      MYSQL_PWD: password
+      MYSQL_PWD: ${DB_PASSWORD}
     networks:
       - app-network
     command: >
