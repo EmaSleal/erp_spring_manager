@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
+import api.astro.whats_orders_manager.modules.facturacion.dto.EstadoCuentaClienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.ReporteCajaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
@@ -269,4 +270,14 @@ public interface PagoService {
      * @return populated ReporteCajaDTO
      */
     ReporteCajaDTO buildReporteCaja(LocalDate fecha);
+
+    /**
+     * Assembles the full account statement for a given client.
+     * Includes all invoices, all payments, and aggregated totals.
+     *
+     * @param idCliente client primary key
+     * @return populated EstadoCuentaClienteDTO
+     * @throws jakarta.persistence.EntityNotFoundException when the client does not exist
+     */
+    EstadoCuentaClienteDTO buildEstadoCuenta(Integer idCliente);
 }
