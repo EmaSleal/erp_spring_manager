@@ -1,3 +1,0 @@
-# fixes
-
-- [FIX MATRIZ PERMISOS LAYOUT](sprints/SPRINT_4/fixes/FIX_MATRIZ_PERMISOS_LAYOUT/manifest.md)

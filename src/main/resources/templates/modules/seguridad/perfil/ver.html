@@ -227,17 +227,7 @@
                 </nav>
                 
                 <!-- Success/Error Messages -->
-                <div th:if="${success}" class="alert alert-success alert-custom alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <span th:text="${success}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                
-                <div th:if="${error}" class="alert alert-danger alert-custom alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <span th:text="${error}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                <div th:replace="~{shared/fragments/alerts :: alerts(${success}, ${error})}"></div>
                 
                 <!-- Profile Card -->
                 <div class="profile-card">
@@ -388,9 +378,7 @@
                         <a th:href="@{/perfil/editar}" class="btn btn-primary btn-edit">
                             <i class="fas fa-edit me-2"></i>Editar Perfil
                         </a>
-                        <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
-                        </a>
+                        <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/dashboard', 'Volver al Dashboard')}"></a>
                     </div>
                 </div>
                 

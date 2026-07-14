@@ -8,6 +8,9 @@
 </head>
 
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+
     <!-- Navbar -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 
@@ -53,15 +56,7 @@
                 </div>
                 
                 <!-- Alertas -->
-                <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle"></i> <span th:text="${success}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                
-                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-triangle"></i> <span th:text="${error}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                <div th:replace="~{shared/fragments/alerts :: alerts(${success}, ${error})}"></div>
                 
                 <!-- Tarjetas de estadísticas -->
                 <div class="row mb-4">
@@ -140,13 +135,7 @@
                                 <!-- Búsqueda general -->
                                 <div class="col-md-4">
                                     <label for="buscar" class="form-label">Buscar</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">
-                                            <i class="bi bi-search"></i>
-                                        </span>
-                                        <input type="text" class="form-control" id="buscar" name="buscar"
-                                            th:value="${busqueda}" placeholder="Código, nombre o descripción...">
-                                    </div>
+                                    <div th:replace="~{shared/fragments/search-bar :: searchBarForm('buscar', 'buscar', 'Código, nombre o descripción...', ${busqueda})}"></div>
                                 </div>
                                 
                                 <!-- Filtro por categoría -->
@@ -225,12 +214,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr th:if="${#lists.isEmpty(permisos)}">
-                                        <td colspan="7" class="text-center text-muted py-5">
-                                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                                            <p class="mb-0">No se encontraron permisos con los filtros aplicados</p>
-                                        </td>
-                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(permisos)}"
+                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron permisos con los filtros aplicados')}"></tr>
                                     
                                     <tr th:each="permiso, stat : ${permisos}">
                                         <td th:text="${stat.count}">1</td>

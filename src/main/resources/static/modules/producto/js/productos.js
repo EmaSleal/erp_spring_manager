@@ -171,57 +171,28 @@ function guardarProducto() {
     };
 
     const url = idProductoRaw ? '/productos/actualizar' : '/productos/guardar';
-    const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
 
-    fetch(url, {
-        method: 'POST',
-        body: JSON.stringify(productoData),
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        }
-    })
-    .then(response => {
-        if (response.ok) {
+    httpPost(url, productoData, {
+        onSuccess: () => {
             productoModal.hide();
-            Swal.fire({
-                icon: 'success',
-                title: '¡Éxito!',
-                text: idProductoRaw ? 'Producto actualizado correctamente' : 'Producto agregado correctamente',
-                timer: 2000,
-                showConfirmButton: false
-            }).then(() => window.location.reload());
-        } else {
-            throw new Error('Error al guardar el producto');
+            showToast('success', idProductoRaw ? 'Producto actualizado correctamente' : 'Producto agregado correctamente');
+            setTimeout(() => window.location.reload(), 2000);
+        },
+        onError: () => {
+            showToast('error', 'No se pudo guardar el producto. Intente nuevamente.');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo guardar el producto. Intente nuevamente.',
-            confirmButtonText: 'Aceptar'
-        });
     });
 }
 
-function eliminarProducto(idProducto, descripcion) {
-    Swal.fire({
-        title: '¿Eliminar producto?',
-        text: `¿Está seguro de eliminar "${descripcion}"? Esta acción no se puede deshacer.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Redirigir a la URL de eliminación
-            window.location.href = `/productos/eliminar/${idProducto}`;
-        }
-    });
+async function eliminarProducto(idProducto, descripcion) {
+    const confirmed = await showConfirmDialog(
+        '¿Eliminar producto?',
+        `¿Está seguro de eliminar "${descripcion}"? Esta acción no se puede deshacer.`,
+        'Sí, eliminar'
+    );
+    if (confirmed) {
+        window.location.href = `/productos/eliminar/${idProducto}`;
+    }
 }
 
 // ========================================

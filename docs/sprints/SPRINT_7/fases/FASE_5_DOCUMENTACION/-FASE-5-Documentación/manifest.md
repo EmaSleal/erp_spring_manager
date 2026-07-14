@@ -1,5 +1,0 @@
-# FASE 5 Documentación
-
-- [📦 1. MANUAL DE SEGURIDAD (1 tarea)](sprints/SPRINT_7/fases/FASE_5_DOCUMENTACION/-FASE-5-Documentación/-1.-MANUAL-DE-SEGURIDAD-1-tarea.md)
-- [📋 OBJETIVO DE LA FASE](sprints/SPRINT_7/fases/FASE_5_DOCUMENTACION/-FASE-5-Documentación/-OBJETIVO-DE-LA-FASE.md)
-- [📊 PROGRESO GENERAL](sprints/SPRINT_7/fases/FASE_5_DOCUMENTACION/-FASE-5-Documentación/-PROGRESO-GENERAL.md)

@@ -1,6 +1,0 @@
-# SPRINT 1
-
-- [FASES](sprints/SPRINT_1/FASES/manifest.md)
-- [INDICE MAESTRO](sprints/SPRINT_1/INDICE_MAESTRO/manifest.md)
-- [SPRINT 1 CHECKLIST](sprints/SPRINT_1/SPRINT_1_CHECKLIST/manifest.md)
-- [SPRINT 1 RESUMEN COMPLETO](sprints/SPRINT_1/SPRINT_1_RESUMEN_COMPLETO/manifest.md)

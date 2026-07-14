@@ -237,13 +237,7 @@
         <div class="filter-section">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-text">
-                            <i class="fas fa-search"></i>
-                        </span>
-                        <input type="text" class="form-control" id="searchInput" 
-                               placeholder="Buscar permiso...">
-                    </div>
+                    <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar permiso...', null)}"></div>
                 </div>
                 <div class="col-md-6 text-end">
                     <button class="btn btn-export" onclick="exportarMatriz()">

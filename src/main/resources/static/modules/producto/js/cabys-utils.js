@@ -10,12 +10,7 @@ function buscarCabys() {
     const termino = document.getElementById('cabysBusqueda').value.trim();
     
     if (!termino) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Búsqueda vacía',
-            text: 'Por favor ingrese un término de búsqueda',
-            confirmButtonText: 'Aceptar'
-        });
+        showToast('warning', 'Por favor ingrese un término de búsqueda');
         return;
     }
     
@@ -24,45 +19,25 @@ function buscarCabys() {
     const textoOriginal = btnBuscar.innerHTML;
     btnBuscar.disabled = true;
     btnBuscar.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Buscando...';
-    
-    // Obtener CSRF token
-    const csrfToken = document.querySelector('input[name="_csrf"]').value;
-    
+
     // Llamar al endpoint
-    fetch(`/api/configuracion/empresa/hacienda/cabys/buscar?q=${encodeURIComponent(termino)}&top=10`, {
-        method: 'GET',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Content-Type': 'application/json'
+    httpGet(`/api/configuracion/empresa/hacienda/cabys/buscar?q=${encodeURIComponent(termino)}&top=10`, {
+        showLoading: false,
+        onSuccess: (data) => {
+            btnBuscar.disabled = false;
+            btnBuscar.innerHTML = textoOriginal;
+
+            if (data.data && data.data.cabys) {
+                mostrarResultadosCabys(data.data.cabys);
+            } else {
+                showToast('info', data.message || 'No se encontraron códigos CABYS para el término buscado');
+            }
+        },
+        onError: () => {
+            btnBuscar.disabled = false;
+            btnBuscar.innerHTML = textoOriginal;
+            showToast('error', 'No se pudo conectar con la API de Hacienda. Intente nuevamente.');
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        btnBuscar.disabled = false;
-        btnBuscar.innerHTML = textoOriginal;
-        
-        if (data.success && data.data && data.data.cabys) {
-            mostrarResultadosCabys(data.data.cabys);
-        } else {
-            Swal.fire({
-                icon: 'info',
-                title: 'Sin resultados',
-                text: data.message || 'No se encontraron códigos CABYS para el término buscado',
-                confirmButtonText: 'Aceptar'
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Error al buscar CABYS:', error);
-        btnBuscar.disabled = false;
-        btnBuscar.innerHTML = textoOriginal;
-        
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con la API de Hacienda. Intente nuevamente.',
-            confirmButtonText: 'Aceptar'
-        });
     });
 }
 
@@ -109,18 +84,7 @@ function mostrarResultadosCabys(cabys) {
     divResultados.style.display = 'block';
     
     // Toast informativo
-    const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true
-    });
-    
-    Toast.fire({
-        icon: 'success',
-        title: `Se encontraron ${cabys.length} códigos CABYS`
-    });
+    showToast('success', `Se encontraron ${cabys.length} códigos CABYS`);
 }
 
 /**
@@ -145,18 +109,7 @@ function seleccionarCabys(cabys) {
     document.getElementById('cabysBusqueda').value = '';
     
     // Toast de confirmación
-    const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true
-    });
-    
-    Toast.fire({
-        icon: 'success',
-        title: 'Código CABYS seleccionado'
-    });
+    showToast('success', 'Código CABYS seleccionado');
 }
 
 /**

@@ -38,16 +38,8 @@ class PreferenciasNotificaciones {
 
     async cargarPreferencias() {
         try {
-            const response = await fetch('/api/notificaciones/preferencias');
-            
-            if (!response.ok) {
-                throw new Error('Error al cargar preferencias');
-            }
-
-            const preferencias = await response.json();
-            this.preferencias = preferencias;
+            this.preferencias = await httpGet('/api/notificaciones/preferencias', { showLoading: false });
             this.renderPreferencias();
-            
         } catch (error) {
             console.error('Error cargando preferencias:', error);
             this.mostrarError();
@@ -212,27 +204,14 @@ class PreferenciasNotificaciones {
             this.btnGuardar.disabled = true;
             this.btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
 
-            // Enviar al backend
-            const response = await fetch('/api/notificaciones/preferencias', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [csrfHeader]: csrfToken
-                },
-                body: JSON.stringify(preferenciasActualizadas)
-            });
+            await httpPut('/api/notificaciones/preferencias', preferenciasActualizadas, { showLoading: false });
 
-            if (!response.ok) {
-                throw new Error('Error al guardar preferencias');
-            }
-
-            // Éxito
             this.cambiosPendientes = false;
             this.btnGuardar.classList.remove('btn-warning');
             this.btnGuardar.classList.add('btn-success');
             this.btnGuardar.innerHTML = '<i class="fas fa-check me-2"></i>Guardado';
 
-            this.mostrarMensaje('Preferencias guardadas correctamente', 'success');
+            showToast('success', 'Preferencias guardadas correctamente');
 
             // Restaurar botón después de 2 segundos
             setTimeout(() => {
@@ -246,18 +225,20 @@ class PreferenciasNotificaciones {
             console.error('Error guardando preferencias:', error);
             this.btnGuardar.disabled = false;
             this.btnGuardar.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Preferencias';
-            this.mostrarMensaje('Error al guardar las preferencias', 'error');
+            showToast('error', 'Error al guardar las preferencias');
         }
     }
 
     async restaurarDefecto() {
-        if (!confirm('¿Estás seguro de que deseas restaurar las preferencias por defecto?\n\nEsto activará todos los canales para todos los tipos de notificación.')) {
-            return;
-        }
+        const confirmed = await showConfirmDialog(
+            '¿Restaurar preferencias por defecto?',
+            'Esto activará todos los canales para todos los tipos de notificación.'
+        );
+        if (!confirmed) return;
 
         try {
             // TODO: Implementar endpoint de restaurar por defecto
-            this.mostrarMensaje('Funcionalidad en desarrollo', 'warning');
+            showToast('warning', 'Funcionalidad en desarrollo');
             return;
             
             /* COMMENTED OUT - Endpoint no implementado aún
@@ -297,38 +278,6 @@ class PreferenciasNotificaciones {
         `;
     }
 
-    mostrarMensaje(mensaje, tipo) {
-        // Crear toast de Bootstrap
-        const toastHTML = `
-            <div class="toast align-items-center text-white bg-${tipo === 'success' ? 'success' : 'danger'} border-0" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                        ${mensaje}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>
-        `;
-
-        // Contenedor de toasts
-        let toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-            document.body.appendChild(toastContainer);
-        }
-
-        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-        const toastElement = toastContainer.lastElementChild;
-        const toast = new bootstrap.Toast(toastElement);
-        toast.show();
-
-        // Eliminar del DOM después de ocultar
-        toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.remove();
-        });
-    }
 }
 
 // Instancia global

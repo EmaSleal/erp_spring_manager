@@ -40,9 +40,7 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/dashboard', 'Volver a Dashboard')}"></a>
                     <a th:href="@{/whatsapp/plantillas}" class="btn btn-outline-primary">
                         <i class="fas fa-file-alt me-2"></i>Plantillas
                     </a>

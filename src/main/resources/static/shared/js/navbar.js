@@ -423,15 +423,8 @@ class NotificacionesDropdown {
 
     async cargarNotificaciones() {
         try {
-            const response = await fetch('/api/notificaciones/no-leidas?page=0&size=' + this.maxNotificaciones);
-            
-            if (!response.ok) {
-                throw new Error('Error al cargar notificaciones');
-            }
-
-            const data = await response.json();
+            const data = await httpGet('/api/notificaciones/no-leidas?page=0&size=' + this.maxNotificaciones, { showLoading: false });
             this.renderNotificaciones(data.content || []);
-            
         } catch (error) {
             console.error('Error cargando notificaciones:', error);
             this.mostrarError();
@@ -526,27 +519,16 @@ class NotificacionesDropdown {
 
     async marcarComoLeida(id, url) {
         try {
-            const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+            await httpPut(`/api/notificaciones/${id}/marcar-leida`, null, { showLoading: false });
 
-            const response = await fetch(`/api/notificaciones/${id}/marcar-leida`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [csrfHeader]: csrfToken
-                }
-            });
+            // Actualizar contador
+            this.actualizarContador();
 
-            if (response.ok) {
-                // Actualizar contador
-                this.actualizarContador();
-                
-                // Redirigir si hay URL
-                if (url && url !== 'null' && url !== '/notificaciones') {
-                    window.location.href = url;
-                } else {
-                    window.location.href = '/notificaciones';
-                }
+            // Redirigir si hay URL
+            if (url && url !== 'null' && url !== '/notificaciones') {
+                window.location.href = url;
+            } else {
+                window.location.href = '/notificaciones';
             }
         } catch (error) {
             console.error('Error marcando notificación como leída:', error);
@@ -555,13 +537,8 @@ class NotificacionesDropdown {
 
     async actualizarContador() {
         try {
-            const response = await fetch('/api/notificaciones/contador-no-leidas');
-            
-            if (!response.ok) throw new Error('Error al obtener contador');
-
-            const contador = await response.json();
+            const contador = await httpGet('/api/notificaciones/contador-no-leidas', { showLoading: false });
             this.actualizarBadge(contador);
-            
         } catch (error) {
             console.error('Error actualizando contador:', error);
         }

@@ -46,20 +46,15 @@ Chart.defaults.color = '#666';
  * Carga y renderiza el gráfico de ventas por mes (línea)
  */
 function cargarGraficoVentasPorMes() {
-    fetch('/reportes/api/ventas-por-mes?meses=12')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al cargar datos de ventas');
-            }
-            return response.json();
-        })
-        .then(data => {
+    httpGet('/reportes/api/ventas-por-mes?meses=12', {
+        showLoading: false,
+        onSuccess: (data) => {
             renderizarGraficoVentasPorMes(data);
-        })
-        .catch(error => {
-            console.error('Error al cargar gráfico de ventas:', error);
+        },
+        onError: () => {
             mostrarErrorGrafico('ventasPorMesChart', 'Error al cargar datos de ventas');
-        });
+        }
+    });
 }
 
 /**
@@ -175,20 +170,15 @@ function renderizarGraficoVentasPorMes(data) {
  * Carga y renderiza el gráfico de clientes nuevos por mes (barras)
  */
 function cargarGraficoClientesNuevos() {
-    fetch('/reportes/api/clientes-nuevos?meses=12')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al cargar datos de clientes nuevos');
-            }
-            return response.json();
-        })
-        .then(data => {
+    httpGet('/reportes/api/clientes-nuevos?meses=12', {
+        showLoading: false,
+        onSuccess: (data) => {
             renderizarGraficoClientesNuevos(data);
-        })
-        .catch(error => {
-            console.error('Error al cargar gráfico de clientes nuevos:', error);
+        },
+        onError: () => {
             mostrarErrorGrafico('clientesNuevosChart', 'Error al cargar datos de clientes');
-        });
+        }
+    });
 }
 
 /**
@@ -289,20 +279,15 @@ function renderizarGraficoClientesNuevos(data) {
  * Carga y renderiza el gráfico de productos más vendidos (barras horizontales)
  */
 function cargarGraficoProductosMasVendidos() {
-    fetch('/reportes/api/productos-mas-vendidos?limite=10')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al cargar datos de productos');
-            }
-            return response.json();
-        })
-        .then(data => {
+    httpGet('/reportes/api/productos-mas-vendidos?limite=10', {
+        showLoading: false,
+        onSuccess: (data) => {
             renderizarGraficoProductosMasVendidos(data);
-        })
-        .catch(error => {
-            console.error('Error al cargar gráfico de productos:', error);
+        },
+        onError: () => {
             mostrarErrorGrafico('productosMasVendidosChart', 'Error al cargar datos de productos');
-        });
+        }
+    });
 }
 
 /**
@@ -409,20 +394,15 @@ function renderizarGraficoProductosMasVendidos(data) {
  * Carga y renderiza el gráfico de estado de facturas (pie/doughnut)
  */
 function cargarGraficoEstadoFacturas() {
-    fetch('/reportes/api/estado-facturas')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al cargar datos de estado de facturas');
-            }
-            return response.json();
-        })
-        .then(data => {
+    httpGet('/reportes/api/estado-facturas', {
+        showLoading: false,
+        onSuccess: (data) => {
             renderizarGraficoEstadoFacturas(data);
-        })
-        .catch(error => {
-            console.error('Error al cargar gráfico de estado de facturas:', error);
+        },
+        onError: () => {
             mostrarErrorGrafico('estadoFacturasChart', 'Error al cargar estado de facturas');
-        });
+        }
+    });
 }
 
 /**
@@ -505,20 +485,15 @@ function renderizarGraficoEstadoFacturas(data) {
  * Carga y renderiza el gráfico comparativo de ingresos (barras + línea)
  */
 function cargarGraficoComparativaIngresos() {
-    fetch('/reportes/api/comparativa-ingresos?meses=6')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al cargar datos de comparativa de ingresos');
-            }
-            return response.json();
-        })
-        .then(data => {
+    httpGet('/reportes/api/comparativa-ingresos?meses=6', {
+        showLoading: false,
+        onSuccess: (data) => {
             renderizarGraficoComparativaIngresos(data);
-        })
-        .catch(error => {
-            console.error('Error al cargar gráfico comparativo:', error);
+        },
+        onError: () => {
             mostrarErrorGrafico('comparativaIngresosChart', 'Error al cargar comparativa');
-        });
+        }
+    });
 }
 
 /**

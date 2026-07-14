@@ -35,6 +35,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Controlador para la gestión de Facturas
@@ -80,7 +81,8 @@ public class FacturaController {
                 page, size, sortBy, sortDir);
 
         try {
-            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir);
+            Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir,
+                    Set.of("idFactura", "fechaEmision", "total", "estado", "estadoPago", "fechaEntrega"), "idFactura");
 
             // Derivar el filtro de entrega a partir del valor plano del select
             Boolean entregado = "entregado".equals(status) ? Boolean.TRUE

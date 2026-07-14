@@ -6,6 +6,9 @@
     <title>Reporte de Clientes</title>
 </head>
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/reportes/css/reportes.css}">
+
     <!-- Navbar -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 
@@ -164,11 +167,8 @@
                 </div>
 
                 <!-- Empty State -->
-                <div th:if="${clientes == null || clientes.isEmpty()}" class="empty-state">
-                    <i class="fas fa-users-slash"></i>
-                    <h5>No hay clientes para mostrar</h5>
-                    <p>No se encontraron clientes con los filtros seleccionados.</p>
-                </div>
+                <div th:if="${clientes == null || clientes.isEmpty()}"
+                     th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-users-slash', 'No hay clientes para mostrar')}"></div>
             </div>
         </div>
     </div>

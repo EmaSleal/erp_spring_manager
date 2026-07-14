@@ -6,6 +6,9 @@
     <title>Conversaciones WhatsApp</title>
 </head>
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/whatsapp/css/whatsapp.css}">
+
     <!-- Navbar -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 
@@ -40,9 +43,7 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Dashboard
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/dashboard', 'Volver a Dashboard')}"></a>
                     <a th:href="@{/whatsapp/plantillas}" class="btn btn-outline-primary">
                         <i class="fas fa-file-alt me-2"></i>Plantillas
                     </a>
@@ -264,12 +265,8 @@
                             </div>
                         </div>
                         
-                        <div th:if="${#lists.isEmpty(conversaciones)}" 
-                             class="list-group-item text-center text-muted py-5">
-                            <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                            <p class="mb-0">No hay conversaciones para mostrar</p>
-                            <small>Envía tu primer mensaje para comenzar</small>
-                        </div>
+                        <div th:if="${#lists.isEmpty(conversaciones)}"
+                             th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay conversaciones para mostrar')}"></div>
                     </div>
                 </div>
             </div>

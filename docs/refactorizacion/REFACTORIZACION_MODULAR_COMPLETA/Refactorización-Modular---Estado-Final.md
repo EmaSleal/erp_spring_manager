@@ -1,2 +1,0 @@
-# Refactorización Modular - Estado Final
-

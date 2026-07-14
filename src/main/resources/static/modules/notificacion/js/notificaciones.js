@@ -69,15 +69,9 @@ class NotificacionesPage {
             if (tipo) params.append('tipo', tipo);
             if (leida !== '') params.append('leida', leida);
 
-            const response = await fetch(`/api/notificaciones?${params.toString()}`);
-            
-            if (!response.ok) {
-                throw new Error('Error al cargar notificaciones');
-            }
-
-            const data = await response.json();
+            const data = await httpGet(`/api/notificaciones?${params.toString()}`, { showLoading: false });
             this.renderNotificaciones(data);
-            
+
         } catch (error) {
             console.error('Error cargando notificaciones:', error);
             this.mostrarError();
@@ -234,21 +228,13 @@ class NotificacionesPage {
 
     async marcarComoLeida(id) {
         try {
-            const response = await fetch(`/api/notificaciones/${id}/marcar-leida`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [csrfHeader]: csrfToken
-                }
-            });
+            await httpPut(`/api/notificaciones/${id}/marcar-leida`, null, { showLoading: false });
 
-            if (response.ok) {
-                // Recargar lista
-                this.cargarNotificaciones();
-                // Actualizar badge del navbar
-                if (typeof notificacionesDropdown !== 'undefined') {
-                    notificacionesDropdown.actualizarContador();
-                }
+            // Recargar lista
+            this.cargarNotificaciones();
+            // Actualizar badge del navbar
+            if (typeof notificacionesDropdown !== 'undefined') {
+                notificacionesDropdown.actualizarContador();
             }
         } catch (error) {
             console.error('Error marcando como leída:', error);
@@ -264,29 +250,18 @@ class NotificacionesPage {
 
     async marcarTodasComoLeidas() {
         try {
-            const response = await fetch('/api/notificaciones/marcar-todas-leidas', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [csrfHeader]: csrfToken
-                }
+            await httpPut('/api/notificaciones/marcar-todas-leidas', null, {
+                showLoading: true,
+                reloadOnSuccess: true
             });
 
-            if (response.ok) {
-                // Cerrar modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('confirmarModal'));
-                modal?.hide();
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('confirmarModal'));
+            modal?.hide();
 
-                // Recargar lista
-                this.cargarNotificaciones();
-
-                // Actualizar badge
-                if (typeof notificacionesDropdown !== 'undefined') {
-                    notificacionesDropdown.actualizarBadge(0);
-                }
-
-                // Mostrar mensaje de éxito
-                this.mostrarMensaje('Todas las notificaciones han sido marcadas como leídas', 'success');
+            // Actualizar badge
+            if (typeof notificacionesDropdown !== 'undefined') {
+                notificacionesDropdown.actualizarBadge(0);
             }
         } catch (error) {
             console.error('Error marcando todas como leídas:', error);
@@ -300,17 +275,9 @@ class NotificacionesPage {
         }
 
         try {
-            const response = await fetch(`/api/notificaciones/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    [csrfHeader]: csrfToken
-                }
-            });
-
-            if (response.ok) {
-                this.cargarNotificaciones();
-                this.mostrarMensaje('Notificación eliminada', 'success');
-            }
+            await httpDelete(`/api/notificaciones/${id}`, { showLoading: false });
+            this.cargarNotificaciones();
+            this.mostrarMensaje('Notificación eliminada', 'success');
         } catch (error) {
             console.error('Error eliminando notificación:', error);
             this.mostrarMensaje('Error al eliminar la notificación', 'error');

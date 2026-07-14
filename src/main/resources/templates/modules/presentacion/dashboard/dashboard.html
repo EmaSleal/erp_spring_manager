@@ -16,6 +16,9 @@
 <head th:replace="~{shared/layout :: head}"></head>
 
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/presentacion/css/dashboard.css}">
+
     <!-- NAVBAR -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 

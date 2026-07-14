@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.ui.Model;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Utilidad para operaciones de paginación
@@ -58,8 +59,22 @@ public class PaginacionUtil {
     }
     
     /**
-     * Construye un Pageable a partir de parámetros de request
+     * Builds a Pageable from request parameters.
+     * sortBy is validated against allowedFields; falls back to defaultSort if not allowed.
      */
+    public static Pageable buildPageable(int page, int size, String sortBy, String sortDir,
+                                         Set<String> allowedFields, String defaultSort) {
+        String safeSort = (sortBy != null && allowedFields.contains(sortBy)) ? sortBy : defaultSort;
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(safeSort).ascending()
+                : Sort.by(safeSort).descending();
+        return PageRequest.of(page, size, sort);
+    }
+
+    /**
+     * @deprecated Use {@link #buildPageable(int, int, String, String, Set, String)} with an explicit allowlist.
+     */
+    @Deprecated
     public static Pageable buildPageable(int page, int size, String sortBy, String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()

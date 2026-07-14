@@ -6,6 +6,9 @@
     <title>Pagos</title>
 </head>
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+
     <!-- Navbar -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 
@@ -16,38 +19,18 @@
     <main class="main-content">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs (oculto en móvil) -->
-            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/dashboard}" class="text-decoration-none">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/facturas}" class="text-decoration-none">
-                            <i class="fas fa-file-invoice-dollar me-1 text-white"></i>Facturas
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <i class="fas fa-money-bill-wave me-1"></i>Pagos
-                    </li>
-                </ol>
-            </nav>
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/facturas', 'fas fa-file-invoice-dollar', 'Facturas', 'fas fa-money-bill-wave', 'Pagos')}"></div>
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-money-bill-wave text-success me-2"></i>
-                        <span class="d-none d-md-inline">Gestión de </span>Pagos
-                    </h2>
-                    <p class="page-subtitle d-none d-md-block">Administra los pagos aplicados a facturas</p>
-                </div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-money-bill-wave', 'text-success', 'Gestión de', 'Pagos', 'Administra los pagos aplicados a facturas')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/facturas}" class="btn btn-outline-secondary" 
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver a Facturas">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver a Facturas</span>
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/facturas', 'Volver a Facturas', 'Volver a Facturas')}"></a>
+                    <a th:href="@{/pagos/pendientes-conciliacion}" class="btn btn-warning"
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver pagos pendientes de conciliación">
+                        <i class="fas fa-check-double"></i>
+                        <span class="d-none d-sm-inline ms-2">Conciliación</span>
                     </a>
                     <a th:href="@{/pagos/reporte-caja}" class="btn btn-info"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REPORTE_CAJA')"
@@ -55,7 +38,7 @@
                         <i class="fas fa-chart-line text-white"></i>
                         <span class="d-none d-sm-inline ms-2">Reporte de Caja</span>
                     </a>
-                    <a th:href="@{/pagos/nuevo}" class="btn btn-primary" 
+                    <a th:href="@{/pagos/nuevo}" class="btn btn-primary"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Registrar nuevo pago">
                         <i class="fas fa-plus"></i>
@@ -67,34 +50,10 @@
             <!-- Stats Cards -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <div class="card border-0 shadow-sm bg-success text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-2">Ingresos del Día</h6>
-                                    <h3 class="mb-0 text-white" th:text="'₡ ' + ${#numbers.formatDecimal(ingresosDia ?: 0, 1, 2)}">₡ 0.00</h3>
-                                </div>
-                                <div class="text-white-50">
-                                    <i class="fas fa-cash-register fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-success', 'Ingresos del Día', '₡ ' + ${#numbers.formatDecimal(ingresosDia ?: 0, 1, 2)}, 'fas fa-cash-register fa-3x', 'text-white-50')}"></div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card border-0 shadow-sm bg-primary text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-2">Pagos Registrados Hoy</h6>
-                                    <h3 class="mb-0 text-white" th:text="${cantidadPagosDia ?: 0}">0</h3>
-                                </div>
-                                <div class="text-white-50">
-                                    <i class="fas fa-receipt fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-primary', 'Pagos Registrados Hoy', ${cantidadPagosDia ?: 0}, 'fas fa-receipt fa-3x', 'text-white-50')}"></div>
                 </div>
             </div>
 
@@ -253,12 +212,8 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr th:if="${#lists.isEmpty(pagos)}">
-                                    <td colspan="9" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                                        No se encontraron pagos registrados
-                                    </td>
-                                </tr>
+                                <tr th:if="${#lists.isEmpty(pagos)}"
+                                    th:replace="~{shared/fragments/empty-state :: emptyStateRow(9, 'fas fa-inbox', 'No se encontraron pagos registrados')}"></tr>
                             </tbody>
                         </table>
                     </div>
@@ -377,58 +332,15 @@
                         </div>
                         
                         <!-- Mensaje vacío -->
-                        <div th:if="${#lists.isEmpty(pagos)}" class="mobile-card-empty">
-                            <i class="bi bi-inbox"></i>
-                            <p>No se encontraron pagos registrados</p>
-                        </div>
+                        <div th:if="${#lists.isEmpty(pagos)}"
+                             th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-inbox', 'No se encontraron pagos registrados')}"></div>
                     </div>
                     
                     </div>
                     <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
-                        <div class="text-muted text-center text-md-start">
-                            Mostrando <span th:text="${#lists.size(pagos)}"></span> de 
-                            <span th:text="${totalItems}"></span> pagos
-                        </div>
-                        <nav aria-label="Paginación de pagos">
-                            <ul class="pagination mb-0">
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=0, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-double-left"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-left"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item" 
-                                    th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
-                                    th:if="${pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2}"
-                                    th:classappend="${pageNumber == currentPage} ? 'active'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${pageNumber}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                       th:text="${pageNumber + 1}">1</a>
-                                </li>
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-right"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/pagos(page=${totalPages - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-double-right"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
+                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'pagos', '/pagos', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir})}"></div>
                 </div>
             </div>
         </div>

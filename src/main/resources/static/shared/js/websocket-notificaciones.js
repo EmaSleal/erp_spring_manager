@@ -153,20 +153,14 @@ function marcarComoLeida(idNotificacion) {
 /**
  * Fallback: Marcar como leída vía API REST
  */
-function marcarComoLeidaViaREST(idNotificacion) {
-    fetch(`/api/notificaciones/${idNotificacion}/marcar-leida`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => {
-        if (response.ok) {
-            console.log('✅ Notificación marcada como leída (REST)');
-            actualizarBadgeNotificaciones();
-        }
-    })
-    .catch(error => console.error('Error al marcar como leída:', error));
+async function marcarComoLeidaViaREST(idNotificacion) {
+    try {
+        await httpPost(`/api/notificaciones/${idNotificacion}/marcar-leida`, null, { showLoading: false });
+        console.log('✅ Notificación marcada como leída (REST)');
+        actualizarBadgeNotificaciones();
+    } catch (error) {
+        console.error('Error al marcar como leída:', error);
+    }
 }
 
 /**
@@ -237,12 +231,13 @@ function mostrarNotificacionError(mensaje) {
 /**
  * Actualiza el badge de notificaciones en el navbar
  */
-function actualizarBadgeNotificaciones() {
-    // Obtener contador desde servidor vía REST
-    fetch('/api/notificaciones/no-leidas/count')
-        .then(response => response.json())
-        .then(count => actualizarBadge(count))
-        .catch(error => console.error('Error al obtener contador:', error));
+async function actualizarBadgeNotificaciones() {
+    try {
+        const count = await httpGet('/api/notificaciones/no-leidas/count', { showLoading: false });
+        actualizarBadge(count);
+    } catch (error) {
+        console.error('Error al obtener contador:', error);
+    }
 }
 
 /**

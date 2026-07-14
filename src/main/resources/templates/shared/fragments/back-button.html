@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- backButton(url, label, tooltipTitle)
+     Back link with tooltip and responsive label.
+     url          - Thymeleaf URL expression string, e.g. '/dashboard'
+     label        - Full visible text, e.g. 'Volver a Dashboard'
+     tooltipTitle - Tooltip title attribute text, e.g. 'Volver al Dashboard' -->
+<a th:fragment="backButton(url, label, tooltipTitle)"
+   th:href="${url}"
+   class="btn btn-outline-secondary"
+   data-bs-toggle="tooltip"
+   data-bs-placement="bottom"
+   th:title="${tooltipTitle}">
+    <i class="fas fa-arrow-left"></i>
+    <span class="d-none d-md-inline ms-2" th:text="${label}"></span>
+</a>
+
+<!-- backButtonSimple(url, label)
+     Back link without tooltip, inline icon and label.
+     url   - Thymeleaf URL expression string, e.g. '/dashboard'
+     label - Full visible text, e.g. 'Volver a Dashboard' -->
+<a th:fragment="backButtonSimple(url, label)"
+   th:href="${url}"
+   class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-2"></i><span th:text="${label}"></span>
+</a>
+
+</html>

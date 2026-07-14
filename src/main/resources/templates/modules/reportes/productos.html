@@ -6,6 +6,9 @@
     <title>Reporte de Productos</title>
 </head>
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/reportes/css/reportes.css}">
+
     <!-- Navbar -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 
@@ -172,11 +175,8 @@
                 </div>
 
                 <!-- Empty State -->
-                <div th:if="${productos == null || productos.isEmpty()}" class="empty-state">
-                    <i class="fas fa-box-open"></i>
-                    <h5>No hay productos para mostrar</h5>
-                    <p>No se encontraron productos con los filtros seleccionados.</p>
-                </div>
+                <div th:if="${productos == null || productos.isEmpty()}"
+                     th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-box-open', 'No hay productos para mostrar')}"></div>
             </div>
         </div>
     </div>

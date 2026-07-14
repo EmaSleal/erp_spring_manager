@@ -41,9 +41,7 @@
                     <p class="text-muted mb-0">Resumen de ingresos por método de pago</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a th:href="@{/pagos}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver a Pagos
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/pagos', 'Volver a Pagos')}"></a>
                     <button onclick="window.print()" class="btn btn-primary">
                         <i class="fas fa-print me-2"></i>Imprimir
                     </button>
@@ -77,49 +75,13 @@
             <!-- Resumen General -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div class="card border-0 shadow-sm bg-success text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-2">Total Ingresos</h6>
-                                    <h2 class="mb-0" th:text="'₡ ' + ${#numbers.formatDecimal(reporte.totalIngresos, 1, 2)}">₡ 0.00</h2>
-                                </div>
-                                <div class="text-white-50">
-                                    <i class="fas fa-cash-register fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-success', 'Total Ingresos', '₡ ' + ${#numbers.formatDecimal(reporte.totalIngresos, 1, 2)}, 'fas fa-cash-register fa-3x', 'text-white-50')}"></div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card border-0 shadow-sm bg-primary text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-2">Total Pagos</h6>
-                                    <h2 class="mb-0" th:text="${reporte.cantidadPagos}">0</h2>
-                                </div>
-                                <div class="text-white-50">
-                                    <i class="fas fa-receipt fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-primary', 'Total Pagos', ${reporte.cantidadPagos}, 'fas fa-receipt fa-3x', 'text-white-50')}"></div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card border-0 shadow-sm bg-info text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-2">Fecha del Reporte</h6>
-                                    <h2 class="mb-0" th:text="${#temporals.format(reporte.fecha, 'dd/MM/yyyy')}">01/01/2025</h2>
-                                </div>
-                                <div class="text-white-50">
-                                    <i class="fas fa-calendar fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-info', 'Fecha del Reporte', ${#temporals.format(reporte.fecha, 'dd/MM/yyyy')}, 'fas fa-calendar fa-3x', 'text-white-50')}"></div>
                 </div>
             </div>
 

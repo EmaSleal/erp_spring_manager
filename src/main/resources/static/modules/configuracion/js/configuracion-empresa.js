@@ -173,18 +173,7 @@ const ConfiguracionEmpresa = {
      */
     consultarHacienda: async function(numeroIdentificacion) {
         // Mostrar indicador de carga
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2000,
-            timerProgressBar: true
-        });
-        
-        Toast.fire({
-            icon: 'info',
-            title: 'Consultando Hacienda...'
-        });
+        showToast('info', 'Consultando Hacienda...');
         
         try {
             const response = await fetch(`${this.API_URL}/hacienda/consultar/${numeroIdentificacion}`);
@@ -229,46 +218,31 @@ const ConfiguracionEmpresa = {
                 }
                 
                 // Mostrar éxito
-                Toast.fire({
-                    icon: 'success',
-                    title: '¡Datos autocompletados desde Hacienda!'
-                });
+                showToast('success', '¡Datos autocompletados desde Hacienda!');
                 
                 // Mostrar alerta si no está al día
                 if (!hacienda.estaAlDia || !hacienda.estaInscrito) {
-                    let mensaje = 'Advertencia: ';
+                    let mensaje = 'Situación Tributaria:';
                     if (!hacienda.estaInscrito) {
-                        mensaje += 'No está inscrito en Hacienda. ';
+                        mensaje += ' No inscrito en Hacienda.';
                     }
                     if (hacienda.situacion) {
                         if (hacienda.situacion.moroso === 'SI') {
-                            mensaje += 'Estado: MOROSO. ';
+                            mensaje += ' Estado: MOROSO.';
                         }
                         if (hacienda.situacion.omiso === 'SI') {
-                            mensaje += 'Estado: OMISO. ';
+                            mensaje += ' Estado: OMISO.';
                         }
                     }
-                    
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Situación Tributaria',
-                        text: mensaje,
-                        confirmButtonText: 'Entendido'
-                    });
+                    showToast('warning', mensaje);
                 }
                 
             } else {
-                Toast.fire({
-                    icon: 'error',
-                    title: data.message || 'Identificación no encontrada en Hacienda'
-                });
+                showToast('error', data.message || 'Identificación no encontrada en Hacienda');
             }
         } catch (error) {
             console.error('Error consultando Hacienda:', error);
-            Toast.fire({
-                icon: 'error',
-                title: 'Error al consultar Hacienda'
-            });
+            showToast('error', 'Error al consultar Hacienda');
         }
     },
     
@@ -301,8 +275,8 @@ const ConfiguracionEmpresa = {
     },
 
     eliminarLogo: async function() {
-        const confirmado = await Swal.fire({ title: '¿Quitar logo?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar' });
-        if (!confirmado.isConfirmed) return;
+        const confirmado = await showConfirmDialog('¿Quitar logo?', '', 'Sí, quitar');
+        if (!confirmado) return;
         const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
         const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
         const headers = { 'Content-Type': 'application/json' };
@@ -318,8 +292,8 @@ const ConfiguracionEmpresa = {
     },
 
     eliminarFavicon: async function() {
-        const confirmado = await Swal.fire({ title: '¿Quitar favicon?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar' });
-        if (!confirmado.isConfirmed) return;
+        const confirmado = await showConfirmDialog('¿Quitar favicon?', '', 'Sí, quitar');
+        if (!confirmado) return;
         const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
         const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
         const headers = { 'Content-Type': 'application/json' };
@@ -482,7 +456,7 @@ const EmpresaPdf = {
             const res = await Configuracion.put('/api/empresa/pdf-config', { textoLegal, descripcionActividad });
 
             if (!res.success) {
-                Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Error saving PDF config' });
+                showToast('error', res.message || 'Error saving PDF config');
                 return;
             }
 
@@ -493,11 +467,11 @@ const EmpresaPdf = {
                 selloInput.value = '';
             }
 
-            Swal.fire({ icon: 'success', title: 'Saved', text: 'PDF config saved successfully', timer: 1500, showConfirmButton: false });
+            showToast('success', 'PDF config saved successfully');
             this.cargarConfigPdf();
         } catch (err) {
             console.error('Error saving PDF config:', err);
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Unexpected error saving PDF config' });
+            showToast('error', 'Unexpected error saving PDF config');
         }
     },
 
@@ -517,24 +491,17 @@ const EmpresaPdf = {
     },
 
     eliminarSello: async function () {
-        const confirm = await Swal.fire({
-            icon: 'warning',
-            title: '¿Quitar sello?',
-            text: 'Se eliminará el sello actual.',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, quitar',
-            cancelButtonText: 'Cancelar'
-        });
-        if (!confirm.isConfirmed) return;
+        const confirmed = await showConfirmDialog('¿Quitar sello?', 'Se eliminará el sello actual.', 'Sí, quitar');
+        if (!confirmed) return;
 
         try {
             const res = await Configuracion.delete('/api/empresa/sello');
             if (res.success) {
                 const container = document.getElementById('sello-preview-container');
                 if (container) container.style.display = 'none';
-                Swal.fire({ icon: 'success', title: 'Done', text: 'Sello removed', timer: 1200, showConfirmButton: false });
+                showToast('success', 'Sello removed');
             } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+                showToast('error', res.message);
             }
         } catch (err) {
             console.error('Error removing sello:', err);
@@ -640,7 +607,7 @@ const EmpresaPdf = {
         };
 
         if (!payload.entidad) {
-            Swal.fire({ icon: 'warning', title: 'Requerido', text: 'El nombre de la entidad es obligatorio' });
+            showToast('warning', 'El nombre de la entidad es obligatorio');
             return;
         }
 
@@ -655,34 +622,27 @@ const EmpresaPdf = {
             if (res.success) {
                 this.cancelarCuenta();
                 await this.cargarCuentas();
-                Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+                showToast('success', 'Guardado');
             } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+                showToast('error', res.message);
             }
         } catch (err) {
             console.error('Error saving bank account:', err);
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Unexpected error saving bank account' });
+            showToast('error', 'Unexpected error saving bank account');
         }
     },
 
     eliminarCuenta: async function (id) {
-        const confirm = await Swal.fire({
-            icon: 'warning',
-            title: '¿Eliminar cuenta?',
-            text: 'Se quitará esta cuenta bancaria del PDF.',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        });
-        if (!confirm.isConfirmed) return;
+        const confirmed = await showConfirmDialog('¿Eliminar cuenta?', 'Se quitará esta cuenta bancaria del PDF.', 'Sí, eliminar');
+        if (!confirmed) return;
 
         try {
             const res = await Configuracion.delete(`/api/empresa/cuentas-bancarias/${id}`);
             if (res.success) {
                 await this.cargarCuentas();
-                Swal.fire({ icon: 'success', title: 'Eliminada', timer: 1200, showConfirmButton: false });
+                showToast('success', 'Eliminada');
             } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+                showToast('error', res.message);
             }
         } catch (err) {
             console.error('Error deleting bank account:', err);

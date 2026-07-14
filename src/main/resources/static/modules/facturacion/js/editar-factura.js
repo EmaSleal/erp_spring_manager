@@ -43,20 +43,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Cargar todos los productos
-    fetch(`/productos/records`)
-        .then(response => response.json())
-        .then(data => {
+    httpGet(`/productos/records`, {
+        showLoading: false,
+        onSuccess: (data) => {
             allProductos = data;
             if (facturaId) {
                 cargarLineas();
             }
-        });
+        }
+    });
 
     function cargarLineas() {
         if (facturaId) {
-            fetch(`/lineas-factura/detalle/${facturaId}`)
-                .then(response => response.json())
-                .then(data => {
+            httpGet(`/lineas-factura/detalle/${facturaId}`, {
+                showLoading: false,
+                onSuccess: (data) => {
                     const tableBody = document.getElementById("lineas-body");
                     tableBody.innerHTML = "";
                     data.forEach(linea => {
@@ -92,10 +93,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     
                     // Actualizar vista de cards en móvil después de cargar líneas
                     actualizarVistaLineas();
-                    
+
                     // Actualizar resumen de totales
                     actualizarResumenTotales();
-                });
+                }
+            });
         }
     }
 });
@@ -570,22 +572,12 @@ function mostrarPaso2() {
     const tipoFactura = document.getElementById("tipoFactura");
 
     if (!selectCliente.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Cliente requerido',
-            text: 'Por favor seleccione un cliente',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Por favor seleccione un cliente');
         return;
     }
 
     if (!fechaEntrega.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Fecha requerida',
-            text: 'Por favor seleccione una fecha de entrega',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Por favor seleccione una fecha de entrega');
         return;
     }
 
@@ -630,31 +622,15 @@ function mostrarPaso2() {
         plazoCredito: plazoCredito?.value ? parseInt(plazoCredito.value) : 0
     };
 
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-
-    facturaCreadaPromise = fetch('/facturas/guardar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', [csrfHeader]: csrfToken },
-        body: JSON.stringify(factura)
-    }).then(res => {
-        if (res.ok) {
-            return res.json().then(data => {
-                newFactura = data;
-                facturaId = newFactura.idFactura;
-                console.log('Factura creada:', newFactura);
-                document.getElementById("btnGuardar").disabled = false;
-                return data;
-            });
-        } else {
+    facturaCreadaPromise = httpPost('/facturas/guardar', factura, {
+        onSuccess: (data) => {
+            newFactura = data;
+            facturaId = newFactura.idFactura;
+            console.log('Factura creada:', newFactura);
+            document.getElementById("btnGuardar").disabled = false;
+        },
+        onError: () => {
             document.getElementById("btnGuardar").disabled = true;
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al crear la factura',
-                confirmButtonColor: '#d33'
-            });
-            return null;
         }
     }).catch(error => {
         document.getElementById("btnGuardar").disabled = true;
@@ -674,24 +650,14 @@ async function guardarLineas() {
     }
 
     if (!facturaId) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Factura pendiente',
-            text: 'Espere a que se cree la factura antes de guardar las líneas',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Espere a que se cree la factura antes de guardar las líneas');
         return;
     }
 
     const rows = document.querySelectorAll("#lineas-body tr");
-    
+
     if (rows.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Sin líneas',
-            text: 'Debe agregar al menos una línea de producto',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Debe agregar al menos una línea de producto');
         return;
     }
 
@@ -738,12 +704,7 @@ async function guardarLineas() {
     
     // Validar que haya al menos una línea válida
     if (lineas.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Sin productos',
-            text: 'Debe seleccionar al menos un producto válido',
-            confirmButtonColor: '#3085d6'
-        });
+        showToast('warning', 'Debe seleccionar al menos un producto válido');
         return;
     }
     
@@ -752,60 +713,38 @@ async function guardarLineas() {
         console.log(`Se omitieron ${lineasVacias} línea(s) vacía(s)`);
     }
 
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-
     // Primero guardar las líneas
-    fetch('/lineas-factura/actualizar', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', [csrfHeader]: csrfToken },
-        body: JSON.stringify(lineas)
-    }).then(res => {
-        if (res.ok) {
+    httpPut('/lineas-factura/actualizar', lineas, {
+        onSuccess: () => {
             // Luego actualizar el estado de la factura
             const entregadoSelect = document.getElementById("entregado");
             const estadoEntregado = entregadoSelect ? (entregadoSelect.value === 'true') : false;
-            
+
             console.log('Actualizando estado a:', estadoEntregado);
-            
+
             const descInput = document.getElementById('descripcion');
             const fechaInput = document.getElementById('fechaEntrega');
             const params = new URLSearchParams({ entregado: estadoEntregado });
             params.append('descripcion', descInput ? descInput.value : '');
             params.append('fechaEntrega', fechaInput ? fechaInput.value : '');
 
-            return fetch(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, {
-                method: 'PUT',
-                headers: { [csrfHeader]: csrfToken }
-            });
-        } else {
-            throw new Error('Error al guardar las líneas');
-        }
-    }).then(res => {
-        if (res && res.ok) {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Éxito!',
-                text: 'Factura guardada correctamente',
-                confirmButtonColor: '#28a745',
-                timer: 2000
-            }).then(() => {
-                if (nuevaFacturaModal) {
-                    nuevaFacturaModal.hide();
-                    location.reload();
-                } else {
-                    window.location.href = '/facturas';
+            httpPut(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, null, {
+                successMessage: 'Factura guardada correctamente',
+                onSuccess: () => {
+                    setTimeout(() => {
+                        if (nuevaFacturaModal) {
+                            nuevaFacturaModal.hide();
+                            location.reload();
+                        } else {
+                            window.location.href = '/facturas';
+                        }
+                    }, 2000);
                 }
             });
         }
     }).catch(error => {
         console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Error al guardar la factura: ' + error.message,
-            confirmButtonColor: '#d33'
-        });
+        showToast('error', 'Error al guardar la factura: ' + error.message);
     });
 }
 

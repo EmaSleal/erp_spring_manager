@@ -1,1 +1,0 @@
-  # ngrok instalado y configurado ✅

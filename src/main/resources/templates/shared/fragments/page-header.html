@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- breadcrumb(icon, label)
+     Two-item breadcrumb: Dashboard > active item.
+     icon  - FA icon class for the active item (e.g. 'fas fa-users')
+     label - Text label for the active item -->
+<nav th:fragment="breadcrumb(icon, label)"
+     aria-label="breadcrumb" class="mb-3 d-none d-md-block">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a th:href="@{/dashboard}" class="text-decoration-none">
+                <i class="fas fa-home me-1"></i>Dashboard
+            </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            <i th:class="${icon} + ' me-1'"></i>
+            <span th:text="${label}"></span>
+        </li>
+    </ol>
+</nav>
+
+<!-- breadcrumbNested(parentUrl, parentIcon, parentLabel, icon, label)
+     Three-item breadcrumb: Dashboard > parent > active item.
+     parentUrl   - URL for the intermediate parent item (e.g. '/facturas')
+     parentIcon  - FA icon class for the parent item (e.g. 'fas fa-file-invoice-dollar')
+     parentLabel - Text label for the parent item
+     icon        - FA icon class for the active leaf item
+     label       - Text label for the active leaf item -->
+<nav th:fragment="breadcrumbNested(parentUrl, parentIcon, parentLabel, icon, label)"
+     aria-label="breadcrumb" class="mb-3 d-none d-md-block">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a th:href="@{/dashboard}" class="text-decoration-none">
+                <i class="fas fa-home me-1"></i>Dashboard
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a th:href="${parentUrl}" class="text-decoration-none">
+                <i th:class="${parentIcon} + ' me-1'"></i>
+                <span th:text="${parentLabel}"></span>
+            </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            <i th:class="${icon} + ' me-1'"></i>
+            <span th:text="${label}"></span>
+        </li>
+    </ol>
+</nav>
+
+<!-- pageHeaderContent(icon, iconColor, titlePrefix, title, subtitle)
+     Renders only the div.page-header-content block (title + subtitle).
+     Use this inside your own div.page-header when the page has additional
+     action buttons that vary per page.
+
+     icon        - FA icon class (e.g. 'fas fa-users')
+     iconColor   - Bootstrap text color class (e.g. 'text-primary')
+     titlePrefix - Text prepended to title on md+ screens only; pass '' to skip
+     title       - Main title text, always visible
+     subtitle    - Subtitle shown on md+ screens; pass '' to skip -->
+<div th:fragment="pageHeaderContent(icon, iconColor, titlePrefix, title, subtitle)"
+     class="page-header-content">
+    <h2 class="page-title">
+        <i th:class="${icon} + ' ' + ${iconColor} + ' me-2'"></i>
+        <span th:if="${titlePrefix != null and !#strings.isEmpty(titlePrefix)}"
+              class="d-none d-md-inline"
+              th:text="${titlePrefix} + ' '"></span><span th:text="${title}"></span>
+    </h2>
+    <p th:if="${subtitle != null and !#strings.isEmpty(subtitle)}"
+       class="page-subtitle d-none d-md-block"
+       th:text="${subtitle}"></p>
+</div>
+
+<!-- pageHeader(icon, iconColor, titlePrefix, title, subtitle, backUrl, backLabel)
+     Full page header with title block and a back-only actions area.
+     Use this for pages that have no primary action button beyond the back link.
+
+     icon        - FA icon class (e.g. 'fas fa-calculator')
+     iconColor   - Bootstrap text color class (e.g. 'text-danger')
+     titlePrefix - Text prepended to title on md+ screens only; pass '' to skip
+     title       - Main title text, always visible
+     subtitle    - Subtitle shown on md+ screens; pass '' to skip
+     backUrl     - URL expression for the back button (e.g. '/dashboard')
+     backLabel   - Destination appended after "Volver a "; pass '' to show just "Volver" -->
+<div th:fragment="pageHeader(icon, iconColor, titlePrefix, title, subtitle, backUrl, backLabel)"
+     class="page-header mb-4">
+    <div class="page-header-content">
+        <h2 class="page-title">
+            <i th:class="${icon} + ' ' + ${iconColor} + ' me-2'"></i>
+            <span th:if="${titlePrefix != null and !#strings.isEmpty(titlePrefix)}"
+                  class="d-none d-md-inline"
+                  th:text="${titlePrefix} + ' '"></span><span th:text="${title}"></span>
+        </h2>
+        <p th:if="${subtitle != null and !#strings.isEmpty(subtitle)}"
+           class="page-subtitle d-none d-md-block"
+           th:text="${subtitle}"></p>
+    </div>
+    <div class="page-header-actions">
+        <a th:href="${backUrl}" class="btn btn-outline-secondary"
+           data-bs-toggle="tooltip" data-bs-placement="bottom"
+           th:title="${backLabel != null and !#strings.isEmpty(backLabel)} ? 'Volver a ' + ${backLabel} : 'Volver'">
+            <i class="fas fa-arrow-left"></i>
+            <span class="d-none d-md-inline ms-2"
+                  th:text="${backLabel != null and !#strings.isEmpty(backLabel)} ? 'Volver a ' + ${backLabel} : 'Volver'"></span>
+        </a>
+    </div>
+</div>
+
+</html>

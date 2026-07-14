@@ -4,6 +4,9 @@
 <head th:replace="~{shared/layout :: head}"></head>
 
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+
     <!-- Navbar -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
 
@@ -167,16 +170,7 @@
                 </div>
 
                 <!-- Mensaje de éxito/error -->
-                <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    <span th:text="${success}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <span th:text="${error}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                <div th:replace="~{shared/fragments/alerts :: alerts(${success}, ${error})}"></div>
 
                 <!-- Tabla de usuarios -->
                 <div class="card">
@@ -201,12 +195,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr th:if="${usuarios.isEmpty()}">
-                                        <td colspan="7" class="text-center py-4">
-                                            <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
-                                            <p class="text-muted mb-0">No se encontraron usuarios</p>
-                                        </td>
-                                    </tr>
+                                    <tr th:if="${usuarios.isEmpty()}"
+                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron usuarios')}"></tr>
                                     <tr th:each="usuario, iter : ${usuarios}">
                                         <td th:text="${(currentPage * size) + iter.index + 1}">1</td>
                                         <td>
@@ -322,64 +312,7 @@
 
                     <!-- Paginación -->
                     <div class="card-footer" th:if="${totalPages > 1}">
-                        <nav aria-label="Paginación de usuarios">
-                            <ul class="pagination justify-content-center mb-0">
-                                <!-- Primera página -->
-                                <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=0, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-double-left"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Página anterior -->
-                                <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${currentPage - 1}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-left"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Páginas numeradas -->
-                                <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                                    th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
-                                    th:classappend="${i == currentPage ? 'active' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${i}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                        th:text="${i + 1}">
-                                        1
-                                    </a>
-                                </li>
-
-                                <!-- Página siguiente -->
-                                <li class="page-item"
-                                    th:classappend="${currentPage >= totalPages - 1 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${currentPage + 1}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-right"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Última página -->
-                                <li class="page-item"
-                                    th:classappend="${currentPage >= totalPages - 1 ? 'disabled' : ''}">
-                                    <a class="page-link"
-                                        th:href="@{/admin/usuarios(page=${totalPages - 1}, rol=${currentRol}, activo=${currentActivo}, bloqueado=${currentBloqueado}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="bi bi-chevron-double-right"></i>
-                                    </a>
-                                </li>
-                            </ul>
-
-                            <!-- Info de paginación -->
-                            <div class="text-center mt-2">
-                                <small class="text-muted">
-                                    Página <strong th:text="${currentPage + 1}">1</strong> de <strong
-                                        th:text="${totalPages}">1</strong>
-                                    (Mostrando <strong th:text="${usuarios.size()}">0</strong> de <strong
-                                        th:text="${totalUsuarios}">0</strong> usuarios)
-                                </small>
-                            </div>
-                        </nav>
+                        <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${size}, 'usuarios', '/admin/usuarios', (${currentRol} != null ? '&amp;rol=' + ${currentRol} : '') + (${currentActivo} != null ? '&amp;activo=' + ${currentActivo} : '') + (${currentBloqueado} != null ? '&amp;bloqueado=' + ${currentBloqueado} : '') + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir})}"></div>
                     </div>
                 </div>
 

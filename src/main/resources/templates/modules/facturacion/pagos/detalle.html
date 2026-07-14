@@ -41,21 +41,11 @@
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-receipt text-success me-2"></i>
-                        <span th:text="${pago.numeroPago}">PAG-20260119-0001</span>
-                    </h2>
-                    <p class="page-subtitle d-none d-md-block">Información completa del pago registrado</p>
-                </div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-receipt', 'text-success', '', ${pago.numeroPago}, 'Información completa del pago registrado')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/pagos}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver a lista de pagos">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver</span>
-                    </a>
-                    <button th:if="${pago.idFactura != null}" 
-                            onclick="verDetalleFactura(pago.idFactura)" 
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/pagos', 'Volver', 'Volver a lista de pagos')}"></a>
+                    <button th:if="${pago.idFactura != null}"
+                            onclick="verDetalleFactura(pago.idFactura)"
                             class="btn btn-primary"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver factura asociada">
                         <i class="bi bi-file-earmark-text"></i>

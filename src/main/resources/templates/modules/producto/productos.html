@@ -16,35 +16,14 @@
     <main class="main-content">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs (oculto en móvil) -->
-            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/dashboard}" class="text-decoration-none">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <i class="fas fa-box me-1"></i>Productos
-                    </li>
-                </ol>
-            </nav>
+            <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-box', 'Productos')}"></div>
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-box text-warning me-2"></i>
-                        <span class="d-none d-md-inline">Gestión de </span>Productos
-                    </h2>
-                    <p class="page-subtitle d-none d-md-block">Administra tu catálogo de productos</p>
-                </div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-box', 'text-warning', 'Gestión de', 'Productos', 'Administra tu catálogo de productos')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver al Dashboard">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver a Dashboard</span>
-                    </a>
-                    <button type="button" class="btn btn-success" onclick="openAddModal()" 
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver a Dashboard', 'Volver al Dashboard')}"></a>
+                    <button type="button" class="btn btn-success" onclick="openAddModal()"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo producto">
                         <i class="fas fa-plus"></i>
@@ -58,15 +37,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">
-                                    <i class="fas fa-search text-muted"></i>
-                                </span>
-                                <input type="text" id="searchInput"
-                                       class="form-control border-start-0"
-                                       placeholder="Buscar por nombre, código o descripción..."
-                                       oninput="filtrarProductos()" />
-                            </div>
+                            <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar por nombre, código o descripción...', 'filtrarProductos()')}"></div>
                         </div>
                     </div>
                 </div>
@@ -110,57 +81,7 @@
                     <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:if="${totalPages > 1}" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-3">
-                        <div class="text-muted text-center text-md-start">
-                            Mostrando <span th:text="${#lists.size(productos)}"></span> de 
-                            <span th:text="${totalItems}"></span> productos
-                        </div>
-                        <nav aria-label="Paginación de productos">
-                            <ul class="pagination mb-0">
-                                <!-- Primera página -->
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/productos(page=0, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-double-left"></i>
-                                    </a>
-                                </li>
-                                
-                                <!-- Página anterior -->
-                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/productos(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-left"></i>
-                                    </a>
-                                </li>
-
-                                <!-- Números de página -->
-                                <li class="page-item" 
-                                    th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
-                                    th:if="${pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2}"
-                                    th:classappend="${pageNumber == currentPage} ? 'active'">
-                                    <a class="page-link" 
-                                       th:href="@{/productos(page=${pageNumber}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                       th:text="${pageNumber + 1}">1</a>
-                                </li>
-
-                                <!-- Página siguiente -->
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/productos(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-right"></i>
-                                    </a>
-                                </li>
-                                
-                                <!-- Última página -->
-                                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
-                                    <a class="page-link" 
-                                       th:href="@{/productos(page=${totalPages - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir})}">
-                                        <i class="fas fa-angle-double-right"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
+                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'productos', '/productos', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir})}"></div>
                 </div>
             </div>
         </div>

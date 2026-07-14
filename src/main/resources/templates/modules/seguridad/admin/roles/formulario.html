@@ -49,18 +49,12 @@
                     <p class="text-muted mb-0">Complete los datos del rol y seleccione los permisos</p>
                 </div>
                 <div>
-                    <a th:href="@{/admin/roles}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/admin/roles', 'Volver')}"></a>
                 </div>
             </div>
 
             <!-- Alertas -->
-            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Error: [[${param.error[0]}]]
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+            <div th:replace="~{shared/fragments/alerts :: alerts(null, ${param.error != null ? param.error[0] : null})}"></div>
 
             <!-- Formulario -->
             <div class="card shadow-sm border-0">

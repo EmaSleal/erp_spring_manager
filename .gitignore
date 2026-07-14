@@ -80,3 +80,6 @@ database/export/*
 .atl/
 # Runtime upload directories
 uploads/
+
+docs/proyecto_guia/.
+docs/proyecto_guia/erpnext-develop/

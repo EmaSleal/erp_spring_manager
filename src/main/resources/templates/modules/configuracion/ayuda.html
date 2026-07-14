@@ -7,7 +7,6 @@
     <title>Ayuda - Configuración del Sistema</title>
     <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
     <link rel="stylesheet" th:href="@{/css/all.min.css}">
-    <link rel="stylesheet" th:href="@{/css/style.css}">
     <style>
         .help-section {
             margin-bottom: 2rem;
@@ -134,9 +133,7 @@
                     <p class="text-muted">Guía completa para configurar tu sistema</p>
                 </div>
                 <div>
-                    <a th:href="@{/configuracion}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Volver
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/configuracion', 'Volver')}"></a>
                 </div>
             </div>
 

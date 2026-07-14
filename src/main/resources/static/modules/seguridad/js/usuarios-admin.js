@@ -428,31 +428,15 @@ $(document).ready(function() {
                     $('#nuevaPassword').val(response.password);
                     $('#nuevaPasswordContainer').removeClass('d-none');
                     btn.hide();
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Contraseña Generada!',
-                        text: 'Se ha generado una nueva contraseña. Asegúrate de copiarla y comunicarla al usuario.',
-                        confirmButtonText: 'Entendido'
-                    });
+                    showToast('success', 'Se ha generado una nueva contraseña. Asegúrate de copiarla y comunicarla al usuario.');
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: response.message || 'Error al resetear contraseña',
-                        confirmButtonText: 'Cerrar'
-                    });
+                    showToast('error', response.message || 'Error al resetear contraseña');
                     btn.prop('disabled', false).html('<i class="bi bi-key-fill me-2"></i>Generar Nueva Contraseña');
                 }
             },
             error: function(xhr) {
                 console.error('Error:', xhr);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: xhr.responseJSON?.error || 'Error al resetear contraseña',
-                    confirmButtonText: 'Cerrar'
-                });
+                showToast('error', xhr.responseJSON?.error || 'Error al resetear contraseña');
                 btn.prop('disabled', false).html('<i class="bi bi-key-fill me-2"></i>Generar Nueva Contraseña');
             }
         });
@@ -462,21 +446,10 @@ $(document).ready(function() {
     $('#btnCopiarPassword').on('click', function() {
         const password = $('#nuevaPassword').val();
         navigator.clipboard.writeText(password).then(function() {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Copiado!',
-                text: 'Contraseña copiada al portapapeles',
-                timer: 1500,
-                showConfirmButton: false
-            });
+            showToast('success', 'Contraseña copiada al portapapeles');
         }, function(err) {
             console.error('Error al copiar:', err);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se pudo copiar al portapapeles',
-                confirmButtonText: 'Cerrar'
-            });
+            showToast('error', 'No se pudo copiar al portapapeles');
         });
     });
 
@@ -487,12 +460,7 @@ $(document).ready(function() {
         const email = $(this).data('email');
 
         if (!email) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Email no configurado',
-                text: 'Este usuario no tiene un email configurado',
-                confirmButtonText: 'Cerrar'
-            });
+            showToast('warning', 'Este usuario no tiene un email configurado');
             return;
         }
 
@@ -524,62 +492,38 @@ $(document).ready(function() {
             allowOutsideClick: () => !Swal.isLoading()
         }).then((result) => {
             if (result.isConfirmed) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Enviado!',
-                    html: `Credenciales enviadas exitosamente a:<br><strong>${email}</strong>`,
-                    confirmButtonText: 'Cerrar'
-                });
+                showToast('success', `Credenciales enviadas exitosamente a: ${email}`);
             }
         });
     });
 
     // Activar/Desactivar usuario
-    $(document).on('click', '.btn-toggle-active', function() {
+    $(document).on('click', '.btn-toggle-active', async function() {
         const idUsuario = $(this).data('id');
         const nombreUsuario = $(this).data('nombre');
         const activo = $(this).data('activo');
         const accion = activo ? 'desactivar' : 'activar';
-        const colorBtn = activo ? '#dc3545' : '#28a745';
 
-        Swal.fire({
-            title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
-            text: `Estás a punto de ${accion} a ${nombreUsuario}`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: colorBtn,
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: `Sí, ${accion}`,
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: `/admin/usuarios/api/${idUsuario}/estado`,
-                    method: 'PUT',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ activo: !activo }),
-                    success: function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: `Usuario ${activo ? 'desactivado' : 'activado'} correctamente`,
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            location.reload();
-                        });
-                    },
-                    error: function(xhr) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: xhr.responseJSON?.error || 'Error al cambiar estado del usuario',
-                            confirmButtonText: 'Cerrar'
-                        });
-                    }
-                });
-            }
-        });
+        const confirmed = await showConfirmDialog(
+            `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
+            `Estás a punto de ${accion} a ${nombreUsuario}`,
+            `Sí, ${accion}`
+        );
+        if (confirmed) {
+            $.ajax({
+                url: `/admin/usuarios/api/${idUsuario}/estado`,
+                method: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify({ activo: !activo }),
+                success: function(response) {
+                    showToast('success', `Usuario ${activo ? 'desactivado' : 'activado'} correctamente`);
+                    setTimeout(() => location.reload(), 2000);
+                },
+                error: function(xhr) {
+                    showToast('error', xhr.responseJSON?.error || 'Error al cambiar estado del usuario');
+                }
+            });
+        }
     });
 
     // ==================== EVENTOS GLOBALES ====================

@@ -89,24 +89,12 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a th:href="@{/admin/usuarios}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/admin/usuarios', 'Volver')}"></a>
                 </div>
             </div>
 
             <!-- Alertas -->
-            <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show">
-                <i class="fas fa-check-circle me-2"></i>
-                <span th:text="${param.success}">Operación exitosa</span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            
-            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                <span th:text="${param.error}">Error en la operación</span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+            <div th:replace="~{shared/fragments/alerts :: alerts(${param.success}, ${param.error})}"></div>
 
             <!-- Estadísticas -->
             <div class="row mb-4">

@@ -19,46 +19,20 @@
     <main class="main-content">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs -->
-            <nav aria-label="breadcrumb" class="mb-3 d-none d-md-block">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/dashboard}" class="text-decoration-none">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item">
-                        <a th:href="@{/facturas}" class="text-decoration-none">
-                            <i class="fas fa-file-invoice me-1"></i>Facturas
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <i class="fas fa-file-signature me-1"></i>Comprobantes Electrónicos
-                    </li>
-                </ol>
-            </nav>
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/facturas', 'fas fa-file-invoice', 'Facturas', 'fas fa-file-signature', 'Comprobantes Electrónicos')}"></div>
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div class="page-header-content">
-                    <h2 class="page-title">
-                        <i class="fas fa-file-signature text-primary me-2"></i>
-                        <span class="d-none d-md-inline">Comprobantes </span>Electrónicos
-                    </h2>
-                    <p class="page-subtitle d-none d-md-block">Gestión de facturación electrónica - Hacienda CR</p>
-                </div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-signature', 'text-primary', 'Comprobantes', 'Electrónicos', 'Gestión de facturación electrónica - Hacienda CR')}"></div>
                 <div class="page-header-actions">
-                    <a th:href="@{/facturas}" class="btn btn-outline-secondary"
-                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Volver a Facturas">
-                        <i class="fas fa-arrow-left"></i>
-                        <span class="d-none d-md-inline ms-2">Volver</span>
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/facturas', 'Volver', 'Volver a Facturas')}"></a>
                     <a th:href="@{/facturas/configuracion-hacienda}" class="btn btn-warning"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Configuración de Hacienda">
                         <i class="fas fa-cog"></i>
                         <span class="d-none d-sm-inline ms-2">Configuración</span>
                     </a>
-                    <button type="button" class="btn btn-primary" onclick="generarComprobanteModal()" 
+                    <button type="button" class="btn btn-primary" onclick="generarComprobanteModal()"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Generar desde factura">
                         <i class="fas fa-plus"></i>
@@ -70,56 +44,16 @@
             <!-- Estadísticas Cards -->
             <div class="row mb-4">
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-success text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-1">Aceptados</h6>
-                                    <h3 class="mb-0 text-white" id="stat-aceptados">0</h3>
-                                </div>
-                                <i class="fas fa-check-circle fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-success', 'text-white', 'text-white-50', 'stat-aceptados', 'Aceptados', 'fas fa-check-circle fa-2x')}"></div>
                 </div>
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-warning text-dark">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-dark-50 mb-1">Procesando</h6>
-                                    <h3 class="mb-0 text-dark" id="stat-procesando">0</h3>
-                                </div>
-                                <i class="fas fa-spinner fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-warning', 'text-dark', 'text-dark-50', 'stat-procesando', 'Procesando', 'fas fa-spinner fa-2x')}"></div>
                 </div>
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-danger text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-1">Rechazados</h6>
-                                    <h3 class="mb-0 text-white" id="stat-rechazados">0</h3>
-                                </div>
-                                <i class="fas fa-times-circle fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-danger', 'text-white', 'text-white-50', 'stat-rechazados', 'Rechazados', 'fas fa-times-circle fa-2x')}"></div>
                 </div>
                 <div class="col-md-3 col-6 mb-3">
-                    <div class="card border-0 shadow-sm bg-info text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-white-50 mb-1">Firmados</h6>
-                                    <h3 class="mb-0 text-white" id="stat-firmados">0</h3>
-                                </div>
-                                <i class="fas fa-certificate fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCardJs('bg-info', 'text-white', 'text-white-50', 'stat-firmados', 'Firmados', 'fas fa-certificate fa-2x')}"></div>
                 </div>
             </div>
 

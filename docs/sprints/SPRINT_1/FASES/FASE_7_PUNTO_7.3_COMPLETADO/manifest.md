@@ -1,4 +1,0 @@
-# FASE 7 PUNTO 7.3 COMPLETADO
-
-- [FASE 7.3 COMPLETADA Pruebas Responsive](sprints/SPRINT_1/FASES/FASE_7_PUNTO_7.3_COMPLETADO/-FASE-7.3-COMPLETADA-Pruebas-Responsive/manifest.md)
-- [✅ FASE 7.3 COMPLETADA: Pruebas Responsive](sprints/SPRINT_1/FASES/FASE_7_PUNTO_7.3_COMPLETADO/-FASE-7.3-COMPLETADA-Pruebas-Responsive.md)

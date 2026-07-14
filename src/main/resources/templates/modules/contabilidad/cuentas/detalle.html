@@ -48,9 +48,7 @@
                     <p class="text-muted mb-0">Información detallada de la cuenta contable</p>
                 </div>
                 <div>
-                    <a th:href="@{/contabilidad/cuentas}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Volver al Listado
-                    </a>
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/contabilidad/cuentas', 'Volver al Listado')}"></a>
                     <a th:href="@{/contabilidad/cuentas/{id}/editar(id=${cuenta.idCuenta})}" 
                        class="btn btn-warning"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
