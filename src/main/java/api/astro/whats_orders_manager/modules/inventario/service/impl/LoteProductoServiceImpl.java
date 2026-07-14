@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.inventario.repository.LoteProducto
 import api.astro.whats_orders_manager.modules.inventario.service.LoteProductoService;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
+import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ public class LoteProductoServiceImpl implements LoteProductoService {
         String codigo,
         Integer cantidad,
         LocalDate fechaVencimiento,
-        String proveedorNombre
+        Proveedor proveedor
     ) {
         Producto producto = productoRepository.findById(productoId)
             .orElseThrow(() -> new NoSuchElementException("Producto no encontrado: " + productoId));
@@ -45,7 +46,7 @@ public class LoteProductoServiceImpl implements LoteProductoService {
             .cantidad(cantidad)
             .cantidadInicial(cantidad)
             .fechaVencimiento(fechaVencimiento)
-            .proveedorNombre(proveedorNombre)
+            .proveedor(proveedor)
             .estado(EstadoLote.ACTIVO)
             .build();
 
