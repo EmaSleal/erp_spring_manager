@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
+import api.astro.whats_orders_manager.modules.facturacion.dto.EstadoCuentaClienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.ReporteCajaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
@@ -488,6 +489,36 @@ public class PagoController {
         }
     }
     
+    /**
+     * Shows the account statement for a specific client.
+     */
+    @GetMapping("/estado-cuenta/{idCliente}")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')")
+    public String estadoCuentaCliente(
+            @PathVariable Integer idCliente,
+            Model model,
+            RedirectAttributes redirectAttributes,
+            Authentication authentication
+    ) {
+        log.info("Loading account statement for client: {}", idCliente);
+
+        try {
+            EstadoCuentaClienteDTO estadoCuenta = pagoService.buildEstadoCuenta(idCliente);
+            model.addAttribute("estadoCuenta", estadoCuenta);
+            return "modules/facturacion/pagos/estado-cuenta-cliente";
+
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            log.warn("Client not found for account statement: {}", idCliente);
+            redirectAttributes.addFlashAttribute("error", "Cliente no encontrado");
+            return "redirect:/pagos";
+
+        } catch (Exception e) {
+            log.error("Error loading account statement for client {}: {}", idCliente, e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", "Error al cargar el estado de cuenta");
+            return "redirect:/pagos";
+        }
+    }
+
     /**
      * Genera reporte de caja del día actual.
      */
