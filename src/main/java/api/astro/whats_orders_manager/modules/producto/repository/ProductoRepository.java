@@ -3,13 +3,16 @@ package api.astro.whats_orders_manager.modules.producto.repository;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.model.ProductoRecord;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Integer> {
@@ -36,5 +39,18 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
      * Used by ArticuloMaestroServiceImpl for write-through, deactivate, reactivate, and delete guard.
      */
     List<Producto> findByArticuloMaestro_IdArticuloMaestro(Integer idArticuloMaestro);
+
+    @Query("SELECT p FROM Producto p WHERE p.stock <= p.stockBajo AND p.active = true")
+    List<Producto> findProductosStockBajo();
+
+    @Query("SELECT p FROM Producto p WHERE p.stock <= p.stockMinimo AND p.active = true")
+    List<Producto> findProductosStockCritico();
+
+    @Query("SELECT p FROM Producto p WHERE p.stock <= p.puntoReorden AND p.active = true")
+    List<Producto> findProductosPuntoReorden();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Producto p WHERE p.idProducto = :id")
+    Optional<Producto> findByIdForUpdate(@Param("id") Integer id);
 
 }
