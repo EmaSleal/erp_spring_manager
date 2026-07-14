@@ -317,6 +317,32 @@ public class PagoController {
     }
     
     /**
+     * Concilia múltiples pagos en un solo request.
+     */
+    @PostMapping("/conciliar-lote")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')")
+    @ResponseBody
+    public ResponseEntity<ResponseDTO> conciliarLote(
+            @RequestBody java.util.Map<String, List<Long>> body,
+            Authentication authentication
+    ) {
+        List<Long> ids = body.get("ids");
+        log.info("Conciliando lote de {} pagos", ids != null ? ids.size() : 0);
+
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body(ResponseDTO.error("Debe seleccionar al menos un pago"));
+        }
+
+        try {
+            List<Pago> conciliados = pagoService.conciliarPagosLote(ids);
+            return ResponseEntity.ok(ResponseDTO.success(conciliados.size() + " pago(s) conciliados exitosamente"));
+        } catch (Exception e) {
+            log.error("Error al conciliar lote: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(ResponseDTO.error("Error al conciliar los pagos"));
+        }
+    }
+
+    /**
      * Rechaza un pago.
      */
     @PutMapping("/{id}/rechazar")

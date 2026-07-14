@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Conciliación de Pagos</title>
+</head>
+<body>
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div class="container-fluid py-4">
+
+            <!-- Breadcrumb -->
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/pagos', 'fas fa-money-bill-wave', 'Pagos', 'fas fa-check-double', 'Conciliación')}"></div>
+
+            <!-- Header -->
+            <div class="page-header mb-4">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-check-double', 'text-info', 'Conciliación de', 'Pagos', 'Pagos confirmados pendientes de conciliación bancaria')}"></div>
+                <div class="page-header-actions">
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/pagos', 'Volver a Pagos', 'Volver a Pagos')}"></a>
+                    <button id="btnConciliarSeleccionados"
+                            class="btn btn-info d-none"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')"
+                            onclick="conciliarSeleccionados()">
+                        <i class="fas fa-check-double me-1"></i>
+                        <span class="d-none d-sm-inline">Conciliar Seleccionados</span>
+                        <span class="badge bg-white text-info ms-1" id="badgeConteo">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stat Card -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-warning', 'Total Pendiente', '₡ ' + ${#numbers.formatDecimal(totalPendiente ?: 0, 1, 2)}, 'fas fa-hourglass-half fa-3x', 'text-white-50')}"></div>
+                </div>
+                <div class="col-md-4">
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-info', 'Pagos a Conciliar', ${#lists.size(pagos)}, 'fas fa-list-check fa-3x', 'text-white-50')}"></div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="responsive-table-container">
+
+                        <!-- DESKTOP -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="checkAll" class="form-check-input"
+                                                   title="Seleccionar todos"
+                                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')"
+                                                   onchange="toggleTodos(this)">
+                                        </th>
+                                        <th style="width: 140px;">Número</th>
+                                        <th style="width: 150px;">Factura</th>
+                                        <th>Cliente</th>
+                                        <th class="text-center" style="width: 120px;">Método</th>
+                                        <th class="text-end" style="width: 120px;">Monto</th>
+                                        <th class="text-center" style="width: 130px;">Fecha Pago</th>
+                                        <th class="text-center" style="width: 120px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="pago : ${pagos}">
+                                        <td>
+                                            <input type="checkbox" class="form-check-input pago-check"
+                                                   th:value="${pago.idPago}"
+                                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')"
+                                                   onchange="actualizarConteo()">
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold text-primary" th:text="${pago.numeroPago}">PAG-001</div>
+                                            <small class="text-muted">ID: <span th:text="${pago.idPago}">1</span></small>
+                                        </td>
+                                        <td>
+                                            <div th:if="${pago.idFactura != null}">
+                                                <button th:attr="data-factura-id=${pago.idFactura}"
+                                                        onclick="verDetalleFactura(this)"
+                                                        class="btn btn-link btn-sm p-0 text-start">
+                                                    <div class="fw-semibold text-primary" th:text="${pago.numeroFactura}">F001-00001</div>
+                                                    <small class="text-muted">ID: <span th:text="${pago.idFactura}">1</span></small>
+                                                </button>
+                                            </div>
+                                            <span th:if="${pago.idFactura == null}" class="badge bg-warning text-dark">Sin asignar</span>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold" th:text="${pago.nombreCliente}">Cliente</div>
+                                            <small class="text-muted" th:if="${pago.referenciaBancaria != null}">
+                                                Ref: <span th:text="${pago.referenciaBancaria}"></span>
+                                            </small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="fw-bold text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
+                                        </td>
+                                        <td class="text-center" th:text="${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <a th:href="@{/pagos/{id}(id=${pago.idPago})}"
+                                                   class="btn btn-sm btn-primary"
+                                                   title="Ver Detalle">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button th:attr="onclick=|conciliarPago(${pago.idPago})|"
+                                                        class="btn btn-sm btn-info"
+                                                        title="Conciliar"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
+                                                    <i class="fas fa-check-double"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(pagos)}"
+                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-check-circle', 'No hay pagos pendientes de conciliación')}"></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- MÓVIL -->
+                        <div class="mobile-card-view">
+                            <div th:each="pago : ${pagos}" class="mobile-card card-warning">
+
+                                <div class="mobile-card-header">
+                                    <div class="mobile-card-avatar">
+                                        <div class="avatar-circle bg-warning">
+                                            <i class="fas fa-hourglass-half"></i>
+                                        </div>
+                                        <div class="mobile-card-avatar-info">
+                                            <div class="mobile-card-avatar-name" th:text="${pago.numeroPago}">PAG-001</div>
+                                            <div class="mobile-card-avatar-subtitle" th:text="${pago.nombreCliente}">Cliente</div>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-clock me-1"></i> Pendiente
+                                    </span>
+                                </div>
+
+                                <div class="mobile-card-body">
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Factura</span>
+                                        <span class="mobile-card-value">
+                                            <button th:if="${pago.idFactura != null}"
+                                                    th:attr="data-factura-id=${pago.idFactura}"
+                                                    onclick="verDetalleFactura(this)"
+                                                    class="btn btn-link btn-sm p-0 text-primary">
+                                                <span th:text="${pago.numeroFactura}">F001-00001</span>
+                                            </button>
+                                            <span th:if="${pago.idFactura == null}" class="badge bg-warning text-dark">Adelanto</span>
+                                        </span>
+                                    </div>
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Método</span>
+                                        <span class="mobile-card-value">
+                                            <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
+                                        </span>
+                                    </div>
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Monto</span>
+                                        <span class="mobile-card-value">
+                                            <strong class="text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
+                                        </span>
+                                    </div>
+                                    <div class="mobile-card-row">
+                                        <span class="mobile-card-label">Fecha</span>
+                                        <span class="mobile-card-value" th:text="${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}">01/01/2025</span>
+                                    </div>
+                                    <div class="mobile-card-row" th:if="${pago.referenciaBancaria != null}">
+                                        <span class="mobile-card-label">Referencia</span>
+                                        <span class="mobile-card-value" th:text="${pago.referenciaBancaria}"></span>
+                                    </div>
+                                </div>
+
+                                <div class="mobile-card-footer mobile-card-actions">
+                                    <a th:href="@{/pagos/{id}(id=${pago.idPago})}"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye me-1"></i> Ver
+                                    </a>
+                                    <button th:attr="onclick=|conciliarPago(${pago.idPago})|"
+                                            class="btn btn-sm btn-info"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
+                                        <i class="fas fa-check-double me-1"></i> Conciliar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div th:if="${#lists.isEmpty(pagos)}"
+                                 th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-check-circle', 'No hay pagos pendientes de conciliación')}"></div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal de Detalle de Factura -->
+    <div th:replace="~{shared/components/facturas-modal :: facturaModal}"></div>
+
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const USER_ROLE = /*[[${userRole}]]*/ 'USER';
+        const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
+        /*]]>*/
+    </script>
+
+    <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
+    <script th:src="@{/modules/facturacion/js/pagos.js}"></script>
+
+    <script>
+        function toggleTodos(checkbox) {
+            document.querySelectorAll('.pago-check').forEach(c => c.checked = checkbox.checked);
+            actualizarConteo();
+        }
+
+        function actualizarConteo() {
+            const seleccionados = document.querySelectorAll('.pago-check:checked').length;
+            const btn = document.getElementById('btnConciliarSeleccionados');
+            const badge = document.getElementById('badgeConteo');
+            badge.textContent = seleccionados;
+            btn.classList.toggle('d-none', seleccionados === 0);
+        }
+
+        async function conciliarSeleccionados() {
+            const ids = [...document.querySelectorAll('.pago-check:checked')].map(c => Number(c.value));
+            if (ids.length === 0) return;
+
+            const confirmed = await showConfirmDialog(
+                `¿Conciliar ${ids.length} pago(s)?`,
+                'Esta acción marcará los pagos seleccionados como conciliados con el banco.',
+                'Sí, conciliar'
+            );
+            if (!confirmed) return;
+
+            await httpPost('/pagos/conciliar-lote', { ids }, {
+                successMessage: `${ids.length} pago(s) conciliados correctamente`,
+                reloadOnSuccess: true
+            });
+        }
+    </script>
+</body>
+</html>

@@ -26,6 +26,12 @@
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-money-bill-wave', 'text-success', 'Gestión de', 'Pagos', 'Administra los pagos aplicados a facturas')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/facturas', 'Volver a Facturas', 'Volver a Facturas')}"></a>
+                    <a th:href="@{/pagos/pendientes-conciliacion}" class="btn btn-warning"
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver pagos pendientes de conciliación">
+                        <i class="fas fa-check-double"></i>
+                        <span class="d-none d-sm-inline ms-2">Conciliación</span>
+                    </a>
                     <a th:href="@{/pagos/reporte-caja}" class="btn btn-info"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REPORTE_CAJA')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver reporte de caja">
