@@ -167,8 +167,7 @@ public class ReporteController {
                 LocalDate fechaEmision = factura.getFechaEmision();
                 if (fechaEmision == null) continue;
                 String label = fechaEmision.format(formatoFecha);
-                BigDecimal total = factura.getTotal() != null ? factura.getTotal() : BigDecimal.ZERO;
-                ventasPorDia.merge(label, total, BigDecimal::add);
+                ventasPorDia.merge(label, factura.getTotalEnCRC(), BigDecimal::add);
             }
             model.addAttribute("ventasPorDiaLabels", new ArrayList<>(ventasPorDia.keySet()));
             model.addAttribute("ventasPorDiaData", new ArrayList<>(ventasPorDia.values()));
@@ -740,18 +739,23 @@ public class ReporteController {
                     // Factura pagada
                     estadoCounts.put("Pagadas", estadoCounts.get("Pagadas") + 1);
                 } else {
-                    // Verificar si está vencida (más de 30 días desde fecha de entrega)
-                    if (factura.getFechaEntrega() != null) {
-                        LocalDate fechaEntrega = factura.getFechaEntrega().toLocalDate();
-                        LocalDate fechaVencimiento = fechaEntrega.plusDays(30);
-                        
-                        if (fechaVencimiento.isBefore(hoy)) {
-                            estadoCounts.put("Vencidas", estadoCounts.get("Vencidas") + 1);
-                        } else {
-                            estadoCounts.put("Pendientes", estadoCounts.get("Pendientes") + 1);
-                        }
+                    // Verificar si está vencida usando fechaVencimiento o fallback a +30 días desde entrega
+                    LocalDate fechaEntrega = factura.getFechaEntrega() != null
+                            ? factura.getFechaEntrega().toLocalDate() : null;
+                    LocalDate fechaVenc;
+                    if (factura.getFechaVencimiento() != null) {
+                        fechaVenc = factura.getFechaVencimiento().toLocalDate();
+                    } else if (fechaEntrega != null) {
+                        fechaVenc = fechaEntrega.plusDays(30);
                     } else {
-                        // Sin fecha de entrega, considerar pendiente
+                        // Sin fecha de entrega ni vencimiento, considerar pendiente
+                        estadoCounts.put("Pendientes", estadoCounts.get("Pendientes") + 1);
+                        continue;
+                    }
+
+                    if (fechaVenc.isBefore(hoy)) {
+                        estadoCounts.put("Vencidas", estadoCounts.get("Vencidas") + 1);
+                    } else {
                         estadoCounts.put("Pendientes", estadoCounts.get("Pendientes") + 1);
                     }
                 }

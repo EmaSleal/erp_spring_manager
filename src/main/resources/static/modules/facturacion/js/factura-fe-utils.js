@@ -3,6 +3,8 @@
 // Costa Rica v4.4
 // ========================================
 
+let tipoCambioFetchController = null;
+
 /**
  * Inicializar eventos al cargar la página
  */
@@ -83,15 +85,24 @@ function toggleTipoCambio() {
         divTipoCambio.style.display = 'block';
         if (tipoCambio) {
             tipoCambio.required = true;
-            // Limpiar valor para que el usuario ingrese el tipo de cambio actual
             if (!tipoCambio.value || tipoCambio.value === '1.00000') {
                 tipoCambio.value = '';
-                // Placeholder según moneda
                 if (moneda === 'USD') {
                     tipoCambio.placeholder = 'Ej: 532.15000 (1 USD = 532.15 CRC)';
                 } else if (moneda === 'EUR') {
                     tipoCambio.placeholder = 'Ej: 580.50000 (1 EUR = 580.50 CRC)';
                 }
+                // Auto-fill from the stored exchange rate when available
+                if (tipoCambioFetchController) tipoCambioFetchController.abort();
+                tipoCambioFetchController = new AbortController();
+                fetch(`/api/tipos-cambio/actual?moneda=${moneda}`, { signal: tipoCambioFetchController.signal })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => {
+                        if (data && data.tasaVenta) {
+                            tipoCambio.value = data.tasaVenta;
+                        }
+                    })
+                    .catch(err => { if (err.name !== 'AbortError') { /* silently ignore — user can type manually */ } });
             }
         }
     }

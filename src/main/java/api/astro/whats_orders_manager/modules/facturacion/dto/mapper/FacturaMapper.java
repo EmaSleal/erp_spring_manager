@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.dto.mapper;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.dto.ClienteSimpleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
@@ -49,6 +50,8 @@ public class FacturaMapper {
                 .numeroFactura(factura.getNumeroFactura())
                 .serie(factura.getSerie())
                 .cliente(toClienteSimpleDTO(factura.getCliente()))
+                .monedaFE(factura.getMonedaFE() != null ? factura.getMonedaFE() : MonedaFE.CRC)
+                .tipoCambio(factura.getTipoCambio())
                 .subtotal(factura.getSubtotal())
                 .igv(factura.getIgv())
                 .total(factura.getTotal())

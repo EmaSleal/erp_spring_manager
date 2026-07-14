@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.dto;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPagoFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import lombok.AllArgsConstructor;
@@ -34,6 +35,10 @@ public class FacturaDetalleDTO {
     // Información del cliente
     private ClienteSimpleDTO cliente;
     
+    // Moneda
+    private MonedaFE monedaFE;
+    private BigDecimal tipoCambio;
+
     // Montos
     private BigDecimal subtotal;
     private BigDecimal igv;

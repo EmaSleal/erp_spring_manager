@@ -44,6 +44,19 @@ function openModal(button) {
             // ✅ NUEVO: Mostrar número de factura y serie
             document.getElementById("modal-numeroFactura").innerText = data.numeroFactura || 'N/A';
             document.getElementById("modal-serie").innerText = data.serie || 'N/A';
+
+            // Moneda y tipo de cambio
+            const monedaSimbolos = { CRC: '₡', USD: '$', EUR: '€' };
+            const monedaCodigo = data.monedaFE || 'CRC';
+            const monedaSimbolo = monedaSimbolos[monedaCodigo] || '₡';
+            document.getElementById("modal-monedaFE").innerText = monedaCodigo;
+            const tcRow = document.getElementById("modal-tipo-cambio-row");
+            if (monedaCodigo !== 'CRC' && data.tipoCambio) {
+                document.getElementById("modal-tipoCambio").innerText = `1 ${monedaCodigo} = ₡${parseFloat(data.tipoCambio).toFixed(2)}`;
+                tcRow.style.display = '';
+            } else {
+                tcRow.style.display = 'none';
+            }
             
             // Fechas con validación
             const createDate = data.createDate || data.fechaEmision || data.updateDate;
@@ -100,7 +113,7 @@ function openModal(button) {
                 feContainer.style.display = 'block';
                 feBotonEnviar.style.display = 'block';
                 feEstado.style.display = 'none';
-                feBotonEnviar.setAttribute('data-factura-id', data.idFactura);
+                feBotonEnviar.setAttribute('data-id', data.idFactura);
             }
 
             // Cargar Productos desde el DTO (ya vienen incluidas las líneas)
@@ -117,15 +130,15 @@ function openModal(button) {
                         <tr>
                             <td>${linea.descripcionProducto || linea.codigoProducto || 'N/A'}</td>
                             <td class="text-center">${linea.cantidad || 0}</td>
-                            <td class="text-end">$${parseFloat(linea.precioUnitario || 0).toFixed(2)}</td>
-                            <td class="text-end">$${subtotal.toFixed(2)}</td>
+                            <td class="text-end">${monedaSimbolo}${parseFloat(linea.precioUnitario || 0).toFixed(2)}</td>
+                            <td class="text-end">${monedaSimbolo}${subtotal.toFixed(2)}</td>
                         </tr>
                     `;
                     productosTable.innerHTML += row;
                 });
-                
+
                 // Actualizar total
-                document.getElementById("modal-total").innerText = `$${total.toFixed(2)}`;
+                document.getElementById("modal-total").innerText = `${monedaSimbolo}${total.toFixed(2)}`;
             } else {
                 // Si no hay líneas, mostrar mensaje
                 productosTable.innerHTML = `
@@ -135,7 +148,7 @@ function openModal(button) {
                         </td>
                     </tr>
                 `;
-                document.getElementById("modal-total").innerText = `$${parseFloat(data.total || 0).toFixed(2)}`;
+                document.getElementById("modal-total").innerText = `${monedaSimbolo}${parseFloat(data.total || 0).toFixed(2)}`;
             }
             
             // Mostrar información de pagos si existe
@@ -147,10 +160,10 @@ function openModal(button) {
                 if (modalPagosInfo) {
                     let pagosHTML = `
                         <div class="mb-2">
-                            <strong>Total Pagado:</strong> <span class="text-success">₡${parseFloat(data.totalPagado || 0).toFixed(2)}</span>
+                            <strong>Total Pagado:</strong> <span class="text-success">${monedaSimbolo}${parseFloat(data.totalPagado || 0).toFixed(2)}</span>
                         </div>
                         <div class="mb-2">
-                            <strong>Saldo Pendiente:</strong> <span class="${data.saldoPendiente > 0 ? 'text-danger' : 'text-success'}">₡${parseFloat(data.saldoPendiente || 0).toFixed(2)}</span>
+                            <strong>Saldo Pendiente:</strong> <span class="${data.saldoPendiente > 0 ? 'text-danger' : 'text-success'}">${monedaSimbolo}${parseFloat(data.saldoPendiente || 0).toFixed(2)}</span>
                         </div>
                         <div class="table-responsive mt-3">
                             <table class="table table-sm table-bordered">

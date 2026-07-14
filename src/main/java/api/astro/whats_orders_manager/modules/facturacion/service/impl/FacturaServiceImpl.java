@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
@@ -120,6 +121,16 @@ public class FacturaServiceImpl implements FacturaService {
             log.info("Serie proporcionada manualmente: {}", factura.getSerie());
         }
         
+        // Ensure monedaFE defaults to CRC and tipoCambio is consistent
+        if (factura.getMonedaFE() == null || factura.getMonedaFE() == MonedaFE.CRC) {
+            factura.setMonedaFE(MonedaFE.CRC);
+            factura.setTipoCambio(BigDecimal.ONE);
+        } else if (factura.getTipoCambio() == null || factura.getTipoCambio().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(
+                "tipoCambio es obligatorio y debe ser mayor a 0 para facturas en " + factura.getMonedaFE().getCodigo()
+            );
+        }
+
         // Calcular IGV y total si no están establecidos
         if (factura.getSubtotal() != null && factura.getSubtotal().compareTo(BigDecimal.ZERO) > 0) {
             
@@ -138,13 +149,16 @@ public class FacturaServiceImpl implements FacturaService {
             }
         }
         
+        // Capture isNew before save — after save() the ID is always assigned
+        boolean isNew = factura.getIdFactura() == null;
+
         // Guardar la factura
         Factura facturaGuardada = facturaRepository.save(factura);
-        log.info("Factura guardada exitosamente con ID: {} y número: {}", 
+        log.info("Factura guardada exitosamente con ID: {} y número: {}",
                 facturaGuardada.getIdFactura(), facturaGuardada.getNumeroFactura());
-        
+
         // Incrementar el contador solo al crear (no en updates)
-        if (factura.getIdFactura() == null) {
+        if (isNew) {
             try {
                 configuracionFacturacionService.incrementarNumeroFactura();
                 log.debug("Contador de factura incrementado. Próximo: {}", config.getNumeroActual() + 1);

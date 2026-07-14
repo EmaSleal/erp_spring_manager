@@ -23,6 +23,8 @@
                             <div class="col-md-6">
                                 <p><strong>Número de Factura:</strong> <span id="modal-numeroFactura">-</span></p>
                                 <p><strong>Serie:</strong> <span id="modal-serie">-</span></p>
+                                <p><strong>Moneda:</strong> <span id="modal-monedaFE">-</span></p>
+                                <p id="modal-tipo-cambio-row" style="display:none"><strong>Tipo de Cambio:</strong> <span id="modal-tipoCambio">-</span></p>
                                 <p><strong>Fecha Creación:</strong> <span id="modal-createDate">-</span></p>
                             </div>
                             <div class="col-md-6">
@@ -109,7 +111,7 @@
                                 <i class="bi bi-exclamation-triangle me-2"></i>
                                 Esta factura aún no ha sido enviada a Hacienda de Costa Rica.
                             </div>
-                            <button type="button" class="btn btn-success" onclick="enviarAHacienda(this.getAttribute('data-factura-id'))">
+                            <button type="button" class="btn btn-success" onclick="enviarAHacienda(this)">
                                 <i class="bi bi-cloud-upload me-2"></i>Enviar a Hacienda
                             </button>
                         </div>
