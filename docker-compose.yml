@@ -71,6 +71,7 @@ services:
       retries: 3
       start_period: 300s
 
+      
   seed:
     image: mysql:8.0.32
     container_name: whats_orders_seed
