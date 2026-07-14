@@ -110,6 +110,49 @@ public class Producto {
 
     // ========== FIN CAMPOS FACTURACIÓN ELECTRÓNICA ==========
 
+    // ========== INVENTORY CONTROL FIELDS ==========
+
+    @Column(name = "stock")
+    private Integer stock = 0;
+
+    @Column(name = "costo", precision = 19, scale = 2)
+    private BigDecimal costo;
+
+    @Column(name = "stock_minimo")
+    private Integer stockMinimo = 10;
+
+    @Column(name = "stock_bajo")
+    private Integer stockBajo = 20;
+
+    @Column(name = "stock_maximo")
+    private Integer stockMaximo = 1000;
+
+    @Column(name = "punto_reorden")
+    private Integer puntoReorden = 15;
+
+    @Column(name = "maneja_lotes")
+    private Boolean manejaLotes = false;
+
+    @Column(name = "maneja_vencimiento")
+    private Boolean manejaVencimiento = false;
+
+    @Column(name = "dias_alerta_vencimiento")
+    private Integer diasAlertaVencimiento = 30;
+
+    public boolean isStockBajo() {
+        return stock != null && stockBajo != null && stock <= stockBajo;
+    }
+
+    public boolean isStockCritico() {
+        return stock != null && stockMinimo != null && stock <= stockMinimo;
+    }
+
+    public boolean alcanzoPuntoReorden() {
+        return stock != null && puntoReorden != null && stock <= puntoReorden;
+    }
+
+    // ========== END INVENTORY CONTROL FIELDS ==========
+
     @CreatedDate
     @Column(name = "createDate", updatable = false)
     private Timestamp createDate;

@@ -7,6 +7,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
+import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
@@ -57,6 +59,9 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Autowired
     private FacturaMapper facturaMapper;
+
+    @Autowired
+    private MovimientoInventarioService movimientoInventarioService;
 
     @Override
     @Transactional(readOnly = true)
@@ -169,7 +174,11 @@ public class FacturaServiceImpl implements FacturaService {
         
         // ✅ NUEVO: Publicar evento de factura generada
         publicarEventoFacturaGenerada(facturaGuardada);
-        
+
+        if (isNew) {
+            registrarSalidasInventario(facturaGuardada);
+        }
+
         return facturaGuardada;
     }
 
@@ -260,6 +269,31 @@ public class FacturaServiceImpl implements FacturaService {
         } catch (Exception e) {
             log.error("Error al notificar factura generada: {}", e.getMessage());
             // Do not rethrow — notification failure must not affect invoice creation
+        }
+    }
+
+    private void registrarSalidasInventario(Factura factura) {
+        List<LineaFactura> lineas = factura.getLineas();
+        if (lineas == null || lineas.isEmpty()) return;
+        for (LineaFactura linea : lineas) {
+            if (linea.getProducto() == null || linea.getCantidad() == null) continue;
+            // Skip products not yet enrolled in inventory tracking (stock == null means pre-sprint legacy row)
+            if (linea.getProducto().getStock() == null) continue;
+            try {
+                movimientoInventarioService.registrarSalida(
+                    linea.getProducto().getIdProducto(),
+                    linea.getCantidad(),
+                    TipoMovimientoInventario.SALIDA_VENTA,
+                    "FACTURA",
+                    factura.getIdFactura().longValue(),
+                    null,
+                    "Factura " + factura.getNumeroFactura()
+                );
+            } catch (Exception e) {
+                log.error("Error al registrar salida de inventario para producto {}: {}",
+                    linea.getProducto().getIdProducto(), e.getMessage());
+                throw e;
+            }
         }
     }
 
