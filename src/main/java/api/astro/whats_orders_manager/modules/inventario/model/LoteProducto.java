@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.inventario.model;
 
 import api.astro.whats_orders_manager.modules.inventario.enums.EstadoLote;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -61,9 +62,10 @@ public class LoteProducto {
     @Builder.Default
     private EstadoLote estado = EstadoLote.ACTIVO;
 
-    /** Supplier name — FK to Proveedor entity added in Sprint 6 Phase 3 */
-    @Column(name = "proveedor_nombre", length = 200)
-    private String proveedorNombre;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "proveedor_id")
+    @ToString.Exclude
+    private Proveedor proveedor;
 
     @Column(length = 500)
     private String observaciones;
