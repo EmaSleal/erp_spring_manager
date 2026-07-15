@@ -117,6 +117,10 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
             throw new IllegalStateException("Solo se pueden recibir OC en estado APROBADA, ENVIADA o RECIBIDA_PARCIAL");
         }
 
+        if (dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new IllegalArgumentException("La recepción debe incluir al menos un ítem");
+        }
+
         for (RecepcionDTO.ItemRecepcionDTO item : dto.getItems()) {
             DetalleOrdenCompra detalle = oc.getDetalles().stream()
                 .filter(d -> d.getId().equals(item.getDetalleId()))
@@ -156,9 +160,12 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
             detalle.setCantidadRecibida(detalle.getCantidadRecibida() + aRecibir);
         }
 
-        boolean todosCompletos = oc.getDetalles().stream()
+        List<DetalleOrdenCompra> detallesConProducto = oc.getDetalles().stream()
             .filter(d -> d.getProducto() != null)
-            .allMatch(DetalleOrdenCompra::isRecibidoCompleto);
+            .toList();
+
+        boolean todosCompletos = !detallesConProducto.isEmpty()
+            && detallesConProducto.stream().allMatch(DetalleOrdenCompra::isRecibidoCompleto);
 
         oc.setEstado(todosCompletos ? EstadoOrdenCompra.RECIBIDA : EstadoOrdenCompra.RECIBIDA_PARCIAL);
         if (todosCompletos) oc.setFechaRecepcion(LocalDate.now());

@@ -70,6 +70,10 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             throw new IllegalStateException("Solo se puede generar CPP de una OC recibida");
         }
 
+        if (cuentaRepository.existsByOrdenCompra(oc)) {
+            throw new IllegalStateException("Ya existe una cuenta por pagar para la OC " + oc.getNumero());
+        }
+
         CuentaPorPagar cuenta = CuentaPorPagar.builder()
             .numero(generarNumero())
             .proveedor(oc.getProveedor())
