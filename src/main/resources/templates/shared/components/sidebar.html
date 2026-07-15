@@ -106,6 +106,34 @@
             </a>
         </li>
 
+        <!-- Inventario -->
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'INVENTARIO_VER')">
+            <a th:href="@{/inventario/stock}"
+               class="menu-link"
+               data-module="inventario"
+               data-tooltip="Inventario">
+                <div class="menu-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <span class="menu-text">Inventario</span>
+            </a>
+        </li>
+
+        <!-- Proveedores -->
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_VER')">
+            <a th:href="@{/proveedores}"
+               class="menu-link"
+               data-module="proveedores"
+               data-tooltip="Proveedores">
+                <div class="menu-icon">
+                    <i class="fas fa-truck"></i>
+                </div>
+                <span class="menu-text">Proveedores</span>
+            </a>
+        </li>
+
         <!-- Divider -->
         <li><div class="menu-divider"></div></li>
 
@@ -115,31 +143,17 @@
         <!-- ====================================================================
              MÓDULOS INACTIVOS (Próximamente)
              ==================================================================== -->
-        
+
         <!-- Pedidos -->
         <li class="menu-item">
-            <a href="#" 
-               class="menu-link disabled" 
+            <a href="#"
+               class="menu-link disabled"
                data-module="pedidos"
                data-tooltip="Pedidos">
                 <div class="menu-icon">
                     <i class="fas fa-shopping-cart"></i>
                 </div>
                 <span class="menu-text">Pedidos</span>
-                <span class="menu-badge">Pronto</span>
-            </a>
-        </li>
-
-        <!-- Inventario -->
-        <li class="menu-item">
-            <a href="#" 
-               class="menu-link disabled" 
-               data-module="inventario"
-               data-tooltip="Inventario">
-                <div class="menu-icon">
-                    <i class="fas fa-warehouse"></i>
-                </div>
-                <span class="menu-text">Inventario</span>
                 <span class="menu-badge">Pronto</span>
             </a>
         </li>

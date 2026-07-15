@@ -88,10 +88,18 @@ public class MatrizPermisos {
         
         // Configuración (solo lectura)
         permisosGerente.add(Permiso.CONFIG_VER);
-        
+
         // Notificaciones (puede crear)
         permisosGerente.add(Permiso.NOTIFICACION_CREAR);
-        
+
+        // Inventario (solo lectura)
+        permisosGerente.add(Permiso.INVENTARIO_VER);
+
+        // Proveedores y compras (solo lectura)
+        permisosGerente.add(Permiso.PROVEEDOR_VER);
+        permisosGerente.add(Permiso.ORDEN_COMPRA_VER);
+        permisosGerente.add(Permiso.CUENTA_PAGAR_VER);
+
         PERMISOS_POR_ROL.put("GERENTE", Collections.unmodifiableSet(permisosGerente));
         
         // ==================== ROL: ADMIN ====================
@@ -127,7 +135,24 @@ public class MatrizPermisos {
         permisosAdmin.add(Permiso.SISTEMA_VER_LOGS);
         permisosAdmin.add(Permiso.SISTEMA_BACKUP);
         permisosAdmin.add(Permiso.SISTEMA_MANTENIMIENTO);
-        
+
+        // Inventario (CRUD completo)
+        permisosAdmin.add(Permiso.INVENTARIO_AJUSTAR);
+
+        // Proveedores (CRUD completo)
+        permisosAdmin.add(Permiso.PROVEEDOR_CREAR);
+        permisosAdmin.add(Permiso.PROVEEDOR_EDITAR);
+        permisosAdmin.add(Permiso.PROVEEDOR_ELIMINAR);
+
+        // Órdenes de compra (gestión completa)
+        permisosAdmin.add(Permiso.ORDEN_COMPRA_CREAR);
+        permisosAdmin.add(Permiso.ORDEN_COMPRA_APROBAR);
+        permisosAdmin.add(Permiso.ORDEN_COMPRA_CANCELAR);
+
+        // Cuentas por pagar (gestión completa)
+        permisosAdmin.add(Permiso.CUENTA_PAGAR_CREAR);
+        permisosAdmin.add(Permiso.CUENTA_PAGAR_REGISTRAR_PAGO);
+
         PERMISOS_POR_ROL.put("ADMIN", Collections.unmodifiableSet(permisosAdmin));
     }
     
