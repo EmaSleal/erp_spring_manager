@@ -121,6 +121,7 @@ public enum Permiso {
     // ==================== CUENTAS POR PAGAR ====================
 
     CUENTA_PAGAR_VER("Ver cuentas por pagar", "Visualizar cuentas por pagar a proveedores"),
+    CUENTA_PAGAR_CREAR("Crear cuentas por pagar", "Registrar cuentas por pagar a proveedores"),
     CUENTA_PAGAR_REGISTRAR_PAGO("Registrar pago a proveedor", "Registrar pagos de cuentas por pagar"),
 
     // ==================== AUDITORÍA ====================

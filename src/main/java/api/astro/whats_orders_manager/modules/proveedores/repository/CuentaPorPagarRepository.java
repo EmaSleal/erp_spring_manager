@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.proveedores.repository;
 
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,4 +25,6 @@ public interface CuentaPorPagarRepository extends JpaRepository<CuentaPorPagar, 
 
     @Query("SELECT MAX(CAST(SUBSTRING(c.numero, 10) AS int)) FROM CuentaPorPagar c WHERE c.numero LIKE CONCAT('CPP-', :anio, '-%')")
     Integer findUltimoConsecutivo(int anio);
+
+    boolean existsByOrdenCompra(OrdenCompra ordenCompra);
 }

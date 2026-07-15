@@ -105,7 +105,7 @@ public class OrdenCompraRestController {
     }
 
     @PostMapping("/{id}/generar-cpp")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
     public ResponseEntity<ResponseDTO> generarCuentaPorPagar(
             @PathVariable Long id,
             Authentication authentication

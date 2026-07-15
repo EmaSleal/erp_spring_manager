@@ -73,7 +73,7 @@ public class CuentaPorPagarRestController {
     }
 
     @PostMapping
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
     public ResponseEntity<ResponseDTO> crear(
             @RequestBody CuentaPorPagarDTO dto,
             Authentication authentication
@@ -119,7 +119,7 @@ public class CuentaPorPagarRestController {
     }
 
     @PostMapping("/actualizar-vencidas")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_REGISTRAR_PAGO')")
     public ResponseEntity<ResponseDTO> actualizarVencidas(Authentication authentication) {
         int marcadas = cuentaPorPagarService.actualizarVencidas();
         return ResponseEntity.ok(ResponseDTO.success("Cuentas marcadas como vencidas: " + marcadas));
