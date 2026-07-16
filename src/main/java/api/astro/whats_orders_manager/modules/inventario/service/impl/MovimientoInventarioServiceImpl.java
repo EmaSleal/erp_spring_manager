@@ -143,6 +143,12 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
         return movimientoRepository.findByProductoOrderByFechaDesc(producto);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<MovimientoInventario> obtenerKardexTodos() {
+        return movimientoRepository.findAllByOrderByFechaDesc();
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private void aplicarSalidaConLotes(MovimientoInventario movimiento, Producto producto, int cantidad) {

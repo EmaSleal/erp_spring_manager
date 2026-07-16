@@ -33,4 +33,6 @@ public interface MovimientoInventarioService {
     );
 
     List<MovimientoInventario> obtenerKardex(Integer productoId);
+
+    List<MovimientoInventario> obtenerKardexTodos();
 }

@@ -18,6 +18,16 @@ public class KardexRestController {
 
     private final MovimientoInventarioService movimientoService;
 
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<KardexItemDTO>> getKardexTodos() {
+        List<KardexItemDTO> items = movimientoService.obtenerKardexTodos()
+            .stream()
+            .map(KardexItemDTO::new)
+            .toList();
+        return ResponseEntity.ok(items);
+    }
+
     @GetMapping("/{productoId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<KardexItemDTO>> getKardex(@PathVariable Integer productoId) {
