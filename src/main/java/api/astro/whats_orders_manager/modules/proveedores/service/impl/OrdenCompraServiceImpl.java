@@ -64,12 +64,16 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
                 var producto = d.getProductoId() != null
                     ? productoRepository.findById(d.getProductoId()).orElse(null)
                     : null;
+                BigDecimal lineTotal = d.getPrecioUnitario() != null && d.getCantidad() != null
+                    ? d.getPrecioUnitario().multiply(BigDecimal.valueOf(d.getCantidad()))
+                    : BigDecimal.ZERO;
                 oc.getDetalles().add(DetalleOrdenCompra.builder()
                     .ordenCompra(oc)
                     .producto(producto)
                     .descripcion(d.getDescripcion())
                     .cantidad(d.getCantidad())
                     .precioUnitario(d.getPrecioUnitario())
+                    .total(lineTotal)
                     .build());
             }
         }

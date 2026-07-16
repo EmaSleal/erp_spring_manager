@@ -17,9 +17,14 @@
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-truck', 'text-primary', 'Gestión de', 'Proveedores', 'Registro y administración de proveedores')}"></div>
             </div>
             <div class="col-auto d-flex align-items-end gap-2">
+                <a th:href="@{/proveedores/ordenes-compra}"
+                   class="btn btn-outline-success"
+                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_VER')">
+                    <i class="fas fa-file-invoice me-1"></i>Órdenes de Compra
+                </a>
                 <a href="/proveedores/nuevo"
                    class="btn btn-primary"
-                   sec:authorize="@permisoService.tienePermiso(authentication, 'PROVEEDOR_CREAR')">
+                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_CREAR')">
                     <i class="fas fa-plus me-1"></i>Nuevo Proveedor
                 </a>
             </div>
@@ -97,7 +102,7 @@
                                         <a th:href="@{/proveedores/{id}/editar(id=${p.id})}"
                                            class="btn btn-outline-primary"
                                            title="Editar"
-                                           sec:authorize="@permisoService.tienePermiso(authentication, 'PROVEEDOR_EDITAR')">
+                                           sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_EDITAR')">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <button th:if="${p.activo}"
@@ -105,7 +110,7 @@
                                                 th:data-id="${p.id}"
                                                 th:data-nombre="${p.nombre}"
                                                 title="Desactivar"
-                                                sec:authorize="@permisoService.tienePermiso(authentication, 'PROVEEDOR_ELIMINAR')">
+                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_ELIMINAR')">
                                             <i class="fas fa-ban"></i>
                                         </button>
                                     </div>
@@ -113,7 +118,7 @@
                             </tr>
                         </tbody>
                     </table>
-                    <div th:replace="~{shared/fragments/empty-state :: emptyState('fas fa-truck', 'No hay proveedores registrados')}"
+                    <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-truck', 'No hay proveedores registrados')}"
                          th:if="${#lists.isEmpty(proveedores)}">
                     </div>
                 </div>

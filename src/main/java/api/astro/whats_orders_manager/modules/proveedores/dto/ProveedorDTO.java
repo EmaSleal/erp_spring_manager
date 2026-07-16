@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.proveedores.enums.TipoProveedor;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -40,4 +41,6 @@ public class ProveedorDTO {
     private String sinpeMovil;
 
     private String notas;
+
+    private List<Integer> itemIds;
 }

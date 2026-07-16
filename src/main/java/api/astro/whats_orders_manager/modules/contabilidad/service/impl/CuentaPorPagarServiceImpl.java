@@ -1,24 +1,28 @@
-package api.astro.whats_orders_manager.modules.proveedores.service.impl;
+package api.astro.whats_orders_manager.modules.contabilidad.service.impl;
 
-import api.astro.whats_orders_manager.modules.proveedores.dto.CuentaPorPagarDTO;
-import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
-import api.astro.whats_orders_manager.modules.proveedores.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
-import api.astro.whats_orders_manager.modules.proveedores.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.OrdenCompraRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
-import api.astro.whats_orders_manager.modules.proveedores.service.CuentaPorPagarService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -28,6 +32,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     private final CuentaPorPagarRepository cuentaRepository;
     private final ProveedorRepository proveedorRepository;
     private final OrdenCompraRepository ordenCompraRepository;
+    private final AsientoContableService asientoService;
 
     @Override
     @Transactional
@@ -90,6 +95,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
 
         CuentaPorPagar guardada = cuentaRepository.save(cuenta);
         actualizarSaldoProveedor(oc.getProveedor(), oc.getTotal(), true);
+        asientoService.generarAsientoCompra(guardada);
         log.info("CPP {} generada desde OC {}", guardada.getNumero(), oc.getNumero());
         return guardada;
     }
@@ -120,6 +126,12 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Set<Long> findOrdenCompraIdsConCpp() {
+        return new HashSet<>(cuentaRepository.findOrdenCompraIds());
+    }
+
+    @Override
     @Transactional
     public int actualizarVencidas() {
         List<CuentaPorPagar> vencidas = cuentaRepository.findVencidas(LocalDate.now());
@@ -131,18 +143,20 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         return vencidas.size();
     }
 
-    // ── Package-private — called by PagoProveedorServiceImpl ─────────────────
-
-    void aplicarPago(CuentaPorPagar cuenta, java.math.BigDecimal monto) {
+    @Override
+    @Transactional
+    public void aplicarPago(CuentaPorPagar cuenta, BigDecimal monto) {
         cuenta.setSaldoPendiente(cuenta.getSaldoPendiente().subtract(monto));
-        cuenta.setEstado(cuenta.getSaldoPendiente().compareTo(java.math.BigDecimal.ZERO) == 0
+        cuenta.setEstado(cuenta.getSaldoPendiente().compareTo(BigDecimal.ZERO) == 0
             ? EstadoCuentaPorPagar.PAGADA
             : EstadoCuentaPorPagar.PARCIAL);
         cuentaRepository.save(cuenta);
         actualizarSaldoProveedor(cuenta.getProveedor(), monto, false);
     }
 
-    void revertirPago(CuentaPorPagar cuenta, java.math.BigDecimal monto) {
+    @Override
+    @Transactional
+    public void revertirPago(CuentaPorPagar cuenta, BigDecimal monto) {
         cuenta.setSaldoPendiente(cuenta.getSaldoPendiente().add(monto));
         cuenta.setEstado(cuenta.getSaldoPendiente().compareTo(cuenta.getMonto()) == 0
             ? EstadoCuentaPorPagar.PENDIENTE
@@ -153,9 +167,9 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private void actualizarSaldoProveedor(Proveedor proveedor, java.math.BigDecimal monto, boolean aumentar) {
-        java.math.BigDecimal actual = proveedor.getSaldoPendiente() != null
-            ? proveedor.getSaldoPendiente() : java.math.BigDecimal.ZERO;
+    private void actualizarSaldoProveedor(Proveedor proveedor, BigDecimal monto, boolean aumentar) {
+        BigDecimal actual = proveedor.getSaldoPendiente() != null
+            ? proveedor.getSaldoPendiente() : BigDecimal.ZERO;
         proveedor.setSaldoPendiente(aumentar ? actual.add(monto) : actual.subtract(monto));
         proveedorRepository.save(proveedor);
     }

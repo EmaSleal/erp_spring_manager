@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.proveedores.model;
 
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.enums.MetodoPagoProveedor;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;

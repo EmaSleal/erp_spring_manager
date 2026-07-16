@@ -1,4 +1,4 @@
-package api.astro.whats_orders_manager.modules.proveedores.dto;
+package api.astro.whats_orders_manager.modules.contabilidad.dto;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import lombok.*;

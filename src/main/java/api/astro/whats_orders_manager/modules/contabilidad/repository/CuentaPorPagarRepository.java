@@ -1,7 +1,7 @@
-package api.astro.whats_orders_manager.modules.proveedores.repository;
+package api.astro.whats_orders_manager.modules.contabilidad.repository;
 
-import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoCuentaPorPagar;
-import api.astro.whats_orders_manager.modules.proveedores.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,4 +27,7 @@ public interface CuentaPorPagarRepository extends JpaRepository<CuentaPorPagar, 
     Integer findUltimoConsecutivo(int anio);
 
     boolean existsByOrdenCompra(OrdenCompra ordenCompra);
+
+    @Query("SELECT c.ordenCompra.id FROM CuentaPorPagar c WHERE c.ordenCompra IS NOT NULL")
+    List<Long> findOrdenCompraIds();
 }

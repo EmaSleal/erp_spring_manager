@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Órdenes de Compra</title>
+</head>
+<body>
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div class="container-fluid py-4">
+
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/proveedores', 'fas fa-truck', 'Proveedores', 'fas fa-file-invoice', 'Órdenes de Compra')}"></div>
+
+            <div class="page-header mb-4">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice', 'text-success', 'Órdenes de', 'Compra', 'Gestión de órdenes de compra a proveedores')}"></div>
+                <div class="page-header-actions">
+                    <button class="btn btn-success"
+                            data-bs-toggle="modal" data-bs-target="#modalNuevaOC"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_CREAR')">
+                        <i class="fas fa-plus me-1"></i>Nueva OC
+                    </button>
+                    <a th:href="@{/proveedores}" class="btn btn-outline-secondary ms-2">
+                        <i class="fas fa-arrow-left me-1"></i>Proveedores
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="row mb-3 g-2">
+                <div class="col-md-3">
+                    <input type="text" id="filtroTexto" class="form-control" placeholder="Buscar por número o proveedor...">
+                </div>
+                <div class="col-md-2">
+                    <select id="filtroEstado" class="form-select">
+                        <option value="">Todos los estados</option>
+                        <option th:each="e : ${estados}" th:value="${e}" th:text="${e}"></option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="tablaOC">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Proveedor</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                    <th>Entrega Esperada</th>
+                                    <th>Moneda</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="oc : ${ordenes}"
+                                    th:data-estado="${oc.estado}"
+                                    th:data-texto="${oc.numero + ' ' + oc.proveedor.nombre}">
+                                    <td><code th:text="${oc.numero}">OC-2026-00001</code></td>
+                                    <td>
+                                        <div class="fw-semibold" th:text="${oc.proveedor.nombre}"></div>
+                                    </td>
+                                    <td>
+                                        <span th:text="${oc.estado}"
+                                              th:class="${oc.estado.name() == 'BORRADOR'          ? 'badge bg-secondary' :
+                                                          oc.estado.name() == 'PENDIENTE'          ? 'badge bg-info text-dark' :
+                                                          oc.estado.name() == 'APROBADA'           ? 'badge bg-primary' :
+                                                          oc.estado.name() == 'ENVIADA'            ? 'badge bg-info' :
+                                                          oc.estado.name() == 'RECIBIDA_PARCIAL'   ? 'badge bg-warning text-dark' :
+                                                          oc.estado.name() == 'RECIBIDA'           ? 'badge bg-success' :
+                                                                                                     'badge bg-danger'}">
+                                        </span>
+                                    </td>
+                                    <td class="small" th:text="${#temporals.format(oc.fecha, 'dd/MM/yyyy')}"></td>
+                                    <td class="small" th:text="${oc.fechaEntregaEsperada != null ? #temporals.format(oc.fechaEntregaEsperada, 'dd/MM/yyyy') : '—'}">—</td>
+                                    <td><span class="badge bg-light text-dark border" th:text="${oc.moneda}"></span></td>
+                                    <td class="text-end fw-semibold"
+                                        th:text="${#numbers.formatDecimal(oc.total, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <!-- BORRADOR / PENDIENTE: Aprobar + Cancelar -->
+                                            <th:block th:if="${oc.estado.name() == 'BORRADOR' or oc.estado.name() == 'PENDIENTE'}">
+                                                <button class="btn btn-outline-success btn-aprobar"
+                                                        th:data-id="${oc.id}" th:data-numero="${oc.numero}"
+                                                        title="Aprobar"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_APROBAR')">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-cancelar"
+                                                        th:data-id="${oc.id}" th:data-numero="${oc.numero}"
+                                                        title="Cancelar"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_CANCELAR')">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            </th:block>
+
+                                            <!-- APROBADA / ENVIADA / RECIBIDA_PARCIAL: Recibir + Cancelar -->
+                                            <th:block th:if="${oc.estado.name() == 'APROBADA' or oc.estado.name() == 'ENVIADA' or oc.estado.name() == 'RECIBIDA_PARCIAL'}">
+                                                <button class="btn btn-outline-primary btn-recibir"
+                                                        th:data-id="${oc.id}" th:data-numero="${oc.numero}"
+                                                        title="Registrar Recepción"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_APROBAR')">
+                                                    <i class="fas fa-truck-loading"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-cancelar"
+                                                        th:data-id="${oc.id}" th:data-numero="${oc.numero}"
+                                                        title="Cancelar"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_CANCELAR')">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            </th:block>
+
+                                            <!-- RECIBIDA: Generar CPP (only if no CPP exists yet) -->
+                                            <th:block th:if="${oc.estado.name() == 'RECIBIDA' and not ocsConCpp.contains(oc.id)}">
+                                                <button class="btn btn-outline-warning btn-generar-cpp"
+                                                        th:data-id="${oc.id}" th:data-numero="${oc.numero}"
+                                                        title="Generar Cuenta por Pagar"
+                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
+                                                    <i class="fas fa-file-invoice-dollar"></i>
+                                                </button>
+                                            </th:block>
+
+                                            <!-- CANCELADA -->
+                                            <th:block th:if="${oc.estado.name() == 'CANCELADA'}">
+                                                <span class="text-muted small">—</span>
+                                            </th:block>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-file-invoice', 'No hay órdenes de compra registradas')}"
+                             th:if="${#lists.isEmpty(ordenes)}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal: Nueva OC -->
+    <div class="modal fade" id="modalNuevaOC" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-file-invoice me-2"></i>Nueva Orden de Compra</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Categoría</label>
+                            <select id="oc-categoria" class="form-select">
+                                <option value="">— Todas —</option>
+                                <option th:each="c : ${categorias}" th:value="${c}" th:text="${c}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Proveedor <span class="text-danger">*</span></label>
+                            <select id="oc-proveedor" class="form-select">
+                                <option value="">— Seleccionar —</option>
+                                <option th:each="p : ${proveedores}"
+                                        th:value="${p.id}"
+                                        th:text="${p.nombre}"
+                                        th:data-categoria="${p.categoria}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Entrega Esperada</label>
+                            <input type="date" id="oc-entrega" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Moneda</label>
+                            <select id="oc-moneda" class="form-select">
+                                <option th:each="m : ${monedas}" th:value="${m}" th:text="${m}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Notas</label>
+                            <input type="text" id="oc-notas" class="form-control" placeholder="Opcional">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Líneas de la orden</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarLineaOC">
+                            <i class="fas fa-plus me-1"></i>Agregar línea
+                        </button>
+                    </div>
+
+                    <div class="table-responsive" style="overflow: visible">
+                        <table class="table table-bordered align-middle" id="tablaLineasOC">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width:200px">Producto (opcional)</th>
+                                    <th style="min-width:200px">Descripción</th>
+                                    <th style="width:90px">Cantidad</th>
+                                    <th style="width:130px">Precio Unitario</th>
+                                    <th style="width:110px">Subtotal</th>
+                                    <th style="width:50px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineasBodyOC"></tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <td colspan="4" class="text-end fw-semibold">Total estimado:</td>
+                                    <td class="fw-bold" id="oc-total">0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="btnGuardarOC">
+                        <i class="fas fa-save me-1"></i>Crear Orden
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Recepción -->
+    <div class="modal fade" id="modalRecepcion" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-truck-loading me-2"></i>Registrar Recepción — <span id="recOCNumero"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-end">Pedido</th>
+                                    <th class="text-end">Recibido</th>
+                                    <th style="width:90px">A Recibir</th>
+                                    <th style="width:130px">Cód. Lote</th>
+                                    <th style="width:130px">Vencimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recLineas"></tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>Solo se registran líneas con producto de catálogo.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarRecepcion">
+                        <i class="fas fa-check me-1"></i>Confirmar Recepción
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OC detail data for reception modal -->
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+    const ocDetallesMap       = /*[[${ocDetallesMap}]]*/ {};
+    const proveedorItemsMap   = /*[[${proveedorItemsMap}]]*/ {};
+    /*]]>*/
+    </script>
+
+    <script>
+    // ── Filter ────────────────────────────────────────────────────────────────
+    document.getElementById('filtroTexto').addEventListener('input', filtrar);
+    document.getElementById('filtroEstado').addEventListener('change', filtrar);
+    function filtrar() {
+        const q = document.getElementById('filtroTexto').value.toLowerCase();
+        const estado = document.getElementById('filtroEstado').value;
+        document.querySelectorAll('#tablaOC tbody tr').forEach(tr => {
+            const matchQ = !q || tr.dataset.texto.toLowerCase().includes(q);
+            const matchE = !estado || tr.dataset.estado === estado;
+            tr.style.display = (matchQ && matchE) ? '' : 'none';
+        });
+    }
+
+    // ── Nueva OC: product catalogue ───────────────────────────────────────────
+    let productosOC = [];
+    // null = no proveedor selected; array = scoped to proveedor (or full catalogue if no items configured)
+    let productosOCActivos = null;
+
+    async function cargarProductosOC() {
+        if (productosOC.length > 0) return;
+        try {
+            const res = await fetch('/productos/records');
+            productosOC = await res.json();
+        } catch (e) {
+            showToast('error', 'No se pudo cargar el catálogo de productos.');
+        }
+    }
+
+    function resolverProductosActivos(proveedorId) {
+        if (!proveedorId) { productosOCActivos = null; return; }
+        const itemIds = proveedorItemsMap[proveedorId];
+        productosOCActivos = (itemIds && itemIds.length > 0)
+            ? productosOC.filter(p => itemIds.includes(p.id_producto))
+            : null;
+    }
+
+    function actualizarPlaceholderLineas() {
+        const pid = parseInt(document.getElementById('oc-proveedor').value) || null;
+        let ph;
+        if (!pid) {
+            ph = 'Seleccione un proveedor primero';
+        } else if (productosOCActivos === null) {
+            ph = 'Sin productos configurados para este proveedor';
+        } else {
+            ph = 'Buscar producto...';
+        }
+        document.querySelectorAll('#lineasBodyOC .inp-buscar-prod').forEach(i => i.placeholder = ph);
+    }
+
+    // ── Nueva OC: dynamic lines ───────────────────────────────────────────────
+    function agregarLineaOC() {
+        const tbody = document.getElementById('lineasBodyOC');
+        const tr = document.createElement('tr');
+        const ph = productosOCActivos === null ? 'Seleccione un proveedor primero' : 'Buscar producto...';
+        tr.innerHTML = `
+            <td style="min-width:220px">
+                <div class="position-relative">
+                    <input type="text" class="form-control form-control-sm inp-buscar-prod"
+                           placeholder="${ph}" autocomplete="off">
+                    <input type="hidden" class="inp-prod-id">
+                    <div class="inp-prod-dropdown list-group position-absolute w-100 shadow-sm"
+                         style="z-index:1060;display:none;max-height:200px;overflow-y:auto;top:100%;left:0"></div>
+                </div>
+            </td>
+            <td><input type="text" class="form-control form-control-sm inp-desc-oc" placeholder="Descripción de la línea"></td>
+            <td><input type="number" class="form-control form-control-sm inp-cant-oc" min="1" value="1"></td>
+            <td><input type="number" class="form-control form-control-sm inp-precio-oc" min="0" step="0.01" value="0"></td>
+            <td class="text-end fw-semibold subtotal-oc">0.00</td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger btn-rm-oc"><i class="fas fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+
+        const buscarInput  = tr.querySelector('.inp-buscar-prod');
+        const prodIdInput  = tr.querySelector('.inp-prod-id');
+        const dropdown     = tr.querySelector('.inp-prod-dropdown');
+        const inpDesc      = tr.querySelector('.inp-desc-oc');
+        const inpCant      = tr.querySelector('.inp-cant-oc');
+        const inpPrecio    = tr.querySelector('.inp-precio-oc');
+        const subtotalCell = tr.querySelector('.subtotal-oc');
+
+        function renderDropdown(q) {
+            if (productosOCActivos === null) { dropdown.style.display = 'none'; return; }
+            const matches = productosOCActivos.filter(p => p.nombre.toLowerCase().includes(q)).slice(0, 12);
+            if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+            dropdown.innerHTML = matches.map(p =>
+                `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small"
+                         data-id="${p.id_producto}" data-nombre="${p.nombre}"
+                         data-costo="${p.precio_institucional || 0}">
+                    ${p.nombre}
+                 </button>`
+            ).join('');
+            dropdown.style.display = 'block';
+            dropdown.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    buscarInput.value = btn.dataset.nombre;
+                    prodIdInput.value = btn.dataset.id;
+                    if (!inpDesc.value.trim()) inpDesc.value = btn.dataset.nombre;
+                    if (!parseFloat(inpPrecio.value)) inpPrecio.value = btn.dataset.costo;
+                    dropdown.style.display = 'none';
+                    recalcSubtotal();
+                });
+            });
+        }
+
+        buscarInput.addEventListener('input', () => {
+            prodIdInput.value = '';
+            renderDropdown(buscarInput.value.toLowerCase().trim());
+        });
+
+        buscarInput.addEventListener('focus', () => {
+            renderDropdown(buscarInput.value.toLowerCase().trim());
+        });
+
+        buscarInput.addEventListener('click', () => {
+            prodIdInput.value = '';
+            renderDropdown(buscarInput.value.toLowerCase().trim());
+        });
+
+        buscarInput.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+
+        [inpCant, inpPrecio].forEach(inp => inp.addEventListener('input', recalcSubtotal));
+        tr.querySelector('.btn-rm-oc').addEventListener('click', () => { tr.remove(); recalcTotal(); });
+
+        function recalcSubtotal() {
+            const sub = (parseFloat(inpCant.value) || 0) * (parseFloat(inpPrecio.value) || 0);
+            subtotalCell.textContent = sub.toFixed(2);
+            recalcTotal();
+        }
+    }
+
+    function recalcTotal() {
+        let total = 0;
+        document.querySelectorAll('#lineasBodyOC .subtotal-oc').forEach(td => {
+            total += parseFloat(td.textContent) || 0;
+        });
+        document.getElementById('oc-total').textContent = total.toFixed(2);
+    }
+
+    // ── Category filter → narrows proveedor list ──────────────────────────────
+    document.getElementById('oc-categoria').addEventListener('change', function () {
+        const cat = this.value;
+        const sel = document.getElementById('oc-proveedor');
+        sel.value = '';
+        Array.from(sel.options).forEach(opt => {
+            if (!opt.value) return;
+            opt.hidden = cat !== '' && opt.dataset.categoria !== cat;
+        });
+        // Reset product scope when proveedor deselected
+        productosOCActivos = null;
+        actualizarPlaceholderLineas();
+    });
+
+    // ── Proveedor selection → scopes product search ───────────────────────────
+    document.getElementById('oc-proveedor').addEventListener('change', function () {
+        resolverProductosActivos(parseInt(this.value) || null);
+        actualizarPlaceholderLineas();
+    });
+
+    document.getElementById('btnAgregarLineaOC').addEventListener('click', agregarLineaOC);
+    document.getElementById('modalNuevaOC').addEventListener('show.bs.modal', async () => {
+        document.getElementById('lineasBodyOC').innerHTML = '';
+        document.getElementById('oc-categoria').value = '';
+        document.getElementById('oc-proveedor').value = '';
+        Array.from(document.getElementById('oc-proveedor').options).forEach(o => o.hidden = false);
+        document.getElementById('oc-entrega').value = '';
+        document.getElementById('oc-notas').value = '';
+        document.getElementById('oc-total').textContent = '0.00';
+        productosOCActivos = null;
+        await cargarProductosOC();
+        agregarLineaOC();
+    });
+
+    document.getElementById('btnGuardarOC').addEventListener('click', async () => {
+        const proveedorId = parseInt(document.getElementById('oc-proveedor').value);
+        if (!proveedorId) { showToast('warning', 'Seleccione un proveedor.'); return; }
+
+        const rows = document.querySelectorAll('#lineasBodyOC tr');
+        const detalles = [];
+        for (const tr of rows) {
+            const desc = tr.querySelector('.inp-desc-oc').value.trim();
+            const cant = parseInt(tr.querySelector('.inp-cant-oc').value) || 0;
+            const precio = parseFloat(tr.querySelector('.inp-precio-oc').value) || 0;
+            if (!desc || cant <= 0) continue;
+            const pid = parseInt(tr.querySelector('.inp-prod-id').value) || null;
+            detalles.push({ productoId: pid, descripcion: desc, cantidad: cant, precioUnitario: precio });
+        }
+        if (detalles.length === 0) { showToast('warning', 'Agregue al menos una línea válida.'); return; }
+
+        const entrega = document.getElementById('oc-entrega').value || null;
+        const body = {
+            proveedorId,
+            fechaEntregaEsperada: entrega,
+            moneda: document.getElementById('oc-moneda').value,
+            notas: document.getElementById('oc-notas').value.trim() || null,
+            detalles
+        };
+
+        const btn = document.getElementById('btnGuardarOC');
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/ordenes-compra', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+                },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalNuevaOC')).hide();
+                location.reload();
+            } else {
+                showToast('error', data.message || 'Error al crear la orden.');
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // ── Aprobar ───────────────────────────────────────────────────────────────
+    document.querySelectorAll('.btn-aprobar').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!await showConfirmDialog(`Aprobar OC ${btn.dataset.numero}`, '¿Confirmar aprobación de la orden?')) return;
+            const res = await fetch(`/api/ordenes-compra/${btn.dataset.id}/aprobar`, {
+                method: 'POST',
+                headers: { [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token }
+            });
+            const data = await res.json();
+            if (data.success) location.reload(); else showToast('error', data.message);
+        });
+    });
+
+    // ── Cancelar ──────────────────────────────────────────────────────────────
+    document.querySelectorAll('.btn-cancelar').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!await showConfirmDialog(`Cancelar OC ${btn.dataset.numero}`, 'Esta acción no se puede deshacer.', 'Sí, cancelar')) return;
+            const res = await fetch(`/api/ordenes-compra/${btn.dataset.id}/cancelar`, {
+                method: 'POST',
+                headers: { [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token }
+            });
+            const data = await res.json();
+            if (data.success) location.reload(); else showToast('error', data.message);
+        });
+    });
+
+    // ── Generar CPP ───────────────────────────────────────────────────────────
+    document.querySelectorAll('.btn-generar-cpp').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!await showConfirmDialog(`Generar cuenta por pagar`, `¿Generar CPP para OC ${btn.dataset.numero}?`)) return;
+            const res = await fetch(`/api/ordenes-compra/${btn.dataset.id}/generar-cpp`, {
+                method: 'POST',
+                headers: { [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token }
+            });
+            const data = await res.json();
+            if (data.success) { showToast('success', data.message); location.reload(); }
+            else showToast('error', data.message);
+        });
+    });
+
+    // ── Recibir ───────────────────────────────────────────────────────────────
+    let currentOcId = null;
+    document.querySelectorAll('.btn-recibir').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentOcId = btn.dataset.id;
+            document.getElementById('recOCNumero').textContent = btn.dataset.numero;
+
+            const detalles = ocDetallesMap[currentOcId] || [];
+            const tbody = document.getElementById('recLineas');
+            tbody.innerHTML = '';
+
+            if (detalles.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Esta OC no tiene líneas con productos de catálogo.</td></tr>';
+            } else {
+                detalles.forEach(d => {
+                    const porRecibir = d.porRecibir || (d.cantidad - d.cantidadRecibida);
+                    const tr = document.createElement('tr');
+                    tr.dataset.detalleId = d.id;
+                    tr.innerHTML = `
+                        <td class="small fw-semibold">${d.descripcion}</td>
+                        <td class="text-end small">${d.cantidad}</td>
+                        <td class="text-end small">${d.cantidadRecibida}</td>
+                        <td><input type="number" class="form-control form-control-sm inp-rec" min="0" max="${porRecibir}" value="${porRecibir}"></td>
+                        <td><input type="text" class="form-control form-control-sm inp-lote" placeholder="Opcional"></td>
+                        <td><input type="date" class="form-control form-control-sm inp-venc"></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            new bootstrap.Modal(document.getElementById('modalRecepcion')).show();
+        });
+    });
+
+    document.getElementById('btnConfirmarRecepcion').addEventListener('click', async () => {
+        const items = [];
+        document.querySelectorAll('#recLineas tr[data-detalle-id]').forEach(tr => {
+            const cant = parseInt(tr.querySelector('.inp-rec').value) || 0;
+            if (cant <= 0) return;
+            items.push({
+                detalleId: parseInt(tr.dataset.detalleId),
+                cantidadRecibida: cant,
+                codigoLote: tr.querySelector('.inp-lote').value.trim() || null,
+                fechaVencimiento: tr.querySelector('.inp-venc').value || null,
+                fechaFabricacion: null,
+                costoUnitario: null
+            });
+        });
+        if (items.length === 0) { showToast('warning', 'Ingrese al menos una cantidad mayor a 0.'); return; }
+
+        const btn = document.getElementById('btnConfirmarRecepcion');
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/api/ordenes-compra/${currentOcId}/recibir`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+                },
+                body: JSON.stringify({ items })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalRecepcion')).hide();
+                location.reload();
+            } else {
+                showToast('error', data.message || 'Error al registrar recepción.');
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    });
+    </script>
+
+    <div th:replace="~{shared/layout :: scripts}"></div>
+</body>
+</html>

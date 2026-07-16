@@ -1,7 +1,10 @@
-package api.astro.whats_orders_manager.modules.proveedores.model;
+package api.astro.whats_orders_manager.modules.contabilidad.model;
 
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
-import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
+import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
+import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import jakarta.persistence.*;
 import lombok.*;
 

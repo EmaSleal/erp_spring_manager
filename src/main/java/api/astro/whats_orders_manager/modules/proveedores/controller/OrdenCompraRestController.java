@@ -4,7 +4,7 @@ import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.RecepcionDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
-import api.astro.whats_orders_manager.modules.proveedores.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
@@ -57,7 +57,7 @@ public class OrdenCompraRestController {
         try {
             Usuario usuario = resolverUsuario(authentication);
             OrdenCompra oc = ordenCompraService.crear(dto, usuario);
-            return ResponseEntity.ok(ResponseDTO.success("Orden de compra creada: " + oc.getNumero(), oc));
+            return ResponseEntity.ok(ResponseDTO.success("Orden de compra creada: " + oc.getNumero(), null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }
@@ -69,7 +69,7 @@ public class OrdenCompraRestController {
         try {
             Usuario usuario = resolverUsuario(authentication);
             OrdenCompra oc = ordenCompraService.aprobar(id, usuario);
-            return ResponseEntity.ok(ResponseDTO.success("OC " + oc.getNumero() + " aprobada", oc));
+            return ResponseEntity.ok(ResponseDTO.success("OC " + oc.getNumero() + " aprobada", null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }
@@ -81,7 +81,7 @@ public class OrdenCompraRestController {
         try {
             Usuario usuario = resolverUsuario(authentication);
             OrdenCompra oc = ordenCompraService.cancelar(id, usuario);
-            return ResponseEntity.ok(ResponseDTO.success("OC " + oc.getNumero() + " cancelada", oc));
+            return ResponseEntity.ok(ResponseDTO.success("OC " + oc.getNumero() + " cancelada", null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }
@@ -98,7 +98,7 @@ public class OrdenCompraRestController {
             dto.setOrdenCompraId(id);
             Usuario usuario = resolverUsuario(authentication);
             OrdenCompra oc = ordenCompraService.recibirParcial(dto, usuario);
-            return ResponseEntity.ok(ResponseDTO.success("Recepción registrada — OC en estado: " + oc.getEstado(), oc));
+            return ResponseEntity.ok(ResponseDTO.success("Recepción registrada — OC en estado: " + oc.getEstado(), null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }
@@ -112,7 +112,7 @@ public class OrdenCompraRestController {
     ) {
         try {
             var cpp = cuentaPorPagarService.crearDesdeOrdenCompra(id);
-            return ResponseEntity.ok(ResponseDTO.success("Cuenta por pagar generada: " + cpp.getNumero(), cpp));
+            return ResponseEntity.ok(ResponseDTO.success("Cuenta por pagar generada: " + cpp.getNumero(), null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }

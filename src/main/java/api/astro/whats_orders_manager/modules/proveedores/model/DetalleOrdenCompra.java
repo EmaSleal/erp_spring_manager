@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.model;
 
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,6 +27,7 @@ public class DetalleOrdenCompra {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "orden_compra_id", nullable = false)
     @ToString.Exclude
+    @JsonIgnore
     private OrdenCompra ordenCompra;
 
     @ManyToOne(fetch = FetchType.LAZY)
