@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Ajustes de Inventario</title>
+</head>
+<body>
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div class="container-fluid py-4">
+
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/inventario/stock', 'fas fa-warehouse', 'Inventario', 'fas fa-sliders-h', 'Ajustes')}"></div>
+
+            <div class="page-header mb-4">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-sliders-h', 'text-warning', 'Ajustes de', 'Inventario', 'Correcciones y conteos físicos de stock')}"></div>
+                <div class="page-header-actions">
+                    <button class="btn btn-warning"
+                            data-bs-toggle="modal" data-bs-target="#modalNuevoAjuste"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'INVENTARIO_AJUSTAR')">
+                        <i class="fas fa-plus me-1"></i>Nuevo Ajuste
+                    </button>
+                    <a th:href="@{/inventario/stock}" class="btn btn-outline-secondary ms-2">
+                        <i class="fas fa-arrow-left me-1"></i>Volver a Stock
+                    </a>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Tipo</th>
+                                    <th>Motivo</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                    <th>Creado por</th>
+                                    <th>Aprobado por</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="a : ${ajustes}">
+                                    <td><code th:text="${a.numero}">AJ-2026-00001</code></td>
+                                    <td>
+                                        <span th:text="${a.tipoAjuste}"
+                                              th:class="${a.tipoAjuste.name() == 'POSITIVO'} ? 'badge bg-success' : 'badge bg-danger'">
+                                        </span>
+                                    </td>
+                                    <td class="text-muted small" th:text="${a.motivo}"></td>
+                                    <td>
+                                        <span th:text="${a.estado}"
+                                              th:class="${a.estado.name() == 'PENDIENTE'} ? 'badge bg-warning text-dark' :
+                                                         ${a.estado.name() == 'APROBADO'} ? 'badge bg-success' : 'badge bg-secondary'">
+                                        </span>
+                                    </td>
+                                    <td class="small" th:text="${#temporals.format(a.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+                                    <td class="small" th:text="${a.usuario?.nombre}">—</td>
+                                    <td class="small" th:text="${a.aprobadoPor?.nombre ?: '—'}">—</td>
+                                    <td class="text-center">
+                                        <div th:if="${a.estado.name() == 'PENDIENTE'}"
+                                             class="btn-group btn-group-sm"
+                                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'INVENTARIO_AJUSTAR')">
+                                            <button class="btn btn-outline-success btn-aprobar"
+                                                    th:data-id="${a.id}"
+                                                    th:data-numero="${a.numero}"
+                                                    title="Aprobar">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-rechazar"
+                                                    th:data-id="${a.id}"
+                                                    th:data-numero="${a.numero}"
+                                                    title="Rechazar">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        <span th:unless="${a.estado.name() == 'PENDIENTE'}" class="text-muted small">—</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-sliders-h', 'No hay ajustes registrados')}"
+                             th:if="${#lists.isEmpty(ajustes)}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal: Nuevo Ajuste -->
+    <div class="modal fade" id="modalNuevoAjuste" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-sliders-h me-2"></i>Nuevo Ajuste de Inventario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Tipo de Ajuste</label>
+                            <select id="tipoAjuste" class="form-select">
+                                <option value="POSITIVO">POSITIVO — entrada / excedente</option>
+                                <option value="NEGATIVO">NEGATIVO — salida / faltante</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Motivo <span class="text-danger">*</span></label>
+                            <input type="text" id="motivo" class="form-control" placeholder="Ej: Conteo físico mensual, corrección apertura...">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Líneas de ajuste</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarLinea">
+                            <i class="fas fa-plus me-1"></i>Agregar producto
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle" id="tablaLineas">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width:220px">Producto</th>
+                                    <th style="width:110px">Cant. Sistema</th>
+                                    <th style="width:110px">Conteo Físico</th>
+                                    <th style="width:90px">Diferencia</th>
+                                    <th style="width:130px">Costo Unit.</th>
+                                    <th style="width:50px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineasBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Diferencia = Conteo Físico − Cant. Sistema. Positivo = entrada, negativo = salida.
+                        El ajuste queda en estado <strong>PENDIENTE</strong> hasta que sea aprobado.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="btnGuardarAjuste">
+                        <i class="fas fa-save me-1"></i>Guardar Ajuste
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product stock data for JS auto-fill -->
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+    const productosData = {};
+    /*[# th:each="p : ${productos}"]*/
+    productosData[/*[(${p.idProducto})]*/ 0] = {
+        id: /*[(${p.idProducto})]*/ 0,
+        descripcion: /*[(${p.descripcion})]*/ '',
+        stock: /*[(${p.stock != null ? p.stock : 0})]*/ 0
+    };
+    /*[/]*/
+    /*]]>*/
+    </script>
+
+    <!-- Select options HTML for product dropdown (generated once, cloned per row) -->
+    <template id="tmplProductoOptions">
+        <option value="">— Seleccionar producto —</option>
+        <th:block th:each="p : ${productos}">
+            <option th:value="${p.idProducto}"
+                    th:text="${p.descripcion + ' (stock: ' + (p.stock != null ? p.stock : 0) + ')'}">
+            </option>
+        </th:block>
+    </template>
+
+    <script>
+    let lineaIdx = 0;
+
+    function agregarLinea() {
+        const tbody = document.getElementById('lineasBody');
+        const tmplOptions = document.getElementById('tmplProductoOptions').innerHTML;
+        const tr = document.createElement('tr');
+        tr.dataset.idx = lineaIdx;
+        tr.innerHTML = `
+            <td>
+                <select class="form-select form-select-sm sel-producto" data-idx="${lineaIdx}">
+                    ${tmplOptions}
+                </select>
+            </td>
+            <td><input type="number" class="form-control form-control-sm inp-sistema" min="0" value="0" data-idx="${lineaIdx}"></td>
+            <td><input type="number" class="form-control form-control-sm inp-fisico" min="0" value="0" data-idx="${lineaIdx}"></td>
+            <td><span class="badge bg-secondary dif-badge" data-idx="${lineaIdx}">0</span></td>
+            <td><input type="number" class="form-control form-control-sm inp-costo" min="0" step="0.01" placeholder="Opcional" data-idx="${lineaIdx}"></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger btn-rm-linea" data-idx="${lineaIdx}"><i class="fas fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+
+        const sel = tr.querySelector('.sel-producto');
+        const inpSistema = tr.querySelector('.inp-sistema');
+        const inpFisico  = tr.querySelector('.inp-fisico');
+        const badge      = tr.querySelector('.dif-badge');
+
+        sel.addEventListener('change', () => {
+            const pid = parseInt(sel.value);
+            if (pid && productosData[pid]) {
+                inpSistema.value = productosData[pid].stock;
+                actualizarDif(inpSistema, inpFisico, badge);
+            }
+        });
+
+        [inpSistema, inpFisico].forEach(inp => inp.addEventListener('input', () => {
+            actualizarDif(inpSistema, inpFisico, badge);
+        }));
+
+        tr.querySelector('.btn-rm-linea').addEventListener('click', () => tr.remove());
+        lineaIdx++;
+    }
+
+    function actualizarDif(inpSistema, inpFisico, badge) {
+        const dif = (parseInt(inpFisico.value) || 0) - (parseInt(inpSistema.value) || 0);
+        badge.textContent = (dif >= 0 ? '+' : '') + dif;
+        badge.className = dif > 0 ? 'badge bg-success dif-badge' :
+                          dif < 0 ? 'badge bg-danger dif-badge' : 'badge bg-secondary dif-badge';
+    }
+
+    document.getElementById('btnAgregarLinea').addEventListener('click', agregarLinea);
+
+    // Add one empty row on open
+    document.getElementById('modalNuevoAjuste').addEventListener('show.bs.modal', () => {
+        document.getElementById('lineasBody').innerHTML = '';
+        lineaIdx = 0;
+        document.getElementById('motivo').value = '';
+        document.getElementById('tipoAjuste').value = 'POSITIVO';
+        agregarLinea();
+    });
+
+    document.getElementById('btnGuardarAjuste').addEventListener('click', async () => {
+        const motivo = document.getElementById('motivo').value.trim();
+        if (!motivo) { showToast('warning', 'El motivo es obligatorio.'); return; }
+
+        const rows = document.querySelectorAll('#lineasBody tr');
+        const detalles = [];
+        for (const tr of rows) {
+            const pid = parseInt(tr.querySelector('.sel-producto').value);
+            if (!pid) continue;
+            detalles.push({
+                productoId: pid,
+                cantidadSistema: parseInt(tr.querySelector('.inp-sistema').value) || 0,
+                cantidadFisica:  parseInt(tr.querySelector('.inp-fisico').value) || 0,
+                costoUnitario:   parseFloat(tr.querySelector('.inp-costo').value) || null
+            });
+        }
+
+        if (detalles.length === 0) { showToast('warning', 'Agregue al menos una línea con producto seleccionado.'); return; }
+
+        const btn = document.getElementById('btnGuardarAjuste');
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/inventario/ajustes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+                },
+                body: JSON.stringify({ tipoAjuste: document.getElementById('tipoAjuste').value, motivo, detalles })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalNuevoAjuste')).hide();
+                location.reload();
+            } else {
+                showToast('error', data.message || 'Error al guardar el ajuste.');
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // Approve
+    document.querySelectorAll('.btn-aprobar').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!await showConfirmDialog(`Aprobar ajuste ${btn.dataset.numero}`, 'Esto actualizará el stock de los productos.')) return;
+            const res = await fetch(`/api/inventario/ajustes/${btn.dataset.id}/aprobar`, {
+                method: 'POST',
+                headers: { [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token }
+            });
+            const data = await res.json();
+            if (data.success) location.reload();
+            else showToast('error', data.message);
+        });
+    });
+
+    // Reject
+    document.querySelectorAll('.btn-rechazar').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!await showConfirmDialog(`Rechazar ajuste ${btn.dataset.numero}`, '¿Confirmar rechazo?', 'Sí, rechazar')) return;
+            const res = await fetch(`/api/inventario/ajustes/${btn.dataset.id}/rechazar`, {
+                method: 'POST',
+                headers: { [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token }
+            });
+            const data = await res.json();
+            if (data.success) location.reload();
+            else showToast('error', data.message);
+        });
+    });
+    </script>
+
+    <div th:replace="~{shared/layout :: scripts}"></div>
+</body>
+</html>

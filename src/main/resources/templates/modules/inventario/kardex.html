@@ -48,7 +48,7 @@
                 <div class="card-body">
                     <div id="kardexEmpty" class="text-center py-5 text-muted">
                         <i class="fas fa-list-alt fa-3x mb-3 opacity-25"></i>
-                        <p>Seleccioná un producto para ver sus movimientos.</p>
+                        <p>Seleccioná un producto o hacé clic en "Ver Kardex" para ver todos los movimientos.</p>
                     </div>
                     <div id="kardexLoading" class="text-center py-5 d-none">
                         <div class="spinner-border text-info" role="status"></div>
@@ -83,7 +83,7 @@
     <script>
         function cargarKardex() {
             const id = document.getElementById('selectProducto').value;
-            if (!id) return;
+            const url = id ? `/api/inventario/kardex/${id}` : '/api/inventario/kardex';
 
             const empty = document.getElementById('kardexEmpty');
             const loading = document.getElementById('kardexLoading');
@@ -96,7 +96,7 @@
             wrapper.classList.add('d-none');
             loading.classList.remove('d-none');
 
-            fetch(`/api/inventario/kardex/${id}`)
+            fetch(url)
                 .then(r => r.ok ? r.json() : Promise.reject(r.status))
                 .then(items => {
                     loading.classList.add('d-none');
@@ -120,9 +120,7 @@
                 });
         }
 
-        document.getElementById('selectProducto').addEventListener('change', function() {
-            if (this.value) cargarKardex();
-        });
+        document.getElementById('selectProducto').addEventListener('change', cargarKardex);
     </script>
 </body>
 </html>
