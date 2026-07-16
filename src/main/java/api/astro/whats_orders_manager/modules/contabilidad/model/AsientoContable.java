@@ -4,6 +4,8 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -35,11 +37,13 @@ import java.util.List;
     @Index(name = "idx_asiento_tipo", columnList = "tipo"),
     @Index(name = "idx_asiento_estado", columnList = "estado"),
     @Index(name = "idx_asiento_factura", columnList = "factura_id"),
-    @Index(name = "idx_asiento_pago", columnList = "pago_id")
+    @Index(name = "idx_asiento_pago", columnList = "pago_id"),
+    @Index(name = "idx_asiento_cpp", columnList = "cuenta_por_pagar_id"),
+    @Index(name = "idx_asiento_pago_proveedor", columnList = "pago_proveedor_id")
 })
 @Getter
 @Setter
-@ToString(exclude = {"detalles", "factura", "pago"})
+@ToString(exclude = {"detalles", "factura", "pago", "cuentaPorPagar", "pagoProveedor"})
 @AllArgsConstructor
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -110,7 +114,21 @@ public class AsientoContable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pago_id")
     private Pago pago;
-    
+
+    /**
+     * Cuenta por pagar origen (set when generated from a CPP creation).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuenta_por_pagar_id")
+    private CuentaPorPagar cuentaPorPagar;
+
+    /**
+     * Pago a proveedor origen (set when generated from a supplier payment).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pago_proveedor_id")
+    private PagoProveedor pagoProveedor;
+
     // ==================== AUDITORÍA ====================
     
     @CreatedBy
