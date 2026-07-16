@@ -4,12 +4,16 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.DetalleAsiento;
+import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.DetalleAsientoRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
+import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,6 +44,7 @@ public class AsientoContableService {
     private final AsientoContableRepository asientoRepository;
     private final DetalleAsientoRepository detalleRepository;
     private final CuentaContableRepository cuentaRepository;
+    private final ParametroContableRepository parametroContableRepository;
     
     /**
      * Obtiene todos los asientos con paginación.
@@ -478,6 +483,173 @@ public class AsientoContableService {
         return guardado;
     }
     
+    // ==================== CPP / SUPPLIER PAYMENT GENERATORS ====================
+
+    /**
+     * Generates a balanced purchase journal entry for a CPP created from a
+     * received purchase order.
+     *
+     * Entry structure:
+     *   DR Compras         — oc.subtotal
+     *   DR IVA Crédito     — oc.impuesto (only when > 0)
+     *   CR Cuentas x Pagar — oc.total
+     *
+     * No-op (returns null) when {@code cpp.getOrdenCompra()} is null, because
+     * manually created CPPs carry no subtotal/IVA breakdown.
+     *
+     * @param cpp the newly saved CuentaPorPagar
+     * @return the posted AsientoContable, or null if skipped
+     */
+    @Transactional
+    public AsientoContable generarAsientoCompra(CuentaPorPagar cpp) {
+        if (cpp.getOrdenCompra() == null) {
+            log.warn("CPP {} has no OrdenCompra — skipping purchase journal entry", cpp.getNumero());
+            return null;
+        }
+
+        var oc = cpp.getOrdenCompra();
+
+        CuentaContable cuentaCompras   = resolverCuenta("CPP_CUENTA_COMPRAS");
+        CuentaContable cuentaPorPagar  = resolverCuenta("CPP_CUENTA_POR_PAGAR");
+
+        AsientoContable asiento = new AsientoContable();
+        asiento.setNumero(generarNumeroAsiento());
+        asiento.setFecha(java.time.LocalDate.now());
+        asiento.setConcepto("Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre());
+        asiento.setTipo(TipoAsiento.AUTOMATICO_COMPRA);
+        asiento.setEstado(EstadoAsiento.BORRADOR);
+        asiento.setCuentaPorPagar(cpp);
+
+        java.util.List<DetalleAsiento> detalles = new java.util.ArrayList<>();
+
+        // DR Compras (subtotal)
+        DetalleAsiento drCompras = new DetalleAsiento();
+        drCompras.setCuenta(cuentaCompras);
+        drCompras.setDebe(oc.getSubtotal());
+        drCompras.setHaber(java.math.BigDecimal.ZERO);
+        drCompras.setDescripcion("Compras — OC " + oc.getNumero());
+        drCompras.setAsiento(asiento);
+        detalles.add(drCompras);
+
+        // DR IVA Crédito Fiscal (when applicable)
+        if (oc.getImpuesto() != null && oc.getImpuesto().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            CuentaContable cuentaIva = resolverCuenta("CPP_IVA_CREDITO_FISCAL");
+            DetalleAsiento drIva = new DetalleAsiento();
+            drIva.setCuenta(cuentaIva);
+            drIva.setDebe(oc.getImpuesto());
+            drIva.setHaber(java.math.BigDecimal.ZERO);
+            drIva.setDescripcion("IVA Crédito Fiscal — OC " + oc.getNumero());
+            drIva.setAsiento(asiento);
+            detalles.add(drIva);
+        }
+
+        // CR Cuentas por Pagar (total)
+        DetalleAsiento crCxP = new DetalleAsiento();
+        crCxP.setCuenta(cuentaPorPagar);
+        crCxP.setDebe(java.math.BigDecimal.ZERO);
+        crCxP.setHaber(oc.getTotal());
+        crCxP.setDescripcion("Cuentas por Pagar — " + cpp.getProveedor().getNombre());
+        crCxP.setAsiento(asiento);
+        detalles.add(crCxP);
+
+        asiento.setDetalles(detalles);
+
+        if (!asiento.estaCuadrado()) {
+            throw new IllegalStateException(
+                String.format("Purchase journal entry is not balanced — debe: %s, haber: %s",
+                    asiento.getTotalDebe(), asiento.getTotalHaber()));
+        }
+
+        AsientoContable guardado = asientoRepository.save(asiento);
+        guardado.contabilizar();
+        guardado = asientoRepository.save(guardado);
+
+        log.info("Purchase journal entry {} posted for CPP {}", guardado.getNumero(), cpp.getNumero());
+        return guardado;
+    }
+
+    /**
+     * Generates a balanced supplier-payment journal entry.
+     *
+     * Entry structure:
+     *   DR Cuentas x Pagar — pago.monto
+     *   CR Banco/Caja       — pago.monto (account resolved from MetodoPagoProveedor)
+     *
+     * @param pago the newly saved PagoProveedor
+     * @return the posted AsientoContable
+     */
+    @Transactional
+    public AsientoContable generarAsientoPagoProveedor(PagoProveedor pago) {
+        String bancoKey = switch (pago.getMetodoPago()) {
+            case TRANSFERENCIA -> "CPP_BANCO_TRANSFERENCIA";
+            case CHEQUE        -> "CPP_BANCO_CHEQUE";
+            case EFECTIVO      -> "CPP_BANCO_EFECTIVO";
+            case SINPE         -> "CPP_BANCO_SINPE";
+            case DEPOSITO      -> "CPP_BANCO_DEPOSITO";
+        };
+
+        CuentaContable cuentaPorPagar = resolverCuenta("CPP_CUENTA_POR_PAGAR");
+        CuentaContable cuentaBanco    = resolverCuenta(bancoKey);
+
+        AsientoContable asiento = new AsientoContable();
+        asiento.setNumero(generarNumeroAsiento());
+        asiento.setFecha(pago.getFecha() != null ? pago.getFecha() : java.time.LocalDate.now());
+        asiento.setConcepto("Pago proveedor " + pago.getNumero() + " — " + pago.getMetodoPago());
+        asiento.setTipo(TipoAsiento.AUTOMATICO_GASTO);
+        asiento.setEstado(EstadoAsiento.BORRADOR);
+        asiento.setPagoProveedor(pago);
+
+        java.util.List<DetalleAsiento> detalles = new java.util.ArrayList<>();
+
+        // DR Cuentas por Pagar
+        DetalleAsiento drCxP = new DetalleAsiento();
+        drCxP.setCuenta(cuentaPorPagar);
+        drCxP.setDebe(pago.getMonto());
+        drCxP.setHaber(java.math.BigDecimal.ZERO);
+        drCxP.setDescripcion("Pago a proveedor — " + pago.getNumero());
+        drCxP.setAsiento(asiento);
+        detalles.add(drCxP);
+
+        // CR Banco/Caja
+        DetalleAsiento crBanco = new DetalleAsiento();
+        crBanco.setCuenta(cuentaBanco);
+        crBanco.setDebe(java.math.BigDecimal.ZERO);
+        crBanco.setHaber(pago.getMonto());
+        crBanco.setDescripcion(pago.getMetodoPago() + " — " + pago.getNumero());
+        crBanco.setAsiento(asiento);
+        detalles.add(crBanco);
+
+        asiento.setDetalles(detalles);
+
+        if (!asiento.estaCuadrado()) {
+            throw new IllegalStateException(
+                String.format("Supplier payment journal entry is not balanced — debe: %s, haber: %s",
+                    asiento.getTotalDebe(), asiento.getTotalHaber()));
+        }
+
+        AsientoContable guardado = asientoRepository.save(asiento);
+        guardado.contabilizar();
+        guardado = asientoRepository.save(guardado);
+
+        log.info("Supplier payment journal entry {} posted for pago {}", guardado.getNumero(), pago.getNumero());
+        return guardado;
+    }
+
+    /**
+     * Resolves the CuentaContable mapped to the given accounting-event key.
+     *
+     * @param clave accounting event key (e.g. "CPP_CUENTA_COMPRAS")
+     * @return the associated CuentaContable
+     * @throws IllegalStateException if the key is not configured in parametros_contables
+     */
+    private CuentaContable resolverCuenta(String clave) {
+        return parametroContableRepository.findByClave(clave)
+            .map(ParametroContable::getCuentaContable)
+            .orElseThrow(() -> new IllegalStateException("Parámetro contable no configurado: " + clave));
+    }
+
+    // ==================== UTILITIES ====================
+
     /**
      * Genera el número de asiento automático.
      * Formato: ASI-YYYY-####

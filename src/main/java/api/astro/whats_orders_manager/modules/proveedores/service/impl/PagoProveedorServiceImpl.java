@@ -1,11 +1,13 @@
 package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
-import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
-import api.astro.whats_orders_manager.modules.proveedores.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
-import api.astro.whats_orders_manager.modules.proveedores.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.PagoProveedorRepository;
 import api.astro.whats_orders_manager.modules.proveedores.service.PagoProveedorService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
@@ -27,7 +29,8 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
 
     private final PagoProveedorRepository pagoRepository;
     private final CuentaPorPagarRepository cuentaRepository;
-    private final CuentaPorPagarServiceImpl cuentaService;
+    private final CuentaPorPagarService cuentaService;
+    private final AsientoContableService asientoService;
 
     @Override
     @Transactional
@@ -63,6 +66,7 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
 
         PagoProveedor guardado = pagoRepository.save(pago);
         cuentaService.aplicarPago(cuenta, dto.getMonto());
+        asientoService.generarAsientoPagoProveedor(guardado);
 
         log.info("Pago {} de {} registrado para CPP {} por {}",
             guardado.getNumero(), dto.getMonto(), cuenta.getNumero(), usuario.getNombre());
@@ -72,6 +76,7 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
     @Override
     @Transactional
     public void anularPago(Long pagoId, Usuario usuario) {
+        // TODO: reversing entry on anularPago — out of scope, see proposal
         PagoProveedor pago = findById(pagoId);
 
         if (pago.getEstado() == EstadoPagoProveedor.ANULADO) {

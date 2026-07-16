@@ -1,5 +1,8 @@
 package api.astro.whats_orders_manager.modules.contabilidad.controller;
 
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.seguridad.dto.ModuloDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +29,10 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class ContabilidadViewController {
-    
+
+    private final CuentaPorPagarService cuentaPorPagarService;
+
+
     /**
      * Muestra la página principal de Contabilidad.
      * GET /contabilidad
@@ -57,6 +64,40 @@ public class ContabilidadViewController {
         }
     }
     
+    /**
+     * Displays the Cuentas por Pagar list view with summary statistics.
+     * GET /contabilidad/cuentas-pagar
+     */
+    @GetMapping("/cuentas-pagar")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
+    public String cuentasPagar(Model model, Authentication authentication) {
+        log.info("Accessing Cuentas por Pagar view");
+
+        List<CuentaPorPagar> cuentas = cuentaPorPagarService.findAll();
+
+        BigDecimal totalSaldoPendiente = cuentas.stream()
+            .filter(c -> c.getEstado() != EstadoCuentaPorPagar.PAGADA)
+            .map(CuentaPorPagar::getSaldoPendiente)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long countVencidas = cuentas.stream()
+            .filter(c -> c.getEstado() == EstadoCuentaPorPagar.VENCIDA)
+            .count();
+
+        BigDecimal totalPagado = cuentas.stream()
+            .filter(c -> c.getEstado() == EstadoCuentaPorPagar.PAGADA)
+            .map(CuentaPorPagar::getMonto)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        model.addAttribute("cuentas", cuentas);
+        model.addAttribute("estados", EstadoCuentaPorPagar.values());
+        model.addAttribute("totalSaldoPendiente", totalSaldoPendiente);
+        model.addAttribute("countVencidas", countVencidas);
+        model.addAttribute("totalPagado", totalPagado);
+
+        return "modules/contabilidad/cuentas-pagar";
+    }
+
     /**
      * Carga los submódulos disponibles del módulo de Contabilidad
      */
@@ -103,7 +144,7 @@ public class ContabilidadViewController {
             "fas fa-file-invoice-dollar",
             "#fa709a",
             "/contabilidad/cuentas-pagar",
-            false,
+            true,
             true
         ));
         
