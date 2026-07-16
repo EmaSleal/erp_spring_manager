@@ -1,9 +1,9 @@
-package api.astro.whats_orders_manager.modules.proveedores.controller;
+package api.astro.whats_orders_manager.modules.contabilidad.controller;
 
-import api.astro.whats_orders_manager.modules.proveedores.dto.CuentaPorPagarDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
-import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoCuentaPorPagar;
-import api.astro.whats_orders_manager.modules.proveedores.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.proveedores.service.PagoProveedorService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
@@ -17,6 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -59,7 +61,19 @@ public class CuentaPorPagarRestController {
     @GetMapping("/{id}/pagos")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
     public ResponseEntity<ResponseDTO> pagosDeCuenta(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(ResponseDTO.success("OK", pagoProveedorService.findByCuenta(id)));
+        var pagos = pagoProveedorService.findByCuenta(id).stream()
+            .map(p -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("numero",     p.getNumero());
+                m.put("fecha",      p.getFecha() != null ? p.getFecha().toString() : null);
+                m.put("monto",      p.getMonto());
+                m.put("metodoPago", p.getMetodoPago() != null ? p.getMetodoPago().name() : null);
+                m.put("referencia", p.getReferencia());
+                m.put("estado",     p.getEstado() != null ? p.getEstado().name() : null);
+                return m;
+            })
+            .toList();
+        return ResponseEntity.ok(ResponseDTO.success("OK", pagos));
     }
 
     @GetMapping("/pagos")
@@ -97,7 +111,7 @@ public class CuentaPorPagarRestController {
             dto.setCuentaPorPagarId(id);
             Usuario usuario = resolverUsuario(authentication);
             var pago = pagoProveedorService.registrarPago(dto, usuario);
-            return ResponseEntity.ok(ResponseDTO.success("Pago " + pago.getNumero() + " registrado", pago));
+            return ResponseEntity.ok(ResponseDTO.success("Pago " + pago.getNumero() + " registrado"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }

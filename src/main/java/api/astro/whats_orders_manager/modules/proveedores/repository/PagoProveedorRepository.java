@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.modules.proveedores.repository;
 
-import api.astro.whats_orders_manager.modules.proveedores.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

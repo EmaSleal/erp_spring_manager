@@ -1,7 +1,12 @@
 package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.proveedores.dto.ProveedorDTO;
+import api.astro.whats_orders_manager.modules.proveedores.enums.CategoriaProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
+import api.astro.whats_orders_manager.modules.proveedores.model.ProveedorItem;
+import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorItemRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
 import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Slf4j
@@ -18,6 +26,8 @@ import java.util.NoSuchElementException;
 public class ProveedorServiceImpl implements ProveedorService {
 
     private final ProveedorRepository proveedorRepository;
+    private final ProveedorItemRepository proveedorItemRepository;
+    private final ProductoRepository productoRepository;
 
     @Override
     @Transactional
@@ -27,6 +37,7 @@ public class ProveedorServiceImpl implements ProveedorService {
         }
         Proveedor p = toEntity(dto);
         Proveedor guardado = proveedorRepository.save(p);
+        sincronizarItems(guardado, dto);
         log.info("Proveedor {} creado: {}", guardado.getCedula(), guardado.getNombre());
         return guardado;
     }
@@ -39,7 +50,9 @@ public class ProveedorServiceImpl implements ProveedorService {
             throw new IllegalArgumentException("Ya existe un proveedor con cédula: " + dto.getCedula());
         }
         mapFromDto(p, dto);
-        return proveedorRepository.save(p);
+        Proveedor guardado = proveedorRepository.save(p);
+        sincronizarItems(guardado, dto);
+        return guardado;
     }
 
     @Override
@@ -76,7 +89,41 @@ public class ProveedorServiceImpl implements ProveedorService {
         return proveedorRepository.buscar(q);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProveedorItem> findItems(Long proveedorId, CategoriaProveedor tipo) {
+        return proveedorItemRepository.findByProveedorIdAndTipo(proveedorId, tipo);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<Integer>> findItemIdsByCategoria(CategoriaProveedor tipo) {
+        Map<Long, List<Integer>> map = new LinkedHashMap<>();
+        for (ProveedorItem item : proveedorItemRepository.findByTipo(tipo)) {
+            map.computeIfAbsent(item.getProveedor().getId(), k -> new ArrayList<>())
+               .add(item.getItemId());
+        }
+        return map;
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private void sincronizarItems(Proveedor proveedor, ProveedorDTO dto) {
+        proveedorItemRepository.deleteByProveedorId(proveedor.getId());
+        CategoriaProveedor cat = dto.getCategoria();
+        if (cat == null || dto.getItemIds() == null || dto.getItemIds().isEmpty()) return;
+        for (Integer itemId : dto.getItemIds()) {
+            String desc = productoRepository.findById(itemId)
+                .map(Producto::getDescripcion)
+                .orElse("Ítem " + itemId);
+            proveedorItemRepository.save(ProveedorItem.builder()
+                .proveedor(proveedor)
+                .tipo(cat)
+                .itemId(itemId)
+                .descripcion(desc)
+                .build());
+        }
+    }
 
     private Proveedor toEntity(ProveedorDTO dto) {
         return Proveedor.builder()
