@@ -478,7 +478,7 @@ function createLineaCard(linea) {
                             aria-expanded="false">
                         ${es_linea_nueva ? '-- Seleccione un producto --' : (allProductos.find(p => String(p.id_producto) === String(idProducto))?.nombre ?? '-- Seleccione un producto --')}
                     </button>
-                    <ul class="dropdown-menu w-100 p-2" style="max-height:280px;overflow-y:auto;">
+                    <ul class="dropdown-menu w-100 p-2 dropdown-scrollable">
                         <li class="mb-2">
                             <input type="text"
                                    class="form-control form-control-sm dropdown-search"
@@ -520,7 +520,7 @@ function createLineaCard(linea) {
                 <div class="d-flex justify-content-between">
                     <span class="fw-bold">Subtotal:</span>
                     <span class="fw-bold text-success">
-                        <input type="number" name="subtotal" value="${linea.subtotal}" style="width: 100px;" class="form-control form-control-sm text-end" disabled>
+                        <input type="number" name="subtotal" value="${linea.subtotal}" class="form-control form-control-sm text-end input-subtotal" disabled>
                     </span>
                 </div>
             </div>

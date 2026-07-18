@@ -339,9 +339,7 @@ $(document).ready(function() {
         };
 
         const html = `
-            <div class="alert ${colores[tipo]} alert-dismissible fade show position-fixed top-0 end-0 m-3" 
-                 role="alert" 
-                 style="z-index: 9999; min-width: 300px;">
+            <div class="alert ${colores[tipo]} alert-dismissible fade show position-fixed top-0 end-0 m-3 alert-toast" role="alert">
                 <i class="fas ${iconos[tipo]} me-2"></i>
                 ${mensaje}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

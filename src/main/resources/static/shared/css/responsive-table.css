@@ -46,7 +46,7 @@
     .responsive-table-container .table {
         display: none;
     }
-    
+
     /* Mostrar vista de tarjetas */
     .responsive-table-container .mobile-card-view {
         display: block;
@@ -54,7 +54,7 @@
         flex-direction: column;
         gap: var(--spacing-md);
     }
-    
+
     /* Tarjeta individual */
     .mobile-card {
         background: white;
@@ -228,7 +228,7 @@
     .mobile-card.card-primary {
         border-left: 4px solid var(--primary-color);
     }
-    
+
     /* Tarjeta compacta */
     .mobile-card.mobile-card-compact {
         padding: var(--spacing-md);

@@ -151,7 +151,7 @@
                         <span class="fw-bold">Tasa de Éxito</span>
                         <span class="fw-bold" th:text="${#numbers.formatDecimal(estadisticas.tasaExito, 1, 2)} + '%'">0.00%</span>
                     </div>
-                    <div class="progress" style="height: 25px;">
+                    <div class="progress progress-tall">
                         <div class="progress-bar bg-success" role="progressbar" 
                              th:style="'width: ' + ${estadisticas.tasaExito} + '%'"
                              th:attr="aria-valuenow=${estadisticas.tasaExito}"
@@ -201,12 +201,10 @@
                              th:data-nombre="${conv.nombreUsuario}" 
                              th:data-noleidos="${conv.noLeidos}"
                              class="list-group-item list-group-item-action conversacion-item"
-                             style="cursor: pointer; transition: all 0.2s;">
                             <div class="d-flex align-items-start">
                                 <!-- Avatar -->
                                 <div class="flex-shrink-0 me-3">
-                                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" 
-                                         style="width: 55px; height: 55px; font-size: 1.4rem;">
+                                    <div class="avatar rounded-circle bg-success text-white d-flex align-items-center justify-content-center">
                                         <i class="fab fa-whatsapp"></i>
                                     </div>
                                 </div>
@@ -226,7 +224,7 @@
                                     
                                     <!-- Último mensaje y badges -->
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <p class="mb-0 text-muted text-truncate small" style="max-width: 70%;">
+                                        <p class="mb-0 text-muted text-truncate small msg-preview">
                                             <span th:if="${conv.ultimoTipo.toString() == 'ENVIADO'}">
                                                 <i class="fas fa-arrow-right text-info me-1"></i>
                                             </span>
@@ -265,8 +263,9 @@
                             </div>
                         </div>
                         
-                        <div th:if="${#lists.isEmpty(conversaciones)}"
-                             th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay conversaciones para mostrar')}"></div>
+                        <th:block th:if="${#lists.isEmpty(conversaciones)}">
+                            <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay conversaciones para mostrar')}"></div>
+                        </th:block>
                     </div>
                 </div>
             </div>

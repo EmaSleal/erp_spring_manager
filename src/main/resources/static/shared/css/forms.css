@@ -397,3 +397,7 @@ select.form-control {
         justify-content: center;
     }
 }
+
+.input-subtotal {
+    width: 100px;
+}

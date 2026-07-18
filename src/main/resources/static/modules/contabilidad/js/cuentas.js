@@ -144,7 +144,7 @@ function crearNodoCuenta(cuenta, nivel) {
         </div>
         
         ${tieneSubcuentas ? `
-            <div id="subcuentas-${cuenta.idCuenta}" class="subcuentas-container" style="display: none;">
+            <div id="subcuentas-${cuenta.idCuenta}" class="subcuentas-container d-none">
                 ${cuenta.subcuentas.map(sub => crearNodoCuenta(sub, nivel + 1).outerHTML).join('')}
             </div>
         ` : ''}
@@ -178,22 +178,15 @@ function getColorTipo(tipo) {
 function toggleSubcuentas(cuentaId) {
     const container = document.getElementById(`subcuentas-${cuentaId}`);
     const chevron = document.getElementById(`chevron-${cuentaId}`);
-    
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
-        chevron.classList.remove('fa-chevron-right');
-        chevron.classList.add('fa-chevron-down');
-    } else {
-        container.style.display = 'none';
-        chevron.classList.remove('fa-chevron-down');
-        chevron.classList.add('fa-chevron-right');
-    }
+    const isHidden = container.classList.contains('d-none');
+
+    container.classList.toggle('d-none', !isHidden);
+    chevron.classList.toggle('fa-chevron-right', !isHidden);
+    chevron.classList.toggle('fa-chevron-down', isHidden);
 }
 
 function expandirTodo() {
-    document.querySelectorAll('.subcuentas-container').forEach(container => {
-        container.style.display = 'block';
-    });
+    document.querySelectorAll('.subcuentas-container').forEach(c => c.classList.remove('d-none'));
     document.querySelectorAll('[id^="chevron-"]').forEach(chevron => {
         chevron.classList.remove('fa-chevron-right');
         chevron.classList.add('fa-chevron-down');
@@ -201,9 +194,7 @@ function expandirTodo() {
 }
 
 function colapsarTodo() {
-    document.querySelectorAll('.subcuentas-container').forEach(container => {
-        container.style.display = 'none';
-    });
+    document.querySelectorAll('.subcuentas-container').forEach(c => c.classList.add('d-none'));
     document.querySelectorAll('[id^="chevron-"]').forEach(chevron => {
         chevron.classList.remove('fa-chevron-down');
         chevron.classList.add('fa-chevron-right');
