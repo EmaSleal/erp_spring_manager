@@ -111,8 +111,7 @@ paths:
 
         ## Credenciales
 
-        El campo `username` corresponde al número de teléfono del usuario registrado en el sistema
-        (no a un email ni a un nombre de usuario clásico).
+        El campo `username` corresponde al **email** del usuario registrado en el sistema.
 
         ## CSRF
 
@@ -132,8 +131,8 @@ paths:
               properties:
                 username:
                   type: string
-                  description: Número de teléfono del usuario (es el identificador de login)
-                  example: "88889999"
+                  description: Email del usuario (es el identificador de login)
+                  example: "usuario@empresa.com"
                 password:
                   type: string
                   format: password
@@ -179,7 +178,7 @@ paths:
 
         ## Campo username
 
-        Acepta el número de teléfono del usuario O su nombre de usuario registrado.
+        Acepta el **email** del usuario registrado en el sistema.
       security: []
       requestBody:
         required: true
@@ -188,7 +187,7 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
             example:
-              username: "88889999"
+              username: "usuario@empresa.com"
               password: "mi_clave_secreta"
       responses:
         '200':
@@ -2162,8 +2161,8 @@ components:
       properties:
         username:
           type: string
-          description: Número de teléfono del usuario (o nombre de usuario)
-          example: "88889999"
+          description: Email del usuario
+          example: "usuario@empresa.com"
         password:
           type: string
           format: password
@@ -2181,10 +2180,11 @@ components:
           type: string
           description: Nombre completo del usuario
           example: "Juan Pérez"
-        telefono:
+        email:
           type: string
-          description: Teléfono / username usado para autenticarse
-          example: "88889999"
+          format: email
+          description: Email del usuario autenticado
+          example: "usuario@empresa.com"
         rol:
           type: string
           description: Rol del usuario en el sistema (ADMIN, USER, VENDEDOR, VISUALIZADOR)
