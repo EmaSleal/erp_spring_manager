@@ -111,7 +111,7 @@ function renderizarAsientos(asientos) {
             <td><strong>${asiento.numero || '-'}</strong></td>
             <td>${formatearFecha(asiento.fecha)}</td>
             <td>${tipoBadge}</td>
-            <td class="text-truncate" style="max-width: 200px;" title="${asiento.concepto}">${asiento.concepto}</td>
+            <td class="text-truncate cell-truncate" title="${asiento.concepto}">${asiento.concepto}</td>
             <td class="text-end text-primary fw-semibold">$${formatearNumero(asiento.totalDebe)}</td>
             <td class="text-end text-success fw-semibold">$${formatearNumero(asiento.totalHaber)}</td>
             <td class="text-center">${estadoBadge}</td>

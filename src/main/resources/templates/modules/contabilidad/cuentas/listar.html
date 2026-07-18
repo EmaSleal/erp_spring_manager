@@ -55,39 +55,37 @@
             </div>
 
             <!-- Filters Section -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label small text-muted">Buscar por código o nombre</label>
-                            <input type="text" id="txtBuscar" class="form-control" 
-                                   placeholder="Escriba para buscar...">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-muted">Tipo de cuenta</label>
-                            <select id="selTipo" class="form-select">
-                                <option value="">Todos los tipos</option>
-                                <option value="ACTIVO">Activo</option>
-                                <option value="PASIVO">Pasivo</option>
-                                <option value="CAPITAL">Capital</option>
-                                <option value="INGRESO">Ingreso</option>
-                                <option value="EGRESO">Egreso</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-muted">Estado</label>
-                            <select id="selEstado" class="form-select">
-                                <option value="">Todas</option>
-                                <option value="true" selected>Activas</option>
-                                <option value="false">Inactivas</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small text-muted">&nbsp;</label>
-                            <button type="button" class="btn btn-info w-100" onclick="aplicarFiltros()">
-                                <i class="fas fa-filter me-2"></i>Filtrar
-                            </button>
-                        </div>
+            <div th:replace="~{shared/fragments/filter-bar :: filterCard(~{::.filter-row}, 'mb-4')}">
+                <div class="filter-row row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">Buscar por código o nombre</label>
+                        <input type="text" id="txtBuscar" class="form-control"
+                               placeholder="Escriba para buscar...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Tipo de cuenta</label>
+                        <select id="selTipo" class="form-select">
+                            <option value="">Todos los tipos</option>
+                            <option value="ACTIVO">Activo</option>
+                            <option value="PASIVO">Pasivo</option>
+                            <option value="CAPITAL">Capital</option>
+                            <option value="INGRESO">Ingreso</option>
+                            <option value="EGRESO">Egreso</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Estado</label>
+                        <select id="selEstado" class="form-select">
+                            <option value="">Todas</option>
+                            <option value="true" selected>Activas</option>
+                            <option value="false">Inactivas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">&nbsp;</label>
+                        <button type="button" class="btn btn-info w-100" onclick="aplicarFiltros()">
+                            <i class="fas fa-filter me-2"></i>Filtrar
+                        </button>
                     </div>
                 </div>
             </div>

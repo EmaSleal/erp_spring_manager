@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{shared/layout :: head}">
+    <title>Proveedor</title>
+</head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-truck', 'Proveedores')}"></div>
+
+        <div class="row">
+            <div class="col-12 col-xl-10 offset-xl-1">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-truck me-2"></i>
+                            <span th:text="${esNuevo} ? 'Nuevo Proveedor' : 'Editar Proveedor'"></span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="formProveedor">
+                            <input type="hidden" id="proveedorId" th:value="${proveedor.id}">
+
+                            <!-- Datos principales -->
+                            <h6 class="text-muted text-uppercase mb-3 mt-1">Datos Principales</h6>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Cédula / RUC <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="cedula" th:value="${proveedor.cedula}" required maxlength="20">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nombre" th:value="${proveedor.nombre}" required maxlength="200">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Nombre Comercial</label>
+                                    <input type="text" class="form-control" id="nombreComercial" th:value="${proveedor.nombreComercial}" maxlength="200">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="tipoProveedor" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option th:each="t : ${tiposProveedor}"
+                                                th:value="${t}"
+                                                th:text="${t}"
+                                                th:selected="${proveedor.tipoProveedor == t}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Categoría</label>
+                                    <select class="form-select" id="categoria">
+                                        <option value="">Seleccionar...</option>
+                                        <option th:each="c : ${categorias}"
+                                                th:value="${c}"
+                                                th:text="${c}"
+                                                th:selected="${proveedor.categoria == c}"></option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Contacto -->
+                            <h6 class="text-muted text-uppercase mb-3 mt-4">Contacto</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Persona de Contacto</label>
+                                    <input type="text" class="form-control" id="contacto" th:value="${proveedor.contacto}" maxlength="100">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Teléfono</label>
+                                    <input type="tel" class="form-control" id="telefono" th:value="${proveedor.telefono}" maxlength="15">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" th:value="${proveedor.email}" maxlength="100">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Sitio Web</label>
+                                    <input type="text" class="form-control" id="sitioWeb" th:value="${proveedor.sitioWeb}" maxlength="100">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Dirección</label>
+                                    <input type="text" class="form-control" id="direccion" th:value="${proveedor.direccion}" maxlength="500">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Ciudad</label>
+                                    <input type="text" class="form-control" id="ciudad" th:value="${proveedor.ciudad}" maxlength="100">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">País</label>
+                                    <input type="text" class="form-control" id="pais" th:value="${proveedor.pais != null ? proveedor.pais : 'Costa Rica'}" maxlength="50">
+                                </div>
+                            </div>
+
+                            <!-- Financiero -->
+                            <h6 class="text-muted text-uppercase mb-3 mt-4">Condiciones Financieras</h6>
+                            <div class="row g-3">
+                                <div class="col-md-2">
+                                    <label class="form-label">Moneda</label>
+                                    <select class="form-select" id="moneda">
+                                        <option value="CRC" th:selected="${proveedor.moneda?.name() == 'CRC'}">CRC ₡</option>
+                                        <option value="USD" th:selected="${proveedor.moneda?.name() == 'USD'}">USD $</option>
+                                        <option value="EUR" th:selected="${proveedor.moneda?.name() == 'EUR'}">EUR €</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Días Crédito</label>
+                                    <input type="number" class="form-control" id="diasCredito" th:value="${proveedor.diasCredito}" min="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Límite Crédito</label>
+                                    <input type="number" class="form-control" id="limiteCredito" th:value="${proveedor.limiteCredito}" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Descuento %</label>
+                                    <input type="number" class="form-control" id="descuentoHabitual" th:value="${proveedor.descuentoHabitual}" step="0.01" min="0" max="100">
+                                </div>
+                            </div>
+
+                            <!-- Bancario -->
+                            <h6 class="text-muted text-uppercase mb-3 mt-4">Datos Bancarios</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Banco</label>
+                                    <input type="text" class="form-control" id="banco" th:value="${proveedor.banco}" maxlength="100">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Número de Cuenta</label>
+                                    <input type="text" class="form-control" id="numeroCuenta" th:value="${proveedor.numeroCuenta}" maxlength="50">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">IBAN</label>
+                                    <input type="text" class="form-control" id="cuentaIban" th:value="${proveedor.cuentaIban}" maxlength="50">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">SINPE Móvil</label>
+                                    <input type="text" class="form-control" id="sinpeMovil" th:value="${proveedor.sinpeMovil}" maxlength="15">
+                                </div>
+                            </div>
+
+                            <!-- Notas -->
+                            <div class="row g-3 mt-1">
+                                <div class="col-12">
+                                    <label class="form-label">Notas</label>
+                                    <textarea class="form-control" id="notas" rows="3" maxlength="1000" th:text="${proveedor.notas}"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Productos asociados (solo PRODUCTOS_TERMINADOS) -->
+                            <div id="seccionProductos" class="mt-4" style="display:none">
+                                <h6 class="text-muted text-uppercase mb-3">Productos Asociados</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-8">
+                                        <label class="form-label">Buscar producto</label>
+                                        <div class="position-relative">
+                                            <input type="text" id="buscarProductoProv" class="form-control"
+                                                   placeholder="Escriba para buscar..." autocomplete="off">
+                                            <div id="dropdownProductoProv"
+                                                 style="display:none; position:absolute; z-index:1050; width:100%; max-height:200px; overflow-y:auto; background:#fff; border:1px solid #dee2e6; border-radius:0.375rem; box-shadow:0 4px 8px rgba(0,0,0,.15);">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Seleccionados</label>
+                                        <div id="chipsProductosProv" class="d-flex flex-wrap gap-2 p-2 border rounded bg-light" style="min-height:44px"></div>
+                                        <div id="hiddenItemIds"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>Guardar
+                                </button>
+                                <a href="/proveedores" class="btn btn-outline-secondary">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script th:inline="javascript">
+const proveedorId = [[${proveedor.id}]];
+const esNuevo = [[${esNuevo}]];
+const initialItems = [[${proveedorItems}]];
+
+// ── Productos section ─────────────────────────────────────────────────────────
+let productosProvCache = [];
+
+async function cargarProductosProv() {
+    if (productosProvCache.length > 0) return;
+    const res = await fetch('/productos/records');
+    productosProvCache = await res.json();
+}
+
+const categoriaSelect = document.getElementById('categoria');
+const seccionProductos = document.getElementById('seccionProductos');
+
+function toggleSeccionProductos() {
+    if (categoriaSelect.value === 'PRODUCTOS_TERMINADOS') {
+        seccionProductos.style.display = '';
+        cargarProductosProv();
+    } else {
+        seccionProductos.style.display = 'none';
+        document.getElementById('chipsProductosProv').innerHTML = '';
+        document.getElementById('hiddenItemIds').innerHTML = '';
+    }
+}
+
+categoriaSelect.addEventListener('change', toggleSeccionProductos);
+toggleSeccionProductos();
+
+// Pre-populate chips for edit mode
+initialItems.forEach(item => agregarChip(item.itemId, item.descripcion));
+
+// Search input
+const buscarInput = document.getElementById('buscarProductoProv');
+const dropdownProv = document.getElementById('dropdownProductoProv');
+
+buscarInput.addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    dropdownProv.innerHTML = '';
+    if (!q) { dropdownProv.style.display = 'none'; return; }
+    const resultados = productosProvCache
+        .filter(p => p.nombre.toLowerCase().includes(q) && !yaSeleccionado(p.id_producto))
+        .slice(0, 10);
+    if (resultados.length === 0) { dropdownProv.style.display = 'none'; return; }
+    resultados.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'px-3 py-2';
+        el.style.cursor = 'pointer';
+        el.textContent = p.nombre;
+        el.addEventListener('mouseover', () => el.style.background = '#f0f0f0');
+        el.addEventListener('mouseout', () => el.style.background = '');
+        el.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            agregarChip(p.id_producto, p.nombre);
+            buscarInput.value = '';
+            dropdownProv.style.display = 'none';
+        });
+        dropdownProv.appendChild(el);
+    });
+    dropdownProv.style.display = '';
+});
+
+buscarInput.addEventListener('blur', () => setTimeout(() => dropdownProv.style.display = 'none', 150));
+
+function yaSeleccionado(id) {
+    return !!document.querySelector(`#hiddenItemIds input[value="${id}"]`);
+}
+
+function agregarChip(id, nombre) {
+    if (yaSeleccionado(id)) return;
+    const chip = document.createElement('span');
+    chip.className = 'badge bg-primary d-inline-flex align-items-center gap-1 px-2 py-2';
+    chip.style.fontSize = '0.85rem';
+    chip.innerHTML = `${nombre} <button type="button" class="btn-close btn-close-white ms-1" style="font-size:0.6rem" aria-label="Quitar"></button>`;
+    chip.querySelector('button').addEventListener('click', () => {
+        chip.remove();
+        document.querySelector(`#hiddenItemIds input[value="${id}"]`)?.remove();
+    });
+    document.getElementById('chipsProductosProv').appendChild(chip);
+
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.value = id;
+    document.getElementById('hiddenItemIds').appendChild(hidden);
+}
+
+function getSelectedItemIds() {
+    return Array.from(document.querySelectorAll('#hiddenItemIds input'))
+        .map(i => parseInt(i.value));
+}
+
+// ── Form submit ───────────────────────────────────────────────────────────────
+document.getElementById('formProveedor').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (document.getElementById('categoria').value === 'PRODUCTOS_TERMINADOS' && getSelectedItemIds().length === 0) {
+        showToast('warning', 'Debe seleccionar al menos un producto para esta categoría.');
+        return;
+    }
+    const payload = {
+        cedula: document.getElementById('cedula').value,
+        nombre: document.getElementById('nombre').value,
+        nombreComercial: document.getElementById('nombreComercial').value || null,
+        tipoProveedor: document.getElementById('tipoProveedor').value || null,
+        categoria: document.getElementById('categoria').value || null,
+        contacto: document.getElementById('contacto').value || null,
+        telefono: document.getElementById('telefono').value || null,
+        email: document.getElementById('email').value || null,
+        sitioWeb: document.getElementById('sitioWeb').value || null,
+        direccion: document.getElementById('direccion').value || null,
+        ciudad: document.getElementById('ciudad').value || null,
+        pais: document.getElementById('pais').value || 'Costa Rica',
+        moneda: document.getElementById('moneda').value,
+        diasCredito: parseInt(document.getElementById('diasCredito').value) || 0,
+        limiteCredito: parseFloat(document.getElementById('limiteCredito').value) || null,
+        descuentoHabitual: parseFloat(document.getElementById('descuentoHabitual').value) || 0,
+        banco: document.getElementById('banco').value || null,
+        numeroCuenta: document.getElementById('numeroCuenta').value || null,
+        cuentaIban: document.getElementById('cuentaIban').value || null,
+        sinpeMovil: document.getElementById('sinpeMovil').value || null,
+        notas: document.getElementById('notas').value || null,
+        itemIds: getSelectedItemIds()
+    };
+
+    const url = esNuevo ? '/api/proveedores' : `/api/proveedores/${proveedorId}`;
+    const method = esNuevo ? 'POST' : 'PUT';
+
+    const res = await fetch(url, {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+        },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data.success) {
+        window.location.href = '/proveedores';
+    } else {
+        showToast('error', data.message);
+    }
+});
+</script>
+
+<div th:replace="~{shared/layout :: scripts}"></div>
+</body>
+</html>

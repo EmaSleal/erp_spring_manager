@@ -15,7 +15,6 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 /**
@@ -94,11 +93,11 @@ public class PlantillaWhatsApp {
     
     @CreatedDate
     @Column(name = "", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @LastModifiedDate
     @Column(name = "updateDate")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     @CreatedBy
     @Column(name = "createBy", updatable = false)
@@ -114,7 +113,7 @@ public class PlantillaWhatsApp {
     
     @PreUpdate
     protected void onUpdate() {
-        updateDate = new Timestamp(System.currentTimeMillis());
+        updateDate = LocalDateTime.now();
     }
     
     // ========================================

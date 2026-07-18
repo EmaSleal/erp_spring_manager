@@ -175,6 +175,16 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     long countPagosDelDia();
     
     /**
+     * Finds all payments for a given client, ordered by payment date descending.
+     * Replaces the in-memory stream filter in PagoServiceImpl.findByClienteId.
+     *
+     * @param idCliente client primary key
+     * @return payments belonging to the client
+     */
+    @Query("SELECT p FROM Pago p WHERE p.cliente.idCliente = :idCliente ORDER BY p.fechaPago DESC")
+    List<Pago> findByClienteId(@Param("idCliente") Integer idCliente);
+
+    /**
      * Busca el último número de pago que coincida con un patrón.
      * Útil para generar números consecutivos.
      * @param patron Patrón SQL LIKE (ej: "PAG-20260119-%")

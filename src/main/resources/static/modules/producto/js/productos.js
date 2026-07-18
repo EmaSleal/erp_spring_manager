@@ -224,16 +224,14 @@ function renderTable() {
                     '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Inactivo</span>'}
             </td>
             <td class="text-center">
-                <button class="btn btn-sm btn-warning me-1" 
+                <button class="btn btn-sm btn-warning me-1 ${(typeof permisos !== 'undefined' && !permisos.editar) ? 'd-none' : ''}"
                         onclick="openEditModal(${producto.idProducto}, '${producto.codigo}', '${producto.descripcion}', ${producto?.presentacion?.idPresentacion}, ${producto.precioInstitucional}, ${producto.precioMayorista}, ${producto.active})"
-                        title="Editar"
-                        style="${(typeof permisos !== 'undefined' && !permisos.editar) ? 'display:none;' : ''}">
+                        title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" 
+                <button class="btn btn-sm btn-danger ${(typeof permisos !== 'undefined' && !permisos.eliminar) ? 'd-none' : ''}"
                         onclick="eliminarProducto(${producto.idProducto}, '${producto.descripcion}')"
-                        title="Eliminar"
-                        style="${(typeof permisos !== 'undefined' && !permisos.eliminar) ? 'display:none;' : ''}">
+                        title="Eliminar">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -322,14 +320,12 @@ function renderMobileCards(items) {
 
             <!-- Footer con acciones -->
             <div class="mobile-card-footer mobile-card-actions">
-                <button class="btn btn-sm btn-warning" 
-                        onclick="openEditModal(${producto.idProducto}, '${producto.codigo}', '${producto.descripcion}', ${producto?.presentacion?.idPresentacion}, ${producto.precioInstitucional}, ${producto.precioMayorista}, ${producto.active})"
-                        style="${(typeof permisos !== 'undefined' && !permisos.editar) ? 'display:none;' : ''}">
+                <button class="btn btn-sm btn-warning ${(typeof permisos !== 'undefined' && !permisos.editar) ? 'd-none' : ''}"
+                        onclick="openEditModal(${producto.idProducto}, '${producto.codigo}', '${producto.descripcion}', ${producto?.presentacion?.idPresentacion}, ${producto.precioInstitucional}, ${producto.precioMayorista}, ${producto.active})">
                     <i class="fas fa-edit me-1"></i> Editar
                 </button>
-                <button class="btn btn-sm btn-danger" 
-                        onclick="eliminarProducto(${producto.idProducto}, '${producto.descripcion}')"
-                        style="${(typeof permisos !== 'undefined' && !permisos.eliminar) ? 'display:none;' : ''}">
+                <button class="btn btn-sm btn-danger ${(typeof permisos !== 'undefined' && !permisos.eliminar) ? 'd-none' : ''}"
+                        onclick="eliminarProducto(${producto.idProducto}, '${producto.descripcion}')">
                     <i class="fas fa-trash me-1"></i> Eliminar
                 </button>
             </div>

@@ -157,7 +157,7 @@ public class ConfiguracionController {
         }
 
         try {
-            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+            Integer usuarioId = usuarioService.findByEmail(authentication.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
             
@@ -201,7 +201,7 @@ public class ConfiguracionController {
         }
 
         try {
-            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+            Integer usuarioId = usuarioService.findByEmail(authentication.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
             
@@ -249,7 +249,7 @@ public class ConfiguracionController {
         }
 
         try {
-            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+            Integer usuarioId = usuarioService.findByEmail(authentication.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
             
@@ -290,7 +290,7 @@ public class ConfiguracionController {
         log.info("Eliminando logo de empresa ID: {}", empresaId);
 
         try {
-            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+            Integer usuarioId = usuarioService.findByEmail(authentication.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
             
@@ -323,7 +323,7 @@ public class ConfiguracionController {
         log.info("Eliminando favicon de empresa ID: {}", empresaId);
 
         try {
-            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+            Integer usuarioId = usuarioService.findByEmail(authentication.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
             
@@ -481,7 +481,7 @@ public class ConfiguracionController {
                 return "redirect:/configuracion?tab=notificaciones";
             }
 
-            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+            Integer usuarioId = usuarioService.findByEmail(authentication.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
 

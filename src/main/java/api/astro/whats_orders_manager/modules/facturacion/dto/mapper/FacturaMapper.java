@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.dto.mapper;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.dto.ClienteSimpleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
@@ -12,6 +13,7 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import org.springframework.stereotype.Component;
 
+import java.sql.Date;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +51,8 @@ public class FacturaMapper {
                 .numeroFactura(factura.getNumeroFactura())
                 .serie(factura.getSerie())
                 .cliente(toClienteSimpleDTO(factura.getCliente()))
+                .monedaFE(factura.getMonedaFE() != null ? factura.getMonedaFE() : MonedaFE.CRC)
+                .tipoCambio(factura.getTipoCambio())
                 .subtotal(factura.getSubtotal())
                 .igv(factura.getIgv())
                 .total(factura.getTotal())
@@ -66,8 +70,8 @@ public class FacturaMapper {
                 .saldoPendiente(factura.calcularSaldoPendiente())
                 .createBy(factura.getCreateBy())
                 .updateBy(factura.getUpdateBy())
-                //cast factura.getUpdateDate() from Timestamp to Date
-                .updateDate(factura.getUpdateDate() != null ? new java.sql.Date(factura.getUpdateDate().getTime()) : null)
+                //cast factura.getUpdateDate() from LocalDateTime to java.sql.Date
+                .updateDate(factura.getUpdateDate() != null ? Date.valueOf(factura.getUpdateDate().toLocalDate()) : null)
                 .build();
     }
     
@@ -88,7 +92,7 @@ public class FacturaMapper {
                 .email(cliente.getEmail())
                 .identificacion(cliente.getIdentificacion())
                 .tipoCliente(cliente.getTipoCliente())
-                .fechaRegistro(cliente.getFechaRegistro() != null ? new java.sql.Date(cliente.getFechaRegistro().getTime()) : null)
+                .fechaRegistro(cliente.getFechaRegistro() != null ? Date.valueOf(cliente.getFechaRegistro().toLocalDate()) : null)
                 .build();
     }
     

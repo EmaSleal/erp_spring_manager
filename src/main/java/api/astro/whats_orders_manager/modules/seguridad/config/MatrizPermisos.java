@@ -88,46 +88,24 @@ public class MatrizPermisos {
         
         // Configuración (solo lectura)
         permisosGerente.add(Permiso.CONFIG_VER);
-        
+
         // Notificaciones (puede crear)
         permisosGerente.add(Permiso.NOTIFICACION_CREAR);
-        
+
+        // Inventario (solo lectura)
+        permisosGerente.add(Permiso.INVENTARIO_VER);
+
+        // Proveedores y compras (solo lectura)
+        permisosGerente.add(Permiso.PROVEEDOR_VER);
+        permisosGerente.add(Permiso.ORDEN_COMPRA_VER);
+        permisosGerente.add(Permiso.CUENTA_PAGAR_VER);
+
         PERMISOS_POR_ROL.put("GERENTE", Collections.unmodifiableSet(permisosGerente));
         
         // ==================== ROL: ADMIN ====================
-        Set<Permiso> permisosAdmin = new HashSet<>();
-        
-        // Hereda todos los permisos del gerente
-        permisosAdmin.addAll(permisosGerente);
-        
-        // Configuración (CRUD completo)
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_EMPRESA);
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_FACTURACION);
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_EMAIL);
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_WHATSAPP);
-        
-        // Notificaciones (todos)
-        permisosAdmin.add(Permiso.NOTIFICACION_ELIMINAR);
-        
-        // Usuarios (CRUD completo - exclusivo de admin)
-        permisosAdmin.add(Permiso.USUARIO_VER);
-        permisosAdmin.add(Permiso.USUARIO_CREAR);
-        permisosAdmin.add(Permiso.USUARIO_EDITAR);
-        permisosAdmin.add(Permiso.USUARIO_ELIMINAR);
-        permisosAdmin.add(Permiso.USUARIO_BLOQUEAR);
-        permisosAdmin.add(Permiso.USUARIO_CAMBIAR_ROL);
-        permisosAdmin.add(Permiso.USUARIO_VER_ACTIVIDAD);
-        permisosAdmin.add(Permiso.USUARIO_RESETEAR_PASSWORD);
-        
-        // Auditoría (exclusivo de admin)
-        permisosAdmin.add(Permiso.AUDITORIA_VER);
-        permisosAdmin.add(Permiso.AUDITORIA_EXPORTAR);
-        
-        // Sistema (exclusivo de admin)
-        permisosAdmin.add(Permiso.SISTEMA_VER_LOGS);
-        permisosAdmin.add(Permiso.SISTEMA_BACKUP);
-        permisosAdmin.add(Permiso.SISTEMA_MANTENIMIENTO);
-        
+        // ADMIN has all permissions — always kept in sync with the enum automatically
+        Set<Permiso> permisosAdmin = EnumSet.allOf(Permiso.class);
+
         PERMISOS_POR_ROL.put("ADMIN", Collections.unmodifiableSet(permisosAdmin));
     }
     

@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -232,8 +232,8 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Inte
     @Query("SELECT n FROM Notificacion n WHERE n.fechaEnvio BETWEEN :fechaInicio AND :fechaFin " +
            "ORDER BY n.fechaEnvio DESC")
     Page<Notificacion> findByRangoFechas(
-            @Param("fechaInicio") Timestamp fechaInicio,
-            @Param("fechaFin") Timestamp fechaFin,
+            @Param("fechaInicio") LocalDateTime fechaInicio,
+            @Param("fechaFin") LocalDateTime fechaFin,
             Pageable pageable
     );
 
@@ -250,8 +250,8 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Inte
            "AND n.fechaEnvio BETWEEN :fechaInicio AND :fechaFin ORDER BY n.fechaEnvio DESC")
     Page<Notificacion> findByUsuarioIdAndRangoFechas(
             @Param("idUsuario") Integer idUsuario,
-            @Param("fechaInicio") Timestamp fechaInicio,
-            @Param("fechaFin") Timestamp fechaFin,
+            @Param("fechaInicio") LocalDateTime fechaInicio,
+            @Param("fechaFin") LocalDateTime fechaFin,
             Pageable pageable
     );
 
@@ -295,7 +295,7 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Inte
            "WHERE n.idNotificacion = :idNotificacion")
     int marcarComoLeida(
             @Param("idNotificacion") Integer idNotificacion,
-            @Param("fechaLectura") Timestamp fechaLectura
+            @Param("fechaLectura") LocalDateTime fechaLectura
     );
 
     /**
@@ -310,7 +310,7 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Inte
            "WHERE n.usuario.idUsuario = :idUsuario AND n.leida = false")
     int marcarTodasComoLeidas(
             @Param("idUsuario") Integer idUsuario,
-            @Param("fechaLectura") Timestamp fechaLectura
+            @Param("fechaLectura") LocalDateTime fechaLectura
     );
 
     // ==================== ESTADÍSTICAS ====================
@@ -386,5 +386,5 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Inte
      */
     @Modifying
     @Query("DELETE FROM Notificacion n WHERE n.fechaEnvio < :fechaLimite AND n.leida = true")
-    int eliminarNotificacionesAntiguas(@Param("fechaLimite") Timestamp fechaLimite);
+    int eliminarNotificacionesAntiguas(@Param("fechaLimite") LocalDateTime fechaLimite);
 }

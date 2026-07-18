@@ -678,9 +678,20 @@ a:hover {
     .page-title {
         font-size: 1.125rem;
     }
-    
+
     .page-header-actions .btn-responsive {
         font-size: 0.875rem;
         padding: 0.5rem;
     }
+}
+
+/* Alert toast flotante (usada por mostrarAlerta / mostrarNotificacion) */
+.alert-toast {
+    z-index: 9999;
+    min-width: 300px;
+}
+
+.dropdown-scrollable {
+    max-height: 280px;
+    overflow-y: auto;
 }

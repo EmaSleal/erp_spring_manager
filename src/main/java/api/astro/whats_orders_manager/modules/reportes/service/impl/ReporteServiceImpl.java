@@ -17,9 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -104,9 +103,6 @@ public class ReporteServiceImpl implements ReporteService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = CacheConfig.CACHE_ESTADISTICAS,
-               key = "'estadisticas_ventas_' + #facturas.size()",
-               unless = "#result == null || #result.isEmpty()")
     public Map<String, Object> calcularEstadisticasVentas(List<Factura> facturas) {
         log.debug("📊 Calculando estadísticas de ventas para {} facturas", facturas.size());
         
@@ -115,9 +111,9 @@ public class ReporteServiceImpl implements ReporteService {
         // Cantidad de facturas
         estadisticas.put("cantidadFacturas", facturas.size());
         
-        // Total de ventas
+        // Total de ventas — converted to CRC for mixed-currency consistency
         BigDecimal totalVentas = facturas.stream()
-            .map(f -> f.getTotal() != null ? f.getTotal() : BigDecimal.ZERO)
+            .map(Factura::getTotalEnCRC)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         estadisticas.put("totalVentas", totalVentas);
         
@@ -135,10 +131,10 @@ public class ReporteServiceImpl implements ReporteService {
         estadisticas.put("facturasPagadas", facturasPagadas);
         estadisticas.put("facturasPendientes", facturasPendientes);
         
-        // Total pagado vs pendiente
+        // Total pagado vs pendiente — converted to CRC
         BigDecimal totalPagado = facturas.stream()
             .filter(f -> f.getFechaPago() != null)
-            .map(f -> f.getTotal() != null ? f.getTotal() : BigDecimal.ZERO)
+            .map(Factura::getTotalEnCRC)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalPendiente = totalVentas.subtract(totalPagado);
         estadisticas.put("totalPagado", totalPagado);
@@ -386,7 +382,7 @@ public class ReporteServiceImpl implements ReporteService {
                 },
                 Collectors.reducing(
                     BigDecimal.ZERO,
-                    f -> f.getTotal() != null ? f.getTotal() : BigDecimal.ZERO,
+                    f -> f.getTotalEnCRC() != null ? f.getTotalEnCRC() : BigDecimal.ZERO,
                     BigDecimal::add
                 )
             ));
@@ -429,9 +425,9 @@ public class ReporteServiceImpl implements ReporteService {
                 // Obtener el cliente
                 Cliente cliente = facturas.get(0).getCliente();
                 
-                // Calcular totales
+                // Calcular totales — converted to CRC
                 BigDecimal totalCompras = facturas.stream()
-                    .map(f -> f.getTotal() != null ? f.getTotal() : BigDecimal.ZERO)
+                    .map(Factura::getTotalEnCRC)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
                 
                 int cantidadFacturas = facturas.size();
@@ -477,17 +473,15 @@ public class ReporteServiceImpl implements ReporteService {
     // ========================================================================
 
     /**
-     * Convierte un Timestamp a LocalDate.
-     * 
-     * @param timestamp Timestamp a convertir
-     * @return LocalDate o null si el timestamp es null
+     * Convierte un LocalDateTime a LocalDate.
+     *
+     * @param dateTime LocalDateTime a convertir
+     * @return LocalDate o null si el dateTime es null
      */
-    private LocalDate convertirTimestampALocalDate(Timestamp timestamp) {
-        if (timestamp == null) {
+    private LocalDate convertirTimestampALocalDate(LocalDateTime dateTime) {
+        if (dateTime == null) {
             return null;
         }
-        return timestamp.toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate();
+        return dateTime.toLocalDate();
     }
 }

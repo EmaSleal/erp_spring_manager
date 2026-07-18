@@ -193,11 +193,17 @@ public class UsuarioActividadServiceImpl implements UsuarioActividadService {
 
     @Override
     @Transactional
-    public void registrarLoginFallido(String telefono, String ipAddress, String motivo) {
+    public void registrarLoginFallido(String identifier, String ipAddress, String motivo) {
         try {
-            // Intentar encontrar usuario por teléfono
-            Usuario usuario = usuarioRepository.findByTelefono(telefono).orElse(null);
-            
+            Usuario usuario = usuarioRepository.findByEmail(identifier)
+                    .or(() -> usuarioRepository.findByNombre(identifier))
+                    .orElse(null);
+
+            if (usuario == null) {
+                log.warn("Login fallido de identificador desconocido: {} desde IP: {}", identifier, ipAddress);
+                return;
+            }
+
             UsuarioActividad actividad = UsuarioActividad.builder()
                     .usuario(usuario)
                     .tipoActividad("LOGIN")
@@ -207,9 +213,9 @@ public class UsuarioActividadServiceImpl implements UsuarioActividadService {
                     .errorMensaje(motivo)
                     .ipAddress(ipAddress)
                     .build();
-            
+
             actividadRepository.save(actividad);
-            log.warn("Login fallido registrado para teléfono: {}", telefono);
+            log.warn("Login fallido registrado para identificador: {}", identifier);
         } catch (Exception e) {
             log.error("Error al registrar login fallido: {}", e.getMessage());
         }
@@ -235,6 +241,46 @@ public class UsuarioActividadServiceImpl implements UsuarioActividadService {
             log.info("Logout registrado para usuario ID: {}", idUsuario);
         } catch (Exception e) {
             log.error("Error al registrar logout: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void registrarCambioConfiguracion(String clave, String descripcion) {
+        try {
+            UsuarioActividad actividad = UsuarioActividad.builder()
+                    .tipoActividad("CONFIG_CHANGE")
+                    .descripcion("Cambio de configuración [" + clave + "]: " + descripcion)
+                    .nivel("WARNING")
+                    .resultado("SUCCESS")
+                    .ipAddress(obtenerIPActual())
+                    .userAgent(obtenerUserAgentActual())
+                    .build();
+
+            actividadRepository.save(actividad);
+            log.info("Cambio de configuración registrado: clave={}", clave);
+        } catch (Exception e) {
+            log.error("Error al registrar cambio de configuración: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void registrarCambioPermiso(String permisoCodigo, String descripcion) {
+        try {
+            UsuarioActividad actividad = UsuarioActividad.builder()
+                    .tipoActividad("PERMISSION_CHANGE")
+                    .descripcion("Cambio de permiso [" + permisoCodigo + "]: " + descripcion)
+                    .nivel("CRITICAL")
+                    .resultado("SUCCESS")
+                    .ipAddress(obtenerIPActual())
+                    .userAgent(obtenerUserAgentActual())
+                    .build();
+
+            actividadRepository.save(actividad);
+            log.warn("Cambio de permiso registrado: codigo={}", permisoCodigo);
+        } catch (Exception e) {
+            log.error("Error al registrar cambio de permiso: {}", e.getMessage());
         }
     }
 

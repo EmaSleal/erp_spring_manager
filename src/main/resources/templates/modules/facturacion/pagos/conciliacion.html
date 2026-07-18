@@ -120,8 +120,9 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    <tr th:if="${#lists.isEmpty(pagos)}"
-                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-check-circle', 'No hay pagos pendientes de conciliación')}"></tr>
+                                    <th:block th:if="${#lists.isEmpty(pagos)}">
+                                        <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-check-circle', 'No hay pagos pendientes de conciliación')}"></tr>
+                                    </th:block>
                                 </tbody>
                             </table>
                         </div>
@@ -193,8 +194,9 @@
                                 </div>
                             </div>
 
-                            <div th:if="${#lists.isEmpty(pagos)}"
-                                 th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-check-circle', 'No hay pagos pendientes de conciliación')}"></div>
+                            <th:block th:if="${#lists.isEmpty(pagos)}">
+                                <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-check-circle', 'No hay pagos pendientes de conciliación')}"></div>
+                            </th:block>
                         </div>
 
                     </div>

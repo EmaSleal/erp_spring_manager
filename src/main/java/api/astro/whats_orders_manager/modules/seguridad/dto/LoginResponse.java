@@ -5,7 +5,7 @@ import java.util.List;
 public record LoginResponse(
         Integer id,
         String nombre,
-        String telefono,
+        String email,
         String rol,
         List<String> permisos
 ) {}

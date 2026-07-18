@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/facturas/electronica/comprobantes")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class ComprobanteElectronicoController {
     
     private final ComprobanteElectronicoService comprobanteService;

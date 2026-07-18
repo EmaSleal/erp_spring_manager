@@ -356,9 +356,9 @@ public class PerfilController {
             telefono = principal.toString();
         }
 
-        Optional<Usuario> usuarioOpt = usuarioService.findByTelefono(telefono);
+        Optional<Usuario> usuarioOpt = usuarioService.findByEmail(telefono);
         if (usuarioOpt.isEmpty()) {
-            log.warn("Usuario no encontrado con teléfono: {}", telefono);
+            log.warn("Usuario no encontrado con email: {}", telefono);
         }
         return usuarioOpt.orElse(null);
     }

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Estado de Cuenta</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <!-- Breadcrumbs -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/dashboard}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/pagos}" class="text-decoration-none">
+                            <i class="fas fa-money-bill-wave me-1"></i>Pagos
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="fas fa-user-circle me-1"></i>Estado de Cuenta
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 mb-1">
+                        <i class="fas fa-file-invoice-dollar text-primary me-2"></i>
+                        Estado de Cuenta —
+                        <span th:text="${estadoCuenta.nombreCliente}">Cliente</span>
+                    </h2>
+                    <p class="text-muted mb-0">Resumen completo de facturas y pagos del cliente</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/pagos', 'Volver a Pagos')}"></a>
+                    <button onclick="window.print()" class="btn btn-secondary">
+                        <i class="fas fa-print me-2"></i>Imprimir
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Stat Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-primary', 'Total Facturado', '₡ ' + ${#numbers.formatDecimal(estadoCuenta.totalFacturado ?: 0, 1, 2)}, 'fas fa-file-invoice fa-3x', 'text-white-50')}"></div>
+                </div>
+                <div class="col-md-4">
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-success', 'Total Pagado', '₡ ' + ${#numbers.formatDecimal(estadoCuenta.totalPagado ?: 0, 1, 2)}, 'fas fa-check-circle fa-3x', 'text-white-50')}"></div>
+                </div>
+                <div class="col-md-4">
+                    <div th:replace="~{shared/fragments/stat-card :: statCard(${estadoCuenta.saldoPendiente != null and estadoCuenta.saldoPendiente.signum() > 0} ? 'bg-danger' : 'bg-secondary', 'Saldo Pendiente', '₡ ' + ${#numbers.formatDecimal(estadoCuenta.saldoPendiente ?: 0, 1, 2)}, 'fas fa-exclamation-circle fa-3x', 'text-white-50')}"></div>
+                </div>
+            </div>
+
+            <!-- Client Info Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-user me-2 text-primary"></i>Información del Cliente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Nombre</small>
+                            <span class="fw-semibold" th:text="${estadoCuenta.nombreCliente}">—</span>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Identificación</small>
+                            <span th:text="${estadoCuenta.identificacion ?: '—'}">—</span>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Email</small>
+                            <span th:text="${estadoCuenta.email ?: '—'}">—</span>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Teléfono</small>
+                            <span th:text="${estadoCuenta.telefono ?: '—'}">—</span>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Total de Facturas</small>
+                            <span class="badge bg-primary" th:text="${estadoCuenta.totalFacturas}">0</span>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Facturas con Saldo</small>
+                            <span class="badge" th:classappend="${estadoCuenta.facturasPendientes > 0} ? 'bg-warning text-dark' : 'bg-success'"
+                                  th:text="${estadoCuenta.facturasPendientes}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoices Table -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-primary">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-file-invoice me-2 text-white"></i>Facturas
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fecha Emisión</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">Pagado</th>
+                                    <th class="text-end">Saldo</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="factura : ${estadoCuenta.facturas}">
+                                    <td class="fw-semibold" th:text="${factura.numeroFactura}">F001-00001</td>
+                                    <td th:text="${factura.fechaEmision != null ? #temporals.format(factura.fechaEmision, 'dd/MM/yyyy') : '—'}">01/01/2025</td>
+                                    <td class="text-end" th:text="'₡ ' + ${#numbers.formatDecimal(factura.total ?: 0, 1, 2)}">₡ 0.00</td>
+                                    <td class="text-end" th:text="'₡ ' + ${#numbers.formatDecimal(factura.totalPagado ?: 0, 1, 2)}">₡ 0.00</td>
+                                    <td class="text-end fw-bold"
+                                        th:classappend="${factura.saldoPendiente != null and factura.saldoPendiente.signum() > 0} ? 'text-danger' : ''"
+                                        th:text="'₡ ' + ${#numbers.formatDecimal(factura.saldoPendiente ?: 0, 1, 2)}">₡ 0.00</td>
+                                    <td class="text-center">
+                                        <!-- PAGADO_TOTAL -->
+                                        <span th:if="${factura.estadoPago != null and factura.estadoPago.name() == 'PAGADO_TOTAL'}"
+                                              class="badge bg-success"
+                                              th:text="${factura.estadoPago.descripcion}">Pagado</span>
+                                        <!-- PAGADO_PARCIAL -->
+                                        <span th:if="${factura.estadoPago != null and factura.estadoPago.name() == 'PAGADO_PARCIAL'}"
+                                              class="badge bg-warning text-dark"
+                                              th:text="${factura.estadoPago.descripcion}">Parcial</span>
+                                        <!-- VENCIDO -->
+                                        <span th:if="${factura.estadoPago != null and factura.estadoPago.name() == 'VENCIDO'}"
+                                              class="badge bg-danger"
+                                              th:text="${factura.estadoPago.descripcion}">Vencido</span>
+                                        <!-- PENDIENTE -->
+                                        <span th:if="${factura.estadoPago != null and factura.estadoPago.name() == 'PENDIENTE'}"
+                                              class="badge bg-secondary"
+                                              th:text="${factura.estadoPago.descripcion}">Pendiente</span>
+                                        <span th:if="${factura.estadoPago == null}" class="text-muted">—</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a th:href="@{/pagos/nuevo(idFactura=${factura.idFactura}, idCliente=${estadoCuenta.idCliente})}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           th:if="${factura.estadoPago != null and factura.estadoPago.tieneSaldoPendiente()}"
+                                           sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')"
+                                           title="Registrar pago">
+                                            <i class="fas fa-plus"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(estadoCuenta.facturas)}">
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="fas fa-folder-open fa-2x mb-2 d-block"></i>
+                                        No hay facturas registradas para este cliente
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payments Table -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-secondary ">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-money-bill-wave me-2 text-white"></i>Pagos Registrados
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Factura</th>
+                                    <th class="text-end">Monto</th>
+                                    <th class="text-center">Método</th>
+                                    <th>Fecha</th>
+                                    <th class="text-center">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="pago : ${estadoCuenta.pagos}">
+                                    <td class="fw-semibold" th:text="${pago.numeroPago}">PAG-001</td>
+                                    <td th:text="${pago.numeroFactura ?: '—'}">F001-00001</td>
+                                    <td class="text-end" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto ?: 0, 1, 2)}">₡ 0.00</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info text-dark" th:text="${pago.metodoPagoDescripcion ?: pago.metodoPago}">Efectivo</span>
+                                    </td>
+                                    <td th:text="${pago.fechaPago != null ? #temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm') : '—'}">01/01/2025</td>
+                                    <td class="text-center">
+                                        <!-- CONFIRMADO -->
+                                        <span th:if="${pago.estado != null and pago.estado.name() == 'CONFIRMADO'}"
+                                              class="badge bg-success"
+                                              th:text="${pago.estadoDescripcion ?: pago.estado}">Confirmado</span>
+                                        <!-- CONCILIADO -->
+                                        <span th:if="${pago.estado != null and pago.estado.name() == 'CONCILIADO'}"
+                                              class="badge bg-primary"
+                                              th:text="${pago.estadoDescripcion ?: pago.estado}">Conciliado</span>
+                                        <!-- ANULADO -->
+                                        <span th:if="${pago.estado != null and pago.estado.name() == 'ANULADO'}"
+                                              class="badge bg-dark"
+                                              th:text="${pago.estadoDescripcion ?: pago.estado}">Anulado</span>
+                                        <!-- RECHAZADO -->
+                                        <span th:if="${pago.estado != null and pago.estado.name() == 'RECHAZADO'}"
+                                              class="badge bg-danger"
+                                              th:text="${pago.estadoDescripcion ?: pago.estado}">Rechazado</span>
+                                        <span th:if="${pago.estado == null}" class="text-muted">—</span>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(estadoCuenta.pagos)}">
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="fas fa-money-bill-wave fa-2x mb-2 d-block"></i>
+                                        No hay pagos registrados para este cliente
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+</body>
+</html>

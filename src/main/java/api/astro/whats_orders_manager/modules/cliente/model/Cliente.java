@@ -13,7 +13,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 
@@ -35,7 +35,7 @@ public class Cliente {
 
     @CreatedDate
     @Column(name = "fechaRegistro", updatable = false)
-    private Timestamp fechaRegistro;
+    private LocalDateTime fechaRegistro;
 
     @Column(name= "tipoCliente")
     private InvoiceType tipoCliente;
@@ -107,11 +107,11 @@ public class Cliente {
 
     @CreatedDate
     @Column(name = "createDate", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @LastModifiedDate
     @Column(name = "updateDate")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     @CreatedBy
     @Column(name = "createBy", updatable = false)

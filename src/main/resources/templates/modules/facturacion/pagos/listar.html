@@ -188,6 +188,13 @@
                                                title="Ver Detalle">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            <a th:if="${pago.idCliente != null}"
+                                               th:href="@{/pagos/estado-cuenta/{id}(id=${pago.idCliente})}"
+                                               class="btn btn-sm btn-outline-secondary"
+                                               title="Estado de Cuenta del Cliente"
+                                               sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')">
+                                                <i class="fas fa-user-circle"></i>
+                                            </a>
                                             <button th:if="${pago.estado.name() == 'CONFIRMADO' and !pago.conciliado and !pago.estaAnulado()}"
                                                     th:attr="onclick=|conciliarPago(${pago.idPago})|"
                                                     class="btn btn-sm btn-info"
@@ -212,8 +219,9 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr th:if="${#lists.isEmpty(pagos)}"
-                                    th:replace="~{shared/fragments/empty-state :: emptyStateRow(9, 'fas fa-inbox', 'No se encontraron pagos registrados')}"></tr>
+                                <th:block th:if="${#lists.isEmpty(pagos)}">
+                                    <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(9, 'fas fa-inbox', 'No se encontraron pagos registrados')}"></tr>
+                                </th:block>
                             </tbody>
                         </table>
                     </div>
@@ -332,8 +340,9 @@
                         </div>
                         
                         <!-- Mensaje vacío -->
-                        <div th:if="${#lists.isEmpty(pagos)}"
-                             th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-inbox', 'No se encontraron pagos registrados')}"></div>
+                        <th:block th:if="${#lists.isEmpty(pagos)}">
+                            <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-inbox', 'No se encontraron pagos registrados')}"></div>
+                        </th:block>
                     </div>
                     
                     </div>
@@ -354,11 +363,9 @@
     <!-- Scripts base -->
     <th:block th:replace="~{shared/layout :: scripts}"></th:block>
     
-    <!-- Script de facturas para modal (ANTES de cargar facturas.js) -->
     <script th:inline="javascript">
         /*<![CDATA[*/
         const USER_ROLE = /*[[${userRole}]]*/ 'USER';
-        const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
         /*]]>*/
     </script>
     

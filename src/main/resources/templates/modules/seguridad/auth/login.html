@@ -84,11 +84,16 @@
     <!-- Body -->
     <div class="login-body">
         <!-- Mensajes de error/logout -->
+        <div th:if="${param.locked}" class="alert alert-warning" role="alert">
+            <i class="fas fa-lock me-2"></i>
+            Tu cuenta está bloqueada. Contactá al administrador.
+        </div>
+
         <div th:if="${param.error}" class="alert alert-danger" role="alert">
             <i class="fas fa-exclamation-circle me-2"></i>
             Usuario o contraseña incorrectos
         </div>
-        
+
         <div th:if="${param.logout}" class="alert alert-success" role="alert">
             <i class="fas fa-check-circle me-2"></i>
             Has cerrado sesión correctamente
@@ -96,17 +101,17 @@
 
         <!-- Formulario de Login -->
         <form th:action="@{/auth/login}" method="post">
-            <!-- Username -->
+            <!-- Usuario o Email -->
             <div class="mb-3">
                 <label for="username" class="form-label">
-                    <i class="fas fa-user me-2"></i>Usuario
+                    <i class="fas fa-user me-2"></i>Usuario o Correo Electrónico
                 </label>
-                <input type="text" 
-                       class="form-control" 
-                       id="username" 
-                       name="username" 
-                       placeholder="Ingresa tu usuario"
-                       required 
+                <input type="text"
+                       class="form-control"
+                       id="username"
+                       name="username"
+                       placeholder="Ingresa tu usuario o correo"
+                       required
                        autofocus>
             </div>
 
@@ -121,6 +126,15 @@
                        name="password" 
                        placeholder="Ingresa tu contraseña"
                        required>
+            </div>
+
+            <!-- Remember Me -->
+            <div class="mb-3 form-check">
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="rememberMe"
+                       name="remember-me">
+                <label class="form-check-label" for="rememberMe">Recordarme</label>
             </div>
 
             <!-- Submit Button -->

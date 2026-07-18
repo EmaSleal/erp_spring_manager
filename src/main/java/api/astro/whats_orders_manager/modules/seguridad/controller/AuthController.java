@@ -104,13 +104,15 @@ public class AuthController {
             return "redirect:/auth/register";
         }
 
-        // Normalizar email vacío a null para no violar la restricción de unicidad
-        if (usuario.getEmail() != null && usuario.getEmail().isBlank()) {
-            usuario.setEmail(null);
+        // Email is required for authentication — reject blank email
+        if (usuario.getEmail() == null || usuario.getEmail().isBlank()) {
+            log.warn("Registro fallido - Email requerido no informado para usuario: {}", usuario.getNombre());
+            redirectAttributes.addFlashAttribute("error", "El correo electrónico es obligatorio");
+            return "redirect:/auth/register";
         }
 
-        // Verificar si el email ya existe (si fue informado)
-        if (usuario.getEmail() != null && usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
+        // Verify email uniqueness
+        if (usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
             log.warn("Registro fallido - Email ya registrado: {}", usuario.getEmail());
             redirectAttributes.addFlashAttribute("error", "Ese correo electrónico ya está registrado");
             return "redirect:/auth/register";

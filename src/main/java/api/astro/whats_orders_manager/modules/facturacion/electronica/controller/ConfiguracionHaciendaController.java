@@ -32,7 +32,6 @@ import java.util.Map;
 @RequestMapping("/api/facturas/configuracion-hacienda")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class ConfiguracionHaciendaController {
     
     private final ConfiguracionHaciendaService configuracionService;

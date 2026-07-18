@@ -2,8 +2,11 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
+import api.astro.whats_orders_manager.modules.facturacion.dto.EstadoCuentaClienteDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.ReporteCajaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
@@ -24,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -55,7 +59,10 @@ public class PagoServiceImpl implements PagoService {
 
     @Autowired
     private PagoMapper pagoMapper;
-    
+
+    @Autowired
+    private FacturaMapper facturaMapper;
+
     // ==================== OPERACIONES CRUD ====================
     
     @Override
@@ -456,10 +463,7 @@ public class PagoServiceImpl implements PagoService {
     @Transactional(readOnly = true)
     public List<Pago> findByClienteId(Integer idCliente) {
         log.debug("Buscando pagos del cliente: {}", idCliente);
-        // Usando query nativa temporal hasta agregar método en repositorio
-        return pagoRepository.findAll().stream()
-            .filter(p -> p.getCliente() != null && p.getCliente().getIdCliente().equals(idCliente))
-            .collect(Collectors.toList());
+        return pagoRepository.findByClienteId(idCliente);
     }
     
     // ==================== REPORTES Y ESTADÍSTICAS ====================
@@ -543,5 +547,54 @@ public class PagoServiceImpl implements PagoService {
         reporte.calcularTotales();
 
         return reporte;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EstadoCuentaClienteDTO buildEstadoCuenta(Integer idCliente) {
+        log.info("Building account statement for client: {}", idCliente);
+
+        Cliente cliente = clienteRepository.findById(idCliente)
+            .orElseThrow(() -> new EntityNotFoundException("Cliente no encontrado con ID: " + idCliente));
+
+        List<Factura> facturaEntities = facturaRepository.findByClienteId(idCliente)
+            .orElse(Collections.emptyList());
+
+        List<FacturaDetalleDTO> facturas = facturaEntities.stream()
+            .map(facturaMapper::toDetalleDTO)
+            .collect(Collectors.toList());
+
+        List<PagoDTO> pagos = pagoMapper.toDTOList(findByClienteId(idCliente));
+
+        BigDecimal totalFacturado = facturaEntities.stream()
+            .map(f -> f.getTotal() != null ? f.getTotal() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Only CONFIRMADO and CONCILIADO payments count toward the paid total
+        BigDecimal totalPagado = pagos.stream()
+            .filter(PagoDTO::esValido)
+            .map(p -> p.getMonto() != null ? p.getMonto() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal saldoPendiente = totalFacturado.subtract(totalPagado);
+
+        int facturasPendientes = (int) facturaEntities.stream()
+            .filter(f -> f.getEstadoPago() != null && f.getEstadoPago().tieneSaldoPendiente())
+            .count();
+
+        return EstadoCuentaClienteDTO.builder()
+            .idCliente(cliente.getIdCliente())
+            .nombreCliente(cliente.getNombre())
+            .identificacion(cliente.getIdentificacion())
+            .email(cliente.getEmail())
+            .telefono(cliente.getTelefono())
+            .totalFacturado(totalFacturado)
+            .totalPagado(totalPagado)
+            .saldoPendiente(saldoPendiente)
+            .totalFacturas(facturaEntities.size())
+            .facturasPendientes(facturasPendientes)
+            .facturas(facturas)
+            .pagos(pagos)
+            .build();
     }
 }

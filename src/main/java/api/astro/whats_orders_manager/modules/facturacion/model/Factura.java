@@ -13,8 +13,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.sql.Date;
-import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,11 +61,11 @@ public class Factura {
 
     @CreatedDate
     @Column(name = "createDate", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @CreatedDate
     @Column(name = "updateDate")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     @CreatedBy
     @Column(name = "createBy", updatable = false)
@@ -185,6 +185,18 @@ public class Factura {
         BigDecimal totalPagado = calcularTotalPagado();
         return total != null ? total.subtract(totalPagado) : BigDecimal.ZERO;
     }
+
+    // Returns the invoice total converted to CRC for consolidated report aggregation.
+    // Uses tipoCambio stored at invoice creation time; falls back to 1 if absent.
+    @Transient
+    public BigDecimal getTotalEnCRC() {
+        BigDecimal t = total != null ? total : BigDecimal.ZERO;
+        if (monedaFE == null || monedaFE == api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE.CRC) {
+            return t;
+        }
+        BigDecimal tc = (tipoCambio != null && tipoCambio.compareTo(BigDecimal.ZERO) > 0) ? tipoCambio : BigDecimal.ONE;
+        return t.multiply(tc).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
     
     /**
      * Actualiza el estado de pago de la factura basado en los pagos aplicados.
@@ -270,7 +282,7 @@ public class Factura {
 
     //metodo getFechaEmision
     public LocalDate getFechaEmision() {
-        return this.createDate != null ? this.createDate.toLocalDateTime().toLocalDate() : null;
+        return this.createDate != null ? this.createDate.toLocalDate() : null;
     }
 
     //metodo getImpuesto

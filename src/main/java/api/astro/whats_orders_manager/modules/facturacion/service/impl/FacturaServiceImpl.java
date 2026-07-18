@@ -3,9 +3,12 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
+import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -56,6 +60,9 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Autowired
     private FacturaMapper facturaMapper;
+
+    @Autowired
+    private MovimientoInventarioService movimientoInventarioService;
 
     @Override
     @Transactional(readOnly = true)
@@ -120,6 +127,16 @@ public class FacturaServiceImpl implements FacturaService {
             log.info("Serie proporcionada manualmente: {}", factura.getSerie());
         }
         
+        // Ensure monedaFE defaults to CRC and tipoCambio is consistent
+        if (factura.getMonedaFE() == null || factura.getMonedaFE() == MonedaFE.CRC) {
+            factura.setMonedaFE(MonedaFE.CRC);
+            factura.setTipoCambio(BigDecimal.ONE);
+        } else if (factura.getTipoCambio() == null || factura.getTipoCambio().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(
+                "tipoCambio es obligatorio y debe ser mayor a 0 para facturas en " + factura.getMonedaFE().getCodigo()
+            );
+        }
+
         // Calcular IGV y total si no están establecidos
         if (factura.getSubtotal() != null && factura.getSubtotal().compareTo(BigDecimal.ZERO) > 0) {
             
@@ -138,13 +155,16 @@ public class FacturaServiceImpl implements FacturaService {
             }
         }
         
+        // Capture isNew before save — after save() the ID is always assigned
+        boolean isNew = factura.getIdFactura() == null;
+
         // Guardar la factura
         Factura facturaGuardada = facturaRepository.save(factura);
-        log.info("Factura guardada exitosamente con ID: {} y número: {}", 
+        log.info("Factura guardada exitosamente con ID: {} y número: {}",
                 facturaGuardada.getIdFactura(), facturaGuardada.getNumeroFactura());
-        
+
         // Incrementar el contador solo al crear (no en updates)
-        if (factura.getIdFactura() == null) {
+        if (isNew) {
             try {
                 configuracionFacturacionService.incrementarNumeroFactura();
                 log.debug("Contador de factura incrementado. Próximo: {}", config.getNumeroActual() + 1);
@@ -155,7 +175,11 @@ public class FacturaServiceImpl implements FacturaService {
         
         // ✅ NUEVO: Publicar evento de factura generada
         publicarEventoFacturaGenerada(facturaGuardada);
-        
+
+        if (isNew) {
+            registrarSalidasInventario(facturaGuardada);
+        }
+
         return facturaGuardada;
     }
 
@@ -183,9 +207,11 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Override
     @Transactional(readOnly = true)
-    public long countByFechaToday() { 
+    public long countByFechaToday() {
         log.debug("Contando facturas de hoy");
-        return facturaRepository.countByFechaToday(); 
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfTomorrow = LocalDate.now().plusDays(1).atStartOfDay();
+        return facturaRepository.countByFechaToday(startOfDay, startOfTomorrow);
     }
 
     @Override
@@ -246,6 +272,31 @@ public class FacturaServiceImpl implements FacturaService {
         } catch (Exception e) {
             log.error("Error al notificar factura generada: {}", e.getMessage());
             // Do not rethrow — notification failure must not affect invoice creation
+        }
+    }
+
+    private void registrarSalidasInventario(Factura factura) {
+        List<LineaFactura> lineas = factura.getLineas();
+        if (lineas == null || lineas.isEmpty()) return;
+        for (LineaFactura linea : lineas) {
+            if (linea.getProducto() == null || linea.getCantidad() == null) continue;
+            // Skip products not yet enrolled in inventory tracking (stock == null means pre-sprint legacy row)
+            if (linea.getProducto().getStock() == null) continue;
+            try {
+                movimientoInventarioService.registrarSalida(
+                    linea.getProducto().getIdProducto(),
+                    linea.getCantidad(),
+                    TipoMovimientoInventario.SALIDA_VENTA,
+                    "FACTURA",
+                    factura.getIdFactura().longValue(),
+                    null,
+                    "Factura " + factura.getNumeroFactura()
+                );
+            } catch (Exception e) {
+                log.error("Error al registrar salida de inventario para producto {}: {}",
+                    linea.getProducto().getIdProducto(), e.getMessage());
+                throw e;
+            }
         }
     }
 

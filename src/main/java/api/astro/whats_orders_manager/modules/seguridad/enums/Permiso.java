@@ -99,8 +99,33 @@ public enum Permiso {
     CONTABILIDAD_ANULAR("Anular asientos", "Anular asientos contabilizados (operación crítica)"),
     CONTABILIDAD_REPORTES("Reportes contables", "Ver reportes financieros: Balance, Estado de Resultados, Libro Mayor"),
     
+    // ==================== INVENTARIO ====================
+
+    INVENTARIO_VER("Ver inventario", "Visualizar stock, kardex y lotes"),
+    INVENTARIO_AJUSTAR("Ajustar inventario", "Crear y aprobar ajustes de inventario"),
+
+    // ==================== PROVEEDORES ====================
+
+    PROVEEDOR_VER("Ver proveedores", "Visualizar listado y detalle de proveedores"),
+    PROVEEDOR_CREAR("Crear proveedores", "Registrar nuevos proveedores"),
+    PROVEEDOR_EDITAR("Editar proveedores", "Modificar información de proveedores"),
+    PROVEEDOR_ELIMINAR("Eliminar proveedores", "Eliminar proveedores del sistema"),
+
+    // ==================== ÓRDENES DE COMPRA ====================
+
+    ORDEN_COMPRA_VER("Ver órdenes de compra", "Visualizar listado y detalle de órdenes de compra"),
+    ORDEN_COMPRA_CREAR("Crear órdenes de compra", "Generar nuevas órdenes de compra"),
+    ORDEN_COMPRA_APROBAR("Aprobar órdenes de compra", "Aprobar órdenes de compra pendientes"),
+    ORDEN_COMPRA_CANCELAR("Cancelar órdenes de compra", "Cancelar órdenes de compra"),
+
+    // ==================== CUENTAS POR PAGAR ====================
+
+    CUENTA_PAGAR_VER("Ver cuentas por pagar", "Visualizar cuentas por pagar a proveedores"),
+    CUENTA_PAGAR_CREAR("Crear cuentas por pagar", "Registrar cuentas por pagar a proveedores"),
+    CUENTA_PAGAR_REGISTRAR_PAGO("Registrar pago a proveedor", "Registrar pagos de cuentas por pagar"),
+
     // ==================== AUDITORÍA ====================
-    
+
     AUDITORIA_VER("Ver auditoría", "Acceso al registro de auditoría"),
     AUDITORIA_EXPORTAR("Exportar auditoría", "Exportar logs de auditoría"),
     
@@ -136,6 +161,10 @@ public enum Permiso {
         if (name.startsWith("PRODUCTO_")) return "Productos";
         if (name.startsWith("PAGO_")) return "Pagos";
         if (name.startsWith("CONTABILIDAD_")) return "Contabilidad";
+        if (name.startsWith("INVENTARIO_")) return "Inventario";
+        if (name.startsWith("PROVEEDOR_")) return "Proveedores";
+        if (name.startsWith("ORDEN_COMPRA_")) return "Órdenes de Compra";
+        if (name.startsWith("CUENTA_PAGAR_")) return "Cuentas por Pagar";
         if (name.startsWith("REPORTE_")) return "Reportes";
         if (name.startsWith("CONFIG_")) return "Configuración";
         if (name.startsWith("NOTIFICACION_")) return "Notificaciones";

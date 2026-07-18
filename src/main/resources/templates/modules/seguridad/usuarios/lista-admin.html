@@ -195,8 +195,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr th:if="${usuarios.isEmpty()}"
-                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron usuarios')}"></tr>
+                                    <th:block th:if="${usuarios == null or usuarios.isEmpty()}">
+                                        <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron usuarios')}"></tr>
+                                    </th:block>
                                     <tr th:each="usuario, iter : ${usuarios}">
                                         <td th:text="${(currentPage * size) + iter.index + 1}">1</td>
                                         <td>
@@ -231,20 +232,23 @@
                                             </span>
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge"
-                                                th:classappend="${usuario.activo ? 'bg-success' : 'bg-danger'}"
-                                                th:text="${usuario.activo ? 'Activo' : 'Inactivo'}">
-                                                Activo
-                                            </span>
-                                            <br th:if="${usuario.bloqueado != null and usuario.bloqueado}">
-                                            <span th:if="${usuario.bloqueado != null and usuario.bloqueado}" class="badge bg-warning mt-1">
-                                                <i class="bi bi-lock-fill"></i> Bloqueado
-                                            </span>
+                                            <th:block th:if="${usuario.bloqueado != null and usuario.bloqueado}">
+                                                <span class="badge bg-warning">
+                                                    <i class="bi bi-lock-fill"></i> Bloqueado
+                                                </span>
+                                            </th:block>
+                                            <th:block th:if="${usuario.bloqueado == null or !usuario.bloqueado}">
+                                                <span class="badge"
+                                                    th:classappend="${usuario.activo ? 'bg-success' : 'bg-danger'}"
+                                                    th:text="${usuario.activo ? 'Activo' : 'Inactivo'}">
+                                                    Activo
+                                                </span>
+                                            </th:block>
                                         </td>
                                         <td class="text-center">
                                             <small class="text-muted" th:if="${usuario.ultimoAcceso != null}">
                                                 <i class="bi bi-clock-history me-1"></i>
-                                                <span th:text="${#temporals.format(usuario.ultimoAcceso.toLocalDateTime(), 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</span>
+                                                <span th:text="${#temporals.format(usuario.ultimoAcceso, 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</span>
                                             </small>
                                             <small class="text-muted fst-italic" th:if="${usuario.ultimoAcceso == null}">
                                                 Nunca

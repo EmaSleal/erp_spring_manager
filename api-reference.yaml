@@ -111,8 +111,7 @@ paths:
 
         ## Credenciales
 
-        El campo `username` corresponde al número de teléfono del usuario registrado en el sistema
-        (no a un email ni a un nombre de usuario clásico).
+        El campo `username` acepta el **email** del usuario (identidad primaria) o su **nombre de usuario** como fallback.
 
         ## CSRF
 
@@ -132,8 +131,8 @@ paths:
               properties:
                 username:
                   type: string
-                  description: Número de teléfono del usuario (es el identificador de login)
-                  example: "88889999"
+                  description: Email del usuario (primario) o nombre de usuario (fallback)
+                  example: "usuario@empresa.com"
                 password:
                   type: string
                   format: password
@@ -179,7 +178,7 @@ paths:
 
         ## Campo username
 
-        Acepta el número de teléfono del usuario O su nombre de usuario registrado.
+        Acepta el **email** del usuario (identidad primaria) o su **nombre de usuario** como fallback.
       security: []
       requestBody:
         required: true
@@ -188,7 +187,7 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
             example:
-              username: "88889999"
+              username: "usuario@empresa.com"
               password: "mi_clave_secreta"
       responses:
         '200':
@@ -431,11 +430,14 @@ paths:
               $ref: '#/components/schemas/FacturaRequest'
       responses:
         '200':
-          description: Factura creada exitosamente
+          description: |
+            Factura creada exitosamente. Retorna la entidad guardada con `idFactura` y
+            `numeroFactura` generados. No incluye campos calculados (`totalPagado`,
+            `saldoPendiente`, `lineas`, `pagos`) — usar `GET /facturas/detalle/{id}` para eso.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FacturaDetalleDTO'
+                $ref: '#/components/schemas/FacturaRequest'
         '500':
           description: Error al guardar la factura
 
@@ -507,14 +509,25 @@ paths:
         '200':
           description: Estado actualizado
           content:
-            text/plain:
+            application/json:
               schema:
-                type: string
-                example: "Estado actualizado correctamente"
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Estado actualizado correctamente"
         '404':
           description: Factura no encontrada
         '500':
           description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Error al actualizar el estado"
 
   /facturas/pdf/{id}:
     get:
@@ -1542,6 +1555,15 @@ components:
         (no hay un DTO de request dedicado). Se recomienda enviar al menos
         cliente, tipo y montos. Las líneas se agregan luego vía /lineas-factura/actualizar.
       properties:
+        idFactura:
+          type: integer
+          readOnly: true
+          description: Generado por el servidor. Ausente en el request, presente en la respuesta de creación.
+        numeroFactura:
+          type: string
+          readOnly: true
+          example: "F-0001-2026"
+          description: Generado por el servidor. Ausente en el request, presente en la respuesta de creación.
         cliente:
           type: object
           properties:
@@ -2162,8 +2184,8 @@ components:
       properties:
         username:
           type: string
-          description: Número de teléfono del usuario (o nombre de usuario)
-          example: "88889999"
+          description: Email del usuario (primario) o nombre de usuario (fallback)
+          example: "usuario@empresa.com"
         password:
           type: string
           format: password
@@ -2181,10 +2203,11 @@ components:
           type: string
           description: Nombre completo del usuario
           example: "Juan Pérez"
-        telefono:
+        email:
           type: string
-          description: Teléfono / username usado para autenticarse
-          example: "88889999"
+          format: email
+          description: Email del usuario autenticado
+          example: "usuario@empresa.com"
         rol:
           type: string
           description: Rol del usuario en el sistema (ADMIN, USER, VENDEDOR, VISUALIZADOR)

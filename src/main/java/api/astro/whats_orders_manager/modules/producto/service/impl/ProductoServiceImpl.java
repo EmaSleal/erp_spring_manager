@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -57,8 +58,8 @@ public class ProductoServiceImpl implements ProductoService {
             updatedProducto.setPrecioInstitucional(producto.getPrecioInstitucional());
             updatedProducto.setPrecioMayorista(producto.getPrecioMayorista());
             updatedProducto.setUpdateBy(userId);
-            // Set the update date to the current Timestamp
-            updatedProducto.setUpdateDate(new java.sql.Timestamp(System.currentTimeMillis()));
+            // Set the update date to the current LocalDateTime
+            updatedProducto.setUpdateDate(LocalDateTime.now());
             return productoRepository.save(updatedProducto);
         }
         return null; // or throw an exception if the product does not exist

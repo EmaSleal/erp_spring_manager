@@ -28,7 +28,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -352,7 +351,7 @@ public class NotificacionServiceImpl implements NotificacionService {
     public boolean marcarComoLeida(Integer idNotificacion) {
         log.debug("Marcando notificación {} como leída", idNotificacion);
         
-        Timestamp ahora = Timestamp.valueOf(LocalDateTime.now());
+        LocalDateTime ahora = LocalDateTime.now();
         int updated = notificacionRepository.marcarComoLeida(idNotificacion, ahora);
         
         return updated > 0;
@@ -363,7 +362,7 @@ public class NotificacionServiceImpl implements NotificacionService {
     public int marcarTodasComoLeidas(Integer idUsuario) {
         log.info("Marcando todas las notificaciones de usuario {} como leídas", idUsuario);
         
-        Timestamp ahora = Timestamp.valueOf(LocalDateTime.now());
+        LocalDateTime ahora = LocalDateTime.now();
         return notificacionRepository.marcarTodasComoLeidas(idUsuario, ahora);
     }
 
@@ -404,9 +403,8 @@ public class NotificacionServiceImpl implements NotificacionService {
         log.info("🗑️ Eliminando notificaciones antiguas (>{} días)", diasAntiguedad);
         
         LocalDateTime fechaLimite = LocalDateTime.now().minusDays(diasAntiguedad);
-        Timestamp timestamp = Timestamp.valueOf(fechaLimite);
-        
-        int eliminadas = notificacionRepository.eliminarNotificacionesAntiguas(timestamp);
+
+        int eliminadas = notificacionRepository.eliminarNotificacionesAntiguas(fechaLimite);
         log.info("✅ Eliminadas {} notificaciones antiguas", eliminadas);
         
         return eliminadas;
@@ -609,7 +607,7 @@ public class NotificacionServiceImpl implements NotificacionService {
             // Marcar como fallida por falta de destinatario
             notificacion.setEnviada(false);
             notificacion.setErrorMensaje("Usuario sin email configurado");
-            notificacion.setFechaEnvio(new Timestamp(System.currentTimeMillis()));
+            notificacion.setFechaEnvio(LocalDateTime.now());
             notificacionRepository.save(notificacion);
             return; // Salir sin lanzar excepción
         }

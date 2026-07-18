@@ -27,20 +27,20 @@ public class AuditorAwareImpl implements AuditorAware<Integer> {
             }
 
             Object principal = authentication.getPrincipal();
-            String telefono = null;
+            String email = null;
 
             if (principal instanceof UserDetails userDetails) {
-                telefono = userDetails.getUsername(); // el username es el número de teléfono
+                email = userDetails.getUsername(); // username is now the email
             } else if (principal instanceof String s) {
-                telefono = s;
+                email = s;
             }
 
-            if (telefono == null || telefono.equals("anonymousUser")) {
+            if (email == null || email.equals("anonymousUser")) {
                 return Optional.empty();
             }
 
-            // Usar método especial que evita auto-flush y previene recursión infinita
-            return usuarioRepository.findByTelefonoWithoutFlush(telefono)
+            // Use email-based lookup with COMMIT flush hint to prevent JPA flush recursion
+            return usuarioRepository.findByEmailWithoutFlush(email)
                     .map(Usuario::getIdUsuario);
                     
         } catch (Exception e) {

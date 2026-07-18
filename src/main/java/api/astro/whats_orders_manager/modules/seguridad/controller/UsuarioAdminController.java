@@ -773,6 +773,23 @@ public class UsuarioAdminController {
     }
 
     /**
+     * API: Resetear intentos fallidos
+     */
+    @PutMapping("/api/{id}/resetear-intentos")
+    @ResponseBody
+    public ResponseEntity<?> resetearIntentosFallidos(@PathVariable Integer id) {
+        log.info("Reseteando intentos fallidos para usuario ID: {}", id);
+        try {
+            usuarioService.resetearIntentosFallidos(id);
+            return ResponseEntity.ok(Map.of("mensaje", "Intentos fallidos reseteados exitosamente"));
+        } catch (Exception e) {
+            log.error("Error al resetear intentos fallidos: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al resetear intentos: " + e.getMessage()));
+        }
+    }
+
+    /**
      * API: Cambiar rol de usuario
      */
     @PutMapping("/api/{id}/rol")
