@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- tableCard(table, cardClass)
+     Shadow card wrapper around a responsive table.
+     table     - fragment expression pointing to the caller's <table>: ~{::table}
+     cardClass - additional classes for the card div (e.g. 'mb-4'); pass '' for none -->
+<div th:fragment="tableCard(table, cardClass)"
+     class="card shadow-sm border-0"
+     th:classappend="${cardClass}">
+    <div class="card-body p-0">
+        <div class="table-responsive" th:insert="${table}"></div>
+    </div>
+</div>
+
+</html>

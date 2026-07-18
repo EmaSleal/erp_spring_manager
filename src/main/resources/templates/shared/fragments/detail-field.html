@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- detailRow(label, value)
+     Table-row label/value pair — use inside <tbody> of a borderless table.
+     label - field label string (e.g. 'Número:')
+     value - display value (evaluated in caller context, rendered as plain text) -->
+<tr th:fragment="detailRow(label, value)">
+    <th class="text-muted fw-normal" style="width: 40%;" th:text="${label}">Label</th>
+    <td th:text="${value}">Value</td>
+</tr>
+
+<!-- detailCard(label, value)
+     Div-based label/value pair — use in any container outside a table. -->
+<div th:fragment="detailCard(label, value)" class="mb-3">
+    <div class="text-muted small" th:text="${label}">Label</div>
+    <div class="fw-semibold" th:text="${value}">Value</div>
+</div>
+
+</html>
