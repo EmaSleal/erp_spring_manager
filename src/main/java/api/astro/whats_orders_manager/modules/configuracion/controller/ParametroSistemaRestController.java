@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.configuracion.dto.mapper.Parametro
 import api.astro.whats_orders_manager.modules.configuracion.enums.CategoriaParametro;
 import api.astro.whats_orders_manager.modules.configuracion.model.ParametroSistema;
 import api.astro.whats_orders_manager.modules.configuracion.service.ParametroSistemaService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,7 @@ public class ParametroSistemaRestController {
 
     private final ParametroSistemaService parametroService;
     private final ParametroSistemaMapper mapper;
+    private final UsuarioActividadService usuarioActividadService;
 
     /**
      * Obtiene todos los parámetros del sistema
@@ -200,6 +202,8 @@ public class ParametroSistemaRestController {
             );
 
             log.info("Parámetro creado: {}", parametro.getClave());
+            usuarioActividadService.registrarCambioConfiguracion(
+                    parametro.getClave(), "Parámetro de sistema creado");
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
@@ -249,6 +253,8 @@ public class ParametroSistemaRestController {
             log.info("PUT/PATCH /api/configuracion/parametros/{} - Actualizando valor", clave);
 
             ParametroSistema actualizado = parametroService.actualizarValor(clave, nuevoValor);
+            usuarioActividadService.registrarCambioConfiguracion(
+                    clave, "Valor actualizado a: " + nuevoValor);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,

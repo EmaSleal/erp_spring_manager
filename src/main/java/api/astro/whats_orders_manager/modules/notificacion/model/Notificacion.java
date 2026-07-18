@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 /**
  * ============================================================================
@@ -180,13 +180,13 @@ public class Notificacion {
      */
     @CreatedDate
     @Column(name = "fecha_envio", nullable = false, updatable = false)
-    private Timestamp fechaEnvio;
+    private LocalDateTime fechaEnvio;
 
     /**
      * Fecha y hora en que fue leída
      */
     @Column(name = "fecha_lectura")
-    private Timestamp fechaLectura;
+    private LocalDateTime fechaLectura;
 
     /**
      * Mensaje de error si el envío falló
@@ -225,7 +225,7 @@ public class Notificacion {
      */
     public void marcarComoLeida() {
         this.leida = true;
-        this.fechaLectura = new Timestamp(System.currentTimeMillis());
+        this.fechaLectura = LocalDateTime.now();
     }
 
     /**

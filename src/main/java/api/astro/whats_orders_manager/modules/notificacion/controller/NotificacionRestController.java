@@ -490,7 +490,7 @@ public class NotificacionRestController {
         // Buscar por nombre o teléfono
         Optional<Usuario> usuarioOpt = usuarioRepository.findByNombre(username);
         if (!usuarioOpt.isPresent()) {
-            usuarioOpt = usuarioRepository.findByTelefono(username);
+            usuarioOpt = usuarioRepository.findByEmail(username);
         }
         
         return usuarioOpt.orElse(null);

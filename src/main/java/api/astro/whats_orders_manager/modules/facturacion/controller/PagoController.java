@@ -389,7 +389,7 @@ public class PagoController {
         log.info("Anulando pago ID: {} - Motivo: {} - Usuario: {}", id, motivo, authentication.getName());
         
         try {
-            Integer usuarioId = usuarioService.findByTelefono(authentication.getName())
+            Integer usuarioId = usuarioService.findByEmail(authentication.getName())
                 .map(u -> u.getIdUsuario())
                 .orElse(null);
             

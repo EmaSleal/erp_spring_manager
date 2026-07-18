@@ -81,8 +81,7 @@ class TipoCambioServiceTest {
     @Test
     @DisplayName("registrar saves a new rate when no entry exists for the same date and currency")
     void registrar_noConflict_savesNewRate() {
-        when(repo.findByFechaAndMonedaDestinoAndActivoTrue(usdRate.getFecha(), MonedaFE.USD))
-                .thenReturn(Optional.empty());
+        doNothing().when(repo).deactivateExisting(usdRate.getFecha(), MonedaFE.USD);
         when(repo.save(any(TipoCambio.class))).thenReturn(usdRate);
 
         TipoCambio saved = service.registrar(usdRate);
@@ -106,15 +105,13 @@ class TipoCambioServiceTest {
                 .activo(true)
                 .build();
 
-        when(repo.findByFechaAndMonedaDestinoAndActivoTrue(usdRate.getFecha(), MonedaFE.USD))
-                .thenReturn(Optional.of(existing));
+        doNothing().when(repo).deactivateExisting(usdRate.getFecha(), MonedaFE.USD);
         when(repo.save(any(TipoCambio.class))).thenReturn(usdRate);
 
         service.registrar(usdRate);
 
-        // existing must have been deactivated and saved
-        assertThat(existing.isActivo()).isFalse();
-        verify(repo, atLeast(2)).save(any(TipoCambio.class));
+        verify(repo).deactivateExisting(usdRate.getFecha(), MonedaFE.USD);
+        verify(repo, times(1)).save(usdRate);
     }
 
     // =========================================================================

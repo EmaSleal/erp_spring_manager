@@ -7,7 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 /**
  * ============================================================================
@@ -79,8 +80,8 @@ public class NotificacionDTO {
     
     private Boolean enviada;
     private Boolean leida;
-    private Timestamp fechaEnvio;
-    private Timestamp fechaLectura;
+    private LocalDateTime fechaEnvio;
+    private LocalDateTime fechaLectura;
     private String errorMensaje;
     private Integer intentosEnvio;
     
@@ -121,8 +122,8 @@ public class NotificacionDTO {
             return "";
         }
 
-        long diferencia = System.currentTimeMillis() - fechaEnvio.getTime();
-        long segundos = diferencia / 1000;
+        Duration duracion = Duration.between(fechaEnvio, LocalDateTime.now());
+        long segundos = duracion.getSeconds();
         long minutos = segundos / 60;
         long horas = minutos / 60;
         long dias = horas / 24;

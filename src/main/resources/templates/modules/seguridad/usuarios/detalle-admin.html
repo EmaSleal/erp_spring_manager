@@ -118,12 +118,12 @@
                             <i class="fas fa-key me-2"></i>Permisos
                         </a>
                         <button class="btn btn-warning btn-sm" 
-                                th:if="${!usuario.bloqueado}"
+                                th:if="${usuario.bloqueado == null or !usuario.bloqueado}"
                                 onclick="bloquearUsuario()">
                             <i class="fas fa-lock me-2"></i>Bloquear
                         </button>
                         <button class="btn btn-success btn-sm" 
-                                th:if="${usuario.bloqueado}"
+                                th:if="${usuario.bloqueado != null and usuario.bloqueado}"
                                 onclick="desbloquearUsuario()">
                             <i class="fas fa-unlock me-2"></i>Desbloquear
                         </button>
@@ -242,13 +242,13 @@
                 </div>
 
                 <!-- Información de Seguridad -->
-                <div class="card border-0 shadow-sm" th:if="${usuario.bloqueado || usuario.requireCambioPassword}">
+                <div class="card border-0 shadow-sm" th:if="${(usuario.bloqueado != null and usuario.bloqueado) or (usuario.requireCambioPassword != null and usuario.requireCambioPassword)}">
                     <div class="card-body">
                         <h5 class="card-title text-warning">
                             <i class="fas fa-shield-alt me-2"></i>Seguridad
                         </h5>
                         
-                        <div class="alert alert-warning mb-2" th:if="${usuario.bloqueado}">
+                        <div class="alert alert-warning mb-2" th:if="${usuario.bloqueado != null and usuario.bloqueado}">
                             <h6 class="alert-heading">
                                 <i class="fas fa-lock me-2"></i>Usuario Bloqueado
                             </h6>
@@ -256,7 +256,7 @@
                             <small th:text="'Bloqueado el: ' + ${usuario.fechaBloqueo}">Fecha</small>
                         </div>
 
-                        <div class="alert alert-info mb-0" th:if="${usuario.requireCambioPassword}">
+                        <div class="alert alert-info mb-0" th:if="${usuario.requireCambioPassword != null and usuario.requireCambioPassword}">
                             <i class="fas fa-key me-2"></i>
                             Debe cambiar contraseña en el próximo login
                         </div>
@@ -288,8 +288,9 @@
                     </div>
                     <div class="card-body">
                         <div id="actividadesContainer">
-                            <div th:if="${#lists.isEmpty(actividades)}"
-                                 th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay actividades registradas')}"></div>
+                            <th:block th:if="${actividades == null or #lists.isEmpty(actividades)}">
+                                <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay actividades registradas')}"></div>
+                            </th:block>
 
                             <div class="activity-item" 
                                  th:each="actividad : ${actividades}"

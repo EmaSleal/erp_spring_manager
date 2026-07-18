@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,9 +43,34 @@ public class DataInitializer implements ApplicationRunner {
     private final ConfiguracionEmpresaRepository configRepository;
     private final PermisoRepository permisoRepository;
 
+    /**
+     * Backfill placeholder emails for users that have no email set.
+     * This MUST run before any DB migration that adds NOT NULL or UNIQUE constraint on email.
+     * Pattern: user_&lt;telefono&gt;@placeholder.local
+     */
+    @Transactional
+    public void backfillEmptyEmails() {
+        List<Usuario> usersWithoutEmail = usuarioRepository.findAll().stream()
+                .filter(u -> u.getEmail() == null || u.getEmail().isBlank())
+                .toList();
+
+        for (Usuario u : usersWithoutEmail) {
+            String placeholder = "user_" + u.getTelefono() + "@placeholder.local";
+            u.setEmail(placeholder);
+            usuarioRepository.save(u);
+            log.info("DataInitializer: backfilled email for user id={} → {}", u.getIdUsuario(), placeholder);
+        }
+
+        if (!usersWithoutEmail.isEmpty()) {
+            log.info("DataInitializer: backfilled {} user(s) with placeholder email", usersWithoutEmail.size());
+        }
+    }
+
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        // Backfill must run before any migration constraint on email
+        backfillEmptyEmails();
         Rol rolAdmin = rolRepository.findByCodigo("ADMIN").orElseGet(() -> {
             log.info("DataInitializer: creating ADMIN rol");
             Rol r = new Rol();
@@ -60,6 +86,7 @@ public class DataInitializer implements ApplicationRunner {
             Usuario u = new Usuario();
             u.setNombre("usuario prueba");
             u.setTelefono("50612345678");
+            u.setEmail("usuario.prueba@placeholder.local");
             u.setPassword(passwordEncoder.encode("JhfKHZ2%mJMI"));
             u.setRol("ADMIN");
             u.setRolEntity(rolAdmin);

@@ -40,47 +40,45 @@
             </div>
             
             <!-- Filtros -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label for="txtBuscar" class="form-label">Buscar</label>
-                            <input type="text" class="form-control" id="txtBuscar" 
-                                   placeholder="Número o concepto...">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="selTipo" class="form-label">Tipo</label>
-                            <select class="form-select" id="selTipo">
-                                <option value="">Todos los tipos</option>
-                                <option value="MANUAL">Manual</option>
-                                <option value="AUTOMATICO_FACTURA">Automático - Factura</option>
-                                <option value="AUTOMATICO_PAGO">Automático - Pago</option>
-                                <option value="AJUSTE">Ajuste</option>
-                                <option value="CIERRE">Cierre</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="selEstado" class="form-label">Estado</label>
-                            <select class="form-select" id="selEstado">
-                                <option value="">Todos los estados</option>
-                                <option value="BORRADOR">Borrador</option>
-                                <option value="CONTABILIZADO">Contabilizado</option>
-                                <option value="ANULADO">Anulado</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="dtFechaInicio" class="form-label">Fecha Inicio</label>
-                            <input type="date" class="form-control" id="dtFechaInicio">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="dtFechaFin" class="form-label">Fecha Fin</label>
-                            <input type="date" class="form-control" id="dtFechaFin">
-                        </div>
-                        <div class="col-md-1 d-flex align-items-end">
-                            <button type="button" class="btn btn-primary w-100" onclick="aplicarFiltros()">
-                                <i class="fas fa-filter"></i> Filtrar
-                            </button>
-                        </div>
+            <div th:replace="~{shared/fragments/filter-bar :: filterCard(~{::.filter-row}, 'mb-4')}">
+                <div class="filter-row row g-3">
+                    <div class="col-md-3">
+                        <label for="txtBuscar" class="form-label">Buscar</label>
+                        <input type="text" class="form-control" id="txtBuscar"
+                               placeholder="Número o concepto...">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="selTipo" class="form-label">Tipo</label>
+                        <select class="form-select" id="selTipo">
+                            <option value="">Todos los tipos</option>
+                            <option value="MANUAL">Manual</option>
+                            <option value="AUTOMATICO_FACTURA">Automático - Factura</option>
+                            <option value="AUTOMATICO_PAGO">Automático - Pago</option>
+                            <option value="AJUSTE">Ajuste</option>
+                            <option value="CIERRE">Cierre</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="selEstado" class="form-label">Estado</label>
+                        <select class="form-select" id="selEstado">
+                            <option value="">Todos los estados</option>
+                            <option value="BORRADOR">Borrador</option>
+                            <option value="CONTABILIZADO">Contabilizado</option>
+                            <option value="ANULADO">Anulado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="dtFechaInicio" class="form-label">Fecha Inicio</label>
+                        <input type="date" class="form-control" id="dtFechaInicio">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="dtFechaFin" class="form-label">Fecha Fin</label>
+                        <input type="date" class="form-control" id="dtFechaFin">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary w-100" onclick="aplicarFiltros()">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
                     </div>
                 </div>
             </div>

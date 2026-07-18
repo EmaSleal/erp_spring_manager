@@ -86,7 +86,7 @@ public class PermisoServiceImpl implements PermisoService {
             // Buscar usuario por nombre o teléfono (login flexible)
             Optional<Usuario> usuarioOpt = usuarioRepository.findByNombre(username);
             if (usuarioOpt.isEmpty()) {
-                usuarioOpt = usuarioRepository.findByTelefono(username);
+                usuarioOpt = usuarioRepository.findByEmail(username);
             }
             
             if (usuarioOpt.isEmpty()) {
@@ -125,7 +125,7 @@ public class PermisoServiceImpl implements PermisoService {
             // Buscar usuario por nombre o teléfono
             Optional<Usuario> usuarioOpt = usuarioRepository.findByNombre(username);
             if (usuarioOpt.isEmpty()) {
-                usuarioOpt = usuarioRepository.findByTelefono(username);
+                usuarioOpt = usuarioRepository.findByEmail(username);
             }
             
             if (usuarioOpt.isEmpty()) {
@@ -416,7 +416,7 @@ public class PermisoServiceImpl implements PermisoService {
             // Buscar usuario por nombre o teléfono (login flexible)
             Optional<Usuario> usuarioOpt = usuarioRepository.findByNombre(username);
             if (usuarioOpt.isEmpty()) {
-                usuarioOpt = usuarioRepository.findByTelefono(username);
+                usuarioOpt = usuarioRepository.findByEmail(username);
             }
             
             if (usuarioOpt.isEmpty()) {

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -80,11 +80,11 @@ public class DetalleAsiento {
     //update_by y create_by se manejan en la clase base AuditableEntity
     @CreatedDate
     @Column(name = "createDate", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @CreatedDate
     @Column(name = "updateDate")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     @CreatedBy
     @Column(name = "createBy", updatable = false)

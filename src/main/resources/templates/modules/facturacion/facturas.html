@@ -83,54 +83,52 @@
             </div>
 
             <!-- Filters Card -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-2">
-                            <label for="startDate" class="form-label">Fecha Inicio</label>
-                            <input type="date" id="startDate" class="form-control" th:value="${startDate}">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="endDate" class="form-label">Fecha Fin</label>
-                            <input type="date" id="endDate" class="form-control" th:value="${endDate}">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="statusFilter" class="form-label">Estado</label>
-                            <select id="statusFilter" class="form-select">
-                                <option value="" th:selected="${status == null or status == ''}">Todos</option>
-                                <option value="entregado" th:selected="${status == 'entregado'}">Entregado</option>
-                                <option value="pendiente" th:selected="${status == 'pendiente'}">Pendiente</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="estadoFEFilter" class="form-label">Estado FE</label>
-                            <select id="estadoFEFilter" class="form-select">
-                                <option value="" th:selected="${estadoFE == null or estadoFE == ''}">Todos</option>
-                                <option value="sin_fe" th:selected="${estadoFE == 'sin_fe'}">Sin FE</option>
-                                <option value="ACEPTADO" th:selected="${estadoFE == 'ACEPTADO'}">Aceptado</option>
-                                <option value="RECHAZADO" th:selected="${estadoFE == 'RECHAZADO'}">Rechazado</option>
-                                <option value="ENVIADO" th:selected="${estadoFE == 'ENVIADO'}">Enviado</option>
-                                <option value="PROCESANDO" th:selected="${estadoFE == 'PROCESANDO'}">Procesando</option>
-                                <option value="ERROR" th:selected="${estadoFE == 'ERROR'}">Error</option>
-                            </select>
-                        </div>
-                        <!-- is paid filter -->
-                        <div class="col-md-2">
-                            <label for="isPaidFilter" class="form-label">¿Está Pagada?</label>
-                            <select id="isPaidFilter" class="form-select">
-                                <option value="" th:selected="${isPaid == null}">Todos</option>
-                                <option value="true" th:selected="${isPaid != null and isPaid}">Sí</option>
-                                <option value="false" th:selected="${isPaid != null and !isPaid}">No</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end gap-2">
-                            <button id="filterBtn" class="btn btn-primary flex-fill">
-                                <i class="fas fa-filter me-1"></i>Filtrar
-                            </button>
-                            <button id="clearFilterBtn" class="btn btn-secondary flex-fill">
-                                <i class="fas fa-eraser me-1"></i>Limpiar
-                            </button>
-                        </div>
+            <div th:replace="~{shared/fragments/filter-bar :: filterCard(~{::.filter-row}, 'mb-4')}">
+                <div class="filter-row row g-3">
+                    <div class="col-md-2">
+                        <label for="startDate" class="form-label">Fecha Inicio</label>
+                        <input type="date" id="startDate" class="form-control" th:value="${startDate}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="endDate" class="form-label">Fecha Fin</label>
+                        <input type="date" id="endDate" class="form-control" th:value="${endDate}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="statusFilter" class="form-label">Estado</label>
+                        <select id="statusFilter" class="form-select">
+                            <option value="" th:selected="${status == null or status == ''}">Todos</option>
+                            <option value="entregado" th:selected="${status == 'entregado'}">Entregado</option>
+                            <option value="pendiente" th:selected="${status == 'pendiente'}">Pendiente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="estadoFEFilter" class="form-label">Estado FE</label>
+                        <select id="estadoFEFilter" class="form-select">
+                            <option value="" th:selected="${estadoFE == null or estadoFE == ''}">Todos</option>
+                            <option value="sin_fe" th:selected="${estadoFE == 'sin_fe'}">Sin FE</option>
+                            <option value="ACEPTADO" th:selected="${estadoFE == 'ACEPTADO'}">Aceptado</option>
+                            <option value="RECHAZADO" th:selected="${estadoFE == 'RECHAZADO'}">Rechazado</option>
+                            <option value="ENVIADO" th:selected="${estadoFE == 'ENVIADO'}">Enviado</option>
+                            <option value="PROCESANDO" th:selected="${estadoFE == 'PROCESANDO'}">Procesando</option>
+                            <option value="ERROR" th:selected="${estadoFE == 'ERROR'}">Error</option>
+                        </select>
+                    </div>
+                    <!-- is paid filter -->
+                    <div class="col-md-2">
+                        <label for="isPaidFilter" class="form-label">¿Está Pagada?</label>
+                        <select id="isPaidFilter" class="form-select">
+                            <option value="" th:selected="${isPaid == null}">Todos</option>
+                            <option value="true" th:selected="${isPaid != null and isPaid}">Sí</option>
+                            <option value="false" th:selected="${isPaid != null and !isPaid}">No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end gap-2">
+                        <button id="filterBtn" class="btn btn-primary flex-fill">
+                            <i class="fas fa-filter me-1"></i>Filtrar
+                        </button>
+                        <button id="clearFilterBtn" class="btn btn-secondary flex-fill">
+                            <i class="fas fa-eraser me-1"></i>Limpiar
+                        </button>
                     </div>
                 </div>
             </div>

@@ -6,7 +6,7 @@ import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -63,7 +63,7 @@ public class Usuario {
     private Integer intentosFallidos = 0; // Intentos de login fallidos
 
     @Column(name = "fecha_bloqueo")
-    private Timestamp fechaBloqueo; // Fecha de bloqueo del usuario
+    private LocalDateTime fechaBloqueo; // Fecha de bloqueo del usuario
 
     @Column(name = "razon_bloqueo", length = 500)
     private String razonBloqueo; // Razón del bloqueo
@@ -75,18 +75,18 @@ public class Usuario {
     private Boolean requireCambioPassword = false; // Forzar cambio de contraseña
 
     @Column(name = "fecha_expiracion_password")
-    private Timestamp fechaExpiracionPassword; // Fecha de expiración de la contraseña
+    private LocalDateTime fechaExpiracionPassword; // Fecha de expiración de la contraseña
 
     @Column(name = "ultimo_acceso")
-    private Timestamp ultimoAcceso; // Fecha y hora del último acceso
+    private LocalDateTime ultimoAcceso; // Fecha y hora del último acceso
 
     @CreatedDate
     @Column(name = "createDate", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @CreatedDate
     @Column(name = "updateDate")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     @CreatedBy
     @Column(name = "createBy", updatable = false)
@@ -119,7 +119,7 @@ public class Usuario {
      */
     public void bloquear(String razon, Integer adminId) {
         this.bloqueado = true;
-        this.fechaBloqueo = new Timestamp(System.currentTimeMillis());
+        this.fechaBloqueo = LocalDateTime.now();
         this.razonBloqueo = razon;
         this.bloqueadoPor = adminId;
     }
@@ -157,7 +157,7 @@ public class Usuario {
             return true;
         }
         if (this.fechaExpiracionPassword != null) {
-            return new Timestamp(System.currentTimeMillis()).after(this.fechaExpiracionPassword);
+            return LocalDateTime.now().isAfter(this.fechaExpiracionPassword);
         }
         return false;
     }
@@ -173,6 +173,6 @@ public class Usuario {
      * Actualiza el último acceso
      */
     public void actualizarUltimoAcceso() {
-        this.ultimoAcceso = new Timestamp(System.currentTimeMillis());
+        this.ultimoAcceso = LocalDateTime.now();
     }
 }

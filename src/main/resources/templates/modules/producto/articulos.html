@@ -49,8 +49,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr th:if="${#lists.isEmpty(maestros)}"
-                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(4, 'fas fa-inbox', 'No hay artículos registrados')}"></tr>
+                                    <th:block th:if="${#lists.isEmpty(maestros)}">
+                                        <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(4, 'fas fa-inbox', 'No hay artículos registrados')}"></tr>
+                                    </th:block>
                                     <tr th:each="maestro : ${maestros}">
                                         <td>
                                             <strong th:text="${maestro.descripcion}">Descripción</strong>
@@ -101,8 +102,9 @@
 
                         <!-- MÓVIL: Vista de tarjetas -->
                         <div class="mobile-card-view">
-                            <div th:if="${#lists.isEmpty(maestros)}"
-                                 th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay artículos registrados')}"></div>
+                            <th:block th:if="${#lists.isEmpty(maestros)}">
+                                <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-inbox', 'No hay artículos registrados')}"></div>
+                            </th:block>
 
                             <div th:each="maestro : ${maestros}" class="mobile-card card-warning">
                                 <div class="mobile-card-header">

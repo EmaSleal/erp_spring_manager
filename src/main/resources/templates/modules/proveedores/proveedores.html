@@ -94,8 +94,7 @@
                                           class="text-muted">—</span>
                                 </td>
                                 <td>
-                                    <span th:if="${p.activo}" class="badge bg-success">Activo</span>
-                                    <span th:unless="${p.activo}" class="badge bg-secondary">Inactivo</span>
+                                    <span th:replace="~{shared/fragments/status-badge :: boolBadge(${p.activo}, 'Activo', 'Inactivo', 'bg-success', 'bg-secondary')}"></span>
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">

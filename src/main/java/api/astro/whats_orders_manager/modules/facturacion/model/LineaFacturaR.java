@@ -1,7 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.model;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 
@@ -18,8 +18,8 @@ public record LineaFacturaR(
         BigDecimal subtotal,
         Integer create_by,
         Integer update_by,
-        Timestamp create_date,
-        Timestamp update_date
+        LocalDateTime create_date,
+        LocalDateTime update_date
 ) {
     public LineaFacturaR(LineaFactura lineaFactura) {
         this(

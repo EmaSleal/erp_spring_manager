@@ -61,7 +61,7 @@
                     <div th:replace="~{shared/fragments/stat-card :: statCard('bg-success', 'Total Pagado', '₡ ' + ${#numbers.formatDecimal(estadoCuenta.totalPagado ?: 0, 1, 2)}, 'fas fa-check-circle fa-3x', 'text-white-50')}"></div>
                 </div>
                 <div class="col-md-4">
-                    <div th:replace="~{shared/fragments/stat-card :: statCard(${estadoCuenta.saldoPendiente != null and estadoCuenta.saldoPendiente.compareTo(T(java.math.BigDecimal).ZERO) > 0} ? 'bg-danger' : 'bg-secondary', 'Saldo Pendiente', '₡ ' + ${#numbers.formatDecimal(estadoCuenta.saldoPendiente ?: 0, 1, 2)}, 'fas fa-exclamation-circle fa-3x', 'text-white-50')}"></div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCard(${estadoCuenta.saldoPendiente != null and estadoCuenta.saldoPendiente.signum() > 0} ? 'bg-danger' : 'bg-secondary', 'Saldo Pendiente', '₡ ' + ${#numbers.formatDecimal(estadoCuenta.saldoPendiente ?: 0, 1, 2)}, 'fas fa-exclamation-circle fa-3x', 'text-white-50')}"></div>
                 </div>
             </div>
 
@@ -103,9 +103,9 @@
 
             <!-- Invoices Table -->
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-file-invoice me-2"></i>Facturas
+                <div class="card-header bg-primary">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-file-invoice me-2 text-white"></i>Facturas
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -129,7 +129,7 @@
                                     <td class="text-end" th:text="'₡ ' + ${#numbers.formatDecimal(factura.total ?: 0, 1, 2)}">₡ 0.00</td>
                                     <td class="text-end" th:text="'₡ ' + ${#numbers.formatDecimal(factura.totalPagado ?: 0, 1, 2)}">₡ 0.00</td>
                                     <td class="text-end fw-bold"
-                                        th:classappend="${factura.saldoPendiente != null and factura.saldoPendiente.compareTo(T(java.math.BigDecimal).ZERO) > 0} ? 'text-danger' : ''"
+                                        th:classappend="${factura.saldoPendiente != null and factura.saldoPendiente.signum() > 0} ? 'text-danger' : ''"
                                         th:text="'₡ ' + ${#numbers.formatDecimal(factura.saldoPendiente ?: 0, 1, 2)}">₡ 0.00</td>
                                     <td class="text-center">
                                         <!-- PAGADO_TOTAL -->
@@ -174,9 +174,9 @@
 
             <!-- Payments Table -->
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-money-bill-wave me-2"></i>Pagos Registrados
+                <div class="card-header bg-secondary ">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-money-bill-wave me-2 text-white"></i>Pagos Registrados
                     </h5>
                 </div>
                 <div class="card-body p-0">

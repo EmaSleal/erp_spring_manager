@@ -151,8 +151,9 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr th:if="${#lists.isEmpty(cuentas)}"
-                                    th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-file-invoice-dollar', 'No hay cuentas por pagar registradas')}"></tr>
+                                <th:block th:if="${#lists.isEmpty(cuentas)}">
+                                    <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-file-invoice-dollar', 'No hay cuentas por pagar registradas')}"></tr>
+                                </th:block>
                             </tbody>
                         </table>
                     </div>

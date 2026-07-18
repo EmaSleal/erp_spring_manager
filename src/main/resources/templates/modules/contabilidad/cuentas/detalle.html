@@ -70,10 +70,7 @@
                                     <th width="40%">Código:</th>
                                     <td><strong th:text="${cuenta.codigo}">1.1.1</strong></td>
                                 </tr>
-                                <tr>
-                                    <th>Nombre:</th>
-                                    <td th:text="${cuenta.nombre}">Nombre cuenta</td>
-                                </tr>
+                                <tr th:replace="~{shared/fragments/detail-field :: detailRow('Nombre:', ${cuenta.nombre})}"></tr>
                                 <tr>
                                     <th>Tipo:</th>
                                     <td>
@@ -97,10 +94,7 @@
                                         </span>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <th>Nivel:</th>
-                                    <td th:text="${cuenta.nivel}">1</td>
-                                </tr>
+                                <tr th:replace="~{shared/fragments/detail-field :: detailRow('Nivel:', ${cuenta.nivel})}"></tr>
                                 <tr>
                                     <th>Estado:</th>
                                     <td>

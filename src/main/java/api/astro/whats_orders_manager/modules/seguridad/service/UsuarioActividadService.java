@@ -82,11 +82,11 @@ public interface UsuarioActividadService {
     
     /**
      * Registra un login fallido
-     * @param telefono Teléfono del usuario que intentó login
+     * @param identifier Identificador del usuario que intentó login (email o teléfono)
      * @param ipAddress Dirección IP
      * @param motivo Motivo del fallo
      */
-    void registrarLoginFallido(String telefono, String ipAddress, String motivo);
+    void registrarLoginFallido(String identifier, String ipAddress, String motivo);
     
     /**
      * Registra un logout
@@ -94,6 +94,20 @@ public interface UsuarioActividadService {
      */
     void registrarLogout(Integer idUsuario);
     
+    /**
+     * Registra un cambio de configuración del sistema
+     * @param clave Clave del parámetro modificado
+     * @param descripcion Descripción del cambio realizado
+     */
+    void registrarCambioConfiguracion(String clave, String descripcion);
+
+    /**
+     * Registra un cambio de permiso o rol
+     * @param permisoCodigo Código del permiso modificado
+     * @param descripcion Descripción del cambio realizado
+     */
+    void registrarCambioPermiso(String permisoCodigo, String descripcion);
+
     // ==================== BÚSQUEDAS ====================
     
     List<UsuarioActividad> findByUsuario(Integer idUsuario);
