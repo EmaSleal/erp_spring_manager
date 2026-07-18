@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- boolBadge(condition, trueText, falseText, trueColor, falseColor)
+     Boolean-driven badge. condition is evaluated in caller context.
+     trueText/falseText - display label (e.g. 'Activo', 'Inactivo')
+     trueColor/falseColor - Bootstrap bg class (e.g. 'bg-success', 'bg-secondary') -->
+<span th:fragment="boolBadge(condition, trueText, falseText, trueColor, falseColor)"
+      th:class="'badge ' + (${condition} ? ${trueColor} : ${falseColor})"
+      th:text="${condition} ? ${trueText} : ${falseText}">
+</span>
+
+<!-- textBadge(text, colorClass)
+     Badge with caller-supplied text and color class.
+     text       - display text (string or evaluated expression)
+     colorClass - Bootstrap bg class, may include extra classes (e.g. 'bg-warning text-dark') -->
+<span th:fragment="textBadge(text, colorClass)"
+      th:class="'badge ' + ${colorClass}"
+      th:text="${text}">
+</span>
+
+</html>

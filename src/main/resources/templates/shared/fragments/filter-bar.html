@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- filterCard(filterRow, cardClass)
+     Card wrapper for a JavaScript-driven filter row.
+     filterRow - fragment expression for the caller's filter row: ~{::.filter-row}
+                 The selected element must carry both 'filter-row' and 'row g-3' classes.
+     cardClass - additional card classes appended after 'card border-0 shadow-sm'
+                 (e.g. 'mb-4'); pass '' for none -->
+<div th:fragment="filterCard(filterRow, cardClass)"
+     class="card border-0 shadow-sm"
+     th:classappend="${cardClass}">
+    <div class="card-body" th:insert="${filterRow}"></div>
+</div>
+
+</html>
