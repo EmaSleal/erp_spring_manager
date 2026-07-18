@@ -1555,6 +1555,15 @@ components:
         (no hay un DTO de request dedicado). Se recomienda enviar al menos
         cliente, tipo y montos. Las líneas se agregan luego vía /lineas-factura/actualizar.
       properties:
+        idFactura:
+          type: integer
+          readOnly: true
+          description: Generado por el servidor. Ausente en el request, presente en la respuesta de creación.
+        numeroFactura:
+          type: string
+          readOnly: true
+          example: "F-0001-2026"
+          description: Generado por el servidor. Ausente en el request, presente en la respuesta de creación.
         cliente:
           type: object
           properties:
