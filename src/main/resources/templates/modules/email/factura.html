@@ -225,7 +225,7 @@
                 </div>
                 <div class="invoice-row">
                     <div class="invoice-label">Fecha de Emisión:</div>
-                    <div class="invoice-value" th:text="${#dates.format(factura.fecha, 'dd/MM/yyyy HH:mm')}">13/10/2025</div>
+                    <div class="invoice-value" th:text="${#temporals.format(factura.createDate, 'dd/MM/yyyy HH:mm')}">13/10/2025</div>
                 </div>
                 <div class="invoice-row" th:if="${factura.fechaEntrega != null}">
                     <div class="invoice-label">Fecha de Entrega:</div>

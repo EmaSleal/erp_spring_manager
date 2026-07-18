@@ -209,7 +209,7 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <small th:text="${#dates.format(plantilla.fechaCreacion, 'dd/MM/yyyy HH:mm')}">
+                                        <small th:text="${#temporals.format(plantilla.createDate, 'dd/MM/yyyy HH:mm')}">
                                             01/01/2025 12:00
                                         </small>
                                     </td>
@@ -238,8 +238,9 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr th:if="${#lists.isEmpty(plantillas)}"
-                                    th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-inbox', 'No hay plantillas para mostrar')}"></tr>
+                                <th:block th:if="${#lists.isEmpty(plantillas)}">
+                                    <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-inbox', 'No hay plantillas para mostrar')}"></tr>
+                                </th:block>
                             </tbody>
                         </table>
                     </div>

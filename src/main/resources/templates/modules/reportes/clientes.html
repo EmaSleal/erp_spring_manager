@@ -148,7 +148,7 @@
                                           th:text="${cliente.tipoCliente}">Tipo</span>
                                 </td>
                                 <td th:text="${cliente.email}">email@example.com</td>
-                                <td th:text="${#dates.format(cliente.createDate, 'dd/MM/yyyy')}">01/01/2024</td>
+                                <td th:text="${#temporals.format(cliente.createDate, 'dd/MM/yyyy')}">01/01/2024</td>
                                 <td class="text-center">
                                     <span class="badge badge-estado badge-activo">
                                         <i class="fas fa-check-circle"></i> Activo
@@ -167,8 +167,9 @@
                 </div>
 
                 <!-- Empty State -->
-                <div th:if="${clientes == null || clientes.isEmpty()}"
-                     th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-users-slash', 'No hay clientes para mostrar')}"></div>
+                <th:block th:if="${clientes == null or clientes.isEmpty()}">
+                    <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-users-slash', 'No hay clientes para mostrar')}"></div>
+                </th:block>
             </div>
         </div>
     </div>

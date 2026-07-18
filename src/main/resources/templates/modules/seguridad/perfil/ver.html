@@ -329,7 +329,7 @@
                                 </div>
                                 <div class="info-value">
                                     <span th:if="${usuario.createDate != null}"
-                                          th:text="${#dates.format(usuario.createDate, 'dd/MM/yyyy HH:mm')}">
+                                          th:text="${#temporals.format(usuario.createDate, 'dd/MM/yyyy HH:mm')}">
                                         01/01/2024 10:00
                                     </span>
                                     <span th:unless="${usuario.createDate != null}" class="empty">
@@ -345,7 +345,7 @@
                                 </div>
                                 <div class="info-value">
                                     <span th:if="${usuario.ultimoAcceso != null}"
-                                          th:text="${#dates.format(usuario.ultimoAcceso, 'dd/MM/yyyy HH:mm')}">
+                                          th:text="${#temporals.format(usuario.ultimoAcceso, 'dd/MM/yyyy HH:mm')}">
                                         12/10/2025 15:30
                                     </span>
                                     <span th:unless="${usuario.ultimoAcceso != null}" class="empty">
@@ -361,7 +361,7 @@
                                 </div>
                                 <div class="info-value">
                                     <span th:if="${usuario.updateDate != null}"
-                                          th:text="${#dates.format(usuario.updateDate, 'dd/MM/yyyy HH:mm')}">
+                                          th:text="${#temporals.format(usuario.updateDate, 'dd/MM/yyyy HH:mm')}">
                                         10/10/2025 12:00
                                     </span>
                                     <span th:unless="${usuario.updateDate != null}" class="empty">
