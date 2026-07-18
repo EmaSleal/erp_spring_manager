@@ -49,8 +49,7 @@ function verConversacion(telefono) {
  */
 function mostrarAlerta(mensaje, tipo = 'info') {
     const alertHtml = `
-        <div class="alert alert-${tipo} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3" 
-             style="z-index: 9999; min-width: 300px;" role="alert">
+        <div class="alert alert-${tipo} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3 alert-toast" role="alert">
             ${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>

@@ -148,6 +148,7 @@
    CONVERSATION CARDS - Tarjetas de conversación
    ============================================================================ */
 .conversacion-item {
+    cursor: pointer;
     transition: all 0.2s ease;
     border-left: 4px solid transparent;
 }
@@ -222,8 +223,16 @@
         max-width: 85%;
         font-size: 13px;
     }
-    
+
     .message-meta {
         font-size: 10px;
     }
+}
+
+.progress-tall {
+    height: 25px;
+}
+
+.msg-preview {
+    max-width: 70%;
 }
