@@ -430,11 +430,14 @@ paths:
               $ref: '#/components/schemas/FacturaRequest'
       responses:
         '200':
-          description: Factura creada exitosamente
+          description: |
+            Factura creada exitosamente. Retorna la entidad guardada con `idFactura` y
+            `numeroFactura` generados. No incluye campos calculados (`totalPagado`,
+            `saldoPendiente`, `lineas`, `pagos`) — usar `GET /facturas/detalle/{id}` para eso.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FacturaDetalleDTO'
+                $ref: '#/components/schemas/FacturaRequest'
         '500':
           description: Error al guardar la factura
 
@@ -506,14 +509,25 @@ paths:
         '200':
           description: Estado actualizado
           content:
-            text/plain:
+            application/json:
               schema:
-                type: string
-                example: "Estado actualizado correctamente"
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Estado actualizado correctamente"
         '404':
           description: Factura no encontrada
         '500':
           description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Error al actualizar el estado"
 
   /facturas/pdf/{id}:
     get:
