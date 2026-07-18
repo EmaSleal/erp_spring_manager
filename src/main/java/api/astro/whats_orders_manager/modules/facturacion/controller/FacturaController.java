@@ -33,6 +33,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
@@ -268,7 +269,7 @@ public class FacturaController {
      */
     @PutMapping("/actualizar-estado/{id}")
     @ResponseBody
-    public ResponseEntity<String> actualizarEstadoFactura(
+    public ResponseEntity<Map<String, String>> actualizarEstadoFactura(
             @PathVariable Integer id,
             @RequestParam Boolean entregado,
             @RequestParam(required = false) String descripcion,
@@ -278,13 +279,13 @@ public class FacturaController {
         try {
             facturaService.actualizarEstado(id, entregado, descripcion, fechaEntregaStr);
             log.info("Estado de factura {} actualizado exitosamente", id);
-            return ResponseEntity.ok("Estado actualizado correctamente");
+            return ResponseEntity.ok(Map.of("mensaje", "Estado actualizado correctamente"));
         } catch (NoSuchElementException e) {
             log.warn("Factura no encontrada con ID: {}", id);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Error al actualizar estado de factura: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body("Error al actualizar el estado");
+            return ResponseEntity.internalServerError().body(Map.of("mensaje", "Error al actualizar el estado"));
         }
     }
 

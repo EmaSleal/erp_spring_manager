@@ -46,7 +46,10 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
 
     @Override
     public List<LineaFacturaR> findLineasByFacturaId(Integer idFactura) {
-        return lineaFacturaRepository.findLineasByFacturaId(idFactura);
+        return lineaFacturaRepository.findEntitiesByFacturaId(idFactura)
+                .stream()
+                .map(LineaFacturaR::new)
+                .toList();
     }
 
     @Override
