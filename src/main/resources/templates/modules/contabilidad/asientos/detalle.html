@@ -75,10 +75,7 @@
                                             <th class="text-muted" style="width: 40%;">Número:</th>
                                             <td><strong th:text="${asiento.numero}">ASI-001</strong></td>
                                         </tr>
-                                        <tr>
-                                            <th class="text-muted">Fecha:</th>
-                                            <td th:text="${#temporals.format(asiento.fecha, 'dd/MM/yyyy')}">01/01/2024</td>
-                                        </tr>
+                                        <tr th:replace="~{shared/fragments/detail-field :: detailRow('Fecha:', ${#temporals.format(asiento.fecha, 'dd/MM/yyyy')})}"></tr>
                                         <tr>
                                             <th class="text-muted">Tipo:</th>
                                             <td>

@@ -54,7 +54,9 @@
             </div>
 
             <!-- Alertas -->
-            <div th:replace="~{shared/fragments/alerts :: alerts(null, ${param.error != null ? param.error[0] : null})}"></div>
+            <th:block th:with="errorMsg=${param.error != null ? param.error[0] : null}">
+                <div th:replace="~{shared/fragments/alerts :: alerts(null, ${errorMsg})}"></div>
+            </th:block>
 
             <!-- Formulario -->
             <div class="card shadow-sm border-0">

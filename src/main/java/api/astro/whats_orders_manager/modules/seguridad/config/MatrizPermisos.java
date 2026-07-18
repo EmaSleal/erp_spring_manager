@@ -103,55 +103,8 @@ public class MatrizPermisos {
         PERMISOS_POR_ROL.put("GERENTE", Collections.unmodifiableSet(permisosGerente));
         
         // ==================== ROL: ADMIN ====================
-        Set<Permiso> permisosAdmin = new HashSet<>();
-        
-        // Hereda todos los permisos del gerente
-        permisosAdmin.addAll(permisosGerente);
-        
-        // Configuración (CRUD completo)
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_EMPRESA);
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_FACTURACION);
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_EMAIL);
-        permisosAdmin.add(Permiso.CONFIG_EDITAR_WHATSAPP);
-        
-        // Notificaciones (todos)
-        permisosAdmin.add(Permiso.NOTIFICACION_ELIMINAR);
-        
-        // Usuarios (CRUD completo - exclusivo de admin)
-        permisosAdmin.add(Permiso.USUARIO_VER);
-        permisosAdmin.add(Permiso.USUARIO_CREAR);
-        permisosAdmin.add(Permiso.USUARIO_EDITAR);
-        permisosAdmin.add(Permiso.USUARIO_ELIMINAR);
-        permisosAdmin.add(Permiso.USUARIO_BLOQUEAR);
-        permisosAdmin.add(Permiso.USUARIO_CAMBIAR_ROL);
-        permisosAdmin.add(Permiso.USUARIO_VER_ACTIVIDAD);
-        permisosAdmin.add(Permiso.USUARIO_RESETEAR_PASSWORD);
-        
-        // Auditoría (exclusivo de admin)
-        permisosAdmin.add(Permiso.AUDITORIA_VER);
-        permisosAdmin.add(Permiso.AUDITORIA_EXPORTAR);
-        
-        // Sistema (exclusivo de admin)
-        permisosAdmin.add(Permiso.SISTEMA_VER_LOGS);
-        permisosAdmin.add(Permiso.SISTEMA_BACKUP);
-        permisosAdmin.add(Permiso.SISTEMA_MANTENIMIENTO);
-
-        // Inventario (CRUD completo)
-        permisosAdmin.add(Permiso.INVENTARIO_AJUSTAR);
-
-        // Proveedores (CRUD completo)
-        permisosAdmin.add(Permiso.PROVEEDOR_CREAR);
-        permisosAdmin.add(Permiso.PROVEEDOR_EDITAR);
-        permisosAdmin.add(Permiso.PROVEEDOR_ELIMINAR);
-
-        // Órdenes de compra (gestión completa)
-        permisosAdmin.add(Permiso.ORDEN_COMPRA_CREAR);
-        permisosAdmin.add(Permiso.ORDEN_COMPRA_APROBAR);
-        permisosAdmin.add(Permiso.ORDEN_COMPRA_CANCELAR);
-
-        // Cuentas por pagar (gestión completa)
-        permisosAdmin.add(Permiso.CUENTA_PAGAR_CREAR);
-        permisosAdmin.add(Permiso.CUENTA_PAGAR_REGISTRAR_PAGO);
+        // ADMIN has all permissions — always kept in sync with the enum automatically
+        Set<Permiso> permisosAdmin = EnumSet.allOf(Permiso.class);
 
         PERMISOS_POR_ROL.put("ADMIN", Collections.unmodifiableSet(permisosAdmin));
     }

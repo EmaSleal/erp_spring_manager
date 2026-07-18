@@ -94,7 +94,9 @@
             </div>
 
             <!-- Alertas -->
-            <div th:replace="~{shared/fragments/alerts :: alerts(${param.success}, ${param.error})}"></div>
+            <th:block th:with="successMsg=${param.success != null ? param.success[0] : null}, errorMsg=${param.error != null ? param.error[0] : null}">
+                <div th:replace="~{shared/fragments/alerts :: alerts(${successMsg}, ${errorMsg})}"></div>
+            </th:block>
 
             <!-- Estadísticas -->
             <div class="row mb-4">

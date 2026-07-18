@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,11 +19,14 @@ import java.util.Optional;
 public interface FacturaRepository extends JpaRepository<Factura, Integer> {
     
     /**
-     * Cuenta las facturas creadas hoy
-     * Usa createDate para contar facturas del día actual
+     * Cuenta las facturas creadas hoy usando un rango explícito de LocalDateTime.
+     * Callers must pass: startOfDay = LocalDate.now().atStartOfDay(),
+     *                    startOfTomorrow = LocalDate.now().plusDays(1).atStartOfDay()
+     * Avoids CAST(... AS date) which is dialect-specific and fails at midnight boundaries.
      */
-    @Query("SELECT COUNT(f) FROM Factura f WHERE CAST(f.createDate AS date) = CURRENT_DATE")
-    long countByFechaToday();
+    @Query("SELECT COUNT(f) FROM Factura f WHERE f.createDate >= :startOfDay AND f.createDate < :startOfTomorrow")
+    long countByFechaToday(@Param("startOfDay") LocalDateTime startOfDay,
+                           @Param("startOfTomorrow") LocalDateTime startOfTomorrow);
     
     /**
      * Suma el total de facturas no entregadas (pendientes)

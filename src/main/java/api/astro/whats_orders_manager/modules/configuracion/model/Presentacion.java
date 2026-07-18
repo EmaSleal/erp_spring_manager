@@ -6,7 +6,7 @@ import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "presentacion")
@@ -37,11 +37,11 @@ public class Presentacion {
 
     @CreatedDate
     @Column(name = "createDate", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @CreatedDate
     @Column(name = "updateDate")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     @CreatedBy
     @Column(name = "createBy", updatable = false)

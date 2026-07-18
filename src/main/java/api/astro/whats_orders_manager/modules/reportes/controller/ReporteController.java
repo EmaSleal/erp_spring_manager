@@ -884,7 +884,7 @@ public class ReporteController {
     private void cargarDatosUsuario(Model model, Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof UserDetails userDetails) {
             String telefono = userDetails.getUsername();
-            Optional<Usuario> usuarioOpt = usuarioService.findByTelefono(telefono);
+            Optional<Usuario> usuarioOpt = usuarioService.findByEmail(telefono);
             
             if (usuarioOpt.isPresent()) {
                 Usuario usuario = usuarioOpt.get();

@@ -383,9 +383,9 @@ public class PlantillaWhatsAppService {
                 .estadoMeta(plantilla.getEstadoMeta() != null ? plantilla.getEstadoMeta().name() : null)
                 .templateId(plantilla.getTemplateId())
                 .activo(plantilla.getActivo())
-                .fechaCreacion(plantilla.getCreateDate() != null ? plantilla.getCreateDate().toLocalDateTime() : null)
+                .fechaCreacion(plantilla.getCreateDate())
                 .fechaAprobacion(plantilla.getFechaAprobacion())
-                .fechaActualizacion(plantilla.getUpdateDate() != null ? plantilla.getUpdateDate().toLocalDateTime() : null)
+                .fechaActualizacion(plantilla.getUpdateDate())
                 .build();
     }
 }

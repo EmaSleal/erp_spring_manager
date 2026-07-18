@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -206,9 +207,11 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Override
     @Transactional(readOnly = true)
-    public long countByFechaToday() { 
+    public long countByFechaToday() {
         log.debug("Contando facturas de hoy");
-        return facturaRepository.countByFechaToday(); 
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfTomorrow = LocalDate.now().plusDays(1).atStartOfDay();
+        return facturaRepository.countByFechaToday(startOfDay, startOfTomorrow);
     }
 
     @Override

@@ -7,6 +7,7 @@ import api.astro.whats_orders_manager.modules.configuracion.dto.mapper.Configura
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.configuracion.service.HaciendaApiService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,6 +48,7 @@ public class ConfiguracionEmpresaRestController {
     private final ConfiguracionEmpresaService configuracionEmpresaService;
     private final HaciendaApiService haciendaConsultaService;
     private final ConfiguracionEmpresaMapper mapper;
+    private final UsuarioActividadService usuarioActividadService;
 
     @Value("${app.uploads.directorio:/app/uploads}")
     private String uploadsDir;
@@ -172,6 +174,8 @@ public class ConfiguracionEmpresaRestController {
             ConfiguracionEmpresa guardada = configuracionEmpresaService.saveOrUpdate(configuracion);
 
             log.info("Configuración de empresa guardada: ID {}", guardada.getIdConfiguracion());
+            usuarioActividadService.registrarCambioConfiguracion(
+                    "configuracion_empresa", "Configuración de empresa creada/actualizada");
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -210,6 +214,8 @@ public class ConfiguracionEmpresaRestController {
             ConfiguracionEmpresa guardada = configuracionEmpresaService.saveOrUpdate(configuracion);
 
             log.info("Configuración de empresa actualizada: ID {}", guardada.getIdConfiguracion());
+            usuarioActividadService.registrarCambioConfiguracion(
+                    "configuracion_empresa", "Configuración de empresa actualizada");
 
             return ResponseEntity.ok(Map.of(
                     "success", true,

@@ -3,7 +3,6 @@ package api.astro.whats_orders_manager.modules.seguridad.dto;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import lombok.*;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -58,7 +57,7 @@ public class UsuarioAdminDTO {
     
     // ==================== BLOQUEO ====================
     
-    private Timestamp fechaBloqueo;
+    private LocalDateTime fechaBloqueo;
     private String razonBloqueo;
     private Integer bloqueadoPor;
     private String nombreBloqueadoPor; // Nombre del admin que bloqueó
@@ -72,13 +71,13 @@ public class UsuarioAdminDTO {
     private String password;
     
     private Boolean requireCambioPassword;
-    private Timestamp fechaExpiracionPassword;
+    private LocalDateTime fechaExpiracionPassword;
     
     // ==================== AUDITORÍA ====================
     
-    private Timestamp ultimoAcceso;
-    private Timestamp createDate;
-    private Timestamp updateDate;
+    private LocalDateTime ultimoAcceso;
+    private LocalDateTime createDate;
+    private LocalDateTime updateDate;
     private Integer createBy;
     private Integer updateBy;
     
@@ -187,10 +186,9 @@ public class UsuarioAdminDTO {
         if (this.ultimoAcceso == null) {
             return "Nunca";
         }
-        
-        LocalDateTime fecha = this.ultimoAcceso.toLocalDateTime();
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        return fecha.format(formatter);
+        return this.ultimoAcceso.format(formatter);
     }
 
     /**
@@ -200,10 +198,9 @@ public class UsuarioAdminDTO {
         if (this.createDate == null) {
             return "-";
         }
-        
-        LocalDateTime fecha = this.createDate.toLocalDateTime();
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        return fecha.format(formatter);
+        return this.createDate.format(formatter);
     }
 
     /**

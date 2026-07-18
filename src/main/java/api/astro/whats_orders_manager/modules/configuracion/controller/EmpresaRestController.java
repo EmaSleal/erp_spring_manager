@@ -307,7 +307,7 @@ public class EmpresaRestController {
 
     private Integer resolveUsuarioId(Authentication authentication) {
         if (authentication == null) return null;
-        return usuarioService.findByTelefono(authentication.getName())
+        return usuarioService.findByEmail(authentication.getName())
             .map(Usuario::getIdUsuario)
             .orElse(null);
     }

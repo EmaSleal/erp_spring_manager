@@ -14,7 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Slf4j
@@ -28,23 +28,27 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private UsuarioService usuarioService;
 
     @Override
-    public UserDetails loadUserByUsername(String usernameOrPhone) throws UsernameNotFoundException {
-        // Buscar usuario por teléfono O por nombre (más flexible)
-        Usuario usuario = usuarioRepository.findByTelefono(usernameOrPhone)
-                .or(() -> usuarioRepository.findByNombre(usernameOrPhone))
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + usernameOrPhone));
+    public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
+        // Authenticate by email (primary identity). Fallback to nombre for compatibility.
+        Usuario usuario = usuarioRepository.findByEmail(usernameOrEmail)
+                .or(() -> usuarioRepository.findByNombre(usernameOrEmail))
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + usernameOrEmail));
 
         // Verificar si el usuario está activo
         if (usuario.getActivo() == null || !usuario.getActivo()) {
-            throw new UsernameNotFoundException("Usuario inactivo: " + usernameOrPhone);
+            throw new UsernameNotFoundException("Usuario inactivo: " + usernameOrEmail);
         }
 
-        // Actualizar último acceso
-        actualizarUltimoAcceso(usuario);
+        boolean bloqueado = usuario.getBloqueado() != null && usuario.getBloqueado();
 
-        return User.withUsername(usuario.getTelefono())
-                .password(usuario.getPassword()) // La contraseña debe estar encriptada en la BD
-                .roles(usuario.getRol()) // Se usa el rol almacenado en la BD
+        if (!bloqueado) {
+            actualizarUltimoAcceso(usuario);
+        }
+
+        return User.withUsername(usuario.getEmail())
+                .password(usuario.getPassword())
+                .roles(usuario.getRol())
+                .accountLocked(bloqueado)
                 .build();
     }
 
@@ -56,7 +60,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     private void actualizarUltimoAcceso(Usuario usuario) {
         try {
-            Timestamp now = new Timestamp(System.currentTimeMillis());
+            LocalDateTime now = LocalDateTime.now();
             usuario.setUltimoAcceso(now);
             usuarioRepository.save(usuario);
             log.info("Último acceso actualizado para usuario: {} (ID: {}) - Timestamp: {}", 
@@ -75,20 +79,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
 
         Object principal = authentication.getPrincipal();
-        String telefono = null;
+        String email = null;
 
         if (principal instanceof UserDetails userDetails) {
-            //log.info("UserDetails: {}", userDetails);
-            telefono = userDetails.getUsername(); // el username aquí puede ser tu número de teléfono
+            email = userDetails.getUsername(); // username is now the email
         } else if (principal instanceof String s) {
-            telefono = s;
+            email = s;
         }
 
-        if (telefono == null) return Optional.empty();
+        if (email == null) return Optional.empty();
 
-        // Buscar el ID de usuario usando el teléfono
-
-        Integer userId = usuarioService.findByTelefono(telefono)
+        // Resolve user ID by email
+        Integer userId = usuarioService.findByEmail(email)
                 .map(usuario -> usuario.getIdUsuario())
                 .orElse(null);
 

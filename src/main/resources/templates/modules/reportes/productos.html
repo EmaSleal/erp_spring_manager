@@ -175,8 +175,9 @@
                 </div>
 
                 <!-- Empty State -->
-                <div th:if="${productos == null || productos.isEmpty()}"
-                     th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-box-open', 'No hay productos para mostrar')}"></div>
+                <th:block th:if="${productos == null or productos.isEmpty()}">
+                    <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('fas fa-box-open', 'No hay productos para mostrar')}"></div>
+                </th:block>
             </div>
         </div>
     </div>

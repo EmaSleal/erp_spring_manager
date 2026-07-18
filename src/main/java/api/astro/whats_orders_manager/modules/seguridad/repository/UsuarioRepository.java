@@ -48,4 +48,14 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
         @QueryHint(name = HibernateHints.HINT_FLUSH_MODE, value = "COMMIT")
     })
     Optional<Usuario> findByTelefonoWithoutFlush(@Param("telefono") String telefono);
+
+    /**
+     * Email-based auditor lookup — uses FLUSH_MODE=COMMIT to prevent JPA flush recursion
+     * during AuditingEntityListener callbacks. Must mirror the telefono variant exactly.
+     */
+    @Query("SELECT u FROM Usuario u WHERE u.email = :email")
+    @QueryHints(value = {
+        @QueryHint(name = HibernateHints.HINT_FLUSH_MODE, value = "COMMIT")
+    })
+    Optional<Usuario> findByEmailWithoutFlush(@Param("email") String email);
 }

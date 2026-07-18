@@ -8,7 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Controller
@@ -33,7 +33,7 @@ public class WebhookLogController {
     @ResponseBody
     public ResponseEntity<WebhookLog> guardar(@RequestBody WebhookLog webhookLog) {
         if (webhookLog.getTimestamp() == null) {
-            webhookLog.setTimestamp(new Timestamp(System.currentTimeMillis()));
+            webhookLog.setTimestamp(LocalDateTime.now());
         }
         return ResponseEntity.ok(webhookLogService.save(webhookLog));
     }

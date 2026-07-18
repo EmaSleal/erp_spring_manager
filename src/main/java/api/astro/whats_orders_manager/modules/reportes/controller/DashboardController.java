@@ -144,10 +144,10 @@ public class DashboardController {
             throw new RuntimeException("Usuario no autenticado correctamente");
         }
         
-        String telefono = userDetails.getUsername();
-        return usuarioService.findByTelefono(telefono)
+        String email = userDetails.getUsername();
+        return usuarioService.findByEmail(email)
                 .orElseThrow(() -> {
-                    log.error("Usuario no encontrado con teléfono: {}", telefono);
+                    log.error("Usuario no encontrado con email: {}", email);
                     return new RuntimeException("Usuario no encontrado");
                 });
     }

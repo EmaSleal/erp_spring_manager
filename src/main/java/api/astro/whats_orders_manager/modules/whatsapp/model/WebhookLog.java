@@ -2,7 +2,7 @@ package api.astro.whats_orders_manager.modules.whatsapp.model;
 
 import lombok.*;import jakarta.persistence.*;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "webhooklogs")
@@ -26,7 +26,7 @@ public class WebhookLog {
     @Column(columnDefinition = "json", name = "whole_message")
     private String wholeMessage;
 
-    private Timestamp timestamp;
+    private LocalDateTime timestamp;
 
     @Column(name = "estado_conversacion", length = 100)
     private String estadoConversacion;

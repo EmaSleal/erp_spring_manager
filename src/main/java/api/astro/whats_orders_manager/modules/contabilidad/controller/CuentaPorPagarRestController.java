@@ -142,7 +142,7 @@ public class CuentaPorPagarRestController {
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private Usuario resolverUsuario(Authentication authentication) {
-        return usuarioService.findByTelefono(authentication.getName())
+        return usuarioService.findByEmail(authentication.getName())
             .orElseThrow(() -> new IllegalStateException("Usuario no encontrado: " + authentication.getName()));
     }
 }

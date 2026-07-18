@@ -116,8 +116,9 @@
                         <!-- MÓVIL: Vista de tarjetas -->
                         <div class="mobile-card-view">
                             <!-- Mensaje vacío -->
-                            <div th:if="${#lists.isEmpty(clientes)}"
-                                 th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-inbox', 'No hay clientes registrados')}"></div>
+                            <th:block th:if="${#lists.isEmpty(clientes)}">
+                                <div th:replace="~{shared/fragments/empty-state :: emptyStateCard('bi bi-inbox', 'No hay clientes registrados')}"></div>
+                            </th:block>
                             
                             <!-- Tarjetas de clientes -->
                             <div th:each="cliente : ${clientes}" 

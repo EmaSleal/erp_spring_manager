@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.seguridad.controller;
 
 import api.astro.whats_orders_manager.modules.seguridad.model.Permiso;
 import api.astro.whats_orders_manager.modules.seguridad.service.PermisoService;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,7 @@ import java.util.Optional;
 public class PermisoAdminController {
     
     private final PermisoService permisoService;
+    private final UsuarioActividadService usuarioActividadService;
     
     /**
      * Listado de todos los permisos con filtros y paginación
@@ -176,11 +178,13 @@ public class PermisoAdminController {
             permiso.setEsCritico(esCritico != null && esCritico);
             
             permisoService.guardar(permiso);
-            
+            usuarioActividadService.registrarCambioPermiso(
+                    permiso.getCodigo(), "Permiso actualizado: " + permiso.getNombre());
+
             log.info("Permiso actualizado exitosamente: {}", permiso.getCodigo());
-            redirectAttributes.addFlashAttribute("success", 
+            redirectAttributes.addFlashAttribute("success",
                     "Permiso '" + permiso.getNombre() + "' actualizado correctamente");
-            
+
             return "redirect:/admin/permisos/gestionar";
             
         } catch (Exception e) {
@@ -215,10 +219,12 @@ public class PermisoAdminController {
             permiso.setActivo(nuevoEstado);
             
             permisoService.guardar(permiso);
-            
             String mensaje = nuevoEstado ? "activado" : "desactivado";
+            usuarioActividadService.registrarCambioPermiso(
+                    permiso.getCodigo(), "Permiso " + mensaje + ": " + permiso.getNombre());
+
             log.info("Permiso {} {}", permiso.getCodigo(), mensaje);
-            redirectAttributes.addFlashAttribute("success", 
+            redirectAttributes.addFlashAttribute("success",
                     "Permiso '" + permiso.getNombre() + "' " + mensaje + " correctamente");
             
             return "redirect:/admin/permisos/gestionar";
@@ -255,10 +261,12 @@ public class PermisoAdminController {
             permiso.setEsCritico(nuevaCriticidad);
             
             permisoService.guardar(permiso);
-            
             String mensaje = nuevaCriticidad ? "marcado como CRÍTICO" : "desmarcado como crítico";
+            usuarioActividadService.registrarCambioPermiso(
+                    permiso.getCodigo(), "Criticidad cambiada — " + mensaje + ": " + permiso.getNombre());
+
             log.info("Permiso {} {}", permiso.getCodigo(), mensaje);
-            redirectAttributes.addFlashAttribute("success", 
+            redirectAttributes.addFlashAttribute("success",
                     "Permiso '" + permiso.getNombre() + "' " + mensaje);
             
             return "redirect:/admin/permisos/gestionar";

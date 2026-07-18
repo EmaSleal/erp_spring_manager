@@ -11,7 +11,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.io.Serializable;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cuenta_bancaria")
@@ -70,11 +70,11 @@ public class CuentaBancaria implements Serializable {
 
     @CreatedDate
     @Column(name = "create_date", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @LastModifiedDate
     @Column(name = "update_date")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     @CreatedBy
     @Column(name = "create_by", updatable = false)

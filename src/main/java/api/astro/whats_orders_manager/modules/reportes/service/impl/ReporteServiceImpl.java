@@ -17,9 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -474,17 +473,15 @@ public class ReporteServiceImpl implements ReporteService {
     // ========================================================================
 
     /**
-     * Convierte un Timestamp a LocalDate.
-     * 
-     * @param timestamp Timestamp a convertir
-     * @return LocalDate o null si el timestamp es null
+     * Convierte un LocalDateTime a LocalDate.
+     *
+     * @param dateTime LocalDateTime a convertir
+     * @return LocalDate o null si el dateTime es null
      */
-    private LocalDate convertirTimestampALocalDate(Timestamp timestamp) {
-        if (timestamp == null) {
+    private LocalDate convertirTimestampALocalDate(LocalDateTime dateTime) {
+        if (dateTime == null) {
             return null;
         }
-        return timestamp.toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate();
+        return dateTime.toLocalDate();
     }
 }

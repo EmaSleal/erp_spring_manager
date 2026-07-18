@@ -134,7 +134,7 @@
                 <small class="form-text text-muted">8 dígitos sin espacios ni guiones</small>
             </div>
 
-            <!-- Email -->
+            <!-- Email (required — used as login identifier) -->
             <div class="mb-3">
                 <label for="email" class="form-label">
                     <i class="fas fa-envelope me-2"></i>Correo Electrónico
@@ -144,8 +144,9 @@
                        id="email"
                        th:field="*{email}"
                        placeholder="juan.perez@correo.com"
-                       maxlength="100">
-                <small class="form-text text-muted">Opcional, pero necesario para recuperar tu contraseña</small>
+                       maxlength="100"
+                       required>
+                <small class="form-text text-muted">Necesario para iniciar sesión en el sistema</small>
             </div>
 
             <!-- Password -->

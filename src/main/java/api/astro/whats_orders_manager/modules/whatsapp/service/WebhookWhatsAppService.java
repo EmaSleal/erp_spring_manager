@@ -226,7 +226,7 @@ public class WebhookWhatsAppService {
             
             WebhookLog webhookLog = new WebhookLog();
             webhookLog.setWholeMessage(payload);
-            webhookLog.setTimestamp(java.sql.Timestamp.valueOf(LocalDateTime.now()));
+            webhookLog.setTimestamp(LocalDateTime.now());
             
             // Extraer primer mensaje si existe para logging
             if (webhookRequest.getEntry() != null && !webhookRequest.getEntry().isEmpty()) {
@@ -275,8 +275,6 @@ public class WebhookWhatsAppService {
      * @return Cantidad de webhooks procesados
      */
     public long obtenerEstadisticasWebhooks(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
-        java.sql.Timestamp inicio = java.sql.Timestamp.valueOf(fechaInicio);
-        java.sql.Timestamp fin = java.sql.Timestamp.valueOf(fechaFin);
-        return webhookLogRepository.countByTimestampBetween(inicio, fin);
+        return webhookLogRepository.countByTimestampBetween(fechaInicio, fechaFin);
     }
 }

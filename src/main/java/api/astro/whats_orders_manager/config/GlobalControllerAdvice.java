@@ -57,8 +57,8 @@ public class GlobalControllerAdvice {
                 
                 log.debug("Agregando datos globales del usuario: {}", username);
                 
-                // Buscar el usuario completo
-                Usuario usuario = usuarioService.findByTelefono(username).orElse(null);
+                // Buscar el usuario completo (username is now email)
+                Usuario usuario = usuarioService.findByEmail(username).orElse(null);
                 
                 if (usuario != null) {
                     // Nombre del usuario

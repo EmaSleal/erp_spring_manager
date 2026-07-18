@@ -214,8 +214,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr th:if="${#lists.isEmpty(permisos)}"
-                                        th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron permisos con los filtros aplicados')}"></tr>
+                                    <th:block th:if="${#lists.isEmpty(permisos)}">
+                                        <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(7, 'bi bi-inbox', 'No se encontraron permisos con los filtros aplicados')}"></tr>
+                                    </th:block>
                                     
                                     <tr th:each="permiso, stat : ${permisos}">
                                         <td th:text="${stat.count}">1</td>

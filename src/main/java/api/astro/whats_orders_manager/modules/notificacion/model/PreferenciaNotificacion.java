@@ -15,7 +15,7 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 /**
  * ============================================================================
@@ -150,7 +150,7 @@ public class PreferenciaNotificacion {
 
     @CreatedDate
     @Column(name = "create_date", updatable = false)
-    private Timestamp createDate;
+    private LocalDateTime createDate;
 
     @LastModifiedBy
     @Column(name = "update_by")
@@ -158,7 +158,7 @@ public class PreferenciaNotificacion {
 
     @LastModifiedDate
     @Column(name = "update_date")
-    private Timestamp updateDate;
+    private LocalDateTime updateDate;
 
     // ==================== MÉTODOS DE NEGOCIO ====================
 
