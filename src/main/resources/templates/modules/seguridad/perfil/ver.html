@@ -381,6 +381,105 @@
                         <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/dashboard', 'Volver al Dashboard')}"></a>
                     </div>
                 </div>
+
+                <!-- ============================================================ -->
+                <!-- Employee Self-Service Hub — shown only when empleado is linked -->
+                <!-- ============================================================ -->
+
+                <!-- Employee Card -->
+                <div th:if="${empleado != null}" class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-id-badge me-2"></i>Mi información como empleado</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-1">
+                            <strong>Nombre:</strong>
+                            <span th:text="${empleado.nombre + ' ' + empleado.primerApellido}"></span>
+                        </p>
+                        <p class="mb-1">
+                            <strong>Departamento:</strong>
+                            <span th:text="${empleado.departamento != null ? empleado.departamento.nombre : 'Sin departamento'}"></span>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Puesto:</strong>
+                            <span th:text="${empleado.puesto != null ? empleado.puesto.nombre : 'Sin puesto'}"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Own Absences -->
+                <div th:if="${empleado != null}" class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Mis ausencias</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${#lists.isEmpty(misAusencias)}" class="text-muted text-center py-3">
+                            No tenés ausencias registradas.
+                        </div>
+                        <div th:unless="${#lists.isEmpty(misAusencias)}" class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Inicio</th>
+                                        <th>Fin</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="a : ${misAusencias}">
+                                        <td th:text="${a.tipoAusencia}"></td>
+                                        <td th:text="${#temporals.format(a.fechaInicio, 'dd/MM/yyyy')}"></td>
+                                        <td th:text="${#temporals.format(a.fechaFin, 'dd/MM/yyyy')}"></td>
+                                        <td>
+                                            <span th:if="${a.aprobada}" class="badge bg-success">Aprobada</span>
+                                            <span th:unless="${a.aprobada}" class="badge bg-warning text-dark">Pendiente</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Department Head Approval Widget -->
+                <div th:if="${esJefe}" class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-users me-2"></i>Ausencias pendientes de mi departamento</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${#lists.isEmpty(ausenciasPendientesDept)}" class="text-muted text-center py-3">
+                            No hay ausencias pendientes de aprobación.
+                        </div>
+                        <div th:unless="${#lists.isEmpty(ausenciasPendientesDept)}" class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Empleado</th>
+                                        <th>Tipo</th>
+                                        <th>Inicio</th>
+                                        <th>Fin</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="a : ${ausenciasPendientesDept}">
+                                        <td th:text="${a.empleado.nombre + ' ' + a.empleado.primerApellido}"></td>
+                                        <td th:text="${a.tipoAusencia}"></td>
+                                        <td th:text="${#temporals.format(a.fechaInicio, 'dd/MM/yyyy')}"></td>
+                                        <td th:text="${#temporals.format(a.fechaFin, 'dd/MM/yyyy')}"></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-success"
+                                                    th:onclick="'aprobarAusencia(' + ${a.id} + ')'">
+                                                Aprobar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
                 
             </div>
         </main>
@@ -405,6 +504,16 @@
                 }, 5000);
             });
         });
+
+        /** Approve a pending absence from the department head widget. */
+        function aprobarAusencia(ausenciaId) {
+            httpPost('/api/rrhh/ausencias/' + ausenciaId + '/aprobar', {
+                usuarioAprobadorId: 1
+            }, {
+                successMessage: 'Ausencia aprobada.',
+                reloadOnSuccess: true
+            });
+        }
     </script>
 </body>
 </html>

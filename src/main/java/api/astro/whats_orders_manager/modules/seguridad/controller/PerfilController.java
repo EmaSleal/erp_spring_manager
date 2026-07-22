@@ -1,5 +1,10 @@
 package api.astro.whats_orders_manager.modules.seguridad.controller;
 
+import api.astro.whats_orders_manager.modules.rrhh.model.Ausencia;
+import api.astro.whats_orders_manager.modules.rrhh.model.Departamento;
+import api.astro.whats_orders_manager.modules.rrhh.model.Empleado;
+import api.astro.whats_orders_manager.modules.rrhh.repository.AusenciaRepository;
+import api.astro.whats_orders_manager.modules.rrhh.repository.EmpleadoRepository;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import api.astro.whats_orders_manager.shared.util.StringUtil;
@@ -19,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +55,8 @@ public class PerfilController {
 
     private final UsuarioService usuarioService;
     private final PasswordEncoder passwordEncoder;
+    private final EmpleadoRepository empleadoRepository;
+    private final AusenciaRepository ausenciaRepository;
 
     // Directorio donde se guardan los avatares
     private static final String UPLOAD_DIR = "src/main/resources/static/images/avatars/";
@@ -72,7 +80,8 @@ public class PerfilController {
             }
 
             agregarDatosUsuarioAlModelo(model, usuario);
-            
+            agregarDatosEmpleadoAlModelo(model, usuario);
+
             log.info("Usuario {} visualizó su perfil", usuario.getTelefono());
             return "modules/seguridad/perfil/ver";
             
@@ -369,6 +378,48 @@ public class PerfilController {
     private void agregarDatosUsuarioAlModelo(Model model, Usuario usuario) {
         model.addAttribute("usuario", usuario);
         model.addAttribute("iniciales", StringUtil.generarIniciales(usuario.getNombre()));
+    }
+
+    /**
+     * Loads the employee linked to the authenticated user and populates hub
+     * model attributes: empleado, misAusencias, esJefe, ausenciasPendientesDept.
+     *
+     * When no employee is linked, all hub attributes default to null / false / empty.
+     */
+    private void agregarDatosEmpleadoAlModelo(Model model, Usuario usuario) {
+        Optional<Empleado> empleadoOpt = empleadoRepository.findByUsuarioId(usuario.getIdUsuario());
+
+        if (empleadoOpt.isPresent()) {
+            Empleado empleado = empleadoOpt.get();
+            model.addAttribute("empleado", empleado);
+
+            List<Ausencia> misAusencias = ausenciaRepository.findByEmpleadoId(empleado.getId());
+            model.addAttribute("misAusencias", misAusencias);
+
+            boolean esJefe = isJefe(empleado);
+            List<Ausencia> ausenciasPendientesDept = List.of();
+            if (esJefe) {
+                ausenciasPendientesDept = ausenciaRepository.findPendientesByJefeId(empleado.getId());
+            }
+            model.addAttribute("esJefe", esJefe);
+            model.addAttribute("ausenciasPendientesDept", ausenciasPendientesDept);
+        } else {
+            model.addAttribute("empleado", null);
+            model.addAttribute("esJefe", false);
+            model.addAttribute("misAusencias", List.of());
+            model.addAttribute("ausenciasPendientesDept", List.of());
+        }
+    }
+
+    /**
+     * Returns true when the given employee is the designated jefe of their department.
+     * Navigates the lazy association safely within the open request transaction.
+     */
+    private boolean isJefe(Empleado empleado) {
+        Departamento dept = empleado.getDepartamento();
+        return dept != null
+                && dept.getJefe() != null
+                && dept.getJefe().getId().equals(empleado.getId());
     }
 
     // ============================================================================
