@@ -107,6 +107,14 @@ public class MatrizPermisos {
         permisosGerente.add(Permiso.RRHH_APROBAR_AUSENCIAS);
         permisosGerente.add(Permiso.RRHH_VER_CATALOGO_SALARIAL);
 
+        // Nómina (GERENTE es el rol RRHH-facing para gestión de nómina)
+        permisosGerente.add(Permiso.NOMINA_VER);
+        permisosGerente.add(Permiso.NOMINA_CREAR);
+        permisosGerente.add(Permiso.NOMINA_CALCULAR);
+        permisosGerente.add(Permiso.NOMINA_APROBAR);
+        permisosGerente.add(Permiso.NOMINA_CONTABILIZAR);
+        permisosGerente.add(Permiso.NOMINA_ANULAR);
+
         PERMISOS_POR_ROL.put("GERENTE", Collections.unmodifiableSet(permisosGerente));
         
         // ==================== ROL: ADMIN ====================
