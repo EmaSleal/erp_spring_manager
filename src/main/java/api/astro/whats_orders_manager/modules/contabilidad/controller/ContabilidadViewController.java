@@ -202,7 +202,18 @@ public class ContabilidadViewController {
             false,
             true
         ));
-        
+
+        // Parámetros Contables
+        modulos.add(new ModuloDTO(
+            "Parámetros",
+            "Mapeo de claves a cuentas contables",
+            "fas fa-sliders-h",
+            "#43e97b",
+            "/contabilidad/parametros",
+            true,
+            true
+        ));
+
         log.debug("Submódulos de contabilidad cargados: {}", modulos.size());
         return modulos;
     }

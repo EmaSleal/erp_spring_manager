@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Parámetros Contables</title>
+</head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content">
+    <div class="container-fluid py-4">
+
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a th:href="@{/dashboard}" class="text-decoration-none">
+                        <i class="fas fa-home me-1"></i>Dashboard
+                    </a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a th:href="@{/contabilidad}" class="text-decoration-none">
+                        <i class="fas fa-calculator me-1"></i>Contabilidad
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    <i class="fas fa-sliders-h me-1"></i>Parámetros Contables
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="h3 mb-1">
+                    <i class="fas fa-sliders-h text-success me-2"></i>Parámetros Contables
+                </h2>
+                <p class="text-muted mb-0">Mapeo de claves de evento a cuentas contables</p>
+            </div>
+            <div sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
+                <button type="button" class="btn btn-success" onclick="abrirModalCrear()">
+                    <i class="fas fa-plus me-2"></i>Nuevo Parámetro
+                </button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Clave</th>
+                                <th>Descripción</th>
+                                <th>Cuenta</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${#lists.isEmpty(parametros)}">
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="fas fa-sliders-h fa-3x mb-3 d-block"></i>
+                                    No hay parámetros configurados. Cree el primero.
+                                </td>
+                            </tr>
+                            <tr th:each="p : ${parametros}">
+                                <td>
+                                    <code class="fw-semibold" th:text="${p.clave}">CLAVE</code>
+                                </td>
+                                <td th:text="${p.descripcion}">Descripción</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border"
+                                          th:text="${p.cuentaContable.codigo + ' — ' + p.cuentaContable.nombre}">
+                                        1.1.01 — Caja
+                                    </span>
+                                </td>
+                                <td class="text-end"
+                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-1"
+                                            th:data-id="${p.id}"
+                                            th:data-clave="${p.clave}"
+                                            th:data-descripcion="${p.descripcion != null ? p.descripcion : ''}"
+                                            th:data-cuenta-id="${p.cuentaContable.idCuenta}"
+                                            onclick="abrirModalEditar(this)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            th:data-id="${p.id}"
+                                            th:data-clave="${p.clave}"
+                                            onclick="eliminarParametro(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                                <td class="text-end"
+                                    sec:authorize="!@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- Modal: Crear -->
+<div class="modal fade" id="modalCrear" tabindex="-1" aria-labelledby="modalCrearLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCrearLabel">
+                    <i class="fas fa-plus-circle me-2 text-success"></i>Nuevo Parámetro Contable
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Clave <span class="text-danger">*</span></label>
+                    <input type="text" id="claveCrear" class="form-control text-uppercase"
+                           placeholder="Ej: CPP_CUENTA_COMPRAS" maxlength="100">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <input type="text" id="descripcionCrear" class="form-control"
+                           placeholder="Descripción opcional" maxlength="300">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Cuenta Contable <span class="text-danger">*</span></label>
+                    <select id="cuentaContableIdCrear" class="form-select">
+                        <option value="">Cargando cuentas...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarParametro()">
+                    <i class="fas fa-save me-1"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEditarLabel">
+                    <i class="fas fa-edit me-2 text-primary"></i>Editar Parámetro Contable
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="idEditar">
+                <div class="mb-3">
+                    <label class="form-label">Clave <span class="text-danger">*</span></label>
+                    <input type="text" id="claveEditar" class="form-control text-uppercase"
+                           maxlength="100">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <input type="text" id="descripcionEditar" class="form-control" maxlength="300">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Cuenta Contable <span class="text-danger">*</span></label>
+                    <select id="cuentaContableIdEditar" class="form-select">
+                        <option value="">Cargando cuentas...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="actualizarParametro()">
+                    <i class="fas fa-save me-1"></i>Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/contabilidad/js/parametros.js}"></script>
+</body>
+</html>
