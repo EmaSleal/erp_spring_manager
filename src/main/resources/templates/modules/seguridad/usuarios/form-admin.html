@@ -333,6 +333,27 @@
                 </div>
             </div>
 
+            <!-- Sección: Vincular a empleado RRHH -->
+            <div class="form-section" th:if="${empleadosDisponibles != null}">
+                <h5 class="form-section-title">
+                    <i class="fas fa-id-badge me-2"></i>Vinculación RRHH <small class="text-muted fw-normal">(opcional)</small>
+                </h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="empleadoId" class="form-label">Vincular a empleado</label>
+                        <select class="form-select" id="empleadoId" name="empleadoId">
+                            <option value="">Sin vinculación</option>
+                            <option th:each="e : ${empleadosDisponibles}"
+                                    th:value="${e.id}"
+                                    th:text="${e.nombre} + ' ' + ${e.primerApellido}"
+                                    th:selected="${usuario.empleadoId != null and usuario.empleadoId == e.id}">
+                            </option>
+                        </select>
+                        <small class="text-muted">Solo se muestran empleados activos sin usuario asignado</small>
+                    </div>
+                </div>
+            </div>
+
             <!-- Botones de Acción -->
             <div class="row mt-4">
                 <div class="col-12">

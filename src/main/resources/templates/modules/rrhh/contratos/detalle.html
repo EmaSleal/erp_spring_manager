@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/contratos', 'fas fa-file-contract', 'Contratos', 'fas fa-eye', 'Detalle')}"></div>
+
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-file-contract', 'primary', 'Recursos Humanos', 'Detalle de Contrato', 'Información del contrato laboral', '/rrhh/contratos', 'Contratos')}"></div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-file-contract fa-3x mb-3"></i>
+                    <p>Detalle del contrato.</p>
+                    <a th:href="@{/rrhh/contratos}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a la lista
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/contratos.js}"></script>
+</body>
+</html>

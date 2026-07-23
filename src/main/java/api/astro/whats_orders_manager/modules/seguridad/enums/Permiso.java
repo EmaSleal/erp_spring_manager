@@ -130,10 +130,25 @@ public enum Permiso {
     AUDITORIA_EXPORTAR("Exportar auditoría", "Exportar logs de auditoría"),
     
     // ==================== SISTEMA ====================
-    
+
     SISTEMA_VER_LOGS("Ver logs", "Acceso a logs del sistema"),
     SISTEMA_BACKUP("Backup", "Realizar respaldos del sistema"),
-    SISTEMA_MANTENIMIENTO("Mantenimiento", "Poner sistema en modo mantenimiento");
+    SISTEMA_MANTENIMIENTO("Mantenimiento", "Poner sistema en modo mantenimiento"),
+
+    // ==================== RECURSOS HUMANOS ====================
+
+    RRHH_VER("Ver RRHH", "Visualizar módulo de Recursos Humanos"),
+    RRHH_CREAR_EMPLEADO("Crear empleado", "Registrar nuevos empleados"),
+    RRHH_EDITAR_EMPLEADO("Editar empleado", "Modificar información de empleados"),
+    RRHH_BAJA_EMPLEADO("Dar de baja empleado", "Dar de baja definitiva a empleados"),
+    RRHH_GESTIONAR_CONTRATOS("Gestionar contratos", "Crear y terminar contratos de empleados"),
+    RRHH_GESTIONAR_AUSENCIAS("Gestionar ausencias", "Registrar y aprobar ausencias de empleados"),
+
+    // Spec-aligned aliases used in EmpleadoRestController and MatrizPermisos
+    RRHH_GESTIONAR_EMPLEADOS("Gestionar empleados", "CRUD completo de empleados"),
+    RRHH_APROBAR_AUSENCIAS("Aprobar ausencias", "Aprobar solicitudes de ausencia"),
+    RRHH_VER_CATALOGO_SALARIAL("Ver catálogo salarial", "Consultar salarios mínimos y parámetros CCSS"),
+    RRHH_GESTIONAR_CATALOGO_SALARIAL("Gestionar catálogo salarial", "Actualizar catálogos salariales y CCSS");
     
     private final String nombre;
     private final String descripcion;
@@ -171,6 +186,7 @@ public enum Permiso {
         if (name.startsWith("USUARIO_")) return "Usuarios";
         if (name.startsWith("AUDITORIA_")) return "Auditoría";
         if (name.startsWith("SISTEMA_")) return "Sistema";
+        if (name.startsWith("RRHH_")) return "Recursos Humanos";
         return "Otros";
     }
     

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/empleados', 'fas fa-users', 'Empleados', 'fas fa-eye', 'Detalle')}"></div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div th:replace="~{shared/fragments/page-header :: pageHeader(
+                    'fas fa-user',
+                    'text-primary',
+                    'Ficha de',
+                    ${empleado.nombreCompleto},
+                    ${empleado.puesto.nombre + ' — ' + empleado.departamento.nombre},
+                    '/rrhh/empleados',
+                    'Volver a lista'
+                )}"></div>
+            </div>
+            <div class="col-auto d-flex align-items-end gap-2">
+                <a th:href="@{/rrhh/empleados/{id}/editar(id=${empleado.id})}"
+                   class="btn btn-outline-primary"
+                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                    <i class="fas fa-edit me-1"></i>Editar
+                </a>
+                <button class="btn btn-outline-danger"
+                        th:if="${empleado.activo}"
+                        th:attr="onclick='darDeBaja(' + ${empleado.id} + ')'"
+                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                    <i class="fas fa-user-minus me-1"></i>Dar de baja
+                </button>
+            </div>
+        </div>
+
+        <!-- Estado badge -->
+        <div class="mb-3">
+            <span class="badge fs-6"
+                  th:classappend="${empleado.estado.name() == 'ACTIVO'} ? 'bg-success' :
+                                  (${empleado.estado.name() == 'DE_BAJA_TEMPORAL'} ? 'bg-warning text-dark' : 'bg-secondary')"
+                  th:text="${empleado.estado}"></span>
+            <span class="ms-2 text-muted" th:if="${!empleado.activo}">
+                — Baja desde <span th:text="${#temporals.format(empleado.fechaSalida, 'dd/MM/yyyy')}"></span>
+            </span>
+        </div>
+
+        <div class="row g-3">
+
+            <!-- Datos de identidad -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-id-badge me-1 text-primary"></i>Datos de identidad
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Cédula', ${empleado.cedula})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Nombre completo', ${empleado.nombreCompleto})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Género', ${empleado.genero})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Estado civil', ${empleado.estadoCivil})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Fecha de nacimiento',
+                                    ${empleado.fechaNacimiento != null ? #temporals.format(empleado.fechaNacimiento, 'dd/MM/yyyy') : 'No registrado'})}">
+                                </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contacto -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-phone me-1 text-primary"></i>Contacto
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Correo', ${empleado.email ?: 'No registrado'})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Teléfono', ${empleado.telefono ?: 'No registrado'})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Dirección', ${empleado.direccion ?: 'No registrada'})}"></div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información laboral -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-briefcase me-1 text-primary"></i>Información laboral
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Departamento', ${empleado.departamento.nombre})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Puesto', ${empleado.puesto.nombre})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Fecha ingreso',
+                                    ${#temporals.format(empleado.fechaIngreso, 'dd/MM/yyyy')})}">
+                                </div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Antigüedad',
+                                    ${empleado.antiguedadAnios + ' año(s)'})}">
+                                </div>
+                                <div th:if="${!empleado.activo}">
+                                    <div th:replace="~{shared/fragments/detail-field :: detailRow('Fecha salida',
+                                        ${#temporals.format(empleado.fechaSalida, 'dd/MM/yyyy')})}">
+                                    </div>
+                                    <div th:replace="~{shared/fragments/detail-field :: detailRow('Motivo salida', ${empleado.motivoSalida})}"></div>
+                                </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos normativos CR -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-landmark me-1 text-primary"></i>Datos normativos CR
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('N° Asegurado CCSS', ${empleado.numeroAseguradoCCSS ?: 'No registrado'})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Operadora ROP', ${empleado.operadoraPensionesROP ?: 'No registrada'})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Hijos (carga familiar)', ${empleado.hijosCargaFamiliar})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Cónyuge (carga familiar)',
+                                    ${empleado.conyugeCargaFamiliar ? 'Sí' : 'No'})}">
+                                </div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('% Solidarista',
+                                    ${empleado.porcentajeSolidarista != null ?
+                                        #numbers.formatDecimal(empleado.porcentajeSolidarista * 100, 1, 'COMMA', 2, 'POINT') + '%' :
+                                        'No afiliado'})}">
+                                </div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Pensión alimentaria',
+                                    ${empleado.montoPensionAlimentaria != null ?
+                                        '₡ ' + #numbers.formatDecimal(empleado.montoPensionAlimentaria, 1, 'COMMA', 2, 'POINT') :
+                                        'No aplica'})}">
+                                </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos bancarios -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-university me-1 text-primary"></i>Datos bancarios
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Banco', ${empleado.banco ?: 'No registrado'})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Cuenta bancaria', ${empleado.cuentaBancaria ?: 'No registrada'})}"></div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contacto de emergencia -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-ambulance me-1 text-primary"></i>Contacto de emergencia
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Nombre', ${empleado.contactoEmergenciaNombre ?: 'No registrado'})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Teléfono', ${empleado.contactoEmergenciaTelefono ?: 'No registrado'})}"></div>
+                                <div th:replace="~{shared/fragments/detail-field :: detailRow('Relación', ${empleado.contactoEmergenciaRelacion ?: 'No registrada'})}"></div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Modal: Dar de baja -->
+        <div class="modal fade" id="modalBaja" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-danger">
+                            <i class="fas fa-user-minus me-1"></i>Dar de baja al empleado
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de salida <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="fechaSalidaBaja"
+                                   th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motivo <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="motivoBaja" rows="3"
+                                      placeholder="Descripción del motivo de la baja..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger" onclick="confirmarBaja()">
+                            <i class="fas fa-user-minus me-1"></i>Confirmar baja
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script th:inline="javascript">
+    const empleadoId = /*[[${empleado.id}]]*/ null;
+</script>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/empleados.js}"></script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-university', 'Parámetros CCSS')}"></div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-university', 'text-success', 'Parámetros', 'CCSS', 'Tasas de cotización vigentes — Caja Costarricense de Seguro Social')}"></div>
+            </div>
+        </div>
+
+        <!-- Current rates card -->
+        <div class="row mb-4" th:if="${parametroCcss != null}">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>Tasas vigentes</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Componente</th>
+                                    <th class="text-end">Obrero</th>
+                                    <th class="text-end">Patronal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Total</td>
+                                    <td class="text-end fw-bold"
+                                        th:text="${#numbers.formatDecimal(parametroCcss.porcentajeObrero * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                                    <td class="text-end fw-bold"
+                                        th:text="${#numbers.formatDecimal(parametroCcss.porcentajePatronal * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                                </tr>
+                                <tr>
+                                    <td>SEM</td>
+                                    <td class="text-end"
+                                        th:text="${#numbers.formatDecimal(parametroCcss.porcentajeSem * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                                    <td class="text-end">—</td>
+                                </tr>
+                                <tr>
+                                    <td>IVM</td>
+                                    <td class="text-end"
+                                        th:text="${#numbers.formatDecimal(parametroCcss.porcentajeIvmObrero * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                                    <td class="text-end">—</td>
+                                </tr>
+                                <tr>
+                                    <td>Banco Popular</td>
+                                    <td class="text-end"
+                                        th:text="${#numbers.formatDecimal(parametroCcss.porcentajeBpObrero * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                                    <td class="text-end">—</td>
+                                </tr>
+                                <tr>
+                                    <td>FCL</td>
+                                    <td class="text-end">—</td>
+                                    <td class="text-end"
+                                        th:text="${#numbers.formatDecimal(parametroCcss.porcentajeFcl * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                                </tr>
+                                <tr>
+                                    <td>ROP</td>
+                                    <td class="text-end">—</td>
+                                    <td class="text-end"
+                                        th:text="${#numbers.formatDecimal(parametroCcss.porcentajeRop * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <hr class="my-3"/>
+
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Vigencia desde</small>
+                                <strong th:text="${#temporals.format(parametroCcss.vigenciaDesde, 'dd/MM/yyyy')}"></strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Vigencia hasta</small>
+                                <strong th:text="${parametroCcss.vigenciaHasta != null
+                                    ? #temporals.format(parametroCcss.vigenciaHasta, 'dd/MM/yyyy')
+                                    : 'Indefinido'}"></strong>
+                            </div>
+                        </div>
+
+                        <hr class="my-3"/>
+
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Base mín. SEM</small>
+                                <strong th:text="${'₡ ' + #numbers.formatDecimal(parametroCcss.baseMinimaContributivaSem, 1, 'COMMA', 2, 'POINT')}"></strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Base mín. IVM</small>
+                                <strong th:text="${'₡ ' + #numbers.formatDecimal(parametroCcss.baseMinimaContributivaIvm, 1, 'COMMA', 2, 'POINT')}"></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Income tax brackets -->
+            <div class="col-md-6" th:if="${tramosActuales != null and !tramosActuales.empty}">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fas fa-percent me-2"></i>Tramos renta salarial
+                            <span th:text="${#temporals.format(#temporals.createNow(), 'yyyy')}" class="ms-1"></span>
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Desde</th>
+                                    <th>Hasta</th>
+                                    <th class="text-end">Tasa</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="tramo : ${tramosActuales}">
+                                    <td th:text="${'₡ ' + #numbers.formatDecimal(tramo.limiteInferior, 1, 'COMMA', 0, 'POINT')}"></td>
+                                    <td th:text="${tramo.limiteSuperior != null
+                                        ? '₡ ' + #numbers.formatDecimal(tramo.limiteSuperior, 1, 'COMMA', 0, 'POINT')
+                                        : 'Sin límite'}"></td>
+                                    <td class="text-end"
+                                        th:text="${#numbers.formatDecimal(tramo.porcentaje * 100, 1, 'COMMA', 1, 'POINT') + '%'}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="p-2 text-muted" th:if="${tramosActuales[0].creditoPorHijo != null}">
+                            <small>
+                                Crédito por hijo: <strong th:text="${'₡ ' + #numbers.formatDecimal(tramosActuales[0].creditoPorHijo, 1, 'COMMA', 0, 'POINT')}"></strong>
+                                &nbsp;|&nbsp;
+                                Crédito por cónyuge: <strong th:text="${'₡ ' + #numbers.formatDecimal(tramosActuales[0].creditoPorConyuge, 1, 'COMMA', 0, 'POINT')}"></strong>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- No data message -->
+        <div class="alert alert-warning" th:unless="${parametroCcss != null}">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            No se encontró un registro de parámetros CCSS vigente para la fecha actual.
+        </div>
+
+        <!-- Historical records table -->
+        <div class="card border-0 shadow-sm" th:if="${historial != null and !historial.empty}">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-history me-2"></i>Historial de tasas</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Vigencia desde</th>
+                            <th>Vigencia hasta</th>
+                            <th class="text-end">Obrero %</th>
+                            <th class="text-end">Patronal %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="p : ${historial}">
+                            <td th:text="${#temporals.format(p.vigenciaDesde, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${p.vigenciaHasta != null
+                                ? #temporals.format(p.vigenciaHasta, 'dd/MM/yyyy')
+                                : 'Indefinido'}"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatDecimal(p.porcentajeObrero * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                            <td class="text-end"
+                                th:text="${#numbers.formatDecimal(p.porcentajePatronal * 100, 1, 'COMMA', 2, 'POINT') + '%'}"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+</body>
+</html>

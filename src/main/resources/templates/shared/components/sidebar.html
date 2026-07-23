@@ -134,6 +134,20 @@
             </a>
         </li>
 
+        <!-- RRHH -->
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_VER')">
+            <a th:href="@{/rrhh}"
+               class="menu-link"
+               data-module="rrhh"
+               data-tooltip="Recursos Humanos">
+                <div class="menu-icon">
+                    <i class="fas fa-id-card"></i>
+                </div>
+                <span class="menu-text">RRHH</span>
+            </a>
+        </li>
+
         <!-- Divider -->
         <li><div class="menu-divider"></div></li>
 

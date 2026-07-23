@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.seguridad.controller;
 
+import api.astro.whats_orders_manager.modules.rrhh.service.EmpleadoService;
 import api.astro.whats_orders_manager.modules.seguridad.dto.UsuarioAdminDTO;
 import api.astro.whats_orders_manager.modules.seguridad.model.Permiso;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
@@ -15,6 +16,8 @@ import api.astro.whats_orders_manager.shared.util.PasswordUtil;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -75,6 +78,16 @@ public class UsuarioAdminController {
     private final RolService rolService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+
+    /**
+     * @Lazy breaks the circular dependency: EmpleadoService → UsuarioRepository
+     * and UsuarioAdminController → EmpleadoService → EmpleadoRepository → ...
+     * Using field injection with @Lazy because @RequiredArgsConstructor does not
+     * support per-field @Lazy on constructor parameters.
+     */
+    @Autowired
+    @Lazy
+    private EmpleadoService empleadoService;
 
     // ==================== VISTAS ====================
 
@@ -174,14 +187,15 @@ public class UsuarioAdminController {
     @GetMapping("/nuevo")
     public String nuevoUsuario(Model model) {
         log.info("Mostrando formulario de nuevo usuario");
-        
+
         // Obtener todos los roles activos
         var rolesActivos = rolService.findByActivoTrue();
-        
+
         model.addAttribute("usuario", new UsuarioAdminDTO());
         model.addAttribute("roles", rolesActivos);
         model.addAttribute("modoEdicion", false);
-        
+        model.addAttribute("empleadosDisponibles", empleadoService.findEmpleadosDisponibles(null));
+
         return "modules/seguridad/usuarios/form-admin";
     }
 
@@ -203,14 +217,24 @@ public class UsuarioAdminController {
             UsuarioAdminDTO usuarioDTO = UsuarioAdminDTO.fromEntity(usuarioOpt.get());
 
             log.info("usuarioDTO: {}", usuarioDTO);
-            
+
+            // Obtain all active employees not linked to another user (+ current one if any)
+            var empleadosDisponibles = empleadoService.findEmpleadosDisponibles(id);
+
+            // Pre-select the currently linked employee on the DTO (if any)
+            empleadosDisponibles.stream()
+                    .filter(e -> e.getUsuario() != null && e.getUsuario().getIdUsuario().equals(id))
+                    .findFirst()
+                    .ifPresent(e -> usuarioDTO.setEmpleadoId(e.getId()));
+
             // Obtener todos los roles activos
             var rolesActivos = rolService.findByActivoTrue();
-            
+
             model.addAttribute("usuario", usuarioDTO);
             model.addAttribute("roles", rolesActivos);
             model.addAttribute("modoEdicion", true);
-            
+            model.addAttribute("empleadosDisponibles", empleadosDisponibles);
+
             return "modules/seguridad/usuarios/form-admin";
             
         } catch (Exception e) {
@@ -269,7 +293,12 @@ public class UsuarioAdminController {
 
             // Guardar
             Usuario usuarioGuardado = usuarioService.save(usuario);
-            
+
+            // Link to employee if specified
+            if (usuarioDTO.getEmpleadoId() != null) {
+                empleadoService.vincularUsuario(usuarioDTO.getEmpleadoId(), usuarioGuardado.getIdUsuario());
+            }
+
             // Registrar actividad
             Usuario admin = obtenerUsuarioActual(authentication);
             if (admin != null) {
@@ -281,11 +310,11 @@ public class UsuarioAdminController {
                         usuarioGuardado.getIdUsuario()
                 );
             }
-            
+
             log.info("Usuario creado exitosamente: {}", usuarioGuardado.getIdUsuario());
             redirectAttributes.addFlashAttribute("success", "Usuario creado exitosamente");
             return "redirect:/admin/usuarios";
-            
+
         } catch (Exception e) {
             log.error("Error al crear usuario: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "Error al crear usuario: " + e.getMessage());
@@ -350,7 +379,14 @@ public class UsuarioAdminController {
 
             // Guardar
             Usuario usuarioActualizado = usuarioService.save(usuario);
-            
+
+            // Sync employee link: vincular if provided, desvincular if cleared
+            if (usuarioDTO.getEmpleadoId() != null) {
+                empleadoService.vincularUsuario(usuarioDTO.getEmpleadoId(), id);
+            } else {
+                empleadoService.desvincularUsuario(id);
+            }
+
             // Registrar actividad
             Usuario admin = obtenerUsuarioActual(authentication);
             if (admin != null) {
@@ -362,11 +398,11 @@ public class UsuarioAdminController {
                         id
                 );
             }
-            
+
             log.info("Usuario actualizado exitosamente: {}", id);
             redirectAttributes.addFlashAttribute("success", "Usuario actualizado exitosamente");
             return "redirect:/admin/usuarios";
-            
+
         } catch (Exception e) {
             log.error("Error al actualizar usuario: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "Error al actualizar usuario: " + e.getMessage());

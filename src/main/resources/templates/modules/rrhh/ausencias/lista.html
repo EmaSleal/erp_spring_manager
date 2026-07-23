@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-calendar-times', 'Ausencias')}"></div>
+
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'warning', 'Recursos Humanos', 'Ausencias', 'Registro de ausencias y permisos', '/rrhh/empleados', 'RRHH')}"></div>
+
+        <div th:replace="~{shared/fragments/alerts :: alerts(${successMsg}, ${errorMsg})}"></div>
+
+        <!-- Filter -->
+        <div class="card mb-4">
+            <div class="card-body filter-row">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Empleado</label>
+                        <select id="filtroEmpleado" class="form-select" onchange="cargarAusencias()">
+                            <option value="">Todos los empleados</option>
+                            <option th:each="emp : ${empleados}"
+                                    th:value="${emp.id}"
+                                    th:text="${emp.nombreCompleto}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-secondary w-100"
+                                onclick="limpiarFiltrosAusencia()">Limpiar</button>
+                    </div>
+                    <div class="col-md-6 text-end"
+                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_AUSENCIAS')">
+                        <a th:href="@{/rrhh/ausencias/nueva}" class="btn btn-warning text-white">
+                            <i class="fas fa-plus me-2"></i>Registrar Ausencia
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div id="ausenciasList">
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Seleccione un empleado para ver sus ausencias.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:inline="javascript">
+    const permisos = {
+        gestionar: /*[[${@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_AUSENCIAS')}]]*/ false
+    };
+</script>
+<script th:src="@{/modules/rrhh/js/ausencias.js}"></script>
+</body>
+</html>

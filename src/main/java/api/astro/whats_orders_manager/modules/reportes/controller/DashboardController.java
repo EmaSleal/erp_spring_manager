@@ -173,6 +173,7 @@ public class DashboardController {
         boolean esUser = "USER".equals(rol);
         boolean esVendedor = "VENDEDOR".equals(rol);
         boolean esVisualizador = "VISUALIZADOR".equals(rol);
+        boolean esGerente = "GERENTE".equals(rol);
 
         // Clientes (todos pueden ver)
         modulos.add(crearModulo(
@@ -249,6 +250,17 @@ public class DashboardController {
                 "/reportes",
                 true,
                 esAdmin || esUser
+        ));
+
+        // RRHH (ADMIN y GERENTE)
+        modulos.add(crearModulo(
+                "Recursos Humanos",
+                "Gestión de personal y contratos",
+                "fas fa-id-card",
+                "#E91E63",
+                "/rrhh",
+                true,
+                esAdmin || esGerente
         ));
 
         // Configuración (solo ADMIN)
