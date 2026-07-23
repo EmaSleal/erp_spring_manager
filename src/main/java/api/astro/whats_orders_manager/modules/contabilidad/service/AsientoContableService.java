@@ -13,6 +13,8 @@ import api.astro.whats_orders_manager.modules.contabilidad.repository.DetalleAsi
 import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
+import api.astro.whats_orders_manager.modules.nomina.model.DetalleNomina;
+import api.astro.whats_orders_manager.modules.nomina.model.Nomina;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -632,6 +634,138 @@ public class AsientoContableService {
         guardado = asientoRepository.save(guardado);
 
         log.info("Supplier payment journal entry {} posted for pago {}", guardado.getNumero(), pago.getNumero());
+        return guardado;
+    }
+
+    /**
+     * Generates a balanced payroll journal entry for a Nomina in APROBADA state.
+     *
+     * Entry structure:
+     *   DR NOMINA_GASTO_SUELDOS        — nomina.totalBruto
+     *   DR NOMINA_CCSS_PATRONAL_POR_PAGAR — nomina.totalCcssPatronal
+     *   CR NOMINA_CCSS_POR_PAGAR       — sum(detalles.ccssObrero)
+     *   CR NOMINA_INS_POR_PAGAR        — sum(detalles.ins)
+     *   CR NOMINA_RENTA_POR_PAGAR      — sum(detalles.impuestoRenta)
+     *   CR NOMINA_SALARIOS_POR_PAGAR   — nomina.totalNeto
+     *
+     * @param nomina the approved Nomina to post
+     * @return the posted AsientoContable
+     * @throws IllegalStateException if any NOMINA_* key is not configured, or entry does not balance
+     */
+    @Transactional
+    public AsientoContable generarAsientoNomina(Nomina nomina) {
+        // Resolve all 6 accounts — fail fast if any missing
+        CuentaContable cuentaGastoSueldos  = resolverCuenta("NOMINA_GASTO_SUELDOS");
+        CuentaContable cuentaCcssPatronal  = resolverCuenta("NOMINA_CCSS_PATRONAL_POR_PAGAR");
+        CuentaContable cuentaCcssObrero    = resolverCuenta("NOMINA_CCSS_POR_PAGAR");
+        CuentaContable cuentaIns           = resolverCuenta("NOMINA_INS_POR_PAGAR");
+        CuentaContable cuentaRenta         = resolverCuenta("NOMINA_RENTA_POR_PAGAR");
+        CuentaContable cuentaSalarios      = resolverCuenta("NOMINA_SALARIOS_POR_PAGAR");
+
+        AsientoContable asiento = new AsientoContable();
+        asiento.setNumero(generarNumeroAsiento());
+        asiento.setFecha(LocalDate.now());
+        asiento.setConcepto("Nómina " + nomina.getNumero() + " — período "
+                + nomina.getPeriodoInicio() + " / " + nomina.getPeriodoFin());
+        asiento.setTipo(TipoAsiento.AUTOMATICO_NOMINA);
+        asiento.setEstado(EstadoAsiento.BORRADOR);
+        asiento.setNomina(nomina);
+
+        List<DetalleAsiento> detalles = new ArrayList<>();
+
+        // DR 1: Gasto Sueldos (totalBruto)
+        if (nomina.getTotalBruto().compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento drSueldos = new DetalleAsiento();
+            drSueldos.setCuenta(cuentaGastoSueldos);
+            drSueldos.setDebe(nomina.getTotalBruto());
+            drSueldos.setDescripcion("Sueldos brutos — " + nomina.getNumero());
+            drSueldos.setAsiento(asiento);
+            detalles.add(drSueldos);
+        }
+
+        // DR 2: Patronal CCSS cost — expense on the same gasto account, separate line for ledger clarity
+        if (nomina.getTotalCcssPatronal().compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento drCcssPatronal = new DetalleAsiento();
+            drCcssPatronal.setCuenta(cuentaGastoSueldos);
+            drCcssPatronal.setDebe(nomina.getTotalCcssPatronal());
+            drCcssPatronal.setDescripcion("Carga patronal CCSS — " + nomina.getNumero());
+            drCcssPatronal.setAsiento(asiento);
+            detalles.add(drCcssPatronal);
+        }
+
+        // CR 1: CCSS Obrero por pagar — sum across detalles
+        BigDecimal totalCcssObrero = nomina.getDetalles().stream()
+                .map(DetalleNomina::getCcssObrero)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalCcssObrero.compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento crCcss = new DetalleAsiento();
+            crCcss.setCuenta(cuentaCcssObrero);
+            crCcss.setHaber(totalCcssObrero);
+            crCcss.setDescripcion("CCSS obrero por pagar — " + nomina.getNumero());
+            crCcss.setAsiento(asiento);
+            detalles.add(crCcss);
+        }
+
+        // CR 2: INS por pagar — sum across detalles
+        BigDecimal totalIns = nomina.getDetalles().stream()
+                .map(DetalleNomina::getIns)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalIns.compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento crIns = new DetalleAsiento();
+            crIns.setCuenta(cuentaIns);
+            crIns.setHaber(totalIns);
+            crIns.setDescripcion("INS por pagar — " + nomina.getNumero());
+            crIns.setAsiento(asiento);
+            detalles.add(crIns);
+        }
+
+        // CR 3: Renta por pagar — sum across detalles (only when > 0)
+        BigDecimal totalRenta = nomina.getDetalles().stream()
+                .map(DetalleNomina::getImpuestoRenta)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalRenta.compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento crRenta = new DetalleAsiento();
+            crRenta.setCuenta(cuentaRenta);
+            crRenta.setHaber(totalRenta);
+            crRenta.setDescripcion("Impuesto renta por pagar — " + nomina.getNumero());
+            crRenta.setAsiento(asiento);
+            detalles.add(crRenta);
+        }
+
+        // CR 4: Salarios netos por pagar (totalNeto)
+        if (nomina.getTotalNeto().compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento crSalarios = new DetalleAsiento();
+            crSalarios.setCuenta(cuentaSalarios);
+            crSalarios.setHaber(nomina.getTotalNeto());
+            crSalarios.setDescripcion("Salarios netos por pagar — " + nomina.getNumero());
+            crSalarios.setAsiento(asiento);
+            detalles.add(crSalarios);
+        }
+
+        // CR 5: CCSS Patronal liability (balances DR 2)
+        if (nomina.getTotalCcssPatronal().compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento crCcssPatronal = new DetalleAsiento();
+            crCcssPatronal.setCuenta(cuentaCcssPatronal);
+            crCcssPatronal.setHaber(nomina.getTotalCcssPatronal());
+            crCcssPatronal.setDescripcion("CCSS patronal por pagar — " + nomina.getNumero());
+            crCcssPatronal.setAsiento(asiento);
+            detalles.add(crCcssPatronal);
+        }
+
+        asiento.setDetalles(detalles);
+
+        if (!asiento.estaCuadrado()) {
+            throw new IllegalStateException(
+                    String.format("Asiento de nómina no cuadra — debe: %s, haber: %s",
+                            asiento.getTotalDebe(), asiento.getTotalHaber()));
+        }
+
+        AsientoContable guardado = asientoRepository.save(asiento);
+        guardado.contabilizar();
+        guardado = asientoRepository.save(guardado);
+
+        log.info("Asiento de nómina {} generado y contabilizado: {}",
+                nomina.getNumero(), guardado.getNumero());
         return guardado;
     }
 
