@@ -58,6 +58,8 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
                 .smtpPassword("")
                 .smtpTls(true)
                 .smtpAuth(true)
+                .smtpTimeout(5000)
+                .charset("UTF-8")
                 .emailRemitente("")
                 .nombreRemitente("Sistema de Facturación")
                 .activo(false)
@@ -127,6 +129,12 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
         if (configuracion.getSmtpAuth() != null) {
             configuracionExistente.setSmtpAuth(configuracion.getSmtpAuth());
         }
+        if (configuracion.getSmtpTimeout() != null) {
+            configuracionExistente.setSmtpTimeout(configuracion.getSmtpTimeout());
+        }
+        if (configuracion.getCharset() != null) {
+            configuracionExistente.setCharset(configuracion.getCharset());
+        }
         if (configuracion.getEmailRemitente() != null) {
             configuracionExistente.setEmailRemitente(configuracion.getEmailRemitente());
         }
@@ -174,13 +182,21 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
             mailSender.setPort(configuracion.getSmtpPort());
             mailSender.setUsername(configuracion.getSmtpUsuario());
             mailSender.setPassword(configuracion.getSmtpPassword());
-            
+            mailSender.setDefaultEncoding(
+                    configuracion.getCharset() != null ? configuracion.getCharset() : "UTF-8");
+
             Properties props = mailSender.getJavaMailProperties();
             props.put("mail.transport.protocol", "smtp");
             props.put("mail.smtp.auth", configuracion.getSmtpAuth() ? "true" : "false");
             props.put("mail.smtp.starttls.enable", configuracion.getSmtpTls() ? "true" : "false");
             props.put("mail.smtp.ssl.enable", configuracion.getSmtpSsl() ? "true" : "false");
             props.put("mail.debug", "false");
+
+            String timeoutMs = String.valueOf(
+                    configuracion.getSmtpTimeout() != null ? configuracion.getSmtpTimeout() : 5000);
+            props.put("mail.smtp.connectiontimeout", timeoutMs);
+            props.put("mail.smtp.timeout", timeoutMs);
+            props.put("mail.smtp.writetimeout", timeoutMs);
             
             // Crear y enviar mensaje de prueba
             SimpleMailMessage message = new SimpleMailMessage();

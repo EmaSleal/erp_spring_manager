@@ -65,6 +65,16 @@ public class ConfiguracionEmailDTO {
     private Boolean smtpAuth;
 
     /**
+     * Timeout de conexión/lectura/escritura SMTP en milisegundos
+     */
+    private Integer timeout;
+
+    /**
+     * Codificación de caracteres usada para el envío de correos (ej: UTF-8)
+     */
+    private String charset;
+
+    /**
      * Email del remitente
      */
     private String emailRemitente;

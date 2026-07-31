@@ -33,6 +33,8 @@ public class ConfiguracionEmailMapper {
         dto.setSmtpSsl(entity.getSmtpSsl());
         dto.setSmtpTls(entity.getSmtpTls());
         dto.setSmtpAuth(entity.getSmtpAuth());
+        dto.setTimeout(entity.getSmtpTimeout());
+        dto.setCharset(entity.getCharset());
         dto.setEmailRemitente(entity.getEmailRemitente());
         dto.setNombreRemitente(entity.getNombreRemitente());
         dto.setEmailCopia(entity.getEmailCopia());
@@ -71,6 +73,8 @@ public class ConfiguracionEmailMapper {
                 .smtpSsl(dto.getSmtpSsl())
                 .smtpTls(dto.getSmtpTls())
                 .smtpAuth(dto.getSmtpAuth())
+                .smtpTimeout(dto.getTimeout())
+                .charset(dto.getCharset())
                 .emailRemitente(dto.getEmailRemitente())
                 .nombreRemitente(dto.getNombreRemitente())
                 .emailCopia(dto.getEmailCopia())

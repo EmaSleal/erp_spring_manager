@@ -65,6 +65,14 @@ public class ConfiguracionEmail implements Serializable {
     @Column(name = "smtp_auth")
     private Boolean smtpAuth = true;
 
+    @Builder.Default
+    @Column(name = "smtp_timeout")
+    private Integer smtpTimeout = 5000;
+
+    @Builder.Default
+    @Column(name = "charset")
+    private String charset = "UTF-8";
+
     // ==================== REMITENTE ====================
     
     @Column(name = "email_remitente", nullable = false, length = 255)
