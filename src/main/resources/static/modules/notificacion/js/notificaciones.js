@@ -180,6 +180,10 @@ class NotificacionesPage {
             'FACTURA_VENCIDA': 'type-factura-vencida',
             'FACTURA_PROXIMA_VENCER': 'type-factura-proxima-vencer',
             'PAGO_RECIBIDO': 'type-pago-recibido',
+            'STOCK_BAJO': 'type-stock-bajo',
+            'NUEVO_CLIENTE': 'type-nuevo-cliente',
+            'NUEVO_USUARIO': 'type-nuevo-usuario',
+            'MENSAJE_WHATSAPP': 'type-mensaje-whatsapp',
             'SISTEMA': 'type-sistema'
         };
         return tipos[tipo] || 'type-sistema';
@@ -191,17 +195,27 @@ class NotificacionesPage {
             'FACTURA_VENCIDA': 'fas fa-exclamation-circle',
             'FACTURA_PROXIMA_VENCER': 'fas fa-clock',
             'PAGO_RECIBIDO': 'fas fa-money-bill-wave',
+            'STOCK_BAJO': 'fas fa-box-open',
+            'NUEVO_CLIENTE': 'fas fa-user-plus',
+            'NUEVO_USUARIO': 'fas fa-user-shield',
+            'MENSAJE_WHATSAPP': 'fab fa-whatsapp',
             'SISTEMA': 'fas fa-info-circle'
         };
         return iconos[tipo] || 'fas fa-bell';
     }
 
+    // Colores alineados con TipoNotificacion.getColor() (Java) — misma
+    // clasificación que usa el backend, no inventada en el frontend.
     getTipoBadge(tipo) {
         const badges = {
             'FACTURA_CREADA': { text: 'Factura Creada', class: 'bg-success' },
             'FACTURA_VENCIDA': { text: 'Vencida', class: 'bg-danger' },
             'FACTURA_PROXIMA_VENCER': { text: 'Por Vencer', class: 'bg-warning' },
-            'PAGO_RECIBIDO': { text: 'Pago', class: 'bg-info' },
+            'PAGO_RECIBIDO': { text: 'Pago', class: 'bg-success' },
+            'STOCK_BAJO': { text: 'Stock Bajo', class: 'bg-danger' },
+            'NUEVO_CLIENTE': { text: 'Nuevo Cliente', class: 'bg-info' },
+            'NUEVO_USUARIO': { text: 'Nuevo Usuario', class: 'bg-info' },
+            'MENSAJE_WHATSAPP': { text: 'WhatsApp', class: 'bg-primary' },
             'SISTEMA': { text: 'Sistema', class: 'bg-secondary' }
         };
         return badges[tipo] || { text: 'Notificación', class: 'bg-secondary' };

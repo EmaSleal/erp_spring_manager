@@ -137,12 +137,18 @@ class PreferenciasNotificaciones {
         `;
     }
 
+    // Tipos y colores alineados con TipoNotificacion (Java) — misma
+    // clasificación que usa el backend, no inventada en el frontend.
     getTipoClass(tipo) {
         const tipos = {
             'FACTURA_CREADA': 'type-factura-creada',
             'FACTURA_VENCIDA': 'type-factura-vencida',
             'FACTURA_PROXIMA_VENCER': 'type-factura-proxima-vencer',
             'PAGO_RECIBIDO': 'type-pago-recibido',
+            'STOCK_BAJO': 'type-stock-bajo',
+            'NUEVO_CLIENTE': 'type-nuevo-cliente',
+            'NUEVO_USUARIO': 'type-nuevo-usuario',
+            'MENSAJE_WHATSAPP': 'type-mensaje-whatsapp',
             'SISTEMA': 'type-sistema'
         };
         return tipos[tipo] || 'type-sistema';
@@ -154,6 +160,10 @@ class PreferenciasNotificaciones {
             'FACTURA_VENCIDA': 'fas fa-exclamation-circle',
             'FACTURA_PROXIMA_VENCER': 'fas fa-clock',
             'PAGO_RECIBIDO': 'fas fa-money-bill-wave',
+            'STOCK_BAJO': 'fas fa-box-open',
+            'NUEVO_CLIENTE': 'fas fa-user-plus',
+            'NUEVO_USUARIO': 'fas fa-user-shield',
+            'MENSAJE_WHATSAPP': 'fab fa-whatsapp',
             'SISTEMA': 'fas fa-info-circle'
         };
         return iconos[tipo] || 'fas fa-bell';
@@ -165,6 +175,10 @@ class PreferenciasNotificaciones {
             'FACTURA_VENCIDA': 'Te avisaremos cuando una factura haya vencido y requiera atención inmediata',
             'FACTURA_PROXIMA_VENCER': 'Recordatorio 3 días antes del vencimiento para que puedas tomar acción',
             'PAGO_RECIBIDO': 'Confirmaremos cada vez que se registre un pago en el sistema',
+            'STOCK_BAJO': 'Te avisaremos cuando el stock de un producto esté por debajo del mínimo configurado',
+            'NUEVO_CLIENTE': 'Notificación al equipo administrativo cuando se registre un nuevo cliente',
+            'NUEVO_USUARIO': 'Notificación al equipo administrativo cuando se registre un nuevo usuario del sistema',
+            'MENSAJE_WHATSAPP': 'Te avisaremos cuando llegue un nuevo mensaje de WhatsApp',
             'SISTEMA': 'Notificaciones importantes sobre el funcionamiento del sistema'
         };
         return descripciones[tipo] || 'Notificación del sistema';
@@ -176,6 +190,10 @@ class PreferenciasNotificaciones {
             'FACTURA_VENCIDA': 'Factura Vencida',
             'FACTURA_PROXIMA_VENCER': 'Factura Próxima a Vencer',
             'PAGO_RECIBIDO': 'Pago Recibido',
+            'STOCK_BAJO': 'Stock Bajo',
+            'NUEVO_CLIENTE': 'Nuevo Cliente',
+            'NUEVO_USUARIO': 'Nuevo Usuario',
+            'MENSAJE_WHATSAPP': 'Mensaje WhatsApp',
             'SISTEMA': 'Notificación de Sistema'
         };
         return nombres[tipo] || tipo;

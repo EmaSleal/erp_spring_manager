@@ -54,9 +54,9 @@
                 <!-- Preferencias por Tipo -->
                 <div class="col-lg-8">
                     <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-primary text-white">
+                        <div class="card-header bg-light border-bottom">
                             <h5 class="mb-0">
-                                <i class="fas fa-sliders-h me-2"></i>
+                                <i class="fas fa-sliders-h text-primary me-2"></i>
                                 Notificaciones por Tipo
                             </h5>
                         </div>
@@ -161,10 +161,38 @@
                                     </p>
                                 </li>
                                 <li class="mb-2">
-                                    <i class="fas fa-money-bill-wave text-info me-2"></i>
+                                    <i class="fas fa-money-bill-wave text-success me-2"></i>
                                     <strong>Pago Recibido</strong>
                                     <p class="text-muted mb-0 small ms-4">
                                         Cuando se registra un pago
+                                    </p>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-box-open text-danger me-2"></i>
+                                    <strong>Stock Bajo</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Cuando un producto baja del mínimo configurado
+                                    </p>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-user-plus text-info me-2"></i>
+                                    <strong>Nuevo Cliente</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Cuando se registra un nuevo cliente
+                                    </p>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-user-shield text-info me-2"></i>
+                                    <strong>Nuevo Usuario</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Cuando se registra un nuevo usuario del sistema
+                                    </p>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fab fa-whatsapp text-primary me-2"></i>
+                                    <strong>Mensaje WhatsApp</strong>
+                                    <p class="text-muted mb-0 small ms-4">
+                                        Cuando llega un nuevo mensaje de WhatsApp
                                     </p>
                                 </li>
                                 <li>
@@ -225,6 +253,7 @@
             margin-right: 0.75rem;
         }
 
+        /* Colores alineados con TipoNotificacion.getColor() (Java) */
         .preferencia-icon.type-factura-creada {
             background-color: rgba(76, 175, 80, 0.1);
             color: var(--success-color);
@@ -241,13 +270,29 @@
         }
 
         .preferencia-icon.type-pago-recibido {
+            background-color: rgba(76, 175, 80, 0.1);
+            color: var(--success-color);
+        }
+
+        .preferencia-icon.type-stock-bajo {
+            background-color: rgba(244, 67, 54, 0.1);
+            color: var(--error-color);
+        }
+
+        .preferencia-icon.type-nuevo-cliente,
+        .preferencia-icon.type-nuevo-usuario {
             background-color: rgba(33, 150, 243, 0.1);
             color: var(--info-color);
         }
 
+        .preferencia-icon.type-mensaje-whatsapp {
+            background-color: var(--accent-light);
+            color: var(--primary-color);
+        }
+
         .preferencia-icon.type-sistema {
-            background-color: rgba(156, 39, 176, 0.1);
-            color: #9c27b0;
+            background-color: var(--background-color);
+            color: var(--text-secondary);
         }
 
         .preferencia-title {
