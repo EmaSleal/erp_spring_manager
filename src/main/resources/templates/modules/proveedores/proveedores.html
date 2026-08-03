@@ -18,7 +18,7 @@
             </div>
             <div class="col-auto d-flex align-items-end gap-2">
                 <a th:href="@{/proveedores/ordenes-compra}"
-                   class="btn btn-outline-success"
+                   class="btn btn-outline-secondary"
                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_VER')">
                     <i class="fas fa-file-invoice me-1"></i>Órdenes de Compra
                 </a>
@@ -78,7 +78,7 @@
                                     <small class="text-muted" th:if="${p.nombreComercial}" th:text="${p.nombreComercial}"></small>
                                 </td>
                                 <td>
-                                    <span class="badge bg-info" th:text="${p.tipoProveedor}"></span>
+                                    <span class="badge badge-outline-secondary" th:text="${p.tipoProveedor}"></span>
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary" th:if="${p.categoria}" th:text="${p.categoria}"></span>
@@ -94,12 +94,12 @@
                                           class="text-muted">—</span>
                                 </td>
                                 <td>
-                                    <span th:replace="~{shared/fragments/status-badge :: boolBadge(${p.activo}, 'Activo', 'Inactivo', 'bg-success', 'bg-secondary')}"></span>
+                                    <span th:replace="~{shared/fragments/status-badge :: boolBadge(${p.activo}, 'Activo', 'Inactivo', 'badge-secondary', 'badge-outline-secondary')}"></span>
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
                                         <a th:href="@{/proveedores/{id}/editar(id=${p.id})}"
-                                           class="btn btn-outline-primary"
+                                           class="btn btn-primary"
                                            title="Editar"
                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_EDITAR')">
                                             <i class="fas fa-edit"></i>

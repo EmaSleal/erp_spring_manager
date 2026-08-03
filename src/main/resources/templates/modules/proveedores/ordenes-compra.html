@@ -15,9 +15,9 @@
             <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/proveedores', 'fas fa-truck', 'Proveedores', 'fas fa-file-invoice', 'Órdenes de Compra')}"></div>
 
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice', 'text-success', 'Órdenes de', 'Compra', 'Gestión de órdenes de compra a proveedores')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice', 'text-primary', 'Órdenes de', 'Compra', 'Gestión de órdenes de compra a proveedores')}"></div>
                 <div class="page-header-actions">
-                    <button class="btn btn-success"
+                    <button class="btn btn-primary"
                             data-bs-toggle="modal" data-bs-target="#modalNuevaOC"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_CREAR')">
                         <i class="fas fa-plus me-1"></i>Nueva OC
@@ -70,8 +70,8 @@
                                         <span th:text="${oc.estado}"
                                               th:class="${oc.estado.name() == 'BORRADOR'          ? 'badge bg-secondary' :
                                                           oc.estado.name() == 'PENDIENTE'          ? 'badge bg-info text-dark' :
-                                                          oc.estado.name() == 'APROBADA'           ? 'badge bg-primary' :
-                                                          oc.estado.name() == 'ENVIADA'            ? 'badge bg-info' :
+                                                          oc.estado.name() == 'APROBADA'           ? 'badge bg-oc-aprobada' :
+                                                          oc.estado.name() == 'ENVIADA'            ? 'badge bg-dark' :
                                                           oc.estado.name() == 'RECIBIDA_PARCIAL'   ? 'badge bg-warning text-dark' :
                                                           oc.estado.name() == 'RECIBIDA'           ? 'badge bg-success' :
                                                                                                      'badge bg-danger'}">
@@ -102,7 +102,7 @@
 
                                             <!-- APROBADA / ENVIADA / RECIBIDA_PARCIAL: Recibir + Cancelar -->
                                             <th:block th:if="${oc.estado.name() == 'APROBADA' or oc.estado.name() == 'ENVIADA' or oc.estado.name() == 'RECIBIDA_PARCIAL'}">
-                                                <button class="btn btn-outline-primary btn-recibir"
+                                                <button class="btn btn-primary btn-recibir"
                                                         th:data-id="${oc.id}" th:data-numero="${oc.numero}"
                                                         title="Registrar Recepción"
                                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_APROBAR')">
@@ -190,7 +190,7 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Líneas de la orden</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarLineaOC">
+                        <button type="button" class="btn btn-sm btn-primary" id="btnAgregarLineaOC">
                             <i class="fas fa-plus me-1"></i>Agregar línea
                         </button>
                     </div>
@@ -220,7 +220,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" id="btnGuardarOC">
+                    <button type="button" class="btn btn-primary" id="btnGuardarOC">
                         <i class="fas fa-save me-1"></i>Crear Orden
                     </button>
                 </div>
