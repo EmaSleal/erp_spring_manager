@@ -7,14 +7,14 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-money-bill-wave', 'Salarios Mínimos')}"></div>
 
         <div class="row mb-3">
             <div class="col">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-money-bill-wave', 'text-warning', 'Salarios', 'Mínimos', 'Montos vigentes por categoría — Decreto MTSS')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-money-bill-wave', 'text-module-rrhh', 'Salarios', 'Mínimos', 'Montos vigentes por categoría — Decreto MTSS')}"></div>
             </div>
         </div>
 
@@ -59,9 +59,9 @@
                                 : 'Indefinido'}"></td>
                             <td class="text-center">
                                 <span th:if="${sal.vigenciaHasta == null or sal.vigenciaHasta.isAfter(#temporals.createToday())}"
-                                      class="badge bg-success">Vigente</span>
+                                      class="badge badge-secondary">Vigente</span>
                                 <span th:unless="${sal.vigenciaHasta == null or sal.vigenciaHasta.isAfter(#temporals.createToday())}"
-                                      class="badge bg-secondary">Histórico</span>
+                                      class="badge badge-outline-secondary">Histórico</span>
                             </td>
                         </tr>
                     </tbody>

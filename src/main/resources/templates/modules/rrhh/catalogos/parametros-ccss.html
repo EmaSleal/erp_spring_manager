@@ -7,14 +7,14 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-university', 'Parámetros CCSS')}"></div>
 
         <div class="row mb-3">
             <div class="col">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-university', 'text-success', 'Parámetros', 'CCSS', 'Tasas de cotización vigentes — Caja Costarricense de Seguro Social')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-university', 'text-module-rrhh', 'Parámetros', 'CCSS', 'Tasas de cotización vigentes — Caja Costarricense de Seguro Social')}"></div>
             </div>
         </div>
 
@@ -22,7 +22,7 @@
         <div class="row mb-4" th:if="${parametroCcss != null}">
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-success text-white">
+                    <div class="card-header bg-light border-bottom">
                         <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>Tasas vigentes</h6>
                     </div>
                     <div class="card-body">
@@ -109,7 +109,7 @@
             <!-- Income tax brackets -->
             <div class="col-md-6" th:if="${tramosActuales != null and !tramosActuales.empty}">
                 <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-info text-white">
+                    <div class="card-header bg-light border-bottom">
                         <h6 class="mb-0"><i class="fas fa-percent me-2"></i>Tramos renta salarial
                             <span th:text="${#temporals.format(#temporals.createNow(), 'yyyy')}" class="ms-1"></span>
                         </h6>

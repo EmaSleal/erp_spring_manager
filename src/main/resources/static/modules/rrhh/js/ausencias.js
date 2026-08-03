@@ -49,8 +49,8 @@ function renderAusenciasTable(ausencias, container) {
             : '<span class="badge bg-warning text-dark">Pendiente</span>';
 
         const goceBadge = a.conGoceSalario
-            ? '<span class="badge bg-info text-dark">Con goce</span>'
-            : '<span class="badge bg-secondary">Sin goce</span>';
+            ? '<span class="badge badge-secondary">Con goce</span>'
+            : '<span class="badge badge-outline-secondary">Sin goce</span>';
 
         const empleadoNombre = (a.empleado && a.empleado.nombreCompleto)
             ? a.empleado.nombreCompleto
@@ -70,7 +70,7 @@ function renderAusenciasTable(ausencias, container) {
                 acciones += '<button class="btn btn-sm btn-outline-success me-1" '
                     + 'onclick="confirmarAprobar(' + a.id + ')">Aprobar</button>';
             }
-            acciones += '<button class="btn btn-sm btn-outline-primary" '
+            acciones += '<button class="btn btn-sm btn-outline-success" '
                 + 'onclick="confirmarAprobarJefe(' + a.id + ')">Aprobar (jefe)</button>';
         }
         html += '<td>' + (acciones || '—') + '</td>';

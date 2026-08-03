@@ -6,12 +6,12 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-money-check-alt', 'Nómina')}"></div>
 
-        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-money-check-alt', 'success', 'Recursos Humanos', 'Nómina', 'Procesamiento y seguimiento de planillas', '/rrhh', 'RRHH')}"></div>
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-money-check-alt', 'text-module-rrhh', 'Recursos Humanos', 'Nómina', 'Procesamiento y seguimiento de planillas', '/rrhh', 'RRHH')}"></div>
 
         <div th:replace="~{shared/fragments/alerts :: alerts(${successMsg}, ${errorMsg})}"></div>
 
@@ -27,7 +27,7 @@
                     </div>
                     <div class="col-md-6 text-end"
                          sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_CREAR')">
-                        <button type="button" class="btn btn-success"
+                        <button type="button" class="btn btn-module-rrhh"
                                 data-bs-toggle="modal" data-bs-target="#modalCrearNomina">
                             <i class="fas fa-plus me-2"></i>Nueva Nómina
                         </button>
@@ -83,7 +83,7 @@
                                     <span th:switch="${n.estado.name()}">
                                         <span th:case="'BORRADOR'"    class="badge bg-secondary">Borrador</span>
                                         <span th:case="'CALCULADA'"   class="badge bg-info text-dark">Calculada</span>
-                                        <span th:case="'APROBADA'"    class="badge bg-primary">Aprobada</span>
+                                        <span th:case="'APROBADA'"    class="badge bg-nomina-aprobada">Aprobada</span>
                                         <span th:case="'CONTABILIZADA'" class="badge bg-success">Contabilizada</span>
                                         <span th:case="'ANULADA'"     class="badge bg-danger">Anulada</span>
                                         <span th:case="*"             class="badge bg-light text-dark" th:text="${n.estado}"></span>
@@ -111,7 +111,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalCrearNominaLabel">
-                    <i class="fas fa-plus-circle me-2 text-success"></i>Nueva Nómina
+                    <i class="fas fa-plus-circle me-2 text-module-rrhh"></i>Nueva Nómina
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -140,7 +140,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" onclick="crearNomina()">
+                <button type="button" class="btn btn-module-rrhh" onclick="crearNomina()">
                     <i class="fas fa-save me-1"></i>Crear
                 </button>
             </div>

@@ -6,12 +6,12 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-calendar-times', 'Ausencias')}"></div>
 
-        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'warning', 'Recursos Humanos', 'Ausencias', 'Registro de ausencias y permisos', '/rrhh/empleados', 'RRHH')}"></div>
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'text-module-rrhh', 'Recursos Humanos', 'Ausencias', 'Registro de ausencias y permisos', '/rrhh/empleados', 'RRHH')}"></div>
 
         <div th:replace="~{shared/fragments/alerts :: alerts(${successMsg}, ${errorMsg})}"></div>
 
@@ -34,7 +34,7 @@
                     </div>
                     <div class="col-md-6 text-end"
                          sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_AUSENCIAS')">
-                        <a th:href="@{/rrhh/ausencias/nueva}" class="btn btn-warning text-white">
+                        <a th:href="@{/rrhh/ausencias/nueva}" class="btn btn-module-rrhh">
                             <i class="fas fa-plus me-2"></i>Registrar Ausencia
                         </a>
                     </div>

@@ -7,17 +7,17 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-briefcase', 'Puestos')}"></div>
 
         <div class="row mb-3">
             <div class="col">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-briefcase', 'text-success', 'Gestión de', 'Puestos', 'Catálogo de puestos de trabajo')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-briefcase', 'text-module-rrhh', 'Gestión de', 'Puestos', 'Catálogo de puestos de trabajo')}"></div>
             </div>
             <div class="col-auto d-flex align-items-end">
-                <button class="btn btn-primary"
+                <button class="btn btn-module-rrhh"
                         id="btnNuevoPuesto"
                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
                     <i class="fas fa-plus me-1"></i>Nuevo Puesto
@@ -78,10 +78,10 @@
                                 <td th:text="${p.tipoJornada != null ? p.tipoJornada : '-'}"></td>
                                 <td th:text="${p.salarioBase != null ? '₡ ' + #numbers.formatDecimal(p.salarioBase, 1, 'COMMA', 2, 'POINT') : '-'}"></td>
                                 <td>
-                                    <div th:replace="~{shared/fragments/status-badge :: boolBadge(${p.activo}, 'Activo', 'Inactivo', 'success', 'secondary')}"></div>
+                                    <div th:replace="~{shared/fragments/status-badge :: boolBadge(${p.activo}, 'Activo', 'Inactivo', 'badge-secondary', 'badge-outline-secondary')}"></div>
                                 </td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                    <button class="btn btn-sm btn-module-rrhh me-1"
                                             th:data-id="${p.id}"
                                             th:data-nombre="${p.nombre}"
                                             th:data-descripcion="${p.descripcion}"
@@ -171,7 +171,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" onclick="guardarPuesto()">
+                        <button type="button" class="btn btn-module-rrhh" onclick="guardarPuesto()">
                             <i class="fas fa-save me-1"></i>Guardar
                         </button>
                     </div>

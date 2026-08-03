@@ -7,7 +7,7 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/empleados', 'fas fa-users', 'Empleados', 'fas fa-eye', 'Detalle')}"></div>
@@ -16,7 +16,7 @@
             <div class="col">
                 <div th:replace="~{shared/fragments/page-header :: pageHeader(
                     'fas fa-user',
-                    'text-primary',
+                    'text-module-rrhh',
                     'Ficha de',
                     ${empleado.nombreCompleto},
                     ${empleado.puesto.nombre + ' — ' + empleado.departamento.nombre},
@@ -26,7 +26,7 @@
             </div>
             <div class="col-auto d-flex align-items-end gap-2">
                 <a th:href="@{/rrhh/empleados/{id}/editar(id=${empleado.id})}"
-                   class="btn btn-outline-primary"
+                   class="btn btn-module-rrhh"
                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
                     <i class="fas fa-edit me-1"></i>Editar
                 </a>
@@ -56,7 +56,7 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header fw-semibold">
-                        <i class="fas fa-id-badge me-1 text-primary"></i>Datos de identidad
+                        <i class="fas fa-id-badge me-1 text-module-rrhh"></i>Datos de identidad
                     </div>
                     <div class="card-body">
                         <table class="table table-sm table-borderless mb-0">
@@ -78,7 +78,7 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header fw-semibold">
-                        <i class="fas fa-phone me-1 text-primary"></i>Contacto
+                        <i class="fas fa-phone me-1 text-module-rrhh"></i>Contacto
                     </div>
                     <div class="card-body">
                         <table class="table table-sm table-borderless mb-0">
@@ -96,7 +96,7 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header fw-semibold">
-                        <i class="fas fa-briefcase me-1 text-primary"></i>Información laboral
+                        <i class="fas fa-briefcase me-1 text-module-rrhh"></i>Información laboral
                     </div>
                     <div class="card-body">
                         <table class="table table-sm table-borderless mb-0">
@@ -125,7 +125,7 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header fw-semibold">
-                        <i class="fas fa-landmark me-1 text-primary"></i>Datos normativos CR
+                        <i class="fas fa-landmark me-1 text-module-rrhh"></i>Datos normativos CR
                     </div>
                     <div class="card-body">
                         <table class="table table-sm table-borderless mb-0">
@@ -156,7 +156,7 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header fw-semibold">
-                        <i class="fas fa-university me-1 text-primary"></i>Datos bancarios
+                        <i class="fas fa-university me-1 text-module-rrhh"></i>Datos bancarios
                     </div>
                     <div class="card-body">
                         <table class="table table-sm table-borderless mb-0">
@@ -173,7 +173,7 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header fw-semibold">
-                        <i class="fas fa-ambulance me-1 text-primary"></i>Contacto de emergencia
+                        <i class="fas fa-ambulance me-1 text-module-rrhh"></i>Contacto de emergencia
                     </div>
                     <div class="card-body">
                         <table class="table table-sm table-borderless mb-0">

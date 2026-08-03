@@ -6,12 +6,12 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/ausencias', 'fas fa-calendar-times', 'Ausencias', 'fas fa-eye', 'Detalle')}"></div>
 
-        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'warning', 'Recursos Humanos', 'Detalle de Ausencia', 'Información de la ausencia registrada', '/rrhh/ausencias', 'Ausencias')}"></div>
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'text-module-rrhh', 'Recursos Humanos', 'Detalle de Ausencia', 'Información de la ausencia registrada', '/rrhh/ausencias', 'Ausencias')}"></div>
 
         <div class="card">
             <div class="card-body">

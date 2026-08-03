@@ -7,17 +7,17 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-building', 'Departamentos')}"></div>
 
         <div class="row mb-3">
             <div class="col">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-building', 'text-primary', 'Gestión de', 'Departamentos', 'Catálogo de departamentos organizacionales')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-building', 'text-module-rrhh', 'Gestión de', 'Departamentos', 'Catálogo de departamentos organizacionales')}"></div>
             </div>
             <div class="col-auto d-flex align-items-end">
-                <button class="btn btn-primary"
+                <button class="btn btn-module-rrhh"
                         id="btnNuevoDepartamento"
                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
                     <i class="fas fa-plus me-1"></i>Nuevo Departamento
@@ -60,11 +60,11 @@
                                 <td th:text="${d.id}"></td>
                                 <td class="fw-semibold" th:text="${d.nombre}"></td>
                                 <td>
-                                    <div th:replace="~{shared/fragments/status-badge :: boolBadge(${d.activo}, 'Activo', 'Inactivo', 'success', 'secondary')}"></div>
+                                    <div th:replace="~{shared/fragments/status-badge :: boolBadge(${d.activo}, 'Activo', 'Inactivo', 'badge-secondary', 'badge-outline-secondary')}"></div>
                                 </td>
                                 <td th:text="${#temporals.format(d.createdAt, 'dd/MM/yyyy')}"></td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                    <button class="btn btn-sm btn-module-rrhh me-1"
                                             th:data-id="${d.id}"
                                             th:data-nombre="${d.nombre}"
                                             th:data-jefe-id="${d.jefe != null ? d.jefe.id : ''}"
@@ -123,7 +123,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" id="btnGuardarDepartamento" onclick="guardarDepartamento()">
+                        <button type="button" class="btn btn-module-rrhh" id="btnGuardarDepartamento" onclick="guardarDepartamento()">
                             <i class="fas fa-save me-1"></i>Guardar
                         </button>
                     </div>

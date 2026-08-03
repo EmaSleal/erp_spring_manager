@@ -6,12 +6,12 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/ausencias', 'fas fa-calendar-times', 'Ausencias', 'fas fa-plus', 'Registrar Ausencia')}"></div>
 
-        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'warning', 'Recursos Humanos', 'Registrar Ausencia', 'Nueva solicitud de ausencia o permiso', '/rrhh/ausencias', 'Ausencias')}"></div>
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'text-module-rrhh', 'Recursos Humanos', 'Registrar Ausencia', 'Nueva solicitud de ausencia o permiso', '/rrhh/ausencias', 'Ausencias')}"></div>
 
         <div class="card">
             <div class="card-body">
@@ -80,7 +80,7 @@
                         </div>
                     </div>
                     <div class="mt-4 d-flex gap-2">
-                        <button type="button" class="btn btn-warning text-white"
+                        <button type="button" class="btn btn-module-rrhh"
                                 onclick="registrarAusencia()">
                             <i class="fas fa-save me-2"></i>Registrar Ausencia
                         </button>

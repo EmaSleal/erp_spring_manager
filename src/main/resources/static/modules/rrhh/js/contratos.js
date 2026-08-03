@@ -49,8 +49,8 @@ function renderContratosTable(contratos, container) {
 
     contratos.forEach(c => {
         const activo = c.activo
-            ? '<span class="badge bg-success">Activo</span>'
-            : '<span class="badge bg-secondary">Inactivo</span>';
+            ? '<span class="badge badge-secondary">Activo</span>'
+            : '<span class="badge badge-outline-secondary">Inactivo</span>';
 
         html += '<tr>'
             + '<td>' + (c.tipoContrato || '-') + '</td>'

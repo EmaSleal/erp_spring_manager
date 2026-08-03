@@ -6,12 +6,12 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/nomina', 'fas fa-money-check-alt', 'Nómina', 'fas fa-file-invoice-dollar', 'Detalle')}"></div>
 
-        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-file-invoice-dollar', 'success', 'Recursos Humanos', 'Detalle de Nómina', 'Información detallada de la planilla', '/rrhh/nomina', 'Nómina')}"></div>
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-file-invoice-dollar', 'text-module-rrhh', 'Recursos Humanos', 'Detalle de Nómina', 'Información detallada de la planilla', '/rrhh/nomina', 'Nómina')}"></div>
 
         <div th:replace="~{shared/fragments/alerts :: alerts(${successMsg}, ${errorMsg})}"></div>
 
@@ -25,7 +25,7 @@
                         <span th:switch="${nomina.estado.name()}">
                             <span th:case="'BORRADOR'"      class="badge bg-secondary fs-6">Borrador</span>
                             <span th:case="'CALCULADA'"     class="badge bg-info text-dark fs-6">Calculada</span>
-                            <span th:case="'APROBADA'"      class="badge bg-primary fs-6">Aprobada</span>
+                            <span th:case="'APROBADA'"      class="badge bg-nomina-aprobada fs-6">Aprobada</span>
                             <span th:case="'CONTABILIZADA'" class="badge bg-success fs-6">Contabilizada</span>
                             <span th:case="'ANULADA'"       class="badge bg-danger fs-6">Anulada</span>
                         </span>
@@ -52,7 +52,7 @@
 
                     <!-- CALCULADA: Aprobar + Anular -->
                     <th:block th:if="${nomina.estado.name() == 'CALCULADA'}">
-                        <button type="button" class="btn btn-primary"
+                        <button type="button" class="btn btn-success"
                                 th:attr="data-id=${nomina.id}"
                                 onclick="accionNomina(this.dataset.id, 'aprobar', '¿Aprobar nómina?', 'La nómina quedará aprobada y lista para contabilizar.')"
                                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_APROBAR')">
@@ -124,7 +124,7 @@
                     </div>
                     <div class="col-md-4">
                         <small class="text-muted d-block">Total Neto</small>
-                        <span class="fw-bold fs-5 text-success"
+                        <span class="fw-bold fs-5"
                               th:text="'₡ ' + ${#numbers.formatDecimal(nomina.totalNeto, 1, 'COMMA', 2, 'POINT')}">₡ 0.00</span>
                     </div>
                     <div class="col-md-4" th:if="${nomina.estado.name() == 'CONTABILIZADA'}">
@@ -140,7 +140,7 @@
         <!-- Detail lines -->
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-list me-2"></i>Detalle por empleado</h6>
+                <h6 class="mb-0"><i class="fas fa-list me-2 text-module-rrhh"></i>Detalle por empleado</h6>
             </div>
             <div class="card-body p-0">
                 <div th:if="${#lists.isEmpty(nomina.detalles)}" class="text-center py-5 text-muted">
@@ -169,15 +169,15 @@
                                     th:text="${#numbers.formatDecimal(d.salarioBase, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                 <td class="text-end"
                                     th:text="${#numbers.formatDecimal(d.brutoProrrateado, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td class="text-end text-danger"
+                                <td class="text-end"
                                     th:text="${#numbers.formatDecimal(d.ccssObrero, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td class="text-end text-danger"
+                                <td class="text-end"
                                     th:text="${#numbers.formatDecimal(d.ins, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td class="text-end text-danger"
+                                <td class="text-end"
                                     th:text="${#numbers.formatDecimal(d.impuestoRenta, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td class="text-end text-danger fw-semibold"
+                                <td class="text-end fw-semibold"
                                     th:text="${#numbers.formatDecimal(d.totalDeducciones, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td class="text-end fw-bold text-success"
+                                <td class="text-end fw-bold"
                                     th:text="${#numbers.formatDecimal(d.salarioNeto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                 <td class="text-end text-muted"
                                     th:text="${#numbers.formatDecimal(d.ccssPatronal, 1, 'COMMA', 2, 'POINT')}">0.00</td>
@@ -190,7 +190,7 @@
                                 <td class="text-end"
                                     th:text="${#numbers.formatDecimal(nomina.totalBruto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                 <td colspan="4"></td>
-                                <td class="text-end text-success"
+                                <td class="text-end"
                                     th:text="${#numbers.formatDecimal(nomina.totalNeto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                 <td></td>
                             </tr>

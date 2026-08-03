@@ -7,18 +7,18 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-users', 'Empleados')}"></div>
 
         <div class="row mb-3">
             <div class="col">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'text-primary', 'Gestión de', 'Empleados', 'Registro de empleados de la empresa')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'text-module-rrhh', 'Gestión de', 'Empleados', 'Registro de empleados de la empresa')}"></div>
             </div>
             <div class="col-auto d-flex align-items-end">
                 <a th:href="@{/rrhh/empleados/nuevo}"
-                   class="btn btn-primary"
+                   class="btn btn-module-rrhh"
                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
                     <i class="fas fa-user-plus me-1"></i>Nuevo Empleado
                 </a>
@@ -99,12 +99,12 @@
                                 </td>
                                 <td class="text-end">
                                     <a th:href="@{/rrhh/empleados/{id}(id=${emp.id})}"
-                                       class="btn btn-sm btn-outline-info me-1"
+                                       class="btn btn-sm btn-outline-secondary me-1"
                                        title="Ver detalle">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     <a th:href="@{/rrhh/empleados/{id}/editar(id=${emp.id})}"
-                                       class="btn btn-sm btn-outline-primary"
+                                       class="btn btn-sm btn-module-rrhh"
                                        title="Editar"
                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
                                         <i class="fas fa-edit"></i>

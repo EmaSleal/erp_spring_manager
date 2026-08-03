@@ -6,12 +6,12 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-rrhh-scope">
     <div class="container-fluid py-4">
 
         <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/contratos', 'fas fa-file-contract', 'Contratos', 'fas fa-eye', 'Detalle')}"></div>
 
-        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-file-contract', 'primary', 'Recursos Humanos', 'Detalle de Contrato', 'Información del contrato laboral', '/rrhh/contratos', 'Contratos')}"></div>
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-file-contract', 'text-module-rrhh', 'Recursos Humanos', 'Detalle de Contrato', 'Información del contrato laboral', '/rrhh/contratos', 'Contratos')}"></div>
 
         <div class="card">
             <div class="card-body">
