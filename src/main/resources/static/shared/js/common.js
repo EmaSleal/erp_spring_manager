@@ -60,7 +60,7 @@ async function showConfirmDialog(title, text, confirmButtonText = 'Sí, confirma
         text: text,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#1976D2',
+        confirmButtonColor: '#008040',
         cancelButtonColor: '#F44336',
         confirmButtonText: confirmButtonText,
         cancelButtonText: 'Cancelar'
