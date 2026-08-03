@@ -9,13 +9,13 @@
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-    <main class="main-content">
+    <main class="main-content module-inventario-scope">
         <div class="container-fluid py-4">
 
             <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-list-alt', 'Kardex de Inventario')}"></div>
 
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-list-alt', 'text-info', 'Kardex de', 'Inventario', 'Movimientos detallados por producto')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-list-alt', 'text-module-inventario', 'Kardex de', 'Inventario', 'Movimientos detallados por producto')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver', 'Volver al Dashboard')}"></a>
                 </div>
@@ -35,7 +35,7 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <button id="btnVerKardex" class="btn btn-info w-100" onclick="cargarKardex()">
+                            <button id="btnVerKardex" class="btn btn-module-inventario w-100" onclick="cargarKardex()">
                                 <i class="fas fa-search me-2"></i>Ver Kardex
                             </button>
                         </div>
@@ -104,7 +104,7 @@
                     body.innerHTML = items.map(m => `
                         <tr>
                             <td>${new Date(m.fecha).toLocaleString('es-CR')}</td>
-                            <td><span class="badge ${m.cantidad > 0 ? 'bg-success' : 'bg-danger'}">${m.tipo}</span></td>
+                            <td><span class="badge ${m.cantidad > 0 ? 'badge-secondary' : 'badge-outline-secondary'}">${m.tipo}</span></td>
                             <td class="text-end">${m.cantidad}</td>
                             <td class="text-end">${m.costoUnitario != null ? '₡' + m.costoUnitario.toLocaleString('es-CR') : '—'}</td>
                             <td class="text-end">${m.costoTotal != null ? '₡' + m.costoTotal.toLocaleString('es-CR') : '—'}</td>

@@ -9,15 +9,15 @@
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-    <main class="main-content">
+    <main class="main-content module-inventario-scope">
         <div class="container-fluid py-4">
 
             <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/inventario/stock', 'fas fa-warehouse', 'Inventario', 'fas fa-sliders-h', 'Ajustes')}"></div>
 
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-sliders-h', 'text-warning', 'Ajustes de', 'Inventario', 'Correcciones y conteos físicos de stock')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-sliders-h', 'text-module-inventario', 'Ajustes de', 'Inventario', 'Correcciones y conteos físicos de stock')}"></div>
                 <div class="page-header-actions">
-                    <button class="btn btn-warning"
+                    <button class="btn btn-module-inventario"
                             data-bs-toggle="modal" data-bs-target="#modalNuevoAjuste"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'INVENTARIO_AJUSTAR')">
                         <i class="fas fa-plus me-1"></i>Nuevo Ajuste
@@ -47,7 +47,7 @@
                         <tr th:each="a : ${ajustes}">
                             <td><code th:text="${a.numero}">AJ-2026-00001</code></td>
                             <td>
-                                <span th:replace="~{shared/fragments/status-badge :: textBadge(${a.tipoAjuste}, ${a.tipoAjuste.name() == 'POSITIVO'} ? 'bg-success' : 'bg-danger')}"></span>
+                                <span th:replace="~{shared/fragments/status-badge :: textBadge(${a.tipoAjuste}, ${a.tipoAjuste.name() == 'POSITIVO'} ? 'badge-secondary' : 'badge-outline-secondary')}"></span>
                             </td>
                             <td class="text-muted small" th:text="${a.motivo}"></td>
                             <td>
@@ -114,7 +114,7 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Líneas de ajuste</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarLinea">
+                        <button type="button" class="btn btn-sm btn-module-inventario" id="btnAgregarLinea">
                             <i class="fas fa-plus me-1"></i>Agregar producto
                         </button>
                     </div>
@@ -143,7 +143,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-warning" id="btnGuardarAjuste">
+                    <button type="button" class="btn btn-module-inventario" id="btnGuardarAjuste">
                         <i class="fas fa-save me-1"></i>Guardar Ajuste
                     </button>
                 </div>
@@ -191,7 +191,7 @@
             </td>
             <td><input type="number" class="form-control form-control-sm inp-sistema" min="0" value="0" data-idx="${lineaIdx}"></td>
             <td><input type="number" class="form-control form-control-sm inp-fisico" min="0" value="0" data-idx="${lineaIdx}"></td>
-            <td><span class="badge bg-secondary dif-badge" data-idx="${lineaIdx}">0</span></td>
+            <td><span class="badge badge-secondary dif-badge" data-idx="${lineaIdx}">0</span></td>
             <td><input type="number" class="form-control form-control-sm inp-costo" min="0" step="0.01" placeholder="Opcional" data-idx="${lineaIdx}"></td>
             <td><button type="button" class="btn btn-sm btn-outline-danger btn-rm-linea" data-idx="${lineaIdx}"><i class="fas fa-trash"></i></button></td>
         `;
@@ -221,8 +221,8 @@
     function actualizarDif(inpSistema, inpFisico, badge) {
         const dif = (parseInt(inpFisico.value) || 0) - (parseInt(inpSistema.value) || 0);
         badge.textContent = (dif >= 0 ? '+' : '') + dif;
-        badge.className = dif > 0 ? 'badge bg-success dif-badge' :
-                          dif < 0 ? 'badge bg-danger dif-badge' : 'badge bg-secondary dif-badge';
+        badge.className = dif > 0 ? 'badge badge-secondary dif-badge' :
+                          dif < 0 ? 'badge badge-outline-secondary dif-badge' : 'badge badge-secondary dif-badge';
     }
 
     document.getElementById('btnAgregarLinea').addEventListener('click', agregarLinea);
