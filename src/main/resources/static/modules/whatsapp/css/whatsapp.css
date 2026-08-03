@@ -93,7 +93,11 @@
 }
 
 .status-ENTREGADO {
-    color: #53bdeb;
+    /* Doble check gris: entregado pero no leído todavía — antes era el
+       mismo azul que LEIDO (#53bdeb), haciendo ambos estados
+       indistinguibles y rompiendo la convención real de WhatsApp
+       (check simple=enviado, doble gris=entregado, doble azul=leído). */
+    color: #999;
 }
 
 .status-LEIDO {

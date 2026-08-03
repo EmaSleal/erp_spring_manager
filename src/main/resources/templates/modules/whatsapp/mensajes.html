@@ -44,7 +44,7 @@
                 </div>
                 <div class="d-flex gap-2">
                     <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/dashboard', 'Volver a Dashboard')}"></a>
-                    <a th:href="@{/whatsapp/plantillas}" class="btn btn-outline-primary">
+                    <a th:href="@{/whatsapp/plantillas}" class="btn btn-outline-secondary">
                         <i class="fas fa-file-alt me-2"></i>Plantillas
                     </a>
                 </div>
@@ -103,9 +103,9 @@
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1">
                                     <p class="text-muted mb-1 small">Entregados</p>
-                                    <h4 class="mb-0 text-primary" th:text="${estadisticas.entregados}">0</h4>
+                                    <h4 class="mb-0 text-whatsapp-entregado" th:text="${estadisticas.entregados}">0</h4>
                                 </div>
-                                <div class="text-primary">
+                                <div class="text-whatsapp-entregado">
                                     <i class="fas fa-check-double fa-2x"></i>
                                 </div>
                             </div>
@@ -196,11 +196,11 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush" id="conversacionesList">
-                        <div th:each="conv : ${conversaciones}" 
-                             th:data-telefono="${conv.telefono}" 
-                             th:data-nombre="${conv.nombreUsuario}" 
+                        <div th:each="conv : ${conversaciones}"
+                             th:data-telefono="${conv.telefono}"
+                             th:data-nombre="${conv.nombreUsuario}"
                              th:data-noleidos="${conv.noLeidos}"
-                             class="list-group-item list-group-item-action conversacion-item"
+                             class="list-group-item list-group-item-action conversacion-item">
                             <div class="d-flex align-items-start">
                                 <!-- Avatar -->
                                 <div class="flex-shrink-0 me-3">
@@ -250,8 +250,8 @@
                                               class="badge bg-danger">
                                             <i class="fas fa-exclamation-triangle me-1"></i>Fallido
                                         </span>
-                                        <span th:if="${conv.ultimoEstado.toString() == 'ENTREGADO'}" 
-                                              class="badge bg-primary">
+                                        <span th:if="${conv.ultimoEstado.toString() == 'ENTREGADO'}"
+                                              class="badge bg-whatsapp-entregado">
                                             <i class="fas fa-check-double me-1"></i>Entregado
                                         </span>
                                         <span th:if="${conv.ultimoEstado.toString() == 'LEIDO'}" 
@@ -274,7 +274,6 @@
 
     <!-- Scripts -->
     <div th:replace="~{shared/layout :: scripts}"></div>
-    <script src="/js/common.js"></script>
-    <script src="/js/whatsapp-conversaciones.js"></script>
+    <script th:src="@{/modules/whatsapp/js/whatsapp-conversaciones.js}"></script>
 </body>
 </html>
