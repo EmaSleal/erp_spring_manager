@@ -23,19 +23,19 @@
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-money-bill-wave', 'text-success', 'Gestión de', 'Pagos', 'Administra los pagos aplicados a facturas')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-money-bill-wave', 'text-primary', 'Gestión de', 'Pagos', 'Administra los pagos aplicados a facturas')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/facturas', 'Volver a Facturas', 'Volver a Facturas')}"></a>
-                    <a th:href="@{/pagos/pendientes-conciliacion}" class="btn btn-warning"
+                    <a th:href="@{/pagos/pendientes-conciliacion}" class="btn btn-outline-secondary"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver pagos pendientes de conciliación">
                         <i class="fas fa-check-double"></i>
                         <span class="d-none d-sm-inline ms-2">Conciliación</span>
                     </a>
-                    <a th:href="@{/pagos/reporte-caja}" class="btn btn-info"
+                    <a th:href="@{/pagos/reporte-caja}" class="btn btn-outline-secondary"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REPORTE_CAJA')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver reporte de caja">
-                        <i class="fas fa-chart-line text-white"></i>
+                        <i class="fas fa-chart-line"></i>
                         <span class="d-none d-sm-inline ms-2">Reporte de Caja</span>
                     </a>
                     <a th:href="@{/pagos/nuevo}" class="btn btn-primary"
@@ -128,7 +128,7 @@
                             <tbody>
                                 <tr th:each="pago : ${pagos}">
                                     <td>
-                                        <div class="fw-bold text-primary" th:text="${pago.numeroPago}">PAG-20260119-0001</div>
+                                        <div class="fw-bold" th:text="${pago.numeroPago}">PAG-20260119-0001</div>
                                         <small class="text-muted">ID: <span th:text="${pago.idPago}">1</span></small>
                                     </td>
                                     <td>
@@ -152,10 +152,10 @@
                                         </small>
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-info" th:text="${pago.tipoPagoDescripcion}">Total</span>
+                                        <span class="badge bg-light text-dark" th:text="${pago.tipoPagoDescripcion}">Total</span>
                                     </td>
                                     <td class="text-end">
-                                        <span class="fw-bold text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
+                                        <span class="fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
@@ -195,27 +195,32 @@
                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')">
                                                 <i class="fas fa-user-circle"></i>
                                             </a>
-                                            <button th:if="${pago.estado.name() == 'CONFIRMADO' and !pago.conciliado and !pago.estaAnulado()}"
-                                                    th:attr="onclick=|conciliarPago(${pago.idPago})|"
-                                                    class="btn btn-sm btn-info"
-                                                    title="Conciliar"
+                                            <button type="button"
+                                                    th:if="${(pago.estado.name() == 'CONFIRMADO' and !pago.conciliado and !pago.estaAnulado()) or (pago.puedeEditarse() and !pago.estaAnulado()) or pago.puedeEliminarse()}"
+                                                    class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                                                    data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones">
+                                                <span class="visually-hidden">Más acciones</span>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li th:if="${pago.estado.name() == 'CONFIRMADO' and !pago.conciliado and !pago.estaAnulado()}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
-                                                <i class="fas fa-check-double"></i>
-                                            </button>
-                                            <button th:if="${pago.puedeEditarse() and !pago.estaAnulado()}"
-                                                    th:attr="onclick=|anularPago(${pago.idPago})|"
-                                                    class="btn btn-sm btn-warning"
-                                                    title="Anular"
+                                                    <button type="button" class="dropdown-item" th:attr="onclick=|conciliarPago(${pago.idPago})|">
+                                                        <i class="fas fa-check-double me-2"></i>Conciliar
+                                                    </button>
+                                                </li>
+                                                <li th:if="${pago.puedeEditarse() and !pago.estaAnulado()}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ANULAR')">
-                                                <i class="fas fa-ban"></i>
-                                            </button>
-                                            <button th:if="${pago.puedeEliminarse()}"
-                                                    th:attr="onclick=|eliminarPago(${pago.idPago})|"
-                                                    class="btn btn-sm btn-danger"
-                                                    title="Eliminar"
+                                                    <button type="button" class="dropdown-item" th:attr="onclick=|anularPago(${pago.idPago})|">
+                                                        <i class="fas fa-ban me-2"></i>Anular
+                                                    </button>
+                                                </li>
+                                                <li th:if="${pago.puedeEliminarse()}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ELIMINAR')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                                    <button type="button" class="dropdown-item text-danger" th:attr="onclick=|eliminarPago(${pago.idPago})|">
+                                                        <i class="fas fa-trash me-2"></i>Eliminar
+                                                    </button>
+                                                </li>
+                                            </ul>
                                         </div>
                                     </td>
                                 </tr>
@@ -228,14 +233,12 @@
 
                     <!-- MÓVIL: Vista de tarjetas -->
                     <div class="mobile-card-view">
-                        <div th:each="pago : ${pagos}" class="mobile-card"
-                             th:classappend="${pago.estado.name() == 'CONFIRMADO'} ? 'card-success' : (${pago.estado.name() == 'PENDIENTE'} ? 'card-warning' : 'card-secondary')">
-                            
+                        <div th:each="pago : ${pagos}" class="mobile-card">
+
                             <!-- Header -->
                             <div class="mobile-card-header">
                                 <div class="mobile-card-avatar">
-                                    <div class="avatar-circle"
-                                         th:classappend="${pago.estado.name() == 'CONFIRMADO'} ? 'bg-success' : (${pago.estado.name() == 'PENDIENTE'} ? 'bg-warning' : 'bg-secondary')">
+                                    <div class="avatar-circle bg-secondary">
                                         <i class="fas fa-money-bill-wave"></i>
                                     </div>
                                     <div class="mobile-card-avatar-info">
@@ -280,15 +283,15 @@
                                 <div class="mobile-card-row">
                                     <span class="mobile-card-label">Tipo</span>
                                     <span class="mobile-card-value">
-                                        <span class="badge bg-info" th:text="${pago.tipoPagoDescripcion}">Total</span>
+                                        <span class="badge bg-light text-dark" th:text="${pago.tipoPagoDescripcion}">Total</span>
                                     </span>
                                 </div>
-                                
+
                                 <!-- Monto -->
                                 <div class="mobile-card-row">
                                     <span class="mobile-card-label">Monto</span>
                                     <span class="mobile-card-value">
-                                        <strong class="text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
+                                        <strong th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
                                     </span>
                                 </div>
                                 
@@ -324,14 +327,14 @@
                                 </a>
                                 <button th:if="${pago.estado.name() == 'CONFIRMADO' and !pago.conciliado and !pago.estaAnulado()}"
                                         th:attr="onclick=|conciliarPago(${pago.idPago})|"
-                                        class="btn btn-sm btn-info"
+                                        class="btn btn-sm btn-outline-secondary"
                                         title="Conciliar"
                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
                                     <i class="fas fa-check-double me-1"></i> Conciliar
                                 </button>
                                 <button th:if="${pago.puedeEditarse() and !pago.estaAnulado()}"
                                         th:attr="onclick=|anularPago(${pago.idPago})|"
-                                        class="btn btn-sm btn-warning"
+                                        class="btn btn-sm btn-outline-secondary"
                                         title="Anular"
                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ANULAR')">
                                     <i class="fas fa-ban me-1"></i> Anular

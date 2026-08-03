@@ -26,7 +26,7 @@
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-signature', 'text-primary', 'Comprobantes', 'Electrónicos', 'Gestión de facturación electrónica - Hacienda CR')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/facturas', 'Volver', 'Volver a Facturas')}"></a>
-                    <a th:href="@{/facturas/configuracion-hacienda}" class="btn btn-warning"
+                    <a th:href="@{/facturas/configuracion-hacienda}" class="btn btn-outline-secondary"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Configuración de Hacienda">
                         <i class="fas fa-cog"></i>
@@ -98,15 +98,15 @@
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
-                        <i class="fas fa-chart-line text-primary me-2"></i>
+                        <i class="fas fa-chart-line text-secondary me-2"></i>
                         Tendencia de Envíos (Últimos 30 días)
                     </h5>
                     <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarExcel()"
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportarExcel()"
                                 data-bs-toggle="tooltip" title="Exportar a Excel">
                             <i class="fas fa-file-excel me-1"></i>Excel
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarPDF()"
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportarPDF()"
                                 data-bs-toggle="tooltip" title="Exportar a PDF">
                             <i class="fas fa-file-pdf me-1"></i>PDF
                         </button>
@@ -192,7 +192,7 @@
     <div class="modal fade" id="detalleComprobanteModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
+                <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
                         <i class="fas fa-info-circle me-2"></i>Detalle del Comprobante
                     </h5>
@@ -279,23 +279,31 @@
                     <td class="text-center">${formatearFecha(comp.fechaEmision)}</td>
                     <td class="text-center">
                         <div class="btn-group btn-group-sm" role="group">
-                            <button onclick="verDetalle(${comp.id})" class="btn btn-sm btn-info" title="Ver Detalle">
+                            <button onclick="verDetalle(${comp.id})" class="btn btn-sm btn-primary" title="Ver Detalle">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            ${comp.estado === 'FIRMADO' ? `
-                                <button onclick="enviarHacienda(${comp.id})" class="btn btn-sm btn-primary" title="Enviar a Hacienda">
-                                    <i class="fas fa-paper-plane"></i>
+                            ${(comp.estado === 'FIRMADO' || comp.puedeReenviar || comp.xmlComprobante) ? `
+                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                                        data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones">
+                                    <span class="visually-hidden">Más acciones</span>
                                 </button>
-                            ` : ''}
-                            ${comp.puedeReenviar ? `
-                                <button onclick="reenviar(${comp.id})" class="btn btn-sm btn-warning" title="Reenviar">
-                                    <i class="fas fa-redo"></i>
-                                </button>
-                            ` : ''}
-                            ${comp.xmlComprobante ? `
-                                <button onclick="descargarXML(${comp.id})" class="btn btn-sm btn-success" title="Descargar XML">
-                                    <i class="fas fa-download"></i>
-                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    ${comp.estado === 'FIRMADO' ? `
+                                        <li><button type="button" class="dropdown-item" onclick="enviarHacienda(${comp.id})">
+                                            <i class="fas fa-paper-plane me-2"></i>Enviar a Hacienda
+                                        </button></li>
+                                    ` : ''}
+                                    ${comp.puedeReenviar ? `
+                                        <li><button type="button" class="dropdown-item" onclick="reenviar(${comp.id})">
+                                            <i class="fas fa-redo me-2"></i>Reenviar
+                                        </button></li>
+                                    ` : ''}
+                                    ${comp.xmlComprobante ? `
+                                        <li><button type="button" class="dropdown-item" onclick="descargarXML(${comp.id})">
+                                            <i class="fas fa-download me-2"></i>Descargar XML
+                                        </button></li>
+                                    ` : ''}
+                                </ul>
                             ` : ''}
                         </div>
                     </td>
@@ -620,10 +628,10 @@
                             <!-- Tab XML -->
                             <div class="tab-pane fade" id="xml" role="tabpanel">
                                 <div class="mb-3 d-flex justify-content-end">
-                                    <button onclick="copiarXML(${comp.id})" class="btn btn-sm btn-outline-primary me-2">
+                                    <button onclick="copiarXML(${comp.id})" class="btn btn-sm btn-outline-secondary me-2">
                                         <i class="fas fa-copy me-1"></i>Copiar XML
                                     </button>
-                                    <button onclick="descargarXML(${comp.id})" class="btn btn-sm btn-outline-success">
+                                    <button onclick="descargarXML(${comp.id})" class="btn btn-sm btn-outline-secondary">
                                         <i class="fas fa-download me-1"></i>Descargar XML
                                     </button>
                                 </div>

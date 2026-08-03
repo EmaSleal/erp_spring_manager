@@ -42,7 +42,7 @@
             <!-- Header Section -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="h3 mb-1"><i class="fas fa-cash-register text-success me-2"></i>Registrar Nuevo Pago</h2>
+                    <h2 class="h3 mb-1"><i class="fas fa-cash-register text-primary me-2"></i>Registrar Nuevo Pago</h2>
                     <p class="text-muted mb-0">Complete los datos del pago a registrar</p>
                 </div>
                 <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/pagos', 'Volver a Pagos')}"></a>
@@ -57,7 +57,7 @@
                                 <!-- Selector de Cliente -->
                                 <div class="mb-3">
                                     <label for="idCliente" class="form-label">
-                                        <i class="fas fa-user text-primary me-1"></i>
+                                        <i class="fas fa-user text-secondary me-1"></i>
                                         Cliente <span class="text-danger">*</span>
                                     </label>
                                     <select class="form-select" 
@@ -77,7 +77,7 @@
                                 <!-- Tipo de Pago -->
                                 <div class="mb-3">
                                     <label for="tipoPago" class="form-label">
-                                        <i class="fas fa-tags text-success me-1"></i>
+                                        <i class="fas fa-tags text-secondary me-1"></i>
                                         Tipo de Pago <span class="text-danger">*</span>
                                     </label>
                                     <select class="form-select" 
@@ -118,7 +118,7 @@
                                 <!-- ID Factura (opcional para adelantos) -->
                                 <div class="mb-3" id="facturaField">
                                     <label for="idFactura" class="form-label">
-                                        <i class="fas fa-file-invoice text-primary me-1"></i>
+                                        <i class="fas fa-file-invoice text-secondary me-1"></i>
                                         Factura <span class="text-danger d-none" id="facturaRequired">*</span>
                                     </label>
                                     <select class="form-select" id="idFactura" name="idFactura">
@@ -131,7 +131,7 @@
                                 <!-- Monto del Pago -->
                                 <div class="mb-3">
                                     <label for="monto" class="form-label">
-                                        <i class="fas fa-dollar-sign text-success me-1"></i>
+                                        <i class="fas fa-dollar-sign text-secondary me-1"></i>
                                         Monto del Pago <span class="text-danger">*</span>
                                     </label>
                                     <div class="input-group">
@@ -155,7 +155,7 @@
                                 <!-- Método de Pago -->
                                 <div class="mb-3">
                                     <label for="metodoPago" class="form-label">
-                                        <i class="fas fa-credit-card text-info me-1"></i>
+                                        <i class="fas fa-credit-card text-secondary me-1"></i>
                                         Método de Pago <span class="text-danger">*</span>
                                     </label>
                                     <select class="form-select" 
@@ -175,7 +175,7 @@
                                 <!-- Referencia Bancaria (Condicional) -->
                                 <div class="mb-3" id="referenciaGroup">
                                     <label for="referenciaBancaria" class="form-label">
-                                        <i class="fas fa-hashtag text-warning me-1"></i>
+                                        <i class="fas fa-hashtag text-secondary me-1"></i>
                                         Referencia Bancaria <span class="text-danger d-none" id="referenciaRequired">*</span>
                                     </label>
                                     <input type="text" 
@@ -193,7 +193,7 @@
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="banco" class="form-label">
-                                            <i class="fas fa-university text-info me-1"></i>
+                                            <i class="fas fa-university text-secondary me-1"></i>
                                             Banco
                                         </label>
                                         <input type="text" 
@@ -206,7 +206,7 @@
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label for="cuentaBancaria" class="form-label">
-                                            <i class="fas fa-credit-card text-info me-1"></i>
+                                            <i class="fas fa-credit-card text-secondary me-1"></i>
                                             Cuenta Bancaria
                                         </label>
                                         <input type="text" 
@@ -222,7 +222,7 @@
                                 <!-- URL del Comprobante -->
                                 <div class="mb-3">
                                     <label for="comprobanteUrl" class="form-label">
-                                        <i class="fas fa-file-upload text-primary me-1"></i>
+                                        <i class="fas fa-file-upload text-secondary me-1"></i>
                                         Comprobante (URL)
                                     </label>
                                     <input type="url" 
@@ -238,7 +238,7 @@
                                 <!-- Fecha de Pago -->
                                 <div class="mb-3">
                                     <label for="fechaPago" class="form-label">
-                                        <i class="fas fa-calendar text-primary me-1"></i>
+                                        <i class="fas fa-calendar text-secondary me-1"></i>
                                         Fecha y Hora del Pago <span class="text-danger">*</span>
                                     </label>
                                     <input type="datetime-local" 
@@ -295,7 +295,7 @@
                                     <a th:href="@{/pagos}" class="btn btn-secondary">
                                         <i class="fas fa-times me-2"></i>Cancelar
                                     </a>
-                                    <button type="submit" class="btn btn-success">
+                                    <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-save me-2"></i>Registrar Pago
                                     </button>
                                 </div>
