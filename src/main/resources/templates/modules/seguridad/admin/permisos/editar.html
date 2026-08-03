@@ -5,22 +5,23 @@
     <title>Editar Permiso | ERP Orders Manager</title>
 </head>
 <body>
-    <div class="wrapper">
-        <!-- Sidebar -->
-        <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
-        
-        <!-- Page Content -->
-        <div id="content">
-            <!-- Navbar -->
-            <div th:replace="~{shared/components/navbar :: navbar}"></div>
-            
-            <!-- Main Content -->
-            <main class="main-content">
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content module-usuarios-scope">
+        <div class="container-fluid py-4">
                 <!-- Breadcrumb -->
                 <nav aria-label="breadcrumb" class="mb-3">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item">
-                            <a th:href="@{/admin/dashboard}">
+                            <a th:href="@{/dashboard}">
                                 <i class="bi bi-house-door"></i> Inicio
                             </a>
                         </li>
@@ -37,15 +38,11 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <h2>
-                            <i class="bi bi-pencil-square me-2"></i>Editar Permiso
+                            <i class="bi bi-pencil-square text-module-usuarios me-2"></i>Editar Permiso
                         </h2>
                     </div>
                 </div>
-                            <i class="fas fa-edit"></i> Editar Permiso
-                        </h2>
-                    </div>
-                </div>
-                
+
                 <!-- Alertas -->
                 <div th:replace="~{shared/fragments/alerts :: alerts(${success}, ${error})}"></div>
                 
@@ -53,11 +50,11 @@
                     <!-- Formulario Principal -->
                     <div class="col-lg-8">
                         <!-- Código (inmutable) -->
-                        <div class="card mb-3 bg-primary text-white">
+                        <div class="card mb-3" style="border-top: 4px solid var(--module-usuarios);">
                             <div class="card-body text-center">
-                                <small class="text-white-50">CÓDIGO DEL PERMISO (Inmutable)</small>
-                                <h3 class="mt-2 mb-2 font-monospace" th:text="${permiso.codigo}">CLIENTE_VER</h3>
-                                <small><i class="bi bi-lock me-1"></i>Este código no puede modificarse</small>
+                                <small class="text-muted">CÓDIGO DEL PERMISO (Inmutable)</small>
+                                <h3 class="mt-2 mb-2 font-monospace text-module-usuarios" th:text="${permiso.codigo}">CLIENTE_VER</h3>
+                                <small class="text-muted"><i class="bi bi-lock me-1"></i>Este código no puede modificarse</small>
                             </div>
                         </div>
                         
@@ -164,7 +161,7 @@
                                            class="btn btn-outline-secondary btn-lg">
                                             <i class="bi bi-x-circle me-1"></i> Cancelar
                                         </a>
-                                        <button type="submit" class="btn btn-primary btn-lg">
+                                        <button type="submit" class="btn btn-module-usuarios btn-lg">
                                             <i class="bi bi-save me-1"></i> Guardar Cambios
                                         </button>
                                     </div>
@@ -183,24 +180,24 @@
                             <div class="card-body">
                                 <div class="mb-3">
                                     <strong>Estado:</strong>
-                                    <span th:if="${permiso.activo}" 
-                                          class="badge bg-success ms-2">
+                                    <span th:if="${permiso.activo}"
+                                          class="badge badge-secondary ms-2">
                                         <i class="bi bi-check-circle-fill"></i> ACTIVO
                                     </span>
-                                    <span th:unless="${permiso.activo}" 
-                                          class="badge bg-secondary ms-2">
+                                    <span th:unless="${permiso.activo}"
+                                          class="badge badge-outline-secondary ms-2">
                                         <i class="bi bi-x-circle-fill"></i> INACTIVO
                                     </span>
                                 </div>
-                                
+
                                 <div class="mb-3">
                                     <strong>Criticidad:</strong>
-                                    <span th:if="${permiso.esCritico}" 
+                                    <span th:if="${permiso.esCritico}"
                                           class="badge bg-danger ms-2">
                                         <i class="bi bi-exclamation-triangle-fill"></i> CRÍTICO
                                     </span>
-                                    <span th:unless="${permiso.esCritico}" 
-                                          class="badge bg-info ms-2">
+                                    <span th:unless="${permiso.esCritico}"
+                                          class="badge bg-secondary ms-2">
                                         <i class="bi bi-info-circle"></i> NORMAL
                                     </span>
                                 </div>
@@ -218,9 +215,9 @@
                                           method="post"
                                           class="form-cambiar-estado"
                                           th:data-permiso-nombre="${permiso.nombre}">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 class="btn w-100"
-                                                th:classappend="${permiso.activo} ? 'btn-warning' : 'btn-success'">
+                                                th:classappend="${permiso.activo} ? 'btn-outline-danger' : 'btn-outline-success'">
                                             <i th:class="${permiso.activo} ? 'bi bi-toggle-off' : 'bi bi-toggle-on'"></i>
                                             <span th:text="${permiso.activo} ? ' Desactivar' : ' Activar'"></span>
                                         </button>
@@ -238,11 +235,14 @@
                             </div>
                             <div class="card-body">
                                 <div class="d-flex flex-wrap gap-2" th:if="${permiso.roles != null and !permiso.roles.isEmpty()}">
-                                    <span th:each="rol : ${permiso.roles}" 
-                                          class="badge bg-primary">
-                                        <i th:class="${rol.codigo == 'ADMIN' ? 'bi bi-shield-fill-check' : 
-                                                      (rol.codigo == 'GERENTE' ? 'bi bi-person-fill-gear' : 
-                                                      (rol.codigo == 'VENDEDOR' ? 'bi bi-person-fill' : 
+                                    <span th:each="rol : ${permiso.roles}"
+                                          class="badge"
+                                          th:classappend="${rol.codigo == 'ADMIN'} ? 'badge-rol-admin' :
+                                                          (${rol.codigo == 'GERENTE'} ? 'badge-rol-gerente' :
+                                                          (${rol.codigo == 'VENDEDOR'} ? 'badge-rol-vendedor' : 'badge-rol-visualizador'))">
+                                        <i th:class="${rol.codigo == 'ADMIN' ? 'bi bi-shield-fill-check' :
+                                                      (rol.codigo == 'GERENTE' ? 'bi bi-person-fill-gear' :
+                                                      (rol.codigo == 'VENDEDOR' ? 'bi bi-person-fill' :
                                                       'bi bi-person-circle'))}"></i>
                                         <span th:text="${' ' + rol.nombre}">Admin</span>
                                     </span>
@@ -273,10 +273,9 @@
                         </div>
                     </div>
                 </div>
-            </main>
         </div>
-    </div>
-    
+    </main>
+
     <!-- Scripts -->
     <div th:replace="~{shared/layout :: scripts}"></div>
     

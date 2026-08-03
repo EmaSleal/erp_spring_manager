@@ -9,7 +9,7 @@
     <!-- Estilos personalizados para esta página -->
     <style>
         .permiso-card {
-            border-left: 4px solid #0d6efd;
+            border-left: 4px solid var(--module-usuarios);
             transition: all 0.3s ease;
         }
         .permiso-card:hover {
@@ -17,16 +17,16 @@
             transform: translateY(-2px);
         }
         .permiso-concedido {
-            border-left-color: #198754;
-            background-color: #d1e7dd;
+            border-left-color: var(--success-color);
+            background-color: rgba(76, 175, 80, 0.12);
         }
         .permiso-denegado {
-            border-left-color: #dc3545;
-            background-color: #f8d7da;
+            border-left-color: var(--error-color);
+            background-color: rgba(244, 67, 54, 0.12);
         }
         .permiso-rol {
-            border-left-color: #0d6efd;
-            background-color: #cfe2ff;
+            border-left-color: var(--module-usuarios);
+            background-color: rgba(96, 125, 139, 0.12);
         }
         .badge-permiso {
             font-size: 0.75rem;
@@ -58,7 +58,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-usuarios-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs -->
             <nav aria-label="breadcrumb" class="mb-3">
@@ -82,9 +82,9 @@
             <!-- Header Section -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="h3 mb-1"><i class="fas fa-user-lock text-primary me-2"></i>[[${titulo}]]</h2>
+                    <h2 class="h3 mb-1"><i class="fas fa-user-lock text-module-usuarios me-2"></i>[[${titulo}]]</h2>
                     <p class="text-muted mb-0">
-                        <strong>Rol:</strong> <span class="badge bg-primary">[[${resumenPermisos.rol}]]</span>
+                        <strong>Rol:</strong> <span class="badge bg-module-usuarios">[[${resumenPermisos.rol}]]</span>
                         <strong class="ms-3">Usuario:</strong> [[${usuario.nombre}]]
                     </p>
                 </div>
@@ -106,10 +106,10 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <p class="text-muted mb-1 small">Permisos del Rol</p>
-                                    <h3 class="mb-0 text-primary" th:text="${resumenPermisos.totalRol}">0</h3>
+                                    <h3 class="mb-0 text-module-usuarios" th:text="${resumenPermisos.totalRol}">0</h3>
                                 </div>
-                                <div class="bg-primary bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-shield-alt fa-2x text-primary"></i>
+                                <div class="rounded-circle p-3 bg-module-usuarios">
+                                    <i class="fas fa-shield-alt fa-2x text-white"></i>
                                 </div>
                             </div>
                         </div>
@@ -123,8 +123,8 @@
                                     <p class="text-muted mb-1 small">Concedidos</p>
                                     <h3 class="mb-0 text-success" th:text="${resumenPermisos.totalConcedidos}">0</h3>
                                 </div>
-                                <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-plus-circle fa-2x text-success"></i>
+                                <div class="rounded-circle p-3 bg-success">
+                                    <i class="fas fa-plus-circle fa-2x text-white"></i>
                                 </div>
                             </div>
                         </div>
@@ -138,8 +138,8 @@
                                     <p class="text-muted mb-1 small">Denegados</p>
                                     <h3 class="mb-0 text-danger" th:text="${resumenPermisos.totalDenegados}">0</h3>
                                 </div>
-                                <div class="bg-danger bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-minus-circle fa-2x text-danger"></i>
+                                <div class="rounded-circle p-3 bg-danger">
+                                    <i class="fas fa-minus-circle fa-2x text-white"></i>
                                 </div>
                             </div>
                         </div>
@@ -153,8 +153,8 @@
                                     <p class="text-muted mb-1 small">Efectivos</p>
                                     <h3 class="mb-0 text-info" th:text="${resumenPermisos.totalEfectivos}">0</h3>
                                 </div>
-                                <div class="bg-info bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-check-circle fa-2x text-info"></i>
+                                <div class="rounded-circle p-3 bg-info">
+                                    <i class="fas fa-check-circle fa-2x text-white"></i>
                                 </div>
                             </div>
                         </div>
@@ -168,7 +168,7 @@
                         <button class="nav-link active" id="rol-tab" data-bs-toggle="tab" 
                                 data-bs-target="#rol-permisos" type="button">
                             <i class="fas fa-shield-alt me-2"></i>Permisos del Rol
-                            <span class="badge bg-primary ms-2">[[${resumenPermisos.totalRol}]]</span>
+                            <span class="badge bg-module-usuarios ms-2">[[${resumenPermisos.totalRol}]]</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -224,13 +224,15 @@
                                                         </h6>
                                                         <p class="mb-1 small">[[${permiso.nombre}]]</p>
                                                         <span class="badge badge-permiso" 
-                                                              th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-primary' : 
+                                                              th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-permiso-cliente' : 
                                                                             (${permiso.categoria == 'PRODUCTO'} ? 'bg-success' : 
-                                                                            (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 'bg-secondary'))">
+                                                                            (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 
+                                                                            (${permiso.categoria == 'REPORTE'} ? 'bg-info' : 
+                                                                            (${permiso.categoria == 'USUARIO'} ? 'bg-danger' : 'bg-secondary'))))">
                                                             [[${permiso.categoria}]]
                                                         </span>
                                                     </div>
-                                                    <i class="fas fa-check-circle text-primary"></i>
+                                                    <i class="fas fa-check-circle text-secondary"></i>
                                                 </div>
                                             </div>
                                         </div>
@@ -269,9 +271,11 @@
                                                         </h6>
                                                         <p class="mb-1 small">[[${permiso.nombre}]]</p>
                                                         <span class="badge badge-permiso" 
-                                                              th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-primary' : 
+                                                              th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-permiso-cliente' : 
                                                                             (${permiso.categoria == 'PRODUCTO'} ? 'bg-success' : 
-                                                                            (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 'bg-secondary'))">
+                                                                            (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 
+                                                                            (${permiso.categoria == 'REPORTE'} ? 'bg-info' : 
+                                                                            (${permiso.categoria == 'USUARIO'} ? 'bg-danger' : 'bg-secondary'))))">
                                                             [[${permiso.categoria}]]
                                                         </span>
                                                         <p class="mb-0 small text-muted mt-2">
@@ -321,9 +325,11 @@
                                                         </h6>
                                                         <p class="mb-1 small">[[${permiso.nombre}]]</p>
                                                         <span class="badge badge-permiso" 
-                                                              th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-primary' : 
+                                                              th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-permiso-cliente' : 
                                                                             (${permiso.categoria == 'PRODUCTO'} ? 'bg-success' : 
-                                                                            (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 'bg-secondary'))">
+                                                                            (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 
+                                                                            (${permiso.categoria == 'REPORTE'} ? 'bg-info' : 
+                                                                            (${permiso.categoria == 'USUARIO'} ? 'bg-danger' : 'bg-secondary'))))">
                                                             [[${permiso.categoria}]]
                                                         </span>
                                                         <p class="mb-0 small text-muted mt-2">
@@ -387,7 +393,7 @@
                                                             <p class="mb-1 small">[[${permiso.nombre}]]</p>
                                                             <p class="mb-0 small text-muted">[[${permiso.descripcion}]]</p>
                                                             <span class="badge badge-permiso mt-1" 
-                                                                  th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-primary' : 
+                                                                  th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-permiso-cliente' : 
                                                                                 (${permiso.categoria == 'PRODUCTO'} ? 'bg-success' : 
                                                                                 (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 
                                                                                 (${permiso.categoria == 'REPORTE'} ? 'bg-info' : 
@@ -429,14 +435,14 @@
                                                             <p class="mb-1 small">[[${permiso.nombre}]]</p>
                                                             <p class="mb-0 small text-muted">[[${permiso.descripcion}]]</p>
                                                             <span class="badge badge-permiso mt-1" 
-                                                                  th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-primary' : 
+                                                                  th:classappend="${permiso.categoria == 'CLIENTE'} ? 'bg-permiso-cliente' : 
                                                                                 (${permiso.categoria == 'PRODUCTO'} ? 'bg-success' : 
                                                                                 (${permiso.categoria == 'FACTURA'} ? 'bg-warning' : 
                                                                                 (${permiso.categoria == 'REPORTE'} ? 'bg-info' : 
                                                                                 (${permiso.categoria == 'USUARIO'} ? 'bg-danger' : 'bg-secondary'))))">
                                                                 [[${permiso.categoria}]]
                                                             </span>
-                                                            <span class="badge bg-info badge-permiso ms-1" title="Proviene del rol">
+                                                            <span class="badge bg-secondary badge-permiso ms-1" title="Proviene del rol">
                                                                 <i class="fas fa-user-tag me-1"></i>Del rol
                                                             </span>
                                                         </div>
