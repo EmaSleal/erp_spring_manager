@@ -14,7 +14,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-usuarios-scope">
         <div class="container-fluid py-4">
             <section>
                 <!-- Breadcrumb -->
@@ -29,12 +29,12 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 class="mb-1">
-                            <i class="bi bi-people-fill me-2"></i>Gestión de Usuarios
+                            <i class="bi bi-people-fill text-module-usuarios me-2"></i>Gestión de Usuarios
                         </h2>
                         <p class="text-muted mb-0">Administra los usuarios del sistema</p>
                     </div>
                     <div>
-                        <a th:href="@{/admin/usuarios/nuevo}" class="btn btn-primary">
+                        <a th:href="@{/admin/usuarios/nuevo}" class="btn btn-module-usuarios">
                             <i class="bi bi-plus-circle me-2"></i>Nuevo Usuario
                         </a>
                     </div>
@@ -43,60 +43,60 @@
                 <!-- Tarjetas de estadísticas -->
                 <div class="row mb-4">
                     <div class="col-md-3">
-                        <div class="card stats-card bg-primary text-white">
+                        <div class="card stats-card stats-total">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Total Usuarios</h6>
+                                        <h6 class="card-subtitle mb-2">Total Usuarios</h6>
                                         <h3 class="card-title mb-0" th:text="${totalUsuarios}">0</h3>
                                     </div>
                                     <div class="stats-icon">
-                                        <i class="bi bi-people-fill fs-1"></i>
+                                        <i class="bi bi-people-fill"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card stats-card bg-success text-white">
+                        <div class="card stats-card stats-activos">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Usuarios Activos</h6>
+                                        <h6 class="card-subtitle mb-2">Usuarios Activos</h6>
                                         <h3 class="card-title mb-0" th:text="${totalActivos}">0</h3>
                                     </div>
                                     <div class="stats-icon">
-                                        <i class="bi bi-check-circle-fill fs-1"></i>
+                                        <i class="bi bi-check-circle-fill"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card stats-card bg-warning text-white">
+                        <div class="card stats-card stats-bloqueados">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Bloqueados</h6>
+                                        <h6 class="card-subtitle mb-2">Bloqueados</h6>
                                         <h3 class="card-title mb-0" th:text="${totalBloqueados}">0</h3>
                                     </div>
                                     <div class="stats-icon">
-                                        <i class="bi bi-shield-fill-exclamation fs-1"></i>
+                                        <i class="bi bi-shield-fill-exclamation"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card stats-card bg-danger text-white">
+                        <div class="card stats-card stats-admins">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Administradores</h6>
+                                        <h6 class="card-subtitle mb-2">Administradores</h6>
                                         <h3 class="card-title mb-0" th:text="${totalAdmins}">0</h3>
                                     </div>
                                     <div class="stats-icon">
-                                        <i class="bi bi-shield-fill-check fs-1"></i>
+                                        <i class="bi bi-shield-fill-check"></i>
                                     </div>
                                 </div>
                             </div>
@@ -157,7 +157,7 @@
 
                                 <!-- Botones de acción -->
                                 <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-outline-secondary">
                                         <i class="bi bi-search me-2"></i>Buscar
                                     </button>
                                     <a th:href="@{/admin/usuarios}" class="btn btn-secondary">
@@ -178,7 +178,7 @@
                         <h5 class="mb-0">
                             <i class="bi bi-table me-2"></i>Lista de Usuarios
                         </h5>
-                        <span class="badge bg-primary" th:text="${'Total: ' + totalUsuarios}">Total: 0</span>
+                        <span class="badge bg-secondary" th:text="${'Total: ' + totalUsuarios}">Total: 0</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -232,18 +232,10 @@
                                             </span>
                                         </td>
                                         <td class="text-center">
-                                            <th:block th:if="${usuario.bloqueado != null and usuario.bloqueado}">
-                                                <span class="badge bg-warning">
-                                                    <i class="bi bi-lock-fill"></i> Bloqueado
-                                                </span>
-                                            </th:block>
-                                            <th:block th:if="${usuario.bloqueado == null or !usuario.bloqueado}">
-                                                <span class="badge"
-                                                    th:classappend="${usuario.activo ? 'bg-success' : 'bg-danger'}"
-                                                    th:text="${usuario.activo ? 'Activo' : 'Inactivo'}">
-                                                    Activo
-                                                </span>
-                                            </th:block>
+                                            <span class="badge" th:classappend="${usuario.badgeEstado}"
+                                                th:text="${usuario.estadoDescripcion}">
+                                                Activo
+                                            </span>
                                         </td>
                                         <td class="text-center">
                                             <small class="text-muted" th:if="${usuario.ultimoAcceso != null}">
@@ -258,14 +250,14 @@
                                             <div class="btn-group" role="group">
                                                 <!-- Ver detalle -->
                                                 <a th:href="@{/admin/usuarios/detalle/{id}(id=${usuario.idUsuario})}"
-                                                    class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip"
+                                                    class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip"
                                                     title="Ver detalle">
                                                     <i class="bi bi-eye-fill"></i>
                                                 </a>
 
                                                 <!-- Editar -->
                                                 <a th:href="@{/admin/usuarios/editar/{id}(id=${usuario.idUsuario})}"
-                                                    class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip"
+                                                    class="btn btn-sm btn-module-usuarios" data-bs-toggle="tooltip"
                                                     title="Editar usuario">
                                                     <i class="bi bi-pencil-fill"></i>
                                                 </a>
@@ -279,7 +271,7 @@
 
                                                 <!-- Reset Password -->
                                                 <button type="button"
-                                                    class="btn btn-sm btn-outline-warning btn-reset-password"
+                                                    class="btn btn-sm btn-outline-secondary btn-reset-password"
                                                     th:data-id="${usuario.idUsuario}" th:data-nombre="${usuario.nombre}"
                                                     data-bs-toggle="tooltip" title="Restablecer contraseña">
                                                     <i class="bi bi-shield-lock-fill"></i>
@@ -287,7 +279,7 @@
 
                                                 <!-- Reenviar Credenciales -->
                                                 <button type="button"
-                                                    class="btn btn-sm btn-outline-success btn-reenviar-credenciales"
+                                                    class="btn btn-sm btn-outline-secondary btn-reenviar-credenciales"
                                                     th:data-id="${usuario.idUsuario}" th:data-nombre="${usuario.nombre}"
                                                     th:data-email="${usuario.email}"
                                                     th:disabled="${usuario.email == null or usuario.email.isEmpty()}"

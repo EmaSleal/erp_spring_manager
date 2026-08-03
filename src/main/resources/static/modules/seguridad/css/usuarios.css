@@ -2,9 +2,14 @@
    USUARIOS.CSS - Estilos para Gestión de Usuarios
    ============================================ */
 
-/* Tarjetas de Estadísticas */
+/* Tarjetas de Estadísticas — fondo blanco + borde superior + ícono sólido,
+   igual que .stat-widget/.stat-card del dashboard principal. Antes eran
+   rellenos completos bg-primary/success/warning/danger, con bg-primary y
+   bg-success siendo dos verdes casi idénticos en cards adyacentes. */
 .stats-card {
-    border: none;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-top: 4px solid transparent;
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     transition: transform 0.2s, box-shadow 0.2s;
@@ -15,19 +20,39 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
-.stats-card .stats-icon {
-    opacity: 0.3;
-}
-
 .stats-card .card-title {
     font-size: 2rem;
     font-weight: bold;
+    color: var(--text-primary);
 }
 
 .stats-card .card-subtitle {
-    font-size: 0.875rem;
-    opacity: 0.8;
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
 }
+
+.stats-card .stats-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: var(--font-xl);
+}
+
+.stats-card.stats-total { border-top-color: var(--usuarios-total); }
+.stats-card.stats-total .stats-icon { background-color: var(--usuarios-total); }
+
+.stats-card.stats-activos { border-top-color: var(--usuarios-activos); }
+.stats-card.stats-activos .stats-icon { background-color: var(--usuarios-activos); }
+
+.stats-card.stats-bloqueados { border-top-color: var(--usuarios-bloqueados); }
+.stats-card.stats-bloqueados .stats-icon { background-color: var(--usuarios-bloqueados); }
+
+.stats-card.stats-admins { border-top-color: var(--usuarios-admins); }
+.stats-card.stats-admins .stats-icon { background-color: var(--usuarios-admins); }
 
 /* Avatar Circle */
 .avatar-circle {
@@ -44,15 +69,15 @@
 
 /* Tabla de Usuarios */
 #usuariosTable {
-    font-size: 0.95rem;
+    font-size: var(--font-base);
 }
 
 #usuariosTable thead th {
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 2px solid var(--border-color);
 }
 
 #usuariosTable tbody tr {
@@ -60,49 +85,49 @@
 }
 
 #usuariosTable tbody tr:hover {
-    background-color: rgba(0,123,255,0.05) !important;
+    background-color: rgba(0, 128, 64, 0.05) !important;
 }
 
 #usuariosTable tbody tr.table-info {
-    background-color: rgba(13,202,240,0.15) !important;
+    background-color: rgba(33, 150, 243, 0.15) !important;
 }
 
 /* Badges personalizados */
 .badge {
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     padding: 0.35em 0.65em;
     font-weight: 600;
 }
 
 /* Badges de rol con colores específicos */
 .badge-rol-admin {
-    background-color: #dc3545 !important; /* Rojo */
+    background-color: var(--module-clientes) !important;
     color: white;
 }
 
-.badge-rol-user {
-    background-color: #0d6efd !important; /* Azul */
+.badge-rol-gerente {
+    background-color: var(--module-inventario) !important;
     color: white;
 }
 
 .badge-rol-vendedor {
-    background-color: #198754 !important; /* Verde */
+    background-color: var(--module-pagos) !important;
     color: white;
 }
 
 .badge-rol-visualizador {
-    background-color: #6c757d !important; /* Gris */
+    background-color: var(--text-secondary) !important;
     color: white;
 }
 
 /* Botones de acción en tabla */
 .btn-group .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-sm);
 }
 
 .btn-group .btn i {
-    font-size: 0.9rem;
+    font-size: var(--font-sm);
 }
 
 .btn-toggle-active:disabled,
@@ -113,19 +138,19 @@
 
 /* Card de filtros */
 .card-header h5 {
-    font-size: 1rem;
+    font-size: var(--font-base);
     font-weight: 600;
 }
 
 /* Formulario de Usuario */
 #formUsuario .form-label {
     font-weight: 600;
-    color: #495057;
-    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
 }
 
 #formUsuario .input-group-text {
-    background-color: #e9ecef;
+    background-color: var(--background-color);
     border-right: none;
 }
 
@@ -141,7 +166,7 @@
 }
 
 #formUsuario .input-group:focus-within .input-group-text {
-    border-color: #86b7fe;
+    border-color: var(--accent-color);
 }
 
 /* Switch de estado */
@@ -151,25 +176,15 @@
     cursor: pointer;
 }
 
-.form-check-input:checked {
-    background-color: #198754;
-    border-color: #198754;
-}
-
 .form-check-label {
     cursor: pointer;
-    margin-left: 0.5rem;
+    margin-left: var(--spacing-sm);
     font-weight: 500;
 }
 
 /* Modal de Reset Password */
-#modalResetPassword .modal-header {
-    background-color: #0d6efd;
-    color: white;
-}
-
-#modalResetPassword .modal-header .btn-close {
-    filter: invert(1);
+#modalResetPassword .modal-header .modal-title i {
+    color: var(--module-usuarios);
 }
 
 #nuevaPasswordContainer {
@@ -189,7 +204,7 @@
 
 #nuevaPasswordContainer input {
     font-family: monospace;
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     font-weight: bold;
     letter-spacing: 1px;
     text-align: center;
@@ -197,50 +212,35 @@
 
 /* Paginación personalizada */
 .pagination {
-    margin-top: 1rem;
-}
-
-.pagination .page-link {
-    color: #0d6efd;
-    border-radius: 5px;
-    margin: 0 2px;
-}
-
-.pagination .page-item.active .page-link {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-
-.pagination .page-item.disabled .page-link {
-    color: #6c757d;
+    margin-top: var(--spacing-md);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .stats-card .card-title {
-        font-size: 1.5rem;
+        font-size: var(--font-xl);
     }
-    
+
     .stats-card .card-subtitle {
-        font-size: 0.75rem;
+        font-size: var(--font-xs);
     }
-    
+
     .stats-icon {
         display: none;
     }
-    
+
     #usuariosTable {
-        font-size: 0.85rem;
+        font-size: var(--font-sm);
     }
-    
+
     .btn-group .btn {
-        padding: 0.2rem 0.4rem;
+        padding: var(--spacing-xs) var(--spacing-xs);
     }
-    
+
     .avatar-circle {
         width: 32px;
         height: 32px;
-        font-size: 0.85rem;
+        font-size: var(--font-sm);
     }
 }
 
@@ -254,7 +254,7 @@
     }
     
     .stats-card .card-body {
-        padding: 1rem;
+        padding: var(--spacing-md);
     }
 }
 
@@ -280,13 +280,13 @@
 
 /* Tooltips personalizados */
 .tooltip-inner {
-    background-color: #212529;
+    background-color: var(--text-primary);
     color: #fff;
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
 }
 
 .tooltip.bs-tooltip-top .tooltip-arrow::before {
-    border-top-color: #212529;
+    border-top-color: var(--text-primary);
 }
 
 /* Loading state para botones */
@@ -320,7 +320,7 @@
 /* Estados de validación mejorados */
 .form-control.is-valid,
 .form-select.is-valid {
-    border-color: #198754;
+    border-color: var(--success-color);
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: right calc(.375em + .1875rem) center;
@@ -329,18 +329,18 @@
 
 .form-control.is-invalid,
 .form-select.is-invalid {
-    border-color: #dc3545;
+    border-color: var(--error-color);
 }
 
 /* Sidebar de ayuda */
 .card-subtitle {
-    color: #6c757d;
+    color: var(--text-secondary);
     font-weight: 600;
     margin-bottom: 0.5rem;
 }
 
 .card ul.small {
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
     line-height: 1.6;
     padding-left: 1.25rem;
 }
