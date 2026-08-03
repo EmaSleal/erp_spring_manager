@@ -116,22 +116,22 @@ function crearNodoCuenta(cuenta, nivel) {
                 <span class="badge bg-${colorTipo} me-2">${iconoTipo}</span>
                 <strong class="me-2">${cuenta.codigo}</strong>
                 <span>${cuenta.nombre}</span>
-                
-                ${!cuenta.activa ? '<span class="badge bg-secondary ms-2">Inactiva</span>' : ''}
-                ${!cuenta.aceptaMovimientos ? '<span class="badge bg-warning text-dark ms-2">No acepta movimientos</span>' : ''}
-                ${cuenta.tieneMovimientos ? '<span class="badge bg-info ms-2"><i class="fas fa-check"></i> Con movimientos</span>' : ''}
+
+                ${!cuenta.activa ? '<span class="badge badge-secondary ms-2">Inactiva</span>' : ''}
+                ${!cuenta.aceptaMovimientos ? '<span class="badge badge-outline-secondary ms-2">No acepta movimientos</span>' : ''}
+                ${cuenta.tieneMovimientos ? '<span class="badge badge-secondary ms-2"><i class="fas fa-check"></i> Con movimientos</span>' : ''}
             </div>
-            
+
             <div class="btn-group btn-group-sm">
-                <a href="/contabilidad/cuentas/${cuenta.idCuenta}" class="btn btn-outline-primary" title="Ver detalle">
+                <a href="/contabilidad/cuentas/${cuenta.idCuenta}" class="btn btn-outline-secondary" title="Ver detalle">
                     <i class="fas fa-eye"></i>
                 </a>
-                <a href="/contabilidad/cuentas/crear?cuentaPadreId=${cuenta.idCuenta}" 
-                   class="btn btn-outline-success" title="Agregar subcuenta">
+                <a href="/contabilidad/cuentas/crear?cuentaPadreId=${cuenta.idCuenta}"
+                   class="btn btn-outline-secondary" title="Agregar subcuenta">
                     <i class="fas fa-plus"></i>
                 </a>
-                <a href="/contabilidad/cuentas/${cuenta.idCuenta}/editar" 
-                   class="btn btn-outline-warning" title="Editar">
+                <a href="/contabilidad/cuentas/${cuenta.idCuenta}/editar"
+                   class="btn btn-module-contabilidad" title="Editar">
                     <i class="fas fa-edit"></i>
                 </a>
                 <button type="button" class="btn btn-outline-danger" 
@@ -168,7 +168,7 @@ function getColorTipo(tipo) {
     const colores = {
         'ACTIVO': 'success',
         'PASIVO': 'danger',
-        'CAPITAL': 'primary',
+        'CAPITAL': 'cuenta-capital',
         'INGRESO': 'info',
         'EGRESO': 'warning'
     };

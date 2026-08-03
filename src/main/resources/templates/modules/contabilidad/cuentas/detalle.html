@@ -13,7 +13,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs -->
             <nav aria-label="breadcrumb" class="mb-3">
@@ -24,7 +24,7 @@
                         </a>
                     </li>
                     <li class="breadcrumb-item">
-                        <a href="#" class="text-decoration-none">
+                        <a th:href="@{/contabilidad}" class="text-decoration-none">
                             <i class="fas fa-book me-1"></i>Contabilidad
                         </a>
                     </li>
@@ -41,16 +41,16 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="mb-1">
-                        <i class="fas fa-file-invoice text-primary me-2"></i>
-                        <span th:text="${cuenta.codigo}">Código</span> - 
+                        <i class="fas fa-file-invoice text-module-contabilidad me-2"></i>
+                        <span th:text="${cuenta.codigo}">Código</span> -
                         <span th:text="${cuenta.nombre}">Nombre</span>
                     </h2>
                     <p class="text-muted mb-0">Información detallada de la cuenta contable</p>
                 </div>
                 <div>
                     <a th:replace="~{shared/fragments/back-button :: backButtonSimple('/contabilidad/cuentas', 'Volver al Listado')}"></a>
-                    <a th:href="@{/contabilidad/cuentas/{id}/editar(id=${cuenta.idCuenta})}" 
-                       class="btn btn-warning"
+                    <a th:href="@{/contabilidad/cuentas/{id}/editar(id=${cuenta.idCuenta})}"
+                       class="btn btn-module-contabilidad"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
                         <i class="fas fa-edit me-2"></i>Editar
                     </a>
@@ -62,7 +62,7 @@
                 <div class="col-md-6 mb-4">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-info-circle text-primary me-2"></i>Información General</h5>
+                            <h5 class="mb-0"><i class="fas fa-info-circle text-module-contabilidad me-2"></i>Información General</h5>
                         </div>
                         <div class="card-body">
                             <table class="table table-sm">
@@ -74,10 +74,10 @@
                                 <tr>
                                     <th>Tipo:</th>
                                     <td>
-                                        <span class="badge" 
-                                              th:classappend="${cuenta.tipo.name() == 'ACTIVO'} ? 'bg-success' : 
-                                                             (${cuenta.tipo.name() == 'PASIVO'} ? 'bg-danger' : 
-                                                             (${cuenta.tipo.name() == 'CAPITAL'} ? 'bg-primary' : 
+                                        <span class="badge"
+                                              th:classappend="${cuenta.tipo.name() == 'ACTIVO'} ? 'bg-success' :
+                                                             (${cuenta.tipo.name() == 'PASIVO'} ? 'bg-danger' :
+                                                             (${cuenta.tipo.name() == 'CAPITAL'} ? 'bg-cuenta-capital' :
                                                              (${cuenta.tipo.name() == 'INGRESO'} ? 'bg-info' : 'bg-warning')))"
                                               th:text="${cuenta.tipo.name()}">
                                             ACTIVO
@@ -87,8 +87,8 @@
                                 <tr>
                                     <th>Naturaleza:</th>
                                     <td>
-                                        <span class="badge" 
-                                              th:classappend="${cuenta.naturaleza.name() == 'DEUDORA'} ? 'bg-success' : 'bg-info'"
+                                        <span class="badge"
+                                              th:classappend="${cuenta.naturaleza.name() == 'DEUDORA'} ? 'badge-secondary' : 'badge-outline-secondary'"
                                               th:text="${cuenta.naturaleza.name()}">
                                             DEUDORA
                                         </span>
@@ -98,8 +98,8 @@
                                 <tr>
                                     <th>Estado:</th>
                                     <td>
-                                        <span class="badge" 
-                                              th:classappend="${cuenta.activa} ? 'bg-success' : 'bg-secondary'"
+                                        <span class="badge"
+                                              th:classappend="${cuenta.activa} ? 'badge-secondary' : 'badge-outline-secondary'"
                                               th:text="${cuenta.activa} ? 'Activa' : 'Inactiva'">
                                             Activa
                                         </span>
@@ -108,8 +108,8 @@
                                 <tr>
                                     <th>Acepta Movimientos:</th>
                                     <td>
-                                        <span class="badge" 
-                                              th:classappend="${cuenta.aceptaMovimientos} ? 'bg-success' : 'bg-warning'"
+                                        <span class="badge"
+                                              th:classappend="${cuenta.aceptaMovimientos} ? 'badge-secondary' : 'badge-outline-secondary'"
                                               th:text="${cuenta.aceptaMovimientos} ? 'Sí' : 'No'">
                                             Sí
                                         </span>
@@ -122,7 +122,7 @@
                                 <tr th:if="${tieneMovimientos}">
                                     <th>Movimientos:</th>
                                     <td>
-                                        <span class="badge bg-info">
+                                        <span class="badge badge-secondary">
                                             <i class="fas fa-check me-1"></i>Tiene movimientos registrados
                                         </span>
                                     </td>
@@ -136,7 +136,7 @@
                 <div class="col-md-6 mb-4">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-sitemap text-primary me-2"></i>Jerarquía</h5>
+                            <h5 class="mb-0"><i class="fas fa-sitemap text-module-contabilidad me-2"></i>Jerarquía</h5>
                         </div>
                         <div class="card-body">
                             <!-- Cuenta Padre -->
@@ -193,7 +193,7 @@
                 <div class="col-md-12">
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-history text-primary me-2"></i>Información de Auditoría</h5>
+                            <h5 class="mb-0"><i class="fas fa-history text-module-contabilidad me-2"></i>Información de Auditoría</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">

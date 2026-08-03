@@ -16,13 +16,13 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
     
     <!-- Contenido principal -->
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumb -->
             <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-calculator', 'Contabilidad')}"></div>
 
             <!-- Encabezado -->
-            <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calculator', 'text-danger', 'Módulo de', 'Contabilidad', 'Gestión contable y financiera del sistema', '/dashboard', 'Dashboard')}"></div>
+            <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calculator', 'text-module-contabilidad', 'Módulo de', 'Contabilidad', 'Gestión contable y financiera del sistema', '/dashboard', 'Dashboard')}"></div>
             
             <!-- Submódulos Disponibles -->
             <div class="row mb-4">

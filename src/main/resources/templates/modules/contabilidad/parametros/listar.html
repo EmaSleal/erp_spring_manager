@@ -9,7 +9,7 @@
 <div th:replace="~{shared/components/navbar :: navbar}"></div>
 <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
-<main class="main-content">
+<main class="main-content module-contabilidad-scope">
     <div class="container-fluid py-4">
 
         <!-- Breadcrumb -->
@@ -35,12 +35,12 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="h3 mb-1">
-                    <i class="fas fa-sliders-h text-success me-2"></i>Parámetros Contables
+                    <i class="fas fa-sliders-h text-module-contabilidad me-2"></i>Parámetros Contables
                 </h2>
                 <p class="text-muted mb-0">Mapeo de claves de evento a cuentas contables</p>
             </div>
             <div sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
-                <button type="button" class="btn btn-success" onclick="abrirModalCrear()">
+                <button type="button" class="btn btn-module-contabilidad" onclick="abrirModalCrear()">
                     <i class="fas fa-plus me-2"></i>Nuevo Parámetro
                 </button>
             </div>
@@ -79,7 +79,7 @@
                                 </td>
                                 <td class="text-end"
                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
-                                    <button type="button" class="btn btn-sm btn-outline-primary me-1"
+                                    <button type="button" class="btn btn-sm btn-module-contabilidad me-1"
                                             th:data-id="${p.id}"
                                             th:data-clave="${p.clave}"
                                             th:data-descripcion="${p.descripcion != null ? p.descripcion : ''}"
@@ -113,7 +113,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalCrearLabel">
-                    <i class="fas fa-plus-circle me-2 text-success"></i>Nuevo Parámetro Contable
+                    <i class="fas fa-plus-circle me-2 text-module-contabilidad"></i>Nuevo Parámetro Contable
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -137,7 +137,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" onclick="guardarParametro()">
+                <button type="button" class="btn btn-module-contabilidad" onclick="guardarParametro()">
                     <i class="fas fa-save me-1"></i>Guardar
                 </button>
             </div>
@@ -151,7 +151,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalEditarLabel">
-                    <i class="fas fa-edit me-2 text-primary"></i>Editar Parámetro Contable
+                    <i class="fas fa-edit me-2 text-module-contabilidad"></i>Editar Parámetro Contable
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -175,7 +175,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="actualizarParametro()">
+                <button type="button" class="btn btn-module-contabilidad" onclick="actualizarParametro()">
                     <i class="fas fa-save me-1"></i>Actualizar
                 </button>
             </div>

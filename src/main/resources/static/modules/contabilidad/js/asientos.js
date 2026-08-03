@@ -91,7 +91,7 @@ function renderizarAsientos(asientos) {
         let tipoBadge = '';
         switch(asiento.tipo) {
             case 'MANUAL':
-                tipoBadge = '<span class="badge bg-primary">Manual</span>';
+                tipoBadge = '<span class="badge bg-asiento-manual">Manual</span>';
                 break;
             case 'AUTOMATICO_FACTURA':
                 tipoBadge = '<span class="badge bg-info">Auto-Factura</span>';
@@ -112,18 +112,18 @@ function renderizarAsientos(asientos) {
             <td>${formatearFecha(asiento.fecha)}</td>
             <td>${tipoBadge}</td>
             <td class="text-truncate cell-truncate" title="${asiento.concepto}">${asiento.concepto}</td>
-            <td class="text-end text-primary fw-semibold">$${formatearNumero(asiento.totalDebe)}</td>
-            <td class="text-end text-success fw-semibold">$${formatearNumero(asiento.totalHaber)}</td>
+            <td class="text-end fw-semibold">$${formatearNumero(asiento.totalDebe)}</td>
+            <td class="text-end fw-semibold">$${formatearNumero(asiento.totalHaber)}</td>
             <td class="text-center">${estadoBadge}</td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
-                    <a href="/contabilidad/asientos/${asiento.idAsiento}" 
-                       class="btn btn-outline-primary" title="Ver detalle">
+                    <a href="/contabilidad/asientos/${asiento.idAsiento}"
+                       class="btn btn-outline-secondary" title="Ver detalle">
                         <i class="fas fa-eye"></i>
                     </a>
                     ${asiento.puedeModificarse ? `
-                    <a href="/contabilidad/asientos/${asiento.idAsiento}/editar" 
-                       class="btn btn-outline-warning" title="Editar">
+                    <a href="/contabilidad/asientos/${asiento.idAsiento}/editar"
+                       class="btn btn-module-contabilidad" title="Editar">
                         <i class="fas fa-edit"></i>
                     </a>` : ''}
                     ${asiento.puedeContabilizarse ? `

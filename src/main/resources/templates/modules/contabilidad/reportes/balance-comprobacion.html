@@ -9,7 +9,7 @@
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
     
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <nav aria-label="breadcrumb" class="mb-3">
                 <ol class="breadcrumb">
@@ -19,20 +19,20 @@
                     <li class="breadcrumb-item active">Balance de Comprobación</li>
                 </ol>
             </nav>
-            
+
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="h3 mb-1"><i class="fas fa-balance-scale text-primary"></i> Balance de Comprobación</h1>
+                    <h1 class="h3 mb-1"><i class="fas fa-balance-scale text-module-contabilidad"></i> Balance de Comprobación</h1>
                     <p class="text-muted">Del <span th:text="${#temporals.format(fechaInicio, 'dd/MM/yyyy')}"></span> al <span th:text="${#temporals.format(fechaFin, 'dd/MM/yyyy')}"></span></p>
                 </div>
                 <div>
                     <button type="button" class="btn btn-outline-secondary me-2" onclick="window.location.href='/contabilidad/reportes'">
                         <i class="fas fa-arrow-left"></i> Volver
                     </button>
-                    <button type="button" class="btn btn-success" onclick="exportarPDF()">
+                    <button type="button" class="btn btn-outline-secondary me-2" onclick="exportarPDF()">
                         <i class="fas fa-file-pdf"></i> Exportar PDF
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="exportarExcel()">
+                    <button type="button" class="btn btn-outline-secondary" onclick="exportarExcel()">
                         <i class="fas fa-file-excel"></i> Exportar Excel
                     </button>
                 </div>
@@ -56,8 +56,8 @@
                                 <tr th:each="saldo : ${saldos}">
                                     <td><code th:text="${saldo.cuenta.codigo}">1.1</code></td>
                                     <td th:text="${saldo.cuenta.nombre}">Nombre Cuenta</td>
-                                    <td class="text-end text-primary" th:text="'$' + ${#numbers.formatDecimal(saldo.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
-                                    <td class="text-end text-success" th:text="'$' + ${#numbers.formatDecimal(saldo.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end" th:text="'$' + ${#numbers.formatDecimal(saldo.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end" th:text="'$' + ${#numbers.formatDecimal(saldo.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
                                     <td class="text-end" th:text="${saldo.saldo > 0 ? '$' + #numbers.formatDecimal(saldo.saldo, 1, 'COMMA', 2, 'POINT') : '-'}">-</td>
                                     <td class="text-end" th:text="${saldo.saldo < 0 ? '$' + #numbers.formatDecimal(-saldo.saldo, 1, 'COMMA', 2, 'POINT') : '-'}">-</td>
                                 </tr>
@@ -65,8 +65,8 @@
                             <tfoot class="table-light fw-bold">
                                 <tr>
                                     <td colspan="2" class="text-end">TOTALES:</td>
-                                    <td class="text-end text-primary" id="totalDebe">$0.00</td>
-                                    <td class="text-end text-success" id="totalHaber">$0.00</td>
+                                    <td class="text-end" id="totalDebe">$0.00</td>
+                                    <td class="text-end" id="totalHaber">$0.00</td>
                                     <td class="text-end" id="totalDeudor">$0.00</td>
                                     <td class="text-end" id="totalAcreedor">$0.00</td>
                                 </tr>

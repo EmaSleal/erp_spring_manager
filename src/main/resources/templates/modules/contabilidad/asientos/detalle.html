@@ -13,7 +13,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
     
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumb -->
             <nav aria-label="breadcrumb" class="mb-3">
@@ -24,22 +24,22 @@
                     <li class="breadcrumb-item active" aria-current="page">Detalle</li>
                 </ol>
             </nav>
-            
+
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h1 class="h3 mb-1">
-                        <i class="fas fa-book text-primary"></i>
+                        <i class="fas fa-book text-module-contabilidad"></i>
                         Asiento <span th:text="${asiento.numero}">ASI-001</span>
                     </h1>
                     <p class="text-muted" th:text="${asiento.concepto}">Concepto del asiento</p>
                 </div>
                 <div>
-                    <button type="button" class="btn btn-outline-secondary me-2" 
+                    <button type="button" class="btn btn-outline-secondary me-2"
                             onclick="window.location.href='/contabilidad/asientos'">
                         <i class="fas fa-arrow-left"></i> Volver
                     </button>
-                    <button type="button" class="btn btn-primary" 
+                    <button type="button" class="btn btn-module-contabilidad"
                             th:if="${asiento.puedeModificarse}"
                             th:onclick="|window.location.href='/contabilidad/asientos/' + ${asiento.idAsiento} + '/editar'|"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_EDITAR')">
@@ -65,7 +65,7 @@
                 <div class="col-md-8">
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-info-circle text-primary me-2"></i>Información General</h5>
+                            <h5 class="mb-0"><i class="fas fa-info-circle text-module-contabilidad me-2"></i>Información General</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -79,10 +79,10 @@
                                         <tr>
                                             <th class="text-muted">Tipo:</th>
                                             <td>
-                                                <span class="badge" 
-                                                      th:classappend="${asiento.tipo.name() == 'MANUAL' ? 'bg-primary' : 
-                                                                      (asiento.tipo.name() == 'AUTOMATICO_FACTURA' ? 'bg-info' : 
-                                                                      (asiento.tipo.name() == 'AUTOMATICO_PAGO' ? 'bg-success' : 
+                                                <span class="badge"
+                                                      th:classappend="${asiento.tipo.name() == 'MANUAL' ? 'bg-asiento-manual' :
+                                                                      (asiento.tipo.name() == 'AUTOMATICO_FACTURA' ? 'bg-info' :
+                                                                      (asiento.tipo.name() == 'AUTOMATICO_PAGO' ? 'bg-success' :
                                                                       (asiento.tipo.name() == 'AJUSTE' ? 'bg-warning' : 'bg-secondary')))}"
                                                       th:text="${asiento.tipo.descripcion}">Manual</span>
                                             </td>
@@ -136,21 +136,21 @@
                 <div class="col-md-4">
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-calculator text-primary me-2"></i>Totales</h5>
+                            <h5 class="mb-0"><i class="fas fa-calculator text-module-contabilidad me-2"></i>Totales</h5>
                         </div>
                         <div class="card-body">
                             <table class="table table-sm table-borderless mb-0">
                                 <tr>
                                     <th class="text-muted">Total Debe:</th>
                                     <td class="text-end">
-                                        <span class="fs-5 fw-bold text-primary" 
+                                        <span class="fs-5 fw-bold"
                                               th:text="${#numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
                                     </td>
                                 </tr>
                                 <tr>
                                     <th class="text-muted">Total Haber:</th>
                                     <td class="text-end">
-                                        <span class="fs-5 fw-bold text-success" 
+                                        <span class="fs-5 fw-bold"
                                               th:text="${#numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
                                     </td>
                                 </tr>
@@ -170,7 +170,7 @@
                 <div class="col-md-12">
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-list text-primary me-2"></i>Movimientos Contables</h5>
+                            <h5 class="mb-0"><i class="fas fa-list text-module-contabilidad me-2"></i>Movimientos Contables</h5>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -194,14 +194,14 @@
                                                 <span th:text="${detalle.descripcion}" class="text-muted">Concepto del movimiento</span>
                                             </td>
                                             <td class="text-end">
-                                                <span th:if="${detalle.debe != null && detalle.debe > 0}" 
-                                                      class="text-primary fw-semibold"
+                                                <span th:if="${detalle.debe != null && detalle.debe > 0}"
+                                                      class="fw-semibold"
                                                       th:text="'$' + ${#numbers.formatDecimal(detalle.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
                                                 <span th:unless="${detalle.debe != null && detalle.debe > 0}" class="text-muted">-</span>
                                             </td>
                                             <td class="text-end">
-                                                <span th:if="${detalle.haber != null && detalle.haber > 0}" 
-                                                      class="text-success fw-semibold"
+                                                <span th:if="${detalle.haber != null && detalle.haber > 0}"
+                                                      class="fw-semibold"
                                                       th:text="'$' + ${#numbers.formatDecimal(detalle.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
                                                 <span th:unless="${detalle.haber != null && detalle.haber > 0}" class="text-muted">-</span>
                                             </td>
@@ -210,9 +210,9 @@
                                     <tfoot class="table-light">
                                         <tr class="fw-bold">
                                             <td colspan="3" class="text-end">TOTALES:</td>
-                                            <td class="text-end text-primary" 
+                                            <td class="text-end"
                                                 th:text="'$' + ${#numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
-                                            <td class="text-end text-success" 
+                                            <td class="text-end"
                                                 th:text="'$' + ${#numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
                                         </tr>
                                     </tfoot>
@@ -226,7 +226,7 @@
                 <div class="col-md-12">
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-history text-primary me-2"></i>Información de Auditoría</h5>
+                            <h5 class="mb-0"><i class="fas fa-history text-module-contabilidad me-2"></i>Información de Auditoría</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
