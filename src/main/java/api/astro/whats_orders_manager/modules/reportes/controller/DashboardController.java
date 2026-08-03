@@ -180,7 +180,7 @@ public class DashboardController {
                 "Clientes",
                 "Gestión de clientes",
                 "fas fa-users",
-                "#4CAF50",
+                "var(--module-clientes)",
                 "/clientes",
                 true,
                 esAdmin || esUser || esVendedor || esVisualizador
@@ -191,7 +191,7 @@ public class DashboardController {
                 "Productos",
                 "Catálogo de productos",
                 "fas fa-box",
-                "#FF9800",
+                "var(--module-productos)",
                 "/productos",
                 true,
                 esAdmin || esUser || esVendedor || esVisualizador
@@ -202,7 +202,7 @@ public class DashboardController {
                 "Facturas",
                 "Gestión de facturas",
                 "fas fa-file-invoice-dollar",
-                "#9C27B0",
+                "var(--module-facturas)",
                 "/facturas",
                 true,
                 esAdmin || esUser || esVendedor || esVisualizador
@@ -213,7 +213,7 @@ public class DashboardController {
                 "Contabilidad",
                 "Gestión contable",
                 "fas fa-calculator",
-                "#FF5722",
+                "var(--module-contabilidad)",
                 "/contabilidad",
                 true,
                 esAdmin
@@ -224,7 +224,7 @@ public class DashboardController {
                 "Usuarios",
                 "Gestión de usuarios",
                 "fas fa-user-cog",
-                "#3F51B5",
+                "var(--module-usuarios)",
                 "/admin/usuarios",
                 true,
                 esAdmin
@@ -235,7 +235,7 @@ public class DashboardController {
                 "Pedidos",
                 "Gestión de pedidos",
                 "fas fa-shopping-cart",
-                "#F44336",
+                "var(--module-pedidos)",
                 "/pedidos",
                 false,
                 esAdmin || esUser || esVendedor
@@ -246,7 +246,7 @@ public class DashboardController {
                 "Reportes",
                 "Informes y estadísticas",
                 "fas fa-chart-bar",
-                "#00BCD4",
+                "var(--module-reportes)",
                 "/reportes",
                 true,
                 esAdmin || esUser
@@ -257,7 +257,7 @@ public class DashboardController {
                 "Recursos Humanos",
                 "Gestión de personal y contratos",
                 "fas fa-id-card",
-                "#E91E63",
+                "var(--module-rrhh)",
                 "/rrhh",
                 true,
                 esAdmin || esGerente
@@ -268,7 +268,7 @@ public class DashboardController {
                 "Configuración",
                 "Ajustes del sistema",
                 "fas fa-cog",
-                "#607D8B",
+                "var(--module-config)",
                 "/configuracion",
                 true,
                 esAdmin
