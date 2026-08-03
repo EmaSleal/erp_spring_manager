@@ -544,15 +544,6 @@ function getAvatarColor(name) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log(`${APP_CONFIG.name} v${APP_CONFIG.version} - Inicializado`);
 
-    // Cerrar dropdowns al hacer click fuera
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-    });
-
     // Inicializar tooltips de Bootstrap si está disponible
     if (typeof bootstrap !== 'undefined') {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

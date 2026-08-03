@@ -11,10 +11,14 @@
    ============================================================================ */
 :root {
     /* Colores Principales */
-    --primary-color: #1976D2;           /* Azul Material Design */
-    --primary-dark: #1565C0;
-    --primary-light: #42A5F5;
-    
+    --accent-color: #008040;
+    --accent-dark: #006131;
+    --accent-light: #D7F4E6;
+
+    --primary-color: var(--accent-color);
+    --primary-dark: var(--accent-dark);
+    --primary-light: var(--accent-light);
+
     --background-color: #F5F5F5;        /* Gris claro */
     --card-background: #FFFFFF;         /* Blanco */
     --text-primary: #212121;            /* Gris oscuro */
@@ -32,13 +36,75 @@
     --module-config: #9E9E9E;           /* Gris */
     --module-documentos: #546E7A;       /* Azul grisáceo */
     --module-pagos: #8BC34A;            /* Verde lima */
-    
+    --module-contabilidad: #FF5722;     /* Rojo-naranja */
+    --module-rrhh: #E91E63;             /* Magenta */
+
+    /* Variantes oscuras (contraste >=4.5:1 vs blanco) para usar en botones/texto,
+       igual que --accent-dark. Los que ya cumplen contraste solo se alias. */
+    --module-clientes-dark: #0B76CC;
+    --module-productos-dark: #A36100;
+    --module-facturas-dark: #39843C;
+    --module-pedidos-dark: var(--module-pedidos);
+    --module-reportes-dark: #008276;
+    --module-inventario-dark: var(--module-inventario);
+    --module-usuarios-dark: #5C7885;
+    --module-config-dark: #757575;
+    --module-documentos-dark: var(--module-documentos);
+    --module-pagos-dark: #577D2A;
+    --module-contabilidad-dark: #BF411A;
+    --module-rrhh-dark: #C61A54;
+
+    /* Sub-colores de Contabilidad: rampa monocromática de --module-contabilidad
+       (mismo hue/saturación, solo varía la luminosidad) para los cards de
+       submódulos del dashboard de Contabilidad. Implementados = más oscuro/rico,
+       "Próximamente" = más claro. Contraste >=3:1 vs blanco (uso decorativo/ícono). */
+    --contabilidad-cuentas: #852000;
+    --contabilidad-asientos: #992500;
+    --contabilidad-cuentas-pagar: #A82800;
+    --contabilidad-reportes: #BD2D00;
+    --contabilidad-parametros: #CC3100;
+    --contabilidad-cuentas-cobrar: #E03600;
+    --contabilidad-balance-general: #FF4105;
+    --contabilidad-estado-resultados: #FF4D14;
+    --contabilidad-flujo-caja: #FF5C29;
+
+    /* Sub-colores de RRHH: rampa monocromática de --module-rrhh (mismo hue/sat,
+       solo varía la luminosidad) para los 8 cards de submódulos + las 4 stat-cards
+       del dashboard de RRHH — antes reusaban colores de OTROS módulos (Departamentos
+       usaba el índigo de Inventario, Salarios Mínimos el rojo-naranja exacto de
+       Contabilidad, etc.), generando asociaciones visuales cruzadas confusas.
+       Empleados/Departamentos/Contratos/Ausencias comparten el mismo tono entre su
+       stat-card y su card de submódulo (mismo concepto, mismo color). */
+    --rrhh-empleados: #8B0E38;
+    --rrhh-departamentos: #9E0F40;
+    --rrhh-puestos: #B11147;
+    --rrhh-contratos: #C3134F;
+    --rrhh-ausencias: #D61556;
+    --rrhh-parametros-ccss: #E8175E;
+    --rrhh-salarios-minimos: #EA296B;
+    --rrhh-nomina: #EC3C78;
+
+    /* Sub-colores de Usuarios: rampa monocromática de --module-usuarios (mismo
+       hue/sat, solo varía la luminosidad) para las 4 stat-cards del listado
+       (Total/Activos/Bloqueados/Administradores) — antes usaban bg-primary/
+       success/warning/danger en relleno completo, con bg-primary y bg-success
+       siendo dos verdes casi idénticos en cards adyacentes. */
+    --usuarios-total: #5C7785;
+    --usuarios-activos: #86A0AC;
+    --usuarios-bloqueados: #475C67;
+    --usuarios-admins: #324148;
+
     /* Estados */
     --success-color: #4CAF50;
     --warning-color: #FF9800;
     --error-color: #F44336;
     --info-color: #2196F3;
-    
+
+    /* Texto seguro sobre fondos claros de estado (contraste >= 4.5:1) */
+    --success-text: #2D682F;
+    --error-text: #BA160A;
+    --warning-text: #995B00;
+
     /* Sombras */
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
     --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
@@ -52,29 +118,38 @@
     --spacing-lg: 1.5rem;   /* 24px */
     --spacing-xl: 2rem;     /* 32px */
     --spacing-2xl: 3rem;    /* 48px */
-    
+
+    /* Escala Tipográfica */
+    --font-xs: 0.75rem;   /* 12px */
+    --font-sm: 0.875rem;  /* 14px */
+    --font-base: 1rem;    /* 16px */
+    --font-md: 1.125rem;  /* 18px */
+    --font-lg: 1.25rem;   /* 20px */
+    --font-xl: 1.5rem;    /* 24px */
+
     /* Tamaños */
     --navbar-height: 64px;
     --sidebar-width: 260px;
     --sidebar-collapsed-width: 60px;
     
     /* Bordes */
-    --border-radius-sm: 4px;
-    --border-radius-md: 8px;
-    --border-radius-lg: 12px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 50%;
     --border-radius-xl: 16px;
-    --border-radius-full: 50%;
-    
+
+    --border-radius-sm: var(--radius-sm);
+    --border-radius-md: var(--radius-md);
+    --border-radius-lg: var(--radius-lg);
+    --border-radius-full: var(--radius-full);
+
     /* Transiciones */
     --transition-fast: 0.2s ease;
     --transition-normal: 0.3s ease;
     --transition-slow: 0.5s ease;
 
     /* Alias tokens — fix broken var() references in navbar.css and responsive-table.css */
-    --radius-sm: var(--border-radius-sm);
-    --radius-md: var(--border-radius-md);
-    --radius-lg: var(--border-radius-lg);
-    --radius-full: var(--border-radius-full);
     --transition-medium: 0.4s ease;
     --text-muted: var(--text-secondary);
     --danger-color: var(--error-color);
@@ -125,6 +200,14 @@ h3 { font-size: 1.75rem; }
 h4 { font-size: 1.5rem; }
 h5 { font-size: 1.25rem; }
 h6 { font-size: 1rem; }
+
+/* Los encabezados heredan el color de un contenedor con texto blanco
+   (headers de card/modal con bg-* + text-white) en vez de forzar
+   --text-primary, que siempre gana contra la herencia. */
+.text-white h1, .text-white h2, .text-white h3,
+.text-white h4, .text-white h5, .text-white h6 {
+    color: inherit;
+}
 
 p {
     margin-bottom: var(--spacing-md);
@@ -235,6 +318,36 @@ a:hover {
     background-color: var(--primary-dark);
 }
 
+.btn-module-productos {
+    background-color: var(--module-productos-dark);
+    color: white;
+}
+
+.btn-module-reportes {
+    background-color: var(--module-reportes-dark);
+    color: white;
+}
+
+.btn-module-contabilidad {
+    background-color: var(--module-contabilidad-dark);
+    color: white;
+}
+
+.btn-module-inventario {
+    background-color: var(--module-inventario-dark);
+    color: white;
+}
+
+.btn-module-rrhh {
+    background-color: var(--module-rrhh-dark);
+    color: white;
+}
+
+.btn-module-usuarios {
+    background-color: var(--module-usuarios-dark);
+    color: white;
+}
+
 .btn-success {
     background-color: var(--success-color);
     color: white;
@@ -247,6 +360,11 @@ a:hover {
 
 .btn-error, .btn-danger {
     background-color: var(--error-color);
+    color: white;
+}
+
+.btn-info {
+    background-color: var(--info-color);
     color: white;
 }
 
@@ -285,6 +403,7 @@ a:hover {
 .badge-error { background-color: var(--error-color); color: white; }
 .badge-info { background-color: var(--info-color); color: white; }
 .badge-secondary { background-color: var(--text-secondary); color: white; }
+.badge-outline-secondary { background-color: transparent; color: var(--text-secondary); border: 1px solid var(--text-disabled); }
 
 /* ============================================================================
    LOADING STATES
@@ -318,9 +437,9 @@ a:hover {
 
 /* Skeleton Loading */
 .skeleton {
-    background: linear-gradient(90deg, 
-        var(--background-color) 25%, 
-        #e0e0e0 50%, 
+    background: linear-gradient(90deg,
+        var(--background-color) 25%,
+        var(--border-color) 50%,
         var(--background-color) 75%
     );
     background-size: 200% 100%;
@@ -355,7 +474,74 @@ a:hover {
 .text-success { color: var(--success-color); }
 .text-warning { color: var(--warning-color); }
 .text-error { color: var(--error-color); }
+.text-info { color: var(--info-color); }
+.text-danger { color: var(--error-color); }
+.text-secondary { color: var(--text-secondary); }
 .text-muted { color: var(--text-secondary); }
+
+/* Bootstrap 5.3 utility overrides — Bootstrap's own .bg-* rules ship with
+   !important, so ours need it too to win the cascade. */
+.bg-primary { background-color: var(--accent-color) !important; }
+.bg-success { background-color: var(--success-color) !important; }
+.bg-secondary { background-color: var(--text-secondary) !important; }
+.bg-warning { background-color: var(--warning-color) !important; }
+.bg-info { background-color: var(--info-color) !important; }
+.bg-danger { background-color: var(--error-color) !important; }
+.bg-module-productos { background-color: var(--module-productos); }
+.text-module-productos { color: var(--module-productos); }
+.bg-module-contabilidad { background-color: var(--module-contabilidad); }
+.text-module-contabilidad { color: var(--module-contabilidad); }
+.bg-module-reportes { background-color: var(--module-reportes); }
+.text-module-reportes { color: var(--module-reportes); }
+.bg-module-inventario { background-color: var(--module-inventario); }
+.text-module-inventario { color: var(--module-inventario); }
+.bg-module-rrhh { background-color: var(--module-rrhh); }
+.text-module-rrhh { color: var(--module-rrhh); }
+.bg-module-usuarios { background-color: var(--module-usuarios); }
+.text-module-usuarios { color: var(--module-usuarios); }
+
+/* Badge de Tipo de Cuenta Contable — CAPITAL necesita un 5to hue propio,
+   distinguible de ACTIVO (bg-success), PASIVO (bg-danger), INGRESO (bg-info)
+   y EGRESO (bg-warning), sin reusar bg-primary (reservado a la acción principal). */
+.bg-cuenta-capital { background-color: var(--module-inventario); color: white; }
+
+/* Badge de Tipo de Asiento — MANUAL tenía el mismo problema (bg-primary
+   reutilizando el acento reservado). Mismo hue sustituto que bg-cuenta-capital:
+   nunca aparecen en la misma pantalla, no hay colisión visual real. */
+.bg-asiento-manual { background-color: var(--module-inventario); color: white; }
+
+/* Badge de Estado de Orden de Compra — 7 valores contra solo ~6 semánticos de
+   Bootstrap: APROBADA tenía el mismo problema de bg-primary (acento reservado),
+   y ENVIADA colisionaba con PENDIENTE (ambas bg-info). Mismo hue sustituto que
+   bg-cuenta-capital/bg-asiento-manual para APROBADA; ENVIADA usa bg-dark, sin
+   usar en ningún otro badge de la app. */
+.bg-oc-aprobada { background-color: var(--module-inventario); color: white; }
+
+/* Badge de Estado de Nómina — mismo problema por 4ta vez en la sesión: APROBADA
+   reutilizaba bg-primary (acento reservado), y colisionaba en verde con
+   CONTABILIZADA (bg-success). Mismo hue sustituto que bg-cuenta-capital/
+   bg-asiento-manual/bg-oc-aprobada. */
+.bg-nomina-aprobada { background-color: var(--module-inventario); color: white; }
+
+/* Badge de Categoría de Permiso (gestión de permisos de usuario) — CLIENTE
+   usaba bg-primary (acento reservado) y colisionaba en verde con PRODUCTO
+   (bg-success), dos verdes casi idénticos en badges adyacentes. Mismo hue
+   sustituto que bg-cuenta-capital/bg-asiento-manual/bg-oc-aprobada/
+   bg-nomina-aprobada — 5ta vez en la sesión. */
+.bg-permiso-cliente { background-color: var(--module-inventario); color: white; }
+
+/* Badge de Estado de Mensaje WhatsApp — ENTREGADO reutilizaba bg-primary
+   (acento reservado) y además colisionaba en verde con LEÍDO (bg-success/
+   text-success), dos etapas distintas del mismo pipeline de entrega
+   mostrando el mismo color. Mismo hue sustituto que bg-cuenta-capital y
+   el resto — 6ta vez en la sesión. */
+.bg-whatsapp-entregado { background-color: var(--module-inventario); color: white; }
+.text-whatsapp-entregado { color: var(--module-inventario); }
+
+/* Badge de Categoría de Plantilla WhatsApp — MARKETING reutilizaba bg-primary
+   (acento reservado), repetido por cada fila de la tabla. Mismo hue
+   sustituto que el resto — 7ma vez en la sesión. */
+.bg-plantilla-marketing { background-color: var(--module-inventario); color: white; }
 
 .mt-0 { margin-top: 0; }
 .mt-1 { margin-top: var(--spacing-sm); }
@@ -694,4 +880,94 @@ a:hover {
 .dropdown-scrollable {
     max-height: 280px;
     overflow-y: auto;
+}
+
+/* Scope de acento por módulo — Producto (piloto) */
+.module-productos-scope .form-check-input:checked {
+    background-color: var(--module-productos-dark);
+    border-color: var(--module-productos-dark);
+}
+
+.module-productos-scope .switch-input:checked {
+    background-color: var(--module-productos-dark);
+}
+
+.module-productos-scope .form-control:focus {
+    border-color: var(--module-productos-dark);
+    box-shadow: 0 0 0 3px rgba(163, 97, 0, 0.1);
+}
+
+/* Scope de acento por módulo — Contabilidad */
+.module-contabilidad-scope .form-check-input:checked {
+    background-color: var(--module-contabilidad-dark);
+    border-color: var(--module-contabilidad-dark);
+}
+
+.module-contabilidad-scope .switch-input:checked {
+    background-color: var(--module-contabilidad-dark);
+}
+
+.module-contabilidad-scope .form-control:focus {
+    border-color: var(--module-contabilidad-dark);
+    box-shadow: 0 0 0 3px rgba(191, 65, 26, 0.1);
+}
+
+/* Scope de acento por módulo — Reportes */
+.module-reportes-scope .form-check-input:checked {
+    background-color: var(--module-reportes-dark);
+    border-color: var(--module-reportes-dark);
+}
+
+.module-reportes-scope .switch-input:checked {
+    background-color: var(--module-reportes-dark);
+}
+
+.module-reportes-scope .form-control:focus {
+    border-color: var(--module-reportes-dark);
+    box-shadow: 0 0 0 3px rgba(0, 130, 118, 0.1);
+}
+
+/* Scope de acento por módulo — Inventario */
+.module-inventario-scope .form-check-input:checked {
+    background-color: var(--module-inventario-dark);
+    border-color: var(--module-inventario-dark);
+}
+
+.module-inventario-scope .switch-input:checked {
+    background-color: var(--module-inventario-dark);
+}
+
+.module-inventario-scope .form-control:focus {
+    border-color: var(--module-inventario-dark);
+    box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.1);
+}
+
+/* Scope de acento por módulo — RRHH */
+.module-rrhh-scope .form-check-input:checked {
+    background-color: var(--module-rrhh-dark);
+    border-color: var(--module-rrhh-dark);
+}
+
+.module-rrhh-scope .switch-input:checked {
+    background-color: var(--module-rrhh-dark);
+}
+
+.module-rrhh-scope .form-control:focus {
+    border-color: var(--module-rrhh-dark);
+    box-shadow: 0 0 0 3px rgba(198, 26, 84, 0.1);
+}
+
+/* Scope de acento por módulo — Usuarios */
+.module-usuarios-scope .form-check-input:checked {
+    background-color: var(--module-usuarios-dark);
+    border-color: var(--module-usuarios-dark);
+}
+
+.module-usuarios-scope .switch-input:checked {
+    background-color: var(--module-usuarios-dark);
+}
+
+.module-usuarios-scope .form-control:focus {
+    border-color: var(--module-usuarios-dark);
+    box-shadow: 0 0 0 3px rgba(92, 120, 133, 0.1);
 }

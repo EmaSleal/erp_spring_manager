@@ -27,7 +27,7 @@
 }
 
 .table-title {
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -44,7 +44,7 @@
 .table-toolbar {
     padding: var(--spacing-md) var(--spacing-lg);
     background-color: var(--background-color);
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -62,9 +62,9 @@
 .search-input {
     width: 100%;
     padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 40px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--border-color);
     border-radius: var(--border-radius-md);
-    font-size: 0.95rem;
+    font-size: var(--font-base);
     transition: all var(--transition-fast);
 }
 
@@ -102,12 +102,12 @@
 .data-table th {
     padding: var(--spacing-md) var(--spacing-lg);
     text-align: left;
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-primary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #e0e0e0;
+    border-bottom: 2px solid var(--border-color);
 }
 
 .data-table th.sortable {
@@ -117,7 +117,7 @@
 }
 
 .data-table th.sortable:hover {
-    background-color: #e8e8e8;
+    background-color: var(--border-color);
 }
 
 .data-table th.sortable::after {
@@ -144,13 +144,13 @@
 }
 
 .data-table tbody tr:hover {
-    background-color: rgba(25, 118, 210, 0.05);
+    background-color: rgba(0, 128, 64, 0.05);
 }
 
 .data-table td {
     padding: var(--spacing-md) var(--spacing-lg);
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: var(--font-base);
 }
 
 /* Alineación de columnas */
@@ -185,7 +185,7 @@
     border: none;
     cursor: pointer;
     transition: all var(--transition-fast);
-    font-size: 0.9rem;
+    font-size: var(--font-sm);
 }
 
 .action-btn.view {
@@ -225,7 +225,7 @@
     display: inline-block;
     padding: 4px 10px;
     border-radius: var(--border-radius-sm);
-    font-size: 0.75rem;
+    font-size: var(--font-xs);
     font-weight: 600;
     text-transform: uppercase;
 }
@@ -264,7 +264,7 @@
 }
 
 .table-info {
-    font-size: 0.9rem;
+    font-size: var(--font-sm);
     color: var(--text-secondary);
 }
 
@@ -287,18 +287,18 @@
     min-width: 36px;
     height: 36px;
     padding: 0 var(--spacing-sm);
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--border-color);
     border-radius: var(--border-radius-md);
     color: var(--text-primary);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: var(--font-sm);
     font-weight: 500;
     transition: all var(--transition-fast);
 }
 
 .page-link:hover {
     border-color: var(--primary-color);
-    background-color: rgba(25, 118, 210, 0.05);
+    background-color: rgba(0, 128, 64, 0.05);
     text-decoration: none;
 }
 
@@ -329,7 +329,7 @@
 }
 
 .empty-message {
-    font-size: 1.125rem;
+    font-size: var(--font-md);
     color: var(--text-secondary);
     margin-bottom: var(--spacing-md);
 }
@@ -374,7 +374,7 @@
     .data-table th,
     .data-table td {
         padding: var(--spacing-sm) var(--spacing-md);
-        font-size: 0.875rem;
+        font-size: var(--font-sm);
     }
     
     .table-footer {
@@ -418,12 +418,12 @@
     .table-card-label {
         font-weight: 600;
         color: var(--text-secondary);
-        font-size: 0.875rem;
+        font-size: var(--font-sm);
     }
-    
+
     .table-card-value {
         color: var(--text-primary);
-        font-size: 0.875rem;
+        font-size: var(--font-sm);
         text-align: right;
     }
     
