@@ -13,17 +13,17 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-productos-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs (oculto en móvil) -->
             <div th:replace="~{shared/fragments/page-header :: breadcrumb('fas fa-box', 'Productos')}"></div>
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-box', 'text-warning', 'Gestión de', 'Productos', 'Administra tu catálogo de productos')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-box', 'text-module-productos', 'Gestión de', 'Productos', 'Administra tu catálogo de productos')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver a Dashboard', 'Volver al Dashboard')}"></a>
-                    <button type="button" class="btn btn-success" onclick="openAddModal()"
+                    <button type="button" class="btn btn-module-productos" onclick="openAddModal()"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo producto">
                         <i class="fas fa-plus"></i>
