@@ -61,26 +61,18 @@ public class NotificacionViewController {
         } else {
             model.addAttribute("contadorNoLeidas", 0L);
         }
-        
-        // Información del usuario para navbar
-        agregarInfoUsuarioAlModelo(model, authentication);
-        
+
         return "modules/notificacion/lista";
     }
 
     /**
      * Página de preferencias de notificaciones
      * Permite configurar qué canales usar para cada tipo de notificación
-     * 
-     * @param model Modelo para pasar datos a la vista
-     * @param authentication Información del usuario autenticado
+     *
      * @return Vista de preferencias
      */
     @GetMapping("/preferencias")
-    public String preferenciasNotificaciones(Model model, Authentication authentication) {
-        // Información del usuario para navbar
-        agregarInfoUsuarioAlModelo(model, authentication);
-        
+    public String preferenciasNotificaciones() {
         return "modules/notificacion/preferencias";
     }
 
@@ -110,32 +102,6 @@ public class NotificacionViewController {
         } catch (Exception e) {
             log.error("Error obteniendo ID de usuario: {}", e.getMessage());
             return null;
-        }
-    }
-
-    /**
-     * Agrega información del usuario al modelo para mostrar en el navbar
-     * 
-     * @param model Modelo de Spring
-     * @param authentication Información del usuario autenticado
-     */
-    private void agregarInfoUsuarioAlModelo(Model model, Authentication authentication) {
-        if (authentication != null) {
-            String username = authentication.getName();
-            model.addAttribute("userName", username);
-            
-            // Obtener rol del usuario
-            String role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(auth -> auth.getAuthority())
-                .orElse("USER");
-            model.addAttribute("userRole", role);
-            
-            // Generar iniciales
-            String initials = username.length() >= 2 
-                ? username.substring(0, 2).toUpperCase() 
-                : username.substring(0, 1).toUpperCase();
-            model.addAttribute("userInitials", initials);
         }
     }
 }
