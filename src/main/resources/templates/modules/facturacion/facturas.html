@@ -27,7 +27,7 @@
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice-dollar', 'text-primary', 'Gestión de', 'Facturas', 'Administra las facturas y pedidos de tus clientes')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver a Dashboard', 'Volver al Dashboard')}"></a>
-                    <a th:href="@{/pagos}" class="btn btn-success"
+                    <a th:href="@{/pagos}" class="btn btn-outline-secondary"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')"
                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ir a gestión de pagos">
                         <i class="fas fa-money-bill-wave"></i>
@@ -49,7 +49,7 @@
                         <div class="card border-0 shadow-sm h-100 hover-lift">
                             <div class="card-body d-flex align-items-center">
                                 <div class="icon-wrapper me-3">
-                                    <i class="fas fa-file-invoice fa-2x text-primary"></i>
+                                    <i class="fas fa-file-invoice fa-2x text-secondary"></i>
                                 </div>
                                 <div>
                                     <h5 class="card-title mb-1">Comprobantes Electrónicos</h5>
@@ -67,7 +67,7 @@
                         <div class="card border-0 shadow-sm h-100 hover-lift">
                             <div class="card-body d-flex align-items-center">
                                 <div class="icon-wrapper me-3">
-                                    <i class="fas fa-cog fa-2x text-info"></i>
+                                    <i class="fas fa-cog fa-2x text-secondary"></i>
                                 </div>
                                 <div>
                                     <h5 class="card-title mb-1">Configuración Hacienda</h5>
@@ -177,10 +177,10 @@
                                         <span class="fw-bold" th:text="${(factura.monedaFE != null ? factura.monedaFE.simbolo : '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</span>
                                     </td>
                                     <td class="text-center">
-                                        <span th:if="${factura.entregado}" class="badge bg-success">
+                                        <span th:if="${factura.entregado}" class="badge bg-secondary">
                                             <i class="fas fa-check me-1"></i>Entregado
                                         </span>
-                                        <span th:unless="${factura.entregado}" class="badge bg-warning text-dark">
+                                        <span th:unless="${factura.entregado}" class="badge badge-outline-secondary">
                                             <i class="fas fa-clock me-1"></i>Pendiente
                                         </span>
                                     </td>
@@ -213,69 +213,76 @@
                                     <td class="text-center" th:text="${#dates.format(factura.fechaEntrega, 'dd/MM/yyyy')}">01/01/2025</td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
-                                            <button th:attr="data-id=${factura.idFactura}" 
+                                            <button th:attr="data-id=${factura.idFactura}"
                                                     onclick="openModal(this)"
                                                     class="btn btn-sm btn-primary"
                                                     title="Ver Detalle">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <a th:href="@{/pagos/nuevo(idFactura=${factura.idFactura})}"
-                                               class="btn btn-sm btn-success"
-                                               title="Registrar Pago"
-                                               sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')">
-                                                <i class="fas fa-dollar-sign"></i>
-                                            </a>
                                             <a th:href="@{/facturas/editar/{id}(id=${factura.idFactura})}"
-                                               class="btn btn-sm btn-warning"
+                                               class="btn btn-sm btn-primary"
                                                title="Editar"
                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                        </div>
-                                        <div class="btn-group ms-1" role="group">
-                                            <!-- Botón Enviar a Hacienda (solo si NO tiene comprobante) -->
-                                            <button th:unless="${factura.comprobanteElectronico}"
-                                                    th:attr="data-id=${factura.idFactura}"
-                                                    onclick="enviarAHacienda(this)"
-                                                    class="btn btn-sm btn-outline-primary"
-                                                    title="Enviar a Hacienda (Facturación Electrónica)"
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                                                    data-bs-toggle="dropdown"
+                                                    aria-expanded="false"
+                                                    title="Más acciones">
+                                                <span class="visually-hidden">Más acciones</span>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')">
+                                                    <a class="dropdown-item" th:href="@{/pagos/nuevo(idFactura=${factura.idFactura})}">
+                                                        <i class="fas fa-dollar-sign me-2"></i>Registrar Pago
+                                                    </a>
+                                                </li>
+                                                <li th:unless="${factura.comprobanteElectronico}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
-                                                <i class="bi bi-file-earmark-check"></i>
-                                            </button>
-                                            <button th:if="${factura.cliente.email != null and factura.cliente.email != ''}"
-                                                    th:attr="data-id=${factura.idFactura}, data-email=${factura.cliente.email}"
-                                                    onclick="enviarFacturaPorEmail(this)"
-                                                    class="btn btn-sm btn-info"
-                                                    title="Enviar por Email"
+                                                    <button type="button" class="dropdown-item"
+                                                            th:attr="data-id=${factura.idFactura}"
+                                                            onclick="enviarAHacienda(this)">
+                                                        <i class="bi bi-file-earmark-check me-2"></i>Enviar a Hacienda
+                                                    </button>
+                                                </li>
+                                                <li th:if="${factura.cliente.email != null and factura.cliente.email != ''}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ENVIAR')">
-                                                <i class="fas fa-envelope"></i>
-                                            </button>
-                                            <button th:if="${factura.cliente.telefono != null and factura.cliente.telefono != ''}"
-                                                    th:attr="data-id=${factura.idFactura}, data-telefono=${factura.cliente.telefono}, data-cliente=${factura.cliente.nombre}"
-                                                    onclick="enviarFacturaPorWhatsApp(this)"
-                                                    class="btn btn-sm btn-success"
-                                                    title="Enviar por WhatsApp"
+                                                    <button type="button" class="dropdown-item"
+                                                            th:attr="data-id=${factura.idFactura}, data-email=${factura.cliente.email}"
+                                                            onclick="enviarFacturaPorEmail(this)">
+                                                        <i class="fas fa-envelope me-2"></i>Enviar por Email
+                                                    </button>
+                                                </li>
+                                                <li th:if="${factura.cliente.telefono != null and factura.cliente.telefono != ''}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONFIG_EDITAR_WHATSAPP')">
-                                                <i class="fab fa-whatsapp"></i>
-                                            </button>
-                                        <!-- Sin pagos + no entregado: activo -->
-                                        <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado != true}"
-                                           th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
-                                           onclick="return confirmarEliminacion(event)"
-                                           class="btn btn-sm btn-danger"
-                                           title="Eliminar"
-                                           sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                        <!-- Sin pagos + entregado: deshabilitado -->
-                                        <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado == true}"
-                                                class="btn btn-sm btn-danger"
-                                                disabled
-                                                title="No se puede eliminar una factura entregada"
-                                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                        <!-- Con pagos: no se muestra nada -->
+                                                    <button type="button" class="dropdown-item"
+                                                            th:attr="data-id=${factura.idFactura}, data-telefono=${factura.cliente.telefono}, data-cliente=${factura.cliente.nombre}"
+                                                            onclick="enviarFacturaPorWhatsApp(this)">
+                                                        <i class="fab fa-whatsapp me-2"></i>Enviar por WhatsApp
+                                                    </button>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <!-- Sin pagos + no entregado: activo -->
+                                                <li th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado != true}"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                                    <a class="dropdown-item text-danger"
+                                                       th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
+                                                       onclick="return confirmarEliminacion(event)">
+                                                        <i class="fas fa-trash me-2"></i>Eliminar
+                                                    </a>
+                                                </li>
+                                                <!-- Sin pagos + entregado: deshabilitado -->
+                                                <li th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado == true}"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                                    <button type="button" class="dropdown-item text-danger" disabled
+                                                            title="No se puede eliminar una factura entregada">
+                                                        <i class="fas fa-trash me-2"></i>Eliminar
+                                                    </button>
+                                                </li>
+                                                <!-- Con pagos: no se muestra nada -->
+                                            </ul>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -284,12 +291,12 @@
 
                     <!-- MÓVIL: Vista de tarjetas -->
                     <div class="mobile-card-view">
-                        <div th:each="factura : ${facturas}" class="mobile-card" th:classappend="${factura.entregado} ? 'card-success' : 'card-warning'">
-                            
+                        <div th:each="factura : ${facturas}" class="mobile-card">
+
                             <!-- Header -->
                             <div class="mobile-card-header">
                                 <div class="mobile-card-avatar">
-                                    <div class="avatar-circle" th:classappend="${factura.entregado} ? 'bg-success' : 'bg-warning'">
+                                    <div class="avatar-circle bg-secondary">
                                         <i class="fas fa-file-invoice"></i>
                                     </div>
                                     <div class="mobile-card-avatar-info">
@@ -299,7 +306,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <span class="badge" th:classappend="${factura.entregado} ? 'bg-success' : 'bg-warning'">
+                                <span class="badge" th:classappend="${factura.entregado} ? 'bg-secondary' : 'badge-outline-secondary'">
                                     <i class="bi" th:classappend="${factura.entregado} ? 'bi-check-circle-fill' : 'bi-clock-fill'"></i>
                                     <span th:text="${factura.entregado} ? 'Entregado' : 'Pendiente'">Estado</span>
                                 </span>
@@ -323,7 +330,7 @@
                                 <div class="mobile-card-row">
                                     <span class="mobile-card-label">Total</span>
                                     <span class="mobile-card-value">
-                                        <strong class="text-success" th:text="${(factura.monedaFE != null ? factura.monedaFE.simbolo : '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</strong>
+                                        <strong th:text="${(factura.monedaFE != null ? factura.monedaFE.simbolo : '₡') + ' ' + #numbers.formatDecimal(factura.total, 1, 2)}">₡ 0.00</strong>
                                     </span>
                                 </div>
                                 
@@ -336,48 +343,55 @@
 
                             <!-- Footer con acciones -->
                             <div class="mobile-card-footer mobile-card-actions">
-                                <button th:attr="data-id=${factura.idFactura}" 
+                                <button th:attr="data-id=${factura.idFactura}"
                                         onclick="openModal(this)"
                                         class="btn btn-sm btn-primary"
                                         title="Ver Detalle">
                                     <i class="fas fa-eye me-1"></i> Ver
                                 </button>
-                                <a th:href="@{/pagos/nuevo(idFactura=${factura.idFactura})}"
-                                   class="btn btn-sm btn-success"
-                                   title="Registrar Pago"
-                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')">
-                                    <i class="fas fa-dollar-sign me-1"></i> Pago
-                                </a>
                                 <a th:href="@{/facturas/editar/{id}(id=${factura.idFactura})}"
-                                   class="btn btn-sm btn-warning"
+                                   class="btn btn-sm btn-primary"
                                    title="Editar"
                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_EDITAR')">
                                     <i class="fas fa-edit me-1"></i> Editar
                                 </a>
-                                <a th:href="@{/facturas/pdf/{id}(id=${factura.idFactura})}"
-                                   class="btn btn-sm btn-secondary"
-                                   target="_blank"
-                                   title="Descargar PDF"
-                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
-                                    <i class="fas fa-file-pdf me-1"></i> Descargar
-                                </a>
-                                <!-- Sin pagos + no entregado: activo -->
-                                <a th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado != true}"
-                                   th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
-                                   onclick="return confirmarEliminacion(event)"
-                                   class="btn btn-sm btn-danger"
-                                   title="Eliminar"
-                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
-                                    <i class="fas fa-trash me-1"></i> Eliminar
-                                </a>
-                                <!-- Sin pagos + entregado: deshabilitado -->
-                                <button th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado == true}"
-                                        class="btn btn-sm btn-danger"
-                                        disabled
-                                        title="No se puede eliminar una factura entregada"
-                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
-                                    <i class="fas fa-trash me-1"></i> Eliminar
-                                </button>
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle w-100"
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-h me-1"></i> Más
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')">
+                                            <a class="dropdown-item" th:href="@{/pagos/nuevo(idFactura=${factura.idFactura})}">
+                                                <i class="fas fa-dollar-sign me-2"></i>Registrar Pago
+                                            </a>
+                                        </li>
+                                        <li sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
+                                            <a class="dropdown-item" th:href="@{/facturas/pdf/{id}(id=${factura.idFactura})}" target="_blank">
+                                                <i class="fas fa-file-pdf me-2"></i>Descargar PDF
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <!-- Sin pagos + no entregado: activo -->
+                                        <li th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado != true}"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                            <a class="dropdown-item text-danger"
+                                               th:href="@{/facturas/eliminar/{id}(id=${factura.idFactura})}"
+                                               onclick="return confirmarEliminacion(event)">
+                                                <i class="fas fa-trash me-2"></i>Eliminar
+                                            </a>
+                                        </li>
+                                        <!-- Sin pagos + entregado: deshabilitado -->
+                                        <li th:if="${(factura.pagos == null || factura.pagos.isEmpty()) && factura.entregado == true}"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                            <button type="button" class="dropdown-item text-danger" disabled
+                                                    title="No se puede eliminar una factura entregada">
+                                                <i class="fas fa-trash me-2"></i>Eliminar
+                                            </button>
+                                        </li>
+                                        <!-- Con pagos: no se muestra nada -->
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>

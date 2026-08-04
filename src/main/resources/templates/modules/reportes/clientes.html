@@ -16,7 +16,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-reportes-scope">
         <div class="container-fluid py-4">
         <!-- Breadcrumbs -->
         <nav aria-label="breadcrumb" class="mb-4">
@@ -30,14 +30,14 @@
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2><i class="fas fa-users text-success"></i> Reporte de Clientes</h2>
+                <h2><i class="fas fa-users text-module-reportes"></i> Reporte de Clientes</h2>
                 <p class="text-muted mb-0">Análisis de clientes y su actividad</p>
             </div>
             <div class="export-buttons">
-                <button type="button" class="btn btn-danger" onclick="exportarPDF()">
+                <button type="button" class="btn btn-outline-secondary" onclick="exportarPDF()">
                     <i class="fas fa-file-pdf"></i> Exportar PDF
                 </button>
-                <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                <button type="button" class="btn btn-outline-secondary" onclick="exportarExcel()">
                     <i class="fas fa-file-excel"></i> Exportar Excel
                 </button>
             </div>
@@ -71,10 +71,10 @@
 
                     <div class="col-md-4">
                         <div class="filter-buttons">
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-module-reportes">
                                 <i class="fas fa-filter"></i> Filtrar
                             </button>
-                            <a th:href="@{/reportes/clientes}" class="btn btn-secondary">
+                            <a th:href="@{/reportes/clientes}" class="btn btn-outline-secondary">
                                 <i class="fas fa-redo"></i>
                             </a>
                         </div>
@@ -117,9 +117,9 @@
         <div class="card shadow-sm fade-in">
             <div class="card-header bg-light">
                 <h5 class="mb-0">
-                    <i class="fas fa-table text-success"></i> 
+                    <i class="fas fa-table text-module-reportes"></i>
                     Listado de Clientes
-                    <span th:if="${clientes != null}" class="badge bg-success ms-2" th:text="${clientes.size()}">0</span>
+                    <span th:if="${clientes != null}" class="badge badge-secondary ms-2" th:text="${clientes.size()}">0</span>
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -143,20 +143,20 @@
                                     <strong th:text="${cliente.nombre}">Cliente</strong>
                                 </td>
                                 <td>
-                                    <span th:if="${cliente.tipoCliente != null}" 
-                                          class="badge bg-info" 
+                                    <span th:if="${cliente.tipoCliente != null}"
+                                          class="badge badge-outline-secondary"
                                           th:text="${cliente.tipoCliente}">Tipo</span>
                                 </td>
                                 <td th:text="${cliente.email}">email@example.com</td>
                                 <td th:text="${#temporals.format(cliente.createDate, 'dd/MM/yyyy')}">01/01/2024</td>
                                 <td class="text-center">
-                                    <span class="badge badge-estado badge-activo">
+                                    <span class="badge badge-secondary">
                                         <i class="fas fa-check-circle"></i> Activo
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <a th:href="@{/clientes(edit=${cliente.idCliente})}" 
-                                       class="btn btn-sm btn-outline-success" 
+                                    <a th:href="@{/clientes(edit=${cliente.idCliente})}"
+                                       class="btn btn-sm btn-outline-secondary"
                                        title="Ver detalles">
                                         <i class="fas fa-eye"></i>
                                     </a>

@@ -13,7 +13,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
     
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumb -->
             <nav aria-label="breadcrumb" class="mb-3">
@@ -23,13 +23,13 @@
                     <li class="breadcrumb-item active" aria-current="page">Reportes</li>
                 </ol>
             </nav>
-            
+
             <!-- Header -->
             <div class="mb-4">
-                <h1 class="h3 mb-1"><i class="fas fa-chart-line text-primary"></i> Reportes Contables</h1>
+                <h1 class="h3 mb-1"><i class="fas fa-chart-line text-module-contabilidad"></i> Reportes Contables</h1>
                 <p class="text-muted">Estados financieros y reportes del sistema contable</p>
             </div>
-            
+
             <!-- Reportes Disponibles -->
             <div class="row g-4">
                 <!-- Libro Mayor -->
@@ -37,112 +37,112 @@
                     <div class="card border-0 shadow-sm h-100 hover-shadow">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
-                                <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
-                                    <i class="fas fa-book fa-2x text-primary"></i>
+                                <div class="bg-secondary p-3 rounded-circle me-3">
+                                    <i class="fas fa-book fa-2x text-white"></i>
                                 </div>
                                 <h5 class="card-title mb-0">Libro Mayor</h5>
                             </div>
                             <p class="card-text text-muted">
                                 Detalle de todos los movimientos de una cuenta específica en un período de tiempo.
                             </p>
-                            <button type="button" class="btn btn-outline-primary w-100" 
+                            <button type="button" class="btn btn-outline-secondary w-100"
                                     onclick="abrirLibroMayor()">
                                 <i class="fas fa-search"></i> Consultar
                             </button>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Balance de Comprobación -->
                 <div class="col-md-6 col-lg-4">
                     <div class="card border-0 shadow-sm h-100 hover-shadow">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
-                                <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3">
-                                    <i class="fas fa-balance-scale fa-2x text-success"></i>
+                                <div class="bg-secondary p-3 rounded-circle me-3">
+                                    <i class="fas fa-balance-scale fa-2x text-white"></i>
                                 </div>
                                 <h5 class="card-title mb-0">Balance de Comprobación</h5>
                             </div>
                             <p class="card-text text-muted">
                                 Resumen de saldos de todas las cuentas contables en un período determinado.
                             </p>
-                            <a th:href="@{/contabilidad/reportes/balance-comprobacion(fechaInicio=${fechaInicio},fechaFin=${fechaFin})}" 
-                               class="btn btn-outline-success w-100">
+                            <a th:href="@{/contabilidad/reportes/balance-comprobacion(fechaInicio=${fechaInicio},fechaFin=${fechaFin})}"
+                               class="btn btn-outline-secondary w-100">
                                 <i class="fas fa-file-alt"></i> Generar
                             </a>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Balance General -->
                 <div class="col-md-6 col-lg-4">
                     <div class="card border-0 shadow-sm h-100 hover-shadow">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
-                                <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
-                                    <i class="fas fa-chart-pie fa-2x text-info"></i>
+                                <div class="bg-secondary p-3 rounded-circle me-3">
+                                    <i class="fas fa-chart-pie fa-2x text-white"></i>
                                 </div>
                                 <h5 class="card-title mb-0">Balance General</h5>
                             </div>
                             <p class="card-text text-muted">
                                 Estado de situación financiera mostrando activos, pasivos y patrimonio.
                             </p>
-                            <button type="button" class="btn btn-outline-info w-100" 
+                            <button type="button" class="btn btn-outline-secondary w-100"
                                     onclick="abrirBalanceGeneral()">
                                 <i class="fas fa-file-invoice"></i> Generar
                             </button>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Estado de Resultados -->
                 <div class="col-md-6 col-lg-4">
                     <div class="card border-0 shadow-sm h-100 hover-shadow">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
-                                <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
-                                    <i class="fas fa-chart-bar fa-2x text-warning"></i>
+                                <div class="bg-secondary p-3 rounded-circle me-3">
+                                    <i class="fas fa-chart-bar fa-2x text-white"></i>
                                 </div>
                                 <h5 class="card-title mb-0">Estado de Resultados</h5>
                             </div>
                             <p class="card-text text-muted">
                                 Resumen de ingresos, costos y gastos mostrando la utilidad del período.
                             </p>
-                            <a th:href="@{/contabilidad/reportes/estado-resultados(fechaInicio=${fechaInicio},fechaFin=${fechaFin})}" 
-                               class="btn btn-outline-warning w-100">
+                            <a th:href="@{/contabilidad/reportes/estado-resultados(fechaInicio=${fechaInicio},fechaFin=${fechaFin})}"
+                               class="btn btn-outline-secondary w-100">
                                 <i class="fas fa-chart-line"></i> Generar
                             </a>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Análisis de Cuentas -->
                 <div class="col-md-6 col-lg-4">
                     <div class="card border-0 shadow-sm h-100 hover-shadow">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
-                                <div class="bg-danger bg-opacity-10 p-3 rounded-circle me-3">
-                                    <i class="fas fa-search-dollar fa-2x text-danger"></i>
+                                <div class="bg-secondary p-3 rounded-circle me-3">
+                                    <i class="fas fa-search-dollar fa-2x text-white"></i>
                                 </div>
                                 <h5 class="card-title mb-0">Análisis de Cuentas</h5>
                             </div>
                             <p class="card-text text-muted">
                                 Análisis detallado de movimientos y tendencias de cuentas específicas.
                             </p>
-                            <button type="button" class="btn btn-outline-danger w-100" disabled>
+                            <button type="button" class="btn btn-outline-secondary w-100" disabled>
                                 <i class="fas fa-chart-area"></i> Próximamente
                             </button>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Flujo de Efectivo -->
                 <div class="col-md-6 col-lg-4">
                     <div class="card border-0 shadow-sm h-100 hover-shadow">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
-                                <div class="bg-secondary bg-opacity-10 p-3 rounded-circle me-3">
-                                    <i class="fas fa-money-bill-wave fa-2x text-secondary"></i>
+                                <div class="bg-secondary p-3 rounded-circle me-3">
+                                    <i class="fas fa-money-bill-wave fa-2x text-white"></i>
                                 </div>
                                 <h5 class="card-title mb-0">Flujo de Efectivo</h5>
                             </div>
@@ -156,11 +156,11 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Período de Consulta -->
             <div class="card border-0 shadow-sm mt-4">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="fas fa-calendar-alt text-primary me-2"></i>Período de Consulta</h5>
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt text-module-contabilidad me-2"></i>Período de Consulta</h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -212,7 +212,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="generarLibroMayor()">Generar Reporte</button>
+                    <button type="button" class="btn btn-module-contabilidad" onclick="generarLibroMayor()">Generar Reporte</button>
                 </div>
             </div>
         </div>
@@ -238,7 +238,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="generarBalanceGeneral()">Generar Reporte</button>
+                    <button type="button" class="btn btn-module-contabilidad" onclick="generarBalanceGeneral()">Generar Reporte</button>
                 </div>
             </div>
         </div>

@@ -60,7 +60,7 @@ async function showConfirmDialog(title, text, confirmButtonText = 'Sí, confirma
         text: text,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#1976D2',
+        confirmButtonColor: '#008040',
         cancelButtonColor: '#F44336',
         confirmButtonText: confirmButtonText,
         cancelButtonText: 'Cancelar'
@@ -543,15 +543,6 @@ function getAvatarColor(name) {
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log(`${APP_CONFIG.name} v${APP_CONFIG.version} - Inicializado`);
-
-    // Cerrar dropdowns al hacer click fuera
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-    });
 
     // Inicializar tooltips de Bootstrap si está disponible
     if (typeof bootstrap !== 'undefined') {

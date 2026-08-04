@@ -179,7 +179,7 @@
                                         <span th:if="${plantilla.categoria == 'UTILITY'}" class="badge bg-info">
                                             <i class="fas fa-cog me-1"></i>Transaccional
                                         </span>
-                                        <span th:if="${plantilla.categoria == 'MARKETING'}" class="badge bg-primary">
+                                        <span th:if="${plantilla.categoria == 'MARKETING'}" class="badge bg-plantilla-marketing">
                                             <i class="fas fa-bullhorn me-1"></i>Marketing
                                         </span>
                                         <span th:if="${plantilla.categoria == 'AUTHENTICATION'}" class="badge bg-warning text-dark">
@@ -201,10 +201,10 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <span th:if="${plantilla.activo}" class="badge bg-success">
+                                        <span th:if="${plantilla.activo}" class="badge badge-secondary">
                                             <i class="fas fa-toggle-on"></i> Sí
                                         </span>
-                                        <span th:if="${!plantilla.activo}" class="badge bg-secondary">
+                                        <span th:if="${!plantilla.activo}" class="badge badge-outline-secondary">
                                             <i class="fas fa-toggle-off"></i> No
                                         </span>
                                     </td>
@@ -215,9 +215,9 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
-                                            <button th:attr="data-id=${plantilla.idPlantilla}" 
+                                            <button th:attr="data-id=${plantilla.idPlantilla}"
                                                     onclick="verDetallePlantilla(this)"
-                                                    class="btn btn-sm btn-primary"
+                                                    class="btn btn-sm btn-outline-secondary"
                                                     title="Ver Detalle">
                                                 <i class="fas fa-eye"></i>
                                             </button>
@@ -365,7 +365,6 @@
 
     <!-- Scripts -->
     <div th:replace="~{shared/layout :: scripts}"></div>
-    <script src="/js/common.js"></script>
-    <script src="/js/whatsapp-plantillas.js"></script>
+    <script th:src="@{/modules/whatsapp/js/whatsapp-plantillas.js}"></script>
 </body>
 </html>

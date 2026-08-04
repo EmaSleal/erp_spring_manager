@@ -14,7 +14,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
 
             <!-- Breadcrumb -->
@@ -22,7 +22,7 @@
 
             <!-- Page Header -->
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice-dollar', 'text-warning', 'Gestión de', 'Cuentas por Pagar', 'Control y seguimiento de obligaciones con proveedores')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice-dollar', 'text-module-contabilidad', 'Gestión de', 'Cuentas por Pagar', 'Control y seguimiento de obligaciones con proveedores')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/contabilidad', 'Volver a Contabilidad', 'Volver a Contabilidad')}"></a>
                 </div>
@@ -70,7 +70,7 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <button type="button" class="btn btn-secondary w-100"
+                            <button type="button" class="btn btn-outline-secondary w-100"
                                     onclick="document.getElementById('filtroEstado').value=''; filtrarPorEstado()">
                                 <i class="fas fa-eraser me-1"></i>Limpiar
                             </button>
@@ -100,7 +100,7 @@
                                 <tr th:each="cpp : ${cuentas}"
                                     th:attr="data-estado=${cpp.estado.name()}">
                                     <td>
-                                        <div class="fw-bold text-primary" th:text="${cpp.numero}">CPP-2026-00001</div>
+                                        <div class="fw-bold" th:text="${cpp.numero}">CPP-2026-00001</div>
                                     </td>
                                     <td>
                                         <div class="fw-semibold" th:text="${cpp.proveedor.nombre}">Proveedor</div>
@@ -169,7 +169,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalPagoLabel">
-                        <i class="fas fa-money-bill-wave me-2 text-success"></i>Registrar Pago
+                        <i class="fas fa-money-bill-wave me-2 text-module-contabilidad"></i>Registrar Pago
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
@@ -383,10 +383,10 @@
 
             const rows = pagos.map(p => {
                 const estadoBadge = p.estado === 'CONFIRMADO'
-                    ? '<span class="badge bg-success">CONFIRMADO</span>'
-                    : '<span class="badge bg-dark">ANULADO</span>';
+                    ? '<span class="badge badge-secondary">CONFIRMADO</span>'
+                    : '<span class="badge badge-outline-secondary">ANULADO</span>';
                 return `<tr>
-                    <td class="fw-bold text-primary">${p.numero ?? '—'}</td>
+                    <td class="fw-bold">${p.numero ?? '—'}</td>
                     <td>${p.fecha ?? '—'}</td>
                     <td class="text-end">₡ ${parseFloat(p.monto ?? 0).toFixed(2)}</td>
                     <td class="text-center"><span class="badge bg-secondary">${p.metodoPago ?? '—'}</span></td>

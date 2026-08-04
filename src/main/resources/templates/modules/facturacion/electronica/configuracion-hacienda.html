@@ -23,7 +23,7 @@
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-cog', 'text-warning', '', 'Configuración Hacienda', 'Gestiona las credenciales y configuración para Hacienda CR')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-cog', 'text-primary', '', 'Configuración Hacienda', 'Gestiona las credenciales y configuración para Hacienda CR')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/facturas/comprobantes', 'Volver', 'Volver a Comprobantes')}"></a>
                     <button type="button" class="btn btn-primary" onclick="nuevaConfiguracionModal()"
@@ -36,11 +36,11 @@
             </div>
 
             <!-- Configuración Activa -->
-            <div class="card shadow-sm border-0 border-start border-success border-4 mb-4" id="configActiva">
+            <div class="card shadow-sm border-0 mb-4" id="configActiva">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h5 class="card-title text-success">
+                            <h5 class="card-title">
                                 <i class="fas fa-check-circle me-2"></i>Configuración Activa
                             </h5>
                             <p class="text-muted mb-0">Esta configuración se usa para generar comprobantes</p>
@@ -89,12 +89,12 @@
     <div class="modal fade" id="configuracionModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-warning">
+                <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
                         <i class="fas fa-cog me-2"></i>
                         <span id="modalTitle">Nueva Configuración</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="formConfiguracion">
@@ -227,7 +227,7 @@
             content.innerHTML = `
                 <div class="col-md-4">
                     <strong class="text-muted d-block mb-1">Ambiente</strong>
-                    <span class="badge ${config.ambiente === 'PRODUCCION' ? 'bg-danger' : 'bg-info'} px-3 py-2">
+                    <span class="badge ${config.ambiente === 'PRODUCCION' ? 'bg-danger' : 'bg-secondary'} px-3 py-2">
                         ${config.ambiente}
                     </span>
                 </div>
@@ -237,17 +237,17 @@
                 </div>
                 <div class="col-md-4">
                     <strong class="text-muted d-block mb-1">Estado Token</strong>
-                    ${config.tokenValido ? 
-                        '<span class="badge bg-success px-3 py-2"><i class="fas fa-check me-1"></i>Válido</span>' : 
+                    ${config.tokenValido ?
+                        '<span class="badge bg-secondary px-3 py-2"><i class="fas fa-check me-1"></i>Válido</span>' :
                         '<span class="badge bg-warning text-dark px-3 py-2"><i class="fas fa-exclamation-triangle me-1"></i>Renovar</span>'
                     }
                 </div>
                 <div class="col-md-12 mt-3">
                     <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-warning" onclick="renovarToken(${config.id})">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="renovarToken(${config.id})">
                             <i class="fas fa-sync me-1"></i>Renovar Token
                         </button>
-                        <button class="btn btn-sm btn-info" onclick="verConsecutivos(${config.id})">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="verConsecutivos(${config.id})">
                             <i class="fas fa-hashtag me-1"></i>Ver Consecutivos
                         </button>
                         <button class="btn btn-sm btn-primary" onclick="editarConfiguracion(${config.id})">
@@ -266,10 +266,10 @@
             }
 
             tbody.innerHTML = data.map(config => `
-                <tr class="${config.activa ? 'table-success' : ''}">
+                <tr>
                     <td>${config.id}</td>
                     <td>
-                        <span class="badge ${config.ambiente === 'PRODUCCION' ? 'bg-danger' : 'bg-info'}">
+                        <span class="badge ${config.ambiente === 'PRODUCCION' ? 'bg-danger' : 'bg-secondary'}">
                             ${config.ambiente}
                         </span>
                     </td>
@@ -278,21 +278,21 @@
                         <small class="text-muted">${config.rutaCertificado || 'No configurado'}</small>
                     </td>
                     <td class="text-center">
-                        ${config.tokenValido ? 
-                            '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : 
+                        ${config.tokenValido ?
+                            '<span class="badge bg-secondary"><i class="fas fa-check"></i></span>' :
                             '<span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i></span>'
                         }
                     </td>
                     <td class="text-center">
-                        ${config.activa ? 
-                            '<span class="badge bg-success">Activa</span>' : 
-                            '<span class="badge bg-secondary">Inactiva</span>'
+                        ${config.activa ?
+                            '<span class="badge bg-secondary">Activa</span>' :
+                            '<span class="badge badge-outline-secondary">Inactiva</span>'
                         }
                     </td>
                     <td class="text-center">
                         <div class="btn-group btn-group-sm" role="group">
                             ${!config.activa ? `
-                                <button onclick="activarConfig(${config.id})" class="btn btn-success btn-sm" title="Activar">
+                                <button onclick="activarConfig(${config.id})" class="btn btn-outline-secondary btn-sm" title="Activar">
                                     <i class="fas fa-power-off"></i>
                                 </button>
                             ` : ''}

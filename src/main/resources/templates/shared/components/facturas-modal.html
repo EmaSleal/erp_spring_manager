@@ -18,7 +18,7 @@
                     <div class="row">
                         <!-- Datos Generales -->
                         <div class="col-md-6 mb-3">
-                            <h6 class="text-primary fw-bold mb-3">
+                            <h6 class="text-secondary fw-bold mb-3">
                                 <i class="fas fa-info-circle me-2"></i>Información General
                             </h6>
                             <div class="list-group list-group-flush">
@@ -26,19 +26,19 @@
                                     <strong>ID Factura:</strong> <span id="modal-idFactura" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-file-invoice text-primary me-1"></i>N° Factura:</strong> 
+                                    <strong><i class="fas fa-file-invoice text-secondary me-1"></i>N° Factura:</strong> 
                                     <span id="modal-numeroFactura" class="text-muted fw-bold">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-hashtag text-primary me-1"></i>Serie:</strong>
+                                    <strong><i class="fas fa-hashtag text-secondary me-1"></i>Serie:</strong>
                                     <span id="modal-serie" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-coins text-primary me-1"></i>Moneda:</strong>
+                                    <strong><i class="fas fa-coins text-secondary me-1"></i>Moneda:</strong>
                                     <span id="modal-monedaFE" class="text-muted">CRC</span>
                                 </div>
                                 <div class="list-group-item px-0" id="modal-tipo-cambio-row" style="display: none;">
-                                    <strong><i class="fas fa-exchange-alt text-primary me-1"></i>Tipo de Cambio:</strong>
+                                    <strong><i class="fas fa-exchange-alt text-secondary me-1"></i>Tipo de Cambio:</strong>
                                     <span id="modal-tipoCambio" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
@@ -48,11 +48,11 @@
                                     <strong>Última Actualización:</strong> <span id="modal-updateDate" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-calendar text-primary me-1"></i>Fecha de Entrega:</strong> 
+                                    <strong><i class="fas fa-calendar text-secondary me-1"></i>Fecha de Entrega:</strong> 
                                     <span id="modal-fechaEntrega" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
-                                    <strong><i class="fas fa-money-check-alt text-primary me-1"></i>Fecha Límite de Pago:</strong> 
+                                    <strong><i class="fas fa-money-check-alt text-secondary me-1"></i>Fecha Límite de Pago:</strong> 
                                     <span id="modal-fechaPago" class="text-muted">-</span>
                                 </div>
                                 <div class="list-group-item px-0">
@@ -63,7 +63,7 @@
 
                         <!-- Datos del Cliente -->
                         <div class="col-md-6 mb-3">
-                            <h6 class="text-primary fw-bold mb-3">
+                            <h6 class="text-secondary fw-bold mb-3">
                                 <i class="fas fa-user me-2"></i>Datos del Cliente
                             </h6>
                             <div class="list-group list-group-flush">
@@ -85,7 +85,7 @@
 
                     <!-- Tabla de Productos -->
                     <div class="mt-4">
-                        <h6 class="text-primary fw-bold mb-3">
+                        <h6 class="text-secondary fw-bold mb-3">
                             <i class="fas fa-box me-2"></i>Productos
                         </h6>
                         <div class="table-responsive">
@@ -109,13 +109,13 @@
                     <div class="d-flex justify-content-end mt-3">
                         <h5 class="mb-0">
                             <strong>Total: </strong>
-                            <span id="modal-total" class="text-success">₡0.00</span>
+                            <span id="modal-total">₡0.00</span>
                         </h5>
                     </div>
                     
                     <!-- Información de Pagos -->
                     <div class="mt-4" id="pagos-section" style="display: none;">
-                        <h6 class="text-primary fw-bold mb-3">
+                        <h6 class="text-secondary fw-bold mb-3">
                             <i class="fas fa-money-bill-wave me-2"></i>Historial de Pagos
                         </h6>
                         <div id="modal-pagos-info" class="alert alert-info">
@@ -125,14 +125,14 @@
 
                     <!-- Información de Facturación Electrónica -->
                     <div class="mt-4" id="modal-fe-container" style="display: none;">
-                        <h6 class="text-warning fw-bold mb-3">
+                        <h6 class="text-secondary fw-bold mb-3">
                             <i class="fas fa-file-invoice me-2"></i>Facturación Electrónica Costa Rica
                         </h6>
                         
                         <!-- Botón para enviar a Hacienda (solo si no tiene comprobante) -->
                         <div id="modal-fe-boton-enviar" style="display: none;">
-                            <button type="button" 
-                                    class="btn btn-success" 
+                            <button type="button"
+                                    class="btn btn-primary"
                                     onclick="enviarFacturaAHacienda()"
                                     id="btn-enviar-hacienda">
                                 <i class="fas fa-cloud-upload me-1"></i>Enviar a Hacienda

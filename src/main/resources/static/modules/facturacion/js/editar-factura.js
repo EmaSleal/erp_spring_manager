@@ -461,7 +461,7 @@ function createLineaCard(linea) {
             <!-- Producto -->
             <div class="mb-3">
                 <label class="form-label fw-bold">
-                    <i class="fas fa-box text-primary me-1"></i>Producto
+                    <i class="fas fa-box text-secondary me-1"></i>Producto
                 </label>
                 <input type="hidden" name="idLinea" value="${linea.id_linea_factura}">
                 <input type="hidden" name="idProducto" value="${idProducto}">
@@ -503,13 +503,13 @@ function createLineaCard(linea) {
             <div class="row mb-3">
                 <div class="col-6">
                     <label class="form-label fw-bold">
-                        <i class="fas fa-hashtag text-info me-1"></i>Cantidad
+                        <i class="fas fa-hashtag text-secondary me-1"></i>Cantidad
                     </label>
                     <input type="number" name="cantidad" value="${linea.cantidad}" class="form-control form-control-sm" oninput="actualizarProductoSeleccionado(this)" min="1">
                 </div>
                 <div class="col-6">
                     <label class="form-label fw-bold">
-                        <i class="fas fa-dollar-sign text-success me-1"></i>Precio Unitario
+                        <i class="fas fa-dollar-sign text-secondary me-1"></i>Precio Unitario
                     </label>
                     <input type="number" name="precio" value="${linea.precioUnitario}" class="form-control form-control-sm" disabled>
                 </div>
@@ -519,7 +519,7 @@ function createLineaCard(linea) {
             <div class="alert alert-info mb-2 py-2">
                 <div class="d-flex justify-content-between">
                     <span class="fw-bold">Subtotal:</span>
-                    <span class="fw-bold text-success">
+                    <span class="fw-bold">
                         <input type="number" name="subtotal" value="${linea.subtotal}" class="form-control form-control-sm text-end input-subtotal" disabled>
                     </span>
                 </div>

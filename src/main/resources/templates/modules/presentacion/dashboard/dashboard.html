@@ -18,6 +18,7 @@
 <body>
     <!-- CSS específico del módulo -->
     <link rel="stylesheet" th:href="@{/modules/presentacion/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
 
     <!-- NAVBAR -->
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
@@ -178,23 +179,23 @@
                  ============================================================ -->
             <div class="row mt-5">
                 <div class="col-12 col-lg-6 mb-4">
-                    <div class="info-card">
-                        <div class="info-header">
-                            <i class="fas fa-lightbulb fa-2x text-warning"></i>
-                            <h4>Consejos Rápidos</h4>
-                        </div>
+                    <div class="info-card info-tips">
+                        <h5>
+                            <i class="fas fa-lightbulb"></i>
+                            Consejos Rápidos
+                        </h5>
                         <div class="info-body">
                             <ul class="tips-list">
                                 <li>
-                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <i class="fas fa-check-circle text-secondary me-2"></i>
                                     Usa el buscador en cada módulo para encontrar registros rápidamente
                                 </li>
                                 <li>
-                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <i class="fas fa-check-circle text-secondary me-2"></i>
                                     Las facturas pendientes aparecen en rojo en la lista
                                 </li>
                                 <li>
-                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <i class="fas fa-check-circle text-secondary me-2"></i>
                                     Puedes editar clientes y productos directamente desde la tabla
                                 </li>
                             </ul>
@@ -203,11 +204,11 @@
                 </div>
 
                 <div class="col-12 col-lg-6 mb-4">
-                    <div class="info-card">
-                        <div class="info-header">
-                            <i class="fas fa-info-circle fa-2x text-info"></i>
-                            <h4>Información del Sistema</h4>
-                        </div>
+                    <div class="info-card info-system">
+                        <h5>
+                            <i class="fas fa-info-circle"></i>
+                            Información del Sistema
+                        </h5>
                         <div class="info-body">
                             <div class="info-item">
                                 <span class="info-label">Versión:</span>
@@ -220,7 +221,11 @@
                             <div class="info-item">
                                 <span class="info-label">Rol:</span>
                                 <span class="info-value">
-                                    <span class="badge bg-primary" th:text="${userRole}">USER</span>
+                                    <span class="badge"
+                                          th:classappend="${userRole == 'ADMIN'} ? 'badge-rol-admin' :
+                                                          (${userRole == 'GERENTE'} ? 'badge-rol-gerente' :
+                                                          (${userRole == 'VENDEDOR'} ? 'badge-rol-vendedor' : 'badge-rol-visualizador'))"
+                                          th:text="${userRole}">USER</span>
                                 </span>
                             </div>
                             <div class="info-item">

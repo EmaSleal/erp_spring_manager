@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-briefcase', 'Puestos')}"></div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-briefcase', 'text-module-rrhh', 'Gestión de', 'Puestos', 'Catálogo de puestos de trabajo')}"></div>
+            </div>
+            <div class="col-auto d-flex align-items-end">
+                <button class="btn btn-module-rrhh"
+                        id="btnNuevoPuesto"
+                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                    <i class="fas fa-plus me-1"></i>Nuevo Puesto
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" id="searchInput" class="form-control"
+                       placeholder="Buscar puesto..." oninput="filtrarTabla()">
+            </div>
+            <div class="col-md-3">
+                <select id="filtroDepartamento" class="form-select" onchange="filtrarTabla()">
+                    <option value="">Todos los departamentos</option>
+                    <option th:each="d : ${departamentos}"
+                            th:value="${d.nombre}"
+                            th:text="${d.nombre}"></option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="filtroActivo" class="form-select" onchange="filtrarTabla()">
+                    <option value="">Todos</option>
+                    <option value="true">Activos</option>
+                    <option value="false">Inactivos</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="tablaPuestos">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre</th>
+                                <th>Departamento</th>
+                                <th>Jornada</th>
+                                <th>Salario Base</th>
+                                <th>Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="p : ${puestos}"
+                                th:data-nombre="${p.nombre}"
+                                th:data-departamento="${p.departamento != null ? p.departamento.nombre : ''}"
+                                th:data-activo="${p.activo}">
+                                <td th:text="${p.id}"></td>
+                                <td>
+                                    <div class="fw-semibold" th:text="${p.nombre}"></div>
+                                    <small class="text-muted" th:if="${p.descripcion}" th:text="${p.descripcion}"></small>
+                                </td>
+                                <td th:text="${p.departamento != null ? p.departamento.nombre : '-'}"></td>
+                                <td th:text="${p.tipoJornada != null ? p.tipoJornada : '-'}"></td>
+                                <td th:text="${p.salarioBase != null ? '₡ ' + #numbers.formatDecimal(p.salarioBase, 1, 'COMMA', 2, 'POINT') : '-'}"></td>
+                                <td>
+                                    <div th:replace="~{shared/fragments/status-badge :: boolBadge(${p.activo}, 'Activo', 'Inactivo', 'badge-secondary', 'badge-outline-secondary')}"></div>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-module-rrhh me-1"
+                                            th:data-id="${p.id}"
+                                            th:data-nombre="${p.nombre}"
+                                            th:data-descripcion="${p.descripcion}"
+                                            th:data-salario="${p.salarioBase}"
+                                            th:data-categoria="${p.categoriaSalarialMinima}"
+                                            th:data-jornada="${p.tipoJornada}"
+                                            th:data-departamento-id="${p.departamento != null ? p.departamento.id : ''}"
+                                            onclick="abrirModalEditar(this)"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            th:data-id="${p.id}"
+                                            th:data-nombre="${p.nombre}"
+                                            onclick="confirmarDesactivar(this)"
+                                            th:if="${p.activo}"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(puestos)}">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No hay puestos registrados.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal crear/editar -->
+        <div class="modal fade" id="puestoModal" tabindex="-1" aria-labelledby="puestoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="puestoModalLabel">Puesto</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="puestoForm">
+                            <input type="hidden" id="puestoId">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="puestoNombre" class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="puestoNombre"
+                                           placeholder="Nombre del puesto" maxlength="200" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="puestoDepartamentoId" class="form-label">Departamento <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="puestoDepartamentoId" required>
+                                        <option value="">Seleccione un departamento</option>
+                                        <option th:each="d : ${departamentos}"
+                                                th:value="${d.id}"
+                                                th:text="${d.nombre}"></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="puestoDescripcion" class="form-label">Descripción</label>
+                                <textarea class="form-control" id="puestoDescripcion" rows="2" maxlength="500"
+                                          placeholder="Descripción breve del puesto (opcional)"></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="puestoSalarioBase" class="form-label">Salario Base (₡) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="puestoSalarioBase"
+                                           min="0" step="0.01" placeholder="0.00" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="puestoTipoJornada" class="form-label">Tipo de Jornada</label>
+                                    <select class="form-select" id="puestoTipoJornada">
+                                        <option value="">Sin especificar</option>
+                                        <option th:each="j : ${tiposJornada}"
+                                                th:value="${j}"
+                                                th:text="${j}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="puestoCategoriaSalarial" class="form-label">Categoría Salarial</label>
+                                    <input type="text" class="form-control" id="puestoCategoriaSalarial"
+                                           placeholder="ej. TONC (opcional)" maxlength="100">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-module-rrhh" onclick="guardarPuesto()">
+                            <i class="fas fa-save me-1"></i>Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/puestos.js}"></script>
+</body>
+</html>

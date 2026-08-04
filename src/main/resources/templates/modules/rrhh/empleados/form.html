@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/empleados', 'fas fa-users', 'Empleados', 'fas fa-plus', 'Nuevo Empleado')}"></div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div th:replace="~{shared/fragments/page-header :: pageHeader(
+                    'fas fa-user-edit',
+                    'text-module-rrhh',
+                    ${empleado == null ? 'Nuevo' : 'Editar'},
+                    'Empleado',
+                    ${empleado == null ? 'Registrar nuevo empleado' : 'Modificar datos del empleado'},
+                    '/rrhh/empleados',
+                    'Volver a lista'
+                )}"></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form id="formEmpleado" novalidate>
+                    <input type="hidden" id="empleadoId" th:value="${empleado != null ? empleado.id : ''}">
+
+                    <!-- Datos de identidad -->
+                    <h6 class="text-muted text-uppercase fw-semibold mb-3 mt-2">
+                        <i class="fas fa-id-badge me-1"></i>Datos de identidad
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Cédula / Pasaporte <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="cedula" maxlength="20" required
+                                   th:value="${empleado?.cedula}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nombre" maxlength="200" required
+                                   th:value="${empleado?.nombre}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Primer apellido <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="primerApellido" maxlength="100" required
+                                   th:value="${empleado?.primerApellido}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Segundo apellido</label>
+                            <input type="text" class="form-control" id="segundoApellido" maxlength="100"
+                                   th:value="${empleado?.segundoApellido}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Género</label>
+                            <select class="form-select" id="genero">
+                                <option value="">Seleccionar</option>
+                                <option value="MASCULINO" th:selected="${empleado?.genero?.name() == 'MASCULINO'}">Masculino</option>
+                                <option value="FEMENINO" th:selected="${empleado?.genero?.name() == 'FEMENINO'}">Femenino</option>
+                                <option value="OTRO" th:selected="${empleado?.genero?.name() == 'OTRO'}">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Estado civil</label>
+                            <select class="form-select" id="estadoCivil">
+                                <option value="">Seleccionar</option>
+                                <option value="SOLTERO" th:selected="${empleado?.estadoCivil?.name() == 'SOLTERO'}">Soltero/a</option>
+                                <option value="CASADO" th:selected="${empleado?.estadoCivil?.name() == 'CASADO'}">Casado/a</option>
+                                <option value="DIVORCIADO" th:selected="${empleado?.estadoCivil?.name() == 'DIVORCIADO'}">Divorciado/a</option>
+                                <option value="VIUDO" th:selected="${empleado?.estadoCivil?.name() == 'VIUDO'}">Viudo/a</option>
+                                <option value="UNION_LIBRE" th:selected="${empleado?.estadoCivil?.name() == 'UNION_LIBRE'}">Unión libre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha de nacimiento</label>
+                            <input type="date" class="form-control" id="fechaNacimiento"
+                                   th:value="${empleado?.fechaNacimiento}">
+                        </div>
+                    </div>
+
+                    <!-- Contacto -->
+                    <h6 class="text-muted text-uppercase fw-semibold mb-3">
+                        <i class="fas fa-phone me-1"></i>Contacto
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Correo electrónico</label>
+                            <input type="email" class="form-control" id="email" maxlength="100"
+                                   th:value="${empleado?.email}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="telefono" maxlength="15"
+                                   th:value="${empleado?.telefono}">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="direccion"
+                                   th:value="${empleado?.direccion}">
+                        </div>
+                    </div>
+
+                    <!-- Cargo -->
+                    <h6 class="text-muted text-uppercase fw-semibold mb-3">
+                        <i class="fas fa-briefcase me-1"></i>Cargo
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Departamento <span class="text-danger">*</span></label>
+                            <select class="form-select" id="departamentoId" onchange="cargarPuestos()" required>
+                                <option value="">Seleccionar departamento</option>
+                                <option th:each="dep : ${departamentos}"
+                                        th:value="${dep.id}"
+                                        th:text="${dep.nombre}"
+                                        th:selected="${empleado?.departamento?.id == dep.id}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Puesto <span class="text-danger">*</span></label>
+                            <select class="form-select" id="puestoId" required>
+                                <option value="">Seleccionar departamento primero</option>
+                                <option th:if="${empleado?.puesto != null}"
+                                        th:value="${empleado.puesto.id}"
+                                        th:text="${empleado.puesto.nombre}"
+                                        selected>
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha de ingreso <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="fechaIngreso" required
+                                   th:value="${empleado?.fechaIngreso}">
+                        </div>
+                    </div>
+
+                    <!-- Datos normativos CR -->
+                    <h6 class="text-muted text-uppercase fw-semibold mb-3">
+                        <i class="fas fa-landmark me-1"></i>Datos normativos CR
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">N° Asegurado CCSS</label>
+                            <input type="text" class="form-control" id="numeroAseguradoCCSS" maxlength="20"
+                                   th:value="${empleado?.numeroAseguradoCCSS}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Operadora de Pensiones (ROP)</label>
+                            <input type="text" class="form-control" id="operadoraPensionesROP" maxlength="100"
+                                   th:value="${empleado?.operadoraPensionesROP}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Hijos (carga familiar)</label>
+                            <input type="number" class="form-control" id="hijosCargaFamiliar" min="0"
+                                   th:value="${empleado?.hijosCargaFamiliar ?: 0}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="conyugeCargaFamiliar"
+                                       th:checked="${empleado?.conyugeCargaFamiliar}">
+                                <label class="form-check-label" for="conyugeCargaFamiliar">
+                                    Cónyuge (carga)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">% Solidarista</label>
+                            <input type="number" class="form-control" id="porcentajeSolidarista"
+                                   step="0.0001" min="0" max="1"
+                                   placeholder="ej: 0.0300"
+                                   th:value="${empleado?.porcentajeSolidarista}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Pensión alimentaria (₡)</label>
+                            <input type="number" class="form-control" id="montoPensionAlimentaria"
+                                   step="0.01" min="0"
+                                   th:value="${empleado?.montoPensionAlimentaria}">
+                        </div>
+                    </div>
+
+                    <!-- Datos bancarios -->
+                    <h6 class="text-muted text-uppercase fw-semibold mb-3">
+                        <i class="fas fa-university me-1"></i>Datos bancarios
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Banco</label>
+                            <input type="text" class="form-control" id="banco" maxlength="100"
+                                   th:value="${empleado?.banco}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Número de cuenta</label>
+                            <input type="text" class="form-control" id="cuentaBancaria" maxlength="30"
+                                   th:value="${empleado?.cuentaBancaria}">
+                        </div>
+                    </div>
+
+                    <!-- Contacto de emergencia -->
+                    <h6 class="text-muted text-uppercase fw-semibold mb-3">
+                        <i class="fas fa-ambulance me-1"></i>Contacto de emergencia
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="contactoEmergenciaNombre" maxlength="200"
+                                   th:value="${empleado?.contactoEmergenciaNombre}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="contactoEmergenciaTelefono" maxlength="15"
+                                   th:value="${empleado?.contactoEmergenciaTelefono}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Relación</label>
+                            <input type="text" class="form-control" id="contactoEmergenciaRelacion" maxlength="50"
+                                   th:value="${empleado?.contactoEmergenciaRelacion}">
+                        </div>
+                    </div>
+
+                    <!-- Vincular a usuario del sistema -->
+                    <h6 class="text-muted text-uppercase fw-semibold mb-3">
+                        <i class="fas fa-link me-1"></i>Vinculación al sistema
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Vincular a usuario <small class="text-muted">(opcional)</small></label>
+                            <select class="form-select" id="usuarioId">
+                                <option value="">Sin vinculación</option>
+                                <option th:each="u : ${usuariosDisponibles}"
+                                        th:value="${u.idUsuario}"
+                                        th:text="${u.nombre} + ' (' + ${u.email != null ? u.email : u.telefono} + ')'"
+                                        th:selected="${empleado?.usuario?.idUsuario == u.idUsuario}">
+                                </option>
+                            </select>
+                            <small class="text-muted">Solo se muestran usuarios sin empleado asignado</small>
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a th:href="@{/rrhh/empleados}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Cancelar
+                        </a>
+                        <button type="button" class="btn btn-module-rrhh" onclick="guardarEmpleado()">
+                            <i class="fas fa-save me-1"></i>Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script th:inline="javascript">
+    const empleadoId = /*[[${empleado?.id}]]*/ null;
+    const puestoActualId = /*[[${empleado?.puesto?.id}]]*/ null;
+</script>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/empleados.js}"></script>
+</body>
+</html>

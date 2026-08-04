@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/ausencias', 'fas fa-calendar-times', 'Ausencias', 'fas fa-plus', 'Registrar Ausencia')}"></div>
+
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-calendar-times', 'text-module-rrhh', 'Recursos Humanos', 'Registrar Ausencia', 'Nueva solicitud de ausencia o permiso', '/rrhh/ausencias', 'Ausencias')}"></div>
+
+        <div class="card">
+            <div class="card-body">
+                <form id="ausenciaForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Empleado <span class="text-danger">*</span></label>
+                            <select id="empleadoId" name="empleadoId" class="form-select" required>
+                                <option value="">Seleccione empleado...</option>
+                                <option th:each="emp : ${empleados}"
+                                        th:value="${emp.id}"
+                                        th:text="${emp.nombreCompleto}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Ausencia <span class="text-danger">*</span></label>
+                            <select id="tipoAusencia" name="tipoAusencia" class="form-select" required>
+                                <option value="">Seleccione...</option>
+                                <option th:each="tipo : ${tiposAusencia}"
+                                        th:value="${tipo}"
+                                        th:text="${tipo}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha Inicio <span class="text-danger">*</span></label>
+                            <input type="date" id="fechaInicio" name="fechaInicio"
+                                   class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha Fin <span class="text-danger">*</span></label>
+                            <input type="date" id="fechaFin" name="fechaFin"
+                                   class="form-control" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea id="descripcion" name="descripcion"
+                                      class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="conGoceSalario"
+                                       name="conGoceSalario" checked />
+                                <label class="form-check-label" for="conGoceSalario">Con goce de salario</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="justificada"
+                                       name="justificada" checked />
+                                <label class="form-check-label" for="justificada">Justificada</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="computaParaAguinaldo"
+                                       name="computaParaAguinaldo" checked />
+                                <label class="form-check-label" for="computaParaAguinaldo">Cómputa aguinaldo</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="computaAntiguedad"
+                                       name="computaAntiguedad" checked />
+                                <label class="form-check-label" for="computaAntiguedad">Cómputa antigüedad</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="button" class="btn btn-module-rrhh"
+                                onclick="registrarAusencia()">
+                            <i class="fas fa-save me-2"></i>Registrar Ausencia
+                        </button>
+                        <a th:href="@{/rrhh/ausencias}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/ausencias.js}"></script>
+</body>
+</html>

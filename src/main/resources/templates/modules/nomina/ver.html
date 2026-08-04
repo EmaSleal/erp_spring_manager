@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/nomina', 'fas fa-money-check-alt', 'Nómina', 'fas fa-file-invoice-dollar', 'Detalle')}"></div>
+
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-file-invoice-dollar', 'text-module-rrhh', 'Recursos Humanos', 'Detalle de Nómina', 'Información detallada de la planilla', '/rrhh/nomina', 'Nómina')}"></div>
+
+        <div th:replace="~{shared/fragments/alerts :: alerts(${successMsg}, ${errorMsg})}"></div>
+
+        <!-- Header card -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">
+                        <span class="fw-bold" th:text="${nomina.numero}">NOM-2026-0001</span>
+                        &nbsp;
+                        <span th:switch="${nomina.estado.name()}">
+                            <span th:case="'BORRADOR'"      class="badge bg-secondary fs-6">Borrador</span>
+                            <span th:case="'CALCULADA'"     class="badge bg-info text-dark fs-6">Calculada</span>
+                            <span th:case="'APROBADA'"      class="badge bg-nomina-aprobada fs-6">Aprobada</span>
+                            <span th:case="'CONTABILIZADA'" class="badge bg-success fs-6">Contabilizada</span>
+                            <span th:case="'ANULADA'"       class="badge bg-danger fs-6">Anulada</span>
+                        </span>
+                    </h5>
+                </div>
+                <!-- Action buttons — shown based on state and permission -->
+                <div class="d-flex gap-2">
+
+                    <!-- BORRADOR: Calcular + Anular -->
+                    <th:block th:if="${nomina.estado.name() == 'BORRADOR'}">
+                        <button type="button" class="btn btn-info text-white"
+                                th:attr="data-id=${nomina.id}"
+                                onclick="accionNomina(this.dataset.id, 'calcular', '¿Calcular nómina?', 'Se procesarán todos los empleados activos con contrato.')"
+                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_CALCULAR')">
+                            <i class="fas fa-calculator me-1"></i>Calcular
+                        </button>
+                        <button type="button" class="btn btn-danger"
+                                th:attr="data-id=${nomina.id}"
+                                onclick="accionAnular(this.dataset.id)"
+                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_ANULAR')">
+                            <i class="fas fa-ban me-1"></i>Anular
+                        </button>
+                    </th:block>
+
+                    <!-- CALCULADA: Aprobar + Anular -->
+                    <th:block th:if="${nomina.estado.name() == 'CALCULADA'}">
+                        <button type="button" class="btn btn-success"
+                                th:attr="data-id=${nomina.id}"
+                                onclick="accionNomina(this.dataset.id, 'aprobar', '¿Aprobar nómina?', 'La nómina quedará aprobada y lista para contabilizar.')"
+                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_APROBAR')">
+                            <i class="fas fa-check me-1"></i>Aprobar
+                        </button>
+                        <button type="button" class="btn btn-danger"
+                                th:attr="data-id=${nomina.id}"
+                                onclick="accionAnular(this.dataset.id)"
+                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_ANULAR')">
+                            <i class="fas fa-ban me-1"></i>Anular
+                        </button>
+                    </th:block>
+
+                    <!-- APROBADA: Contabilizar -->
+                    <th:block th:if="${nomina.estado.name() == 'APROBADA'}">
+                        <button type="button" class="btn btn-success"
+                                th:attr="data-id=${nomina.id}"
+                                onclick="accionNomina(this.dataset.id, 'contabilizar', '¿Contabilizar nómina?', 'Se generará el asiento contable correspondiente.')"
+                                sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_CONTABILIZAR')">
+                            <i class="fas fa-book me-1"></i>Contabilizar
+                        </button>
+                    </th:block>
+
+                    <!-- CONTABILIZADA: read-only notice -->
+                    <th:block th:if="${nomina.estado.name() == 'CONTABILIZADA'}">
+                        <span class="text-muted fst-italic">
+                            <i class="fas fa-lock me-1"></i>Nómina contabilizada — sin acciones disponibles
+                        </span>
+                    </th:block>
+
+                    <!-- ANULADA: read-only notice -->
+                    <th:block th:if="${nomina.estado.name() == 'ANULADA'}">
+                        <span class="text-danger fst-italic">
+                            <i class="fas fa-ban me-1"></i>Nómina anulada
+                        </span>
+                    </th:block>
+
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Tipo</small>
+                        <span class="fw-semibold" th:text="${nomina.tipo}">MENSUAL</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Período</small>
+                        <span th:text="${#temporals.format(nomina.periodoInicio, 'dd/MM/yyyy')}">01/07/2026</span>
+                        &ndash;
+                        <span th:text="${#temporals.format(nomina.periodoFin, 'dd/MM/yyyy')}">31/07/2026</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Fecha de pago</small>
+                        <span th:text="${#temporals.format(nomina.fechaPago, 'dd/MM/yyyy')}">05/08/2026</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Empleados</small>
+                        <span th:text="${nomina.cantidadEmpleados}">0</span>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <small class="text-muted d-block">Total Bruto</small>
+                        <span class="fw-bold fs-5"
+                              th:text="'₡ ' + ${#numbers.formatDecimal(nomina.totalBruto, 1, 'COMMA', 2, 'POINT')}">₡ 0.00</span>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted d-block">Total Neto</small>
+                        <span class="fw-bold fs-5"
+                              th:text="'₡ ' + ${#numbers.formatDecimal(nomina.totalNeto, 1, 'COMMA', 2, 'POINT')}">₡ 0.00</span>
+                    </div>
+                    <div class="col-md-4" th:if="${nomina.estado.name() == 'CONTABILIZADA'}">
+                        <small class="text-muted d-block">Asiento contable</small>
+                        <a href="/contabilidad/asientos" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-book me-1"></i>Ver asientos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail lines -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-list me-2 text-module-rrhh"></i>Detalle por empleado</h6>
+            </div>
+            <div class="card-body p-0">
+                <div th:if="${#lists.isEmpty(nomina.detalles)}" class="text-center py-5 text-muted">
+                    <i class="fas fa-users fa-3x mb-3 d-block"></i>
+                    <p>No hay líneas de detalle. Calcule la nómina para generar el desglose por empleado.</p>
+                </div>
+                <div th:if="${not #lists.isEmpty(nomina.detalles)}" class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Empleado</th>
+                                <th class="text-end">Salario Base</th>
+                                <th class="text-end">Bruto</th>
+                                <th class="text-end">CCSS Obrero</th>
+                                <th class="text-end">INS</th>
+                                <th class="text-end">Renta</th>
+                                <th class="text-end">Total Deduc.</th>
+                                <th class="text-end fw-bold">Neto</th>
+                                <th class="text-end text-muted">Carga Patronal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="d : ${nomina.detalles}">
+                                <td th:text="${d.empleadoNombre}">Empleado</td>
+                                <td class="text-end"
+                                    th:text="${#numbers.formatDecimal(d.salarioBase, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end"
+                                    th:text="${#numbers.formatDecimal(d.brutoProrrateado, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end"
+                                    th:text="${#numbers.formatDecimal(d.ccssObrero, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end"
+                                    th:text="${#numbers.formatDecimal(d.ins, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end"
+                                    th:text="${#numbers.formatDecimal(d.impuestoRenta, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end fw-semibold"
+                                    th:text="${#numbers.formatDecimal(d.totalDeducciones, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end fw-bold"
+                                    th:text="${#numbers.formatDecimal(d.salarioNeto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end text-muted"
+                                    th:text="${#numbers.formatDecimal(d.ccssPatronal, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td>Totales</td>
+                                <td></td>
+                                <td class="text-end"
+                                    th:text="${#numbers.formatDecimal(nomina.totalBruto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td colspan="4"></td>
+                                <td class="text-end"
+                                    th:text="${#numbers.formatDecimal(nomina.totalNeto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- Modal: Motivo de anulación -->
+<div class="modal fade" id="modalAnular" tabindex="-1" aria-labelledby="modalAnularLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAnularLabel">
+                    <i class="fas fa-ban me-2 text-danger"></i>Anular Nómina
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Indique el motivo de la anulación. Esta acción no se puede deshacer.</p>
+                <div class="mb-3">
+                    <label class="form-label">Motivo <span class="text-danger">*</span></label>
+                    <textarea id="motivoAnulacion" class="form-control" rows="3"
+                              placeholder="Describa el motivo de la anulación..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmarAnular()">
+                    <i class="fas fa-ban me-1"></i>Anular nómina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:inline="javascript">
+    const nominaId = /*[[${nomina.id}]]*/ null;
+</script>
+<script th:src="@{/modules/nomina/js/nomina.js}"></script>
+</body>
+</html>

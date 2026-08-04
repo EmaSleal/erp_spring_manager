@@ -130,10 +130,34 @@ public enum Permiso {
     AUDITORIA_EXPORTAR("Exportar auditoría", "Exportar logs de auditoría"),
     
     // ==================== SISTEMA ====================
-    
+
     SISTEMA_VER_LOGS("Ver logs", "Acceso a logs del sistema"),
     SISTEMA_BACKUP("Backup", "Realizar respaldos del sistema"),
-    SISTEMA_MANTENIMIENTO("Mantenimiento", "Poner sistema en modo mantenimiento");
+    SISTEMA_MANTENIMIENTO("Mantenimiento", "Poner sistema en modo mantenimiento"),
+
+    // ==================== RECURSOS HUMANOS ====================
+
+    RRHH_VER("Ver RRHH", "Visualizar módulo de Recursos Humanos"),
+    RRHH_CREAR_EMPLEADO("Crear empleado", "Registrar nuevos empleados"),
+    RRHH_EDITAR_EMPLEADO("Editar empleado", "Modificar información de empleados"),
+    RRHH_BAJA_EMPLEADO("Dar de baja empleado", "Dar de baja definitiva a empleados"),
+    RRHH_GESTIONAR_CONTRATOS("Gestionar contratos", "Crear y terminar contratos de empleados"),
+    RRHH_GESTIONAR_AUSENCIAS("Gestionar ausencias", "Registrar y aprobar ausencias de empleados"),
+
+    // Spec-aligned aliases used in EmpleadoRestController and MatrizPermisos
+    RRHH_GESTIONAR_EMPLEADOS("Gestionar empleados", "CRUD completo de empleados"),
+    RRHH_APROBAR_AUSENCIAS("Aprobar ausencias", "Aprobar solicitudes de ausencia"),
+    RRHH_VER_CATALOGO_SALARIAL("Ver catálogo salarial", "Consultar salarios mínimos y parámetros CCSS"),
+    RRHH_GESTIONAR_CATALOGO_SALARIAL("Gestionar catálogo salarial", "Actualizar catálogos salariales y CCSS"),
+
+    // ==================== NÓMINA ====================
+
+    NOMINA_VER("Ver nómina", "Visualizar nóminas y sus detalles por empleado"),
+    NOMINA_CREAR("Crear nómina", "Crear nuevas nóminas para un período"),
+    NOMINA_CALCULAR("Calcular nómina", "Ejecutar el cálculo bruto-neto de una nómina en BORRADOR"),
+    NOMINA_APROBAR("Aprobar nómina", "Aprobar nóminas calculadas para contabilización"),
+    NOMINA_CONTABILIZAR("Contabilizar nómina", "Generar asiento contable de una nómina aprobada (operación crítica)"),
+    NOMINA_ANULAR("Anular nómina", "Anular nóminas en BORRADOR o CALCULADA (operación crítica)");
     
     private final String nombre;
     private final String descripcion;
@@ -171,6 +195,8 @@ public enum Permiso {
         if (name.startsWith("USUARIO_")) return "Usuarios";
         if (name.startsWith("AUDITORIA_")) return "Auditoría";
         if (name.startsWith("SISTEMA_")) return "Sistema";
+        if (name.startsWith("RRHH_")) return "Recursos Humanos";
+        if (name.startsWith("NOMINA_")) return "Nomina";
         return "Otros";
     }
     
@@ -186,6 +212,8 @@ public enum Permiso {
                this == FACTURA_ANULAR ||
                this == PAGO_ANULAR ||
                this == CONTABILIDAD_ELIMINAR ||
-               this == CONTABILIDAD_ANULAR;
+               this == CONTABILIDAD_ANULAR ||
+               this == NOMINA_CONTABILIZAR ||
+               this == NOMINA_ANULAR;
     }
 }

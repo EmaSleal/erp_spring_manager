@@ -5,9 +5,9 @@
 <!-- Modal para agregar/editar producto -->
 <div th:fragment="producto-modal" class="modal fade" id="productoModal" tabindex="-1" aria-labelledby="productoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+        <div class="modal-content module-productos-scope">
             <!-- Modal Header -->
-            <div class="modal-header bg-warning text-white">
+            <div class="modal-header bg-module-productos text-white">
                 <h5 class="modal-title" id="productoModalLabel">
                     <i class="fas fa-box me-2"></i>
                     <span id="modalTitle">Agregar Producto</span>
@@ -23,9 +23,9 @@
 
                     <div class="row g-3">
                         <!-- Código -->
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <label for="codigo" class="form-label">
-                                <i class="fas fa-barcode text-warning me-1"></i>
+                                <i class="fas fa-barcode text-module-productos me-1"></i>
                                 Código
                             </label>
                             <input type="text" 
@@ -40,9 +40,9 @@
                         </div>
 
                         <!-- Descripción -->
-                        <div class="col-md-6">
+                        <div class="col-md-9">
                             <label for="descripcion" class="form-label">
-                                <i class="fas fa-align-left text-warning me-1"></i>
+                                <i class="fas fa-align-left text-module-productos me-1"></i>
                                 Descripción
                             </label>
                             <input type="text" 
@@ -59,7 +59,7 @@
                         <!-- Presentación -->
                         <div class="col-md-12">
                             <label for="presentacion" class="form-label">
-                                <i class="fas fa-cube text-warning me-1"></i>
+                                <i class="fas fa-cube text-module-productos me-1"></i>
                                 Presentación
                             </label>
                             <select class="form-select" 
@@ -82,9 +82,9 @@
                         </div>
 
                         <!-- Precio Institucional -->
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="precioInstitucional" class="form-label">
-                                <i class="fas fa-dollar-sign text-warning me-1"></i>
+                                <i class="fas fa-dollar-sign text-module-productos me-1"></i>
                                 Precio Institucional
                             </label>
                             <input type="number" 
@@ -100,9 +100,9 @@
                         </div>
 
                         <!-- Precio Mayorista -->
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="precioMayorista" class="form-label">
-                                <i class="fas fa-dollar-sign text-warning me-1"></i>
+                                <i class="fas fa-dollar-sign text-module-productos me-1"></i>
                                 Precio Mayorista
                             </label>
                             <input type="number" 
@@ -134,7 +134,7 @@
                         <!-- Separador - Facturación Electrónica -->
                         <div class="col-12 mt-4">
                             <hr>
-                            <h6 class="text-warning">
+                            <h6 class="text-module-productos">
                                 <i class="fas fa-file-invoice me-2"></i>
                                 Facturación Electrónica Costa Rica
                             </h6>
@@ -143,7 +143,7 @@
                         <!-- Buscar Código CABYS -->
                         <div class="col-12">
                             <label class="form-label">
-                                <i class="fas fa-search text-warning me-1"></i>
+                                <i class="fas fa-search text-module-productos me-1"></i>
                                 Buscar Código CABYS
                             </label>
                             <div class="input-group">
@@ -151,8 +151,8 @@
                                        class="form-control" 
                                        id="cabysBusqueda" 
                                        placeholder="Ej: jugo de tomate, café, papel">
-                                <button type="button" 
-                                        class="btn btn-warning" 
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
                                         id="btnBuscarCabys"
                                         onclick="buscarCabys()">
                                     <i class="fas fa-search me-1"></i>
@@ -172,9 +172,9 @@
                         </div>
 
                         <!-- Código CABYS (13 dígitos) -->
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="codigoCabys" class="form-label">
-                                <i class="fas fa-hashtag text-warning me-1"></i>
+                                <i class="fas fa-hashtag text-module-productos me-1"></i>
                                 Código CABYS
                             </label>
                             <input type="text" 
@@ -189,9 +189,9 @@
                         </div>
 
                         <!-- Descripción CABYS (oficial para XML) -->
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <label for="descripcionCabys" class="form-label">
-                                <i class="fas fa-tag text-warning me-1"></i>
+                                <i class="fas fa-tag text-module-productos me-1"></i>
                                 Descripción CABYS
                             </label>
                             <input type="text" 
@@ -207,7 +207,7 @@
                         <!-- Gravado (checkbox) -->
                         <div class="col-md-4">
                             <label class="form-label d-block">
-                                <i class="fas fa-percent text-warning me-1"></i>
+                                <i class="fas fa-percent text-module-productos me-1"></i>
                                 Impuesto
                             </label>
                             <div class="form-check form-switch">
@@ -228,7 +228,7 @@
                         <!-- Porcentaje de Impuesto -->
                         <div class="col-md-4" id="divPorcentajeImpuesto">
                             <label for="porcentajeImpuesto" class="form-label">
-                                <i class="fas fa-percentage text-warning me-1"></i>
+                                <i class="fas fa-percentage text-module-productos me-1"></i>
                                 % Impuesto
                             </label>
                             <input type="number" 
@@ -246,7 +246,7 @@
                         <!-- Aplica Otro Impuesto -->
                         <div class="col-md-6">
                             <label class="form-label d-block">
-                                <i class="fas fa-file-invoice-dollar text-warning me-1"></i>
+                                <i class="fas fa-file-invoice-dollar text-module-productos me-1"></i>
                                 Otros Impuestos
                             </label>
                             <div class="form-check form-switch">
@@ -270,7 +270,7 @@
                     <i class="fas fa-times me-1"></i>
                     Cancelar
                 </button>
-                <button type="button" class="btn btn-warning" id="btnGuardarProducto">
+                <button type="button" class="btn btn-module-productos" id="btnGuardarProducto">
                     <i class="fas fa-save me-1"></i>
                     Guardar Producto
                 </button>

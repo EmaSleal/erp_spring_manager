@@ -14,16 +14,23 @@
     <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar...', 'filtrarProductos()')}"></div>
     <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar permiso...', null)}"></div>
 -->
-<div th:fragment="searchBar(inputId, placeholder, onInput)" class="input-group">
-    <span class="input-group-text bg-white">
-        <i class="fas fa-search text-muted"></i>
-    </span>
-    <input type="text"
-           th:id="${inputId}"
-           class="form-control border-start-0"
-           th:placeholder="${placeholder}"
-           th:oninput="${onInput != null and !#strings.isEmpty(onInput)} ? ${onInput} : null" />
-</div>
+<th:block th:fragment="searchBar(inputId, placeholder, onInput)">
+    <div class="input-group">
+        <span class="input-group-text bg-white">
+            <i class="fas fa-search text-muted"></i>
+        </span>
+        <input type="text"
+               th:id="${inputId}"
+               class="form-control border-start-0"
+               th:placeholder="${placeholder}" />
+    </div>
+    <script th:inline="javascript" th:if="${onInput != null and !#strings.isEmpty(onInput)}">
+        (function() {
+            var el = document.getElementById([[${inputId}]]);
+            if (el) el.oninput = function() { /*[(${onInput})]*/ };
+        })();
+    </script>
+</th:block>
 
 <!--
   searchBarForm(inputId, inputName, placeholder, value)

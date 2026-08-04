@@ -71,10 +71,10 @@ function openModal(button) {
             const estadoBadge = document.getElementById("modal-entregado");
             if (data.entregado) {
                 estadoBadge.innerHTML = '<i class="fas fa-check me-1"></i>Entregado';
-                estadoBadge.className = 'badge bg-success';
+                estadoBadge.className = 'badge bg-secondary';
             } else {
                 estadoBadge.innerHTML = '<i class="fas fa-clock me-1"></i>Pendiente';
-                estadoBadge.className = 'badge bg-warning text-dark';
+                estadoBadge.className = 'badge badge-outline-secondary';
             }
 
             // Datos del Cliente
@@ -160,7 +160,7 @@ function openModal(button) {
                 if (modalPagosInfo) {
                     let pagosHTML = `
                         <div class="mb-2">
-                            <strong>Total Pagado:</strong> <span class="text-success">${monedaSimbolo}${parseFloat(data.totalPagado || 0).toFixed(2)}</span>
+                            <strong>Total Pagado:</strong> <span>${monedaSimbolo}${parseFloat(data.totalPagado || 0).toFixed(2)}</span>
                         </div>
                         <div class="mb-2">
                             <strong>Saldo Pendiente:</strong> <span class="${data.saldoPendiente > 0 ? 'text-danger' : 'text-success'}">${monedaSimbolo}${parseFloat(data.saldoPendiente || 0).toFixed(2)}</span>

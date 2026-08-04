@@ -19,16 +19,16 @@
 
             <!-- Header -->
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-check-double', 'text-info', 'Conciliación de', 'Pagos', 'Pagos confirmados pendientes de conciliación bancaria')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-check-double', 'text-primary', 'Conciliación de', 'Pagos', 'Pagos confirmados pendientes de conciliación bancaria')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/pagos', 'Volver a Pagos', 'Volver a Pagos')}"></a>
                     <button id="btnConciliarSeleccionados"
-                            class="btn btn-info d-none"
+                            class="btn btn-primary d-none"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')"
                             onclick="conciliarSeleccionados()">
                         <i class="fas fa-check-double me-1"></i>
                         <span class="d-none d-sm-inline">Conciliar Seleccionados</span>
-                        <span class="badge bg-white text-info ms-1" id="badgeConteo">0</span>
+                        <span class="badge bg-white text-primary ms-1" id="badgeConteo">0</span>
                     </button>
                 </div>
             </div>
@@ -36,7 +36,7 @@
             <!-- Stat Card -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-warning', 'Total Pendiente', '₡ ' + ${#numbers.formatDecimal(totalPendiente ?: 0, 1, 2)}, 'fas fa-hourglass-half fa-3x', 'text-white-50')}"></div>
+                    <div th:replace="~{shared/fragments/stat-card :: statCard('bg-primary', 'Total Pendiente', '₡ ' + ${#numbers.formatDecimal(totalPendiente ?: 0, 1, 2)}, 'fas fa-hourglass-half fa-3x', 'text-white-50')}"></div>
                 </div>
                 <div class="col-md-4">
                     <div th:replace="~{shared/fragments/stat-card :: statCard('bg-info', 'Pagos a Conciliar', ${#lists.size(pagos)}, 'fas fa-list-check fa-3x', 'text-white-50')}"></div>
@@ -77,7 +77,7 @@
                                                    onchange="actualizarConteo()">
                                         </td>
                                         <td>
-                                            <div class="fw-bold text-primary" th:text="${pago.numeroPago}">PAG-001</div>
+                                            <div class="fw-bold" th:text="${pago.numeroPago}">PAG-001</div>
                                             <small class="text-muted">ID: <span th:text="${pago.idPago}">1</span></small>
                                         </td>
                                         <td>
@@ -101,7 +101,7 @@
                                             <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
                                         </td>
                                         <td class="text-end">
-                                            <span class="fw-bold text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
+                                            <span class="fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
                                         </td>
                                         <td class="text-center" th:text="${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</td>
                                         <td class="text-center">
@@ -112,7 +112,7 @@
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 <button th:attr="onclick=|conciliarPago(${pago.idPago})|"
-                                                        class="btn btn-sm btn-info"
+                                                        class="btn btn-sm btn-outline-secondary"
                                                         title="Conciliar"
                                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
                                                     <i class="fas fa-check-double"></i>
@@ -129,11 +129,11 @@
 
                         <!-- MÓVIL -->
                         <div class="mobile-card-view">
-                            <div th:each="pago : ${pagos}" class="mobile-card card-warning">
+                            <div th:each="pago : ${pagos}" class="mobile-card">
 
                                 <div class="mobile-card-header">
                                     <div class="mobile-card-avatar">
-                                        <div class="avatar-circle bg-warning">
+                                        <div class="avatar-circle bg-secondary">
                                             <i class="fas fa-hourglass-half"></i>
                                         </div>
                                         <div class="mobile-card-avatar-info">
@@ -141,7 +141,7 @@
                                             <div class="mobile-card-avatar-subtitle" th:text="${pago.nombreCliente}">Cliente</div>
                                         </div>
                                     </div>
-                                    <span class="badge bg-warning text-dark">
+                                    <span class="badge bg-secondary">
                                         <i class="fas fa-clock me-1"></i> Pendiente
                                     </span>
                                 </div>
@@ -168,7 +168,7 @@
                                     <div class="mobile-card-row">
                                         <span class="mobile-card-label">Monto</span>
                                         <span class="mobile-card-value">
-                                            <strong class="text-success" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
+                                            <strong th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
                                         </span>
                                     </div>
                                     <div class="mobile-card-row">
@@ -187,7 +187,7 @@
                                         <i class="fas fa-eye me-1"></i> Ver
                                     </a>
                                     <button th:attr="onclick=|conciliarPago(${pago.idPago})|"
-                                            class="btn btn-sm btn-info"
+                                            class="btn btn-sm btn-outline-secondary"
                                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CONCILIAR')">
                                         <i class="fas fa-check-double me-1"></i> Conciliar
                                     </button>

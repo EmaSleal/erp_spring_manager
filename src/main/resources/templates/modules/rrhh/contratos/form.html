@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh/contratos', 'fas fa-file-contract', 'Contratos', 'fas fa-plus', 'Nuevo Contrato')}"></div>
+
+        <div th:replace="~{shared/fragments/page-header :: pageHeader('fas fa-file-contract', 'text-module-rrhh', 'Recursos Humanos', 'Nuevo Contrato', 'Registrar contrato laboral', '/rrhh/contratos', 'Contratos')}"></div>
+
+        <div class="card">
+            <div class="card-body">
+                <form id="contratoForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Empleado <span class="text-danger">*</span></label>
+                            <select id="empleadoId" name="empleadoId" class="form-select" required>
+                                <option value="">Seleccione empleado...</option>
+                                <option th:each="emp : ${empleados}"
+                                        th:value="${emp.id}"
+                                        th:text="${emp.nombreCompleto}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Contrato <span class="text-danger">*</span></label>
+                            <select id="tipoContrato" name="tipoContrato" class="form-select" required>
+                                <option value="">Seleccione...</option>
+                                <option th:each="tipo : ${tiposContrato}"
+                                        th:value="${tipo}"
+                                        th:text="${tipo}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cargo Contratado</label>
+                            <input type="text" id="cargoContratado" name="cargoContratado"
+                                   class="form-control" maxlength="150" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Jornada</label>
+                            <select id="jornada" name="jornada" class="form-select">
+                                <option value="">Seleccione...</option>
+                                <option th:each="j : ${tiposJornada}"
+                                        th:value="${j}"
+                                        th:text="${j}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha Inicio <span class="text-danger">*</span></label>
+                            <input type="date" id="fechaInicio" name="fechaInicio"
+                                   class="form-control" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha Fin</label>
+                            <input type="date" id="fechaFin" name="fechaFin" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Salario Bruto <span class="text-danger">*</span></label>
+                            <input type="number" id="salarioBruto" name="salarioBruto"
+                                   class="form-control" step="0.01" min="0" required />
+                        </div>
+                    </div>
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="button" class="btn btn-module-rrhh" onclick="guardarContrato()">
+                            <i class="fas fa-save me-2"></i>Guardar Contrato
+                        </button>
+                        <a th:href="@{/rrhh/contratos}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/contratos.js}"></script>
+</body>
+</html>

@@ -13,7 +13,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumbs -->
             <nav aria-label="breadcrumb" class="mb-3">
@@ -37,7 +37,7 @@
             <!-- Header Section -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="h3 mb-1"><i class="fas fa-list-alt text-info me-2"></i>Plan de Cuentas Contables</h2>
+                    <h2 class="h3 mb-1"><i class="fas fa-list-alt text-module-contabilidad me-2"></i>Plan de Cuentas Contables</h2>
                     <p class="text-muted mb-0">Gestión del catálogo de cuentas contables</p>
                 </div>
                 <div class="d-flex gap-2">
@@ -47,7 +47,7 @@
                     <button type="button" class="btn btn-outline-secondary" onclick="colapsarTodo()">
                         <i class="fas fa-compress-alt me-2"></i>Colapsar Todo
                     </button>
-                    <a th:href="@{/contabilidad/cuentas/crear}" class="btn btn-primary" 
+                    <a th:href="@{/contabilidad/cuentas/crear}" class="btn btn-module-contabilidad"
                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, '')">
                         <i class="fas fa-plus me-2"></i>Nueva Cuenta
                     </a>
@@ -83,7 +83,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small text-muted">&nbsp;</label>
-                        <button type="button" class="btn btn-info w-100" onclick="aplicarFiltros()">
+                        <button type="button" class="btn btn-outline-secondary w-100" onclick="aplicarFiltros()">
                             <i class="fas fa-filter me-2"></i>Filtrar
                         </button>
                     </div>
@@ -93,7 +93,7 @@
             <!-- Accounts Tree -->
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white py-3">
-                    <h5 class="mb-0"><i class="fas fa-sitemap me-2 text-primary"></i>Estructura Jerárquica</h5>
+                    <h5 class="mb-0"><i class="fas fa-sitemap me-2 text-module-contabilidad"></i>Estructura Jerárquica</h5>
                 </div>
                 <div class="card-body">
                     <!-- Loading State -->
@@ -109,7 +109,7 @@
                         <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
                         <h5 class="text-muted">No hay cuentas registradas</h5>
                         <p class="text-muted">Comience creando una cuenta raíz</p>
-                        <a th:href="@{/contabilidad/cuentas/crear}" class="btn btn-primary"
+                        <a th:href="@{/contabilidad/cuentas/crear}" class="btn btn-module-contabilidad"
                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, '')">
                             <i class="fas fa-plus me-2"></i>Crear Primera Cuenta
                         </a>

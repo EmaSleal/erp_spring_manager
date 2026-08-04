@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.nomina.model.Nomina;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -43,7 +44,7 @@ import java.util.List;
 })
 @Getter
 @Setter
-@ToString(exclude = {"detalles", "factura", "pago", "cuentaPorPagar", "pagoProveedor"})
+@ToString(exclude = {"detalles", "factura", "pago", "cuentaPorPagar", "pagoProveedor", "nomina"})
 @AllArgsConstructor
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -128,6 +129,13 @@ public class AsientoContable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pago_proveedor_id")
     private PagoProveedor pagoProveedor;
+
+    /**
+     * Nómina origen (set when generated from a payroll run).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nomina_id")
+    private Nomina nomina;
 
     // ==================== AUDITORÍA ====================
     

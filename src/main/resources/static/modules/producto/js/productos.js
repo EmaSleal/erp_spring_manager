@@ -219,12 +219,12 @@ function renderTable() {
             <td class="text-end">$${parseFloat(producto.precioInstitucional).toFixed(2)}</td>
             <td class="text-end d-none d-lg-table-cell">$${parseFloat(producto.precioMayorista).toFixed(2)}</td>
             <td class="text-center d-none d-md-table-cell">
-                ${producto.active ? 
-                    '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Activo</span>' : 
-                    '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Inactivo</span>'}
+                ${producto.active ?
+                    '<span class="badge bg-secondary"><i class="fas fa-check me-1"></i>Activo</span>' :
+                    '<span class="badge badge-outline-secondary"><i class="fas fa-times me-1"></i>Inactivo</span>'}
             </td>
             <td class="text-center">
-                <button class="btn btn-sm btn-warning me-1 ${(typeof permisos !== 'undefined' && !permisos.editar) ? 'd-none' : ''}"
+                <button class="btn btn-sm btn-module-productos me-1 ${(typeof permisos !== 'undefined' && !permisos.editar) ? 'd-none' : ''}"
                         onclick="openEditModal(${producto.idProducto}, '${producto.codigo}', '${producto.descripcion}', ${producto?.presentacion?.idPresentacion}, ${producto.precioInstitucional}, ${producto.precioMayorista}, ${producto.active})"
                         title="Editar">
                     <i class="fas fa-edit"></i>
@@ -266,13 +266,13 @@ function renderMobileCards(items) {
     // Crear tarjetas
     items.forEach(producto => {
         const card = document.createElement('div');
-        card.className = `mobile-card ${producto.active ? 'card-success' : 'card-secondary'}`;
-        
+        card.className = 'mobile-card card-module-productos';
+
         card.innerHTML = `
             <!-- Header -->
             <div class="mobile-card-header">
                 <div class="mobile-card-avatar">
-                    <div class="avatar-circle ${producto.active ? 'bg-success' : 'bg-secondary'}">
+                    <div class="avatar-circle bg-secondary">
                         <i class="fas fa-box"></i>
                     </div>
                     <div class="mobile-card-avatar-info">
@@ -282,7 +282,7 @@ function renderMobileCards(items) {
                         </div>
                     </div>
                 </div>
-                <span class="badge ${producto.active ? 'bg-success' : 'bg-secondary'}">
+                <span class="badge ${producto.active ? 'bg-secondary' : 'badge-outline-secondary'}">
                     ${producto.active ? '<i class="bi bi-check-circle-fill me-1"></i>Activo' : '<i class="bi bi-x-circle-fill me-1"></i>Inactivo'}
                 </span>
             </div>
@@ -305,7 +305,7 @@ function renderMobileCards(items) {
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">P. Institucional</span>
                     <span class="mobile-card-value">
-                        <strong class="text-success">$${parseFloat(producto.precioInstitucional).toFixed(2)}</strong>
+                        <strong>$${parseFloat(producto.precioInstitucional).toFixed(2)}</strong>
                     </span>
                 </div>
                 
@@ -313,14 +313,14 @@ function renderMobileCards(items) {
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">P. Mayorista</span>
                     <span class="mobile-card-value">
-                        <strong class="text-primary">$${parseFloat(producto.precioMayorista).toFixed(2)}</strong>
+                        <strong>$${parseFloat(producto.precioMayorista).toFixed(2)}</strong>
                     </span>
                 </div>
             </div>
 
             <!-- Footer con acciones -->
             <div class="mobile-card-footer mobile-card-actions">
-                <button class="btn btn-sm btn-warning ${(typeof permisos !== 'undefined' && !permisos.editar) ? 'd-none' : ''}"
+                <button class="btn btn-sm btn-module-productos ${(typeof permisos !== 'undefined' && !permisos.editar) ? 'd-none' : ''}"
                         onclick="openEditModal(${producto.idProducto}, '${producto.codigo}', '${producto.descripcion}', ${producto?.presentacion?.idPresentacion}, ${producto.precioInstitucional}, ${producto.precioMayorista}, ${producto.active})">
                     <i class="fas fa-edit me-1"></i> Editar
                 </button>

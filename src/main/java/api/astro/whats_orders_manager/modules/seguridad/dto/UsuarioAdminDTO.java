@@ -82,10 +82,18 @@ public class UsuarioAdminDTO {
     private Integer updateBy;
     
     // ==================== INFORMACIÓN ADICIONAL ====================
-    
+
     private Long cantidadSesionesActivas;
     private Long totalActividades;
     private String estadoDescripcion; // Descripción amigable del estado
+
+    // ==================== RRHH LINKING ====================
+
+    /**
+     * ID of the Empleado linked to this user (nullable — not every user has an HR record).
+     * Used by UsuarioAdminController to call EmpleadoService.vincularUsuario / desvincularUsuario.
+     */
+    private Long empleadoId;
     
     // ==================== CONSTRUCTORES ====================
 

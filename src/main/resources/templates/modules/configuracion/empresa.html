@@ -9,10 +9,10 @@
     <div id="alert-empresa-container"></div>
 
     <div class="card shadow-sm">
-        <div class="card-header bg-primary bg-gradient text-white">
+        <div class="card-header bg-light border-bottom">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <i class="fas fa-building me-2"></i>
+                    <i class="fas fa-building text-primary me-2"></i>
                     <strong>Configuración de la Empresa</strong>
                 </div>
             </div>
@@ -28,7 +28,7 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-briefcase text-primary me-2"></i>
+                            <i class="fas fa-briefcase text-secondary me-2"></i>
                             Información Legal
                         </h5>
                     </div>
@@ -98,7 +98,7 @@
                 <div class="row mb-4" id="seccion-facturacion-cr">
                     <div class="col-12">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-file-invoice text-primary me-2"></i>
+                            <i class="fas fa-file-invoice text-secondary me-2"></i>
                             Facturación Electrónica Costa Rica
                         </h5>
                     </div>
@@ -130,7 +130,7 @@
                                    name="numeroIdentificacion"
                                    placeholder="3101234567"
                                    maxlength="12">
-                            <button class="btn btn-outline-primary" type="button" 
+                            <button class="btn btn-outline-secondary" type="button"
                                     onclick="ConfiguracionEmpresa.consultarHacienda(document.getElementById('numeroIdentificacion').value)"
                                     title="Consultar en Hacienda">
                                 <i class="fas fa-search"></i>
@@ -252,7 +252,7 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-map-marker-alt text-success me-2"></i>
+                            <i class="fas fa-map-marker-alt text-secondary me-2"></i>
                             Dirección Fiscal
                         </h5>
                     </div>
@@ -322,7 +322,7 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-phone text-info me-2"></i>
+                            <i class="fas fa-phone text-secondary me-2"></i>
                             Información de Contacto
                         </h5>
                     </div>
@@ -368,7 +368,7 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-palette text-warning me-2"></i>
+                            <i class="fas fa-palette text-secondary me-2"></i>
                             Recursos Visuales
                         </h5>
                     </div>
@@ -454,7 +454,7 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-file-pdf text-danger me-2"></i>
+                            <i class="fas fa-file-pdf text-secondary me-2"></i>
                             Configuración de Factura PDF
                         </h5>
                     </div>
@@ -491,7 +491,7 @@
 
                     <!-- Save PDF config button -->
                     <div class="col-12">
-                        <button type="button" class="btn btn-outline-danger" onclick="EmpresaPdf.guardarConfigPdf()">
+                        <button type="button" class="btn btn-outline-secondary" onclick="EmpresaPdf.guardarConfigPdf()">
                             <i class="fas fa-file-pdf me-1"></i> Guardar config. PDF
                         </button>
                     </div>
@@ -501,13 +501,13 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-university text-success me-2"></i>
+                            <i class="fas fa-university text-secondary me-2"></i>
                             Cuentas Bancarias (aparecen en el PDF)
                         </h5>
                     </div>
                     <div class="col-12">
                         <div id="lista-cuentas-bancarias"></div>
-                        <button type="button" class="btn btn-outline-success btn-sm mt-2"
+                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2"
                                 onclick="EmpresaPdf.mostrarFormCuenta()">
                             <i class="fas fa-plus me-1"></i> Agregar cuenta
                         </button>

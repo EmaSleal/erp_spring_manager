@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<link rel="stylesheet" th:href="@{/modules/presentacion/css/dashboard.css}">
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid mt-4 px-4">
+
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="page-title">
+                    <i class="fas fa-id-card me-2 text-module-rrhh"></i>
+                    Recursos Humanos
+                </h1>
+                <p class="text-muted">Gestión de personal, contratos y ausencias</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="row mb-5">
+            <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                <div class="stat-card" style="border-left: 4px solid var(--rrhh-empleados);">
+                    <div class="stat-icon" style="color: var(--rrhh-empleados);">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number" th:text="${totalEmpleados}">0</h3>
+                        <p class="stat-label">Empleados Activos</p>
+                    </div>
+                    <div class="stat-footer">
+                        <a th:href="@{/rrhh/empleados}" class="stat-link">
+                            Ver todos <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                <div class="stat-card" style="border-left: 4px solid var(--rrhh-departamentos);">
+                    <div class="stat-icon" style="color: var(--rrhh-departamentos);">
+                        <i class="fas fa-building fa-2x"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number" th:text="${totalDepartamentos}">0</h3>
+                        <p class="stat-label">Departamentos</p>
+                    </div>
+                    <div class="stat-footer">
+                        <a th:href="@{/rrhh/departamentos}" class="stat-link">
+                            Ver todos <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                <div class="stat-card" style="border-left: 4px solid var(--rrhh-contratos);">
+                    <div class="stat-icon" style="color: var(--rrhh-contratos);">
+                        <i class="fas fa-file-contract fa-2x"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number" th:text="${contratosActivos}">0</h3>
+                        <p class="stat-label">Contratos Activos</p>
+                    </div>
+                    <div class="stat-footer">
+                        <a th:href="@{/rrhh/contratos}" class="stat-link">
+                            Ver todos <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-3">
+                <div class="stat-card" style="border-left: 4px solid var(--rrhh-ausencias);">
+                    <div class="stat-icon" style="color: var(--rrhh-ausencias);">
+                        <i class="fas fa-calendar-times fa-2x"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number" th:text="${ausenciasPendientes}">0</h3>
+                        <p class="stat-label">Ausencias Pendientes</p>
+                    </div>
+                    <div class="stat-footer">
+                        <a th:href="@{/rrhh/ausencias}" class="stat-link">
+                            Revisar <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submodules -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <h2 class="section-title">
+                    <i class="fas fa-th-large me-2"></i>
+                    Submódulos
+                </h2>
+            </div>
+        </div>
+
+        <div class="row">
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_VER')">
+                <a th:href="@{/rrhh/empleados}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-empleados);">
+                            <i class="fas fa-users fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Empleados</h5>
+                        <p class="module-description">Registro y gestión de personal</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_VER')">
+                <a th:href="@{/rrhh/departamentos}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-departamentos);">
+                            <i class="fas fa-building fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Departamentos</h5>
+                        <p class="module-description">Estructura organizacional</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_VER')">
+                <a th:href="@{/rrhh/puestos}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-puestos);">
+                            <i class="fas fa-briefcase fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Puestos</h5>
+                        <p class="module-description">Catálogo de puestos de trabajo</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_CONTRATOS')">
+                <a th:href="@{/rrhh/contratos}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-contratos);">
+                            <i class="fas fa-file-contract fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Contratos</h5>
+                        <p class="module-description">Contratos laborales del personal</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_AUSENCIAS')">
+                <a th:href="@{/rrhh/ausencias}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-ausencias);">
+                            <i class="fas fa-calendar-times fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Ausencias</h5>
+                        <p class="module-description">Registro y aprobación de ausencias</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_VER')">
+                <a th:href="@{/rrhh/catalogos/parametros-ccss}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-parametros-ccss);">
+                            <i class="fas fa-university fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Parámetros CCSS</h5>
+                        <p class="module-description">Tasas de cotización vigentes</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_VER')">
+                <a th:href="@{/rrhh/catalogos/salarios-minimos}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-salarios-minimos);">
+                            <i class="fas fa-money-bill-wave fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Salarios Mínimos</h5>
+                        <p class="module-description">Tablas salariales — Decreto MTSS</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'NOMINA_VER')">
+                <a th:href="@{/rrhh/nomina}" class="text-decoration-none">
+                    <div class="module-card">
+                        <div class="module-icon" style="color: var(--rrhh-nomina);">
+                            <i class="fas fa-money-check-alt fa-3x"></i>
+                        </div>
+                        <h5 class="module-name">Nómina</h5>
+                        <p class="module-description">Procesamiento y pago de planillas</p>
+                        <span class="badge badge-secondary module-badge">
+                            <i class="fas fa-check-circle me-1"></i> Disponible
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+</body>
+</html>

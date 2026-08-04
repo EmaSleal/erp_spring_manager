@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-building', 'Departamentos')}"></div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-building', 'text-module-rrhh', 'Gestión de', 'Departamentos', 'Catálogo de departamentos organizacionales')}"></div>
+            </div>
+            <div class="col-auto d-flex align-items-end">
+                <button class="btn btn-module-rrhh"
+                        id="btnNuevoDepartamento"
+                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                    <i class="fas fa-plus me-1"></i>Nuevo Departamento
+                </button>
+            </div>
+        </div>
+
+        <!-- Search bar -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar departamento...', 'filtrarTabla()')}"></div>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroActivo" class="form-select" onchange="filtrarTabla()">
+                    <option value="">Todos</option>
+                    <option value="true">Activos</option>
+                    <option value="false">Inactivos</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="tablaDepartamentos">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre</th>
+                                <th>Estado</th>
+                                <th>Creado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="d : ${departamentos}"
+                                th:data-nombre="${d.nombre}"
+                                th:data-activo="${d.activo}">
+                                <td th:text="${d.id}"></td>
+                                <td class="fw-semibold" th:text="${d.nombre}"></td>
+                                <td>
+                                    <div th:replace="~{shared/fragments/status-badge :: boolBadge(${d.activo}, 'Activo', 'Inactivo', 'badge-secondary', 'badge-outline-secondary')}"></div>
+                                </td>
+                                <td th:text="${#temporals.format(d.createdAt, 'dd/MM/yyyy')}"></td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-module-rrhh me-1"
+                                            th:data-id="${d.id}"
+                                            th:data-nombre="${d.nombre}"
+                                            th:data-jefe-id="${d.jefe != null ? d.jefe.id : ''}"
+                                            onclick="abrirModalEditar(this)"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            th:data-id="${d.id}"
+                                            th:data-nombre="${d.nombre}"
+                                            onclick="confirmarDesactivar(this)"
+                                            th:if="${d.activo}"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(departamentos)}">
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No hay departamentos registrados.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal crear/editar -->
+        <div class="modal fade" id="departamentoModal" tabindex="-1" aria-labelledby="departamentoModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="departamentoModalLabel">Departamento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="departamentoForm">
+                            <input type="hidden" id="departamentoId">
+                            <div class="mb-3">
+                                <label for="departamentoNombre" class="form-label">Nombre <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="departamentoNombre"
+                                       placeholder="Nombre del departamento" maxlength="200" required>
+                            </div>
+                            <div class="mb-3" id="jefeSection">
+                                <label for="departamentoJefeId" class="form-label">Jefe del departamento</label>
+                                <select class="form-select" id="departamentoJefeId">
+                                    <option value="">Sin jefe asignado</option>
+                                    <option th:each="emp : ${empleadosActivos}"
+                                            th:value="${emp.id}"
+                                            th:text="${emp.nombre} + ' ' + ${emp.primerApellido}">
+                                    </option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-module-rrhh" id="btnGuardarDepartamento" onclick="guardarDepartamento()">
+                            <i class="fas fa-save me-1"></i>Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/departamentos.js}"></script>
+</body>
+</html>

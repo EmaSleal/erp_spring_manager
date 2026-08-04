@@ -229,6 +229,10 @@
         border-left: 4px solid var(--primary-color);
     }
 
+    .mobile-card.card-module-productos {
+        border-left: 4px solid var(--module-productos);
+    }
+
     /* Tarjeta compacta */
     .mobile-card.mobile-card-compact {
         padding: var(--spacing-md);

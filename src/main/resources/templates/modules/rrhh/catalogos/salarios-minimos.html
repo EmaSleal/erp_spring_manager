@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-money-bill-wave', 'Salarios Mínimos')}"></div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-money-bill-wave', 'text-module-rrhh', 'Salarios', 'Mínimos', 'Montos vigentes por categoría — Decreto MTSS')}"></div>
+            </div>
+        </div>
+
+        <!-- Search bar (client-side) -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div th:replace="~{shared/fragments/search-bar :: searchBar('searchInput', 'Buscar categoría...', 'filtrarTabla()')}"></div>
+            </div>
+        </div>
+
+        <!-- No data message -->
+        <div class="alert alert-warning" th:if="${salarios == null or salarios.empty}">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            No se encontraron registros de salarios mínimos.
+        </div>
+
+        <!-- Salarios table -->
+        <div class="card border-0 shadow-sm" th:unless="${salarios == null or salarios.empty}">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0" id="tablaMinimos">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Categoría</th>
+                            <th class="text-end">Monto mensual</th>
+                            <th>Vigencia desde</th>
+                            <th>Vigencia hasta</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="sal : ${salarios}">
+                            <td>
+                                <span class="badge bg-secondary" th:text="${sal.categoria}"></span>
+                            </td>
+                            <td th:text="${sal.descripcionCategoria}"></td>
+                            <td class="text-end fw-bold"
+                                th:text="${'₡ ' + #numbers.formatDecimal(sal.montoMensual, 1, 'COMMA', 2, 'POINT')}"></td>
+                            <td th:text="${#temporals.format(sal.vigenciaDesde, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${sal.vigenciaHasta != null
+                                ? #temporals.format(sal.vigenciaHasta, 'dd/MM/yyyy')
+                                : 'Indefinido'}"></td>
+                            <td class="text-center">
+                                <span th:if="${sal.vigenciaHasta == null or sal.vigenciaHasta.isAfter(#temporals.createToday())}"
+                                      class="badge badge-secondary">Vigente</span>
+                                <span th:unless="${sal.vigenciaHasta == null or sal.vigenciaHasta.isAfter(#temporals.createToday())}"
+                                      class="badge badge-outline-secondary">Histórico</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <p class="text-muted mt-3 small">
+            <i class="fas fa-info-circle me-1"></i>
+            Fuente: Decreto MTSS (Ministerio de Trabajo y Seguridad Social). Se actualiza semestralmente en enero y julio.
+        </p>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:inline="javascript">
+    function filtrarTabla() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#tablaMinimos tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(term) ? '' : 'none';
+        });
+    }
+</script>
+</body>
+</html>

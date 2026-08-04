@@ -317,33 +317,6 @@ function addBreadcrumb(container, name, path, isActive) {
     container.appendChild(item);
 }
 
-// ============================================================================
-// INICIALIZACIÓN
-// ============================================================================
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('[Navbar] DOM cargado, inicializando componentes...');
-    
-    // YA NO NECESARIO: Ahora usa Bootstrap dropdown nativo
-    // const userDropdown = new NavbarDropdown('.navbar-user-trigger', '.navbar-dropdown');
-
-    // Configurar botón de logout
-    const logoutBtn = document.querySelector('.navbar-menu-logout');
-    console.log('[Navbar] Botón logout encontrado:', logoutBtn);
-    if (logoutBtn) {
-        console.log('[Navbar] Agregando event listener al botón logout');
-        logoutBtn.addEventListener('click', handleLogout);
-    } else {
-        console.error('[Navbar] No se encontró el botón de logout');
-    }
-
-    // Actualizar breadcrumbs
-    updateBreadcrumbs();
-
-    // Resaltar elemento activo en dropdown según ruta actual
-    highlightActiveMenuItem();
-});
-
 /**
  * Resaltar elemento activo del menú
  */

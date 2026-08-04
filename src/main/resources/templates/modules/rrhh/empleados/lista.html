@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head th:replace="~{shared/layout :: head}"></head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content module-rrhh-scope">
+    <div class="container-fluid py-4">
+
+        <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/rrhh', 'fas fa-id-card', 'Recursos Humanos', 'fas fa-users', 'Empleados')}"></div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'text-module-rrhh', 'Gestión de', 'Empleados', 'Registro de empleados de la empresa')}"></div>
+            </div>
+            <div class="col-auto d-flex align-items-end">
+                <a th:href="@{/rrhh/empleados/nuevo}"
+                   class="btn btn-module-rrhh"
+                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                    <i class="fas fa-user-plus me-1"></i>Nuevo Empleado
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" id="searchInput" class="form-control"
+                               placeholder="Buscar por nombre, cédula..."
+                               oninput="filtrarTabla()">
+                    </div>
+                    <div class="col-md-3">
+                        <select id="filtroDepartamento" class="form-select" onchange="filtrarTabla()">
+                            <option value="">Todos los departamentos</option>
+                            <option th:each="dep : ${departamentos}"
+                                    th:value="${dep.nombre}"
+                                    th:text="${dep.nombre}">Departamento</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="filtroEstado" class="form-select" onchange="filtrarTabla()">
+                            <option value="">Todos los estados</option>
+                            <option value="ACTIVO">Activo</option>
+                            <option value="DE_BAJA_TEMPORAL">Baja temporal</option>
+                            <option value="BAJA_DEFINITIVA">Baja definitiva</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="tablaEmpleados">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Cédula</th>
+                                <th>Nombre completo</th>
+                                <th>Puesto</th>
+                                <th>Departamento</th>
+                                <th>Fecha ingreso</th>
+                                <th>Antigüedad</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${empleados.isEmpty()}">
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    No hay empleados registrados.
+                                </td>
+                            </tr>
+                            <tr th:each="emp : ${empleados}"
+                                th:attr="data-nombre=${emp.nombreCompleto},
+                                         data-departamento=${emp.departamento.nombre},
+                                         data-estado=${emp.estado}">
+                                <td th:text="${emp.cedula}"></td>
+                                <td>
+                                    <a th:href="@{/rrhh/empleados/{id}(id=${emp.id})}"
+                                       th:text="${emp.nombreCompleto}"
+                                       class="text-decoration-none fw-semibold"></a>
+                                </td>
+                                <td th:text="${emp.puesto.nombre}"></td>
+                                <td th:text="${emp.departamento.nombre}"></td>
+                                <td th:text="${#temporals.format(emp.fechaIngreso, 'dd/MM/yyyy')}"></td>
+                                <td th:text="${emp.antiguedadAnios + ' año(s)'}"></td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${emp.estado.name() == 'ACTIVO'} ? 'bg-success' :
+                                                          (${emp.estado.name() == 'DE_BAJA_TEMPORAL'} ? 'bg-warning text-dark' : 'bg-secondary')"
+                                          th:text="${emp.estado}"></span>
+                                </td>
+                                <td class="text-end">
+                                    <a th:href="@{/rrhh/empleados/{id}(id=${emp.id})}"
+                                       class="btn btn-sm btn-outline-secondary me-1"
+                                       title="Ver detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a th:href="@{/rrhh/empleados/{id}/editar(id=${emp.id})}"
+                                       class="btn btn-sm btn-module-rrhh"
+                                       title="Editar"
+                                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_GESTIONAR_EMPLEADOS')">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-3" th:if="${empleados.totalPages > 1}">
+            <div th:replace="~{shared/fragments/pagination :: pagination(
+                ${empleados.number},
+                ${empleados.totalPages},
+                ${empleados.totalElements},
+                ${pageSize},
+                'empleados',
+                '/rrhh/empleados',
+                '&amp;size=' + ${pageSize}
+            )}"></div>
+        </div>
+
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+<script th:src="@{/modules/rrhh/js/empleados.js}"></script>
+</body>
+</html>

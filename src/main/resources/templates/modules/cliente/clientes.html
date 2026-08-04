@@ -23,7 +23,7 @@
 
             <!-- Header Section -->
             <div class="page-header mb-4">
-                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'text-primary', 'Gestión de', 'Clientes', 'Administra tu base de clientes')}"></div>
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'primary-dark', 'Gestión de', 'Clientes', 'Administra tu base de clientes')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver a Dashboard', 'Volver al Dashboard')}"></a>
                     <button id="open-modal" class="btn btn-primary"
@@ -36,9 +36,8 @@
             </div>
 
             <!-- Table Card -->
-            <div class=" shadow-sm border-0">
-               
-                    
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
                     <!-- ============================================
                          CONTENEDOR RESPONSIVE
                          ============================================ -->
@@ -62,7 +61,7 @@
                                         <!-- <td class="text-center fw-bold" th:text="${cliente.idCliente}"></td> -->
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <div class="avatar-circle bg-primary text-white me-3">
+                                                <div class="avatar-circle bg-secondary text-white me-3">
                                                     <span th:text="${#strings.substring(cliente.nombre, 0, 2).toUpperCase()}">CL</span>
                                                 </div>
                                                 <div>
@@ -74,22 +73,22 @@
                                             </div>
                                         </td>
                                         <td class="text-center  d-lg-table-cell">
-                                            <span th:if="${cliente.requiereFacturaElectronica == true}" 
-                                                  class="badge bg-success"
-                                                  data-bs-toggle="tooltip" 
+                                            <span th:if="${cliente.requiereFacturaElectronica == true}"
+                                                  class="badge bg-secondary"
+                                                  data-bs-toggle="tooltip"
                                                   title="Requiere Facturación Electrónica">
                                                 <i class="bi bi-check-circle-fill me-1"></i>Sí
                                             </span>
-                                            <span th:if="${cliente.requiereFacturaElectronica == false}" 
-                                                  class="badge bg-secondary"
-                                                  data-bs-toggle="tooltip" 
+                                            <span th:if="${cliente.requiereFacturaElectronica == false}"
+                                                  class="badge badge-outline-secondary"
+                                                  data-bs-toggle="tooltip"
                                                   title="No requiere Facturación Electrónica">
                                                 <i class="bi bi-x-circle-fill me-1"></i>No
                                             </span>
                                         </td>
                                         <td class="text-center">
                                             <div  role="group">
-                                                <a th:href="@{/facturas(clienteId=${cliente.idCliente})}" class="btn btn-sm btn-success"
+                                                <a th:href="@{/facturas(clienteId=${cliente.idCliente})}" class="btn btn-sm btn-outline-secondary"
                                                 title="Agregar factura para este cliente"
                                                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
                                                     <i class="fas fa-file-invoice me-1"></i> Agregar Factura
@@ -101,7 +100,7 @@
                                                     <i class="fas fa-trash"></i> Eliminar
                                                 </a>
                                                 <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
-                                                        class="btn btn-sm btn-warning"
+                                                        class="btn btn-sm btn-primary"
                                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
                                                     <i class="fas fa-edit"></i> Editar
                                                 </button>
@@ -121,13 +120,13 @@
                             </th:block>
                             
                             <!-- Tarjetas de clientes -->
-                            <div th:each="cliente : ${clientes}" 
-                                 class="mobile-card card-primary">
-                                
+                            <div th:each="cliente : ${clientes}"
+                                 class="mobile-card">
+
                                 <!-- Header con avatar y nombre -->
                                 <div class="mobile-card-header">
                                     <div class="mobile-card-avatar">
-                                        <div class="avatar-circle bg-primary">
+                                        <div class="avatar-circle bg-secondary">
                                             <span th:text="${#strings.substring(cliente.nombre, 0, 2).toUpperCase()}">CL</span>
                                         </div>
                                         <div class="mobile-card-avatar-info">
@@ -137,7 +136,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <span class="badge bg-primary" th:text="'#' + ${cliente.idCliente}">ID</span>
+                                    <span class="badge bg-secondary" th:text="'#' + ${cliente.idCliente}">ID</span>
                                 </div>
 
                                 <!-- Body con información -->
@@ -163,7 +162,7 @@
                                     <div class="mobile-card-row">
                                         <span class="mobile-card-label">Tipo</span>
                                         <span class="mobile-card-value">
-                                            <span class="badge bg-info" th:text="${cliente.tipoCliente}">Tipo</span>
+                                            <span class="badge bg-light text-dark" th:text="${cliente.tipoCliente}">Tipo</span>
                                         </span>
                                     </div>
                                     
@@ -173,12 +172,12 @@
                                             <i class="bi bi-file-earmark-text me-1"></i>Fact. Electrónica
                                         </span>
                                         <span class="mobile-card-value">
-                                            <span th:if="${cliente.requiereFacturaElectronica == true}" 
-                                                  class="badge bg-success">
+                                            <span th:if="${cliente.requiereFacturaElectronica == true}"
+                                                  class="badge bg-secondary">
                                                 <i class="bi bi-check-circle-fill me-1"></i>Sí
                                             </span>
-                                            <span th:if="${cliente.requiereFacturaElectronica == false}" 
-                                                  class="badge bg-secondary">
+                                            <span th:if="${cliente.requiereFacturaElectronica == false}"
+                                                  class="badge badge-outline-secondary">
                                                 <i class="bi bi-x-circle-fill me-1"></i>No
                                             </span>
                                         </span>
@@ -188,11 +187,11 @@
                                 <!-- Footer con acciones -->
                                 <div class="mobile-card-footer ">
                                     <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
-                                            class="btn btn-sm btn-warning"
+                                            class="btn btn-sm btn-primary"
                                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
                                         <i class="fas fa-edit me-1"></i> Editar
                                     </button>
-                                        <a th:href="@{/facturas(clienteId=${cliente.idCliente})}" class="btn btn-sm btn-success"
+                                        <a th:href="@{/facturas(clienteId=${cliente.idCliente})}" class="btn btn-sm btn-outline-secondary"
                                            title="Agregar factura para este cliente"
                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
                                             <i class="fas fa-file-invoice me-1"></i> Agregar Factura
@@ -212,7 +211,7 @@
 
                     <!-- Paginación -->
                     <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'clientes', '/clientes', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir})}"></div>
-                
+                </div>
             </div>
         </div>
 

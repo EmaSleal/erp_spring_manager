@@ -49,21 +49,21 @@
 
             <!-- Form Card -->
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-light border-bottom">
                     <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información General</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
-                                <i class="fas fa-user text-primary me-2"></i>Cliente
+                                <i class="fas fa-user text-secondary me-2"></i>Cliente
                             </label>
                             <input type="text" th:value="${factura.cliente.nombre}" class="form-control" readonly />
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label for="fechaEntrega" class="form-label">
-                                <i class="fas fa-calendar text-primary me-2"></i>Fecha de Entrega
+                                <i class="fas fa-calendar text-secondary me-2"></i>Fecha de Entrega
                             </label>
                             <input type="date" id="fechaEntrega" name="fechaEntrega" th:value="${factura.fechaEntrega}" class="form-control" />
                         </div>
@@ -72,7 +72,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="entregado" class="form-label">
-                                <i class="fas fa-truck text-primary me-2"></i>Estado de Entrega
+                                <i class="fas fa-truck text-secondary me-2"></i>Estado de Entrega
                             </label>
                             <select id="entregado" name="entregado" class="form-select">
                                 <option th:selected="${factura.entregado == true}" value="true">Entregado</option>
@@ -82,7 +82,7 @@
 
                         <div class="col-md-6 mb-3">
                             <label for="descripcion" class="form-label">
-                                <i class="fas fa-comment text-primary me-2"></i>Descripción
+                                <i class="fas fa-comment text-secondary me-2"></i>Descripción
                             </label>
                             <input type="text" id="descripcion" name="descripcion" th:value="${factura.descripcion}" class="form-control" />
                         </div>
@@ -92,7 +92,7 @@
 
             <!-- Products Card -->
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-success text-white">
+                <div class="card-header bg-light border-bottom">
                     <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Líneas de Productos</h5>
                 </div>
                 <div class="card-body">
@@ -120,7 +120,7 @@
                         <!-- Se llenará con JS -->
                     </div>
 
-                    <button type="button" onclick="addLinea()" class="btn btn-success mt-3">
+                    <button type="button" onclick="addLinea()" class="btn btn-primary mt-3">
                         <i class="fas fa-plus me-2"></i>Agregar Producto
                     </button>
 

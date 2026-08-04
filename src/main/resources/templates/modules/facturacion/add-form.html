@@ -7,7 +7,7 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <!-- Modal Header -->
-      <div class="modal-header bg-success text-white">
+      <div class="modal-header bg-primary text-white">
         <h5 class="modal-title text-white" id="nuevaFacturaModalLabel">
           <i class="fas fa-file-invoice-dollar me-2 text-white"></i>Nueva Factura
         </h5>
@@ -22,13 +22,13 @@
 
           <!-- Paso 1: Datos de la factura -->
           <div id="paso-1">
-            <h5 class="mb-4"><i class="fas fa-info-circle text-primary me-2"></i>Datos de Factura</h5>
+            <h5 class="mb-4"><i class="fas fa-info-circle text-secondary me-2"></i>Datos de Factura</h5>
 
             <!-- Fila 1: Cliente y Tipo de Factura -->
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="cliente" class="form-label">
-                  <i class="fas fa-user text-primary me-2"></i>Cliente <span class="text-danger">*</span>
+                  <i class="fas fa-user text-secondary me-2"></i>Cliente <span class="text-danger">*</span>
                 </label>
                 <select name="cliente" id="cliente" class="form-select" required>
                   <option value="">Seleccione un cliente</option>
@@ -38,7 +38,7 @@
 
               <div class="col-md-6 mb-3">
                 <label for="tipoFactura" class="form-label">
-                  <i class="fas fa-tags text-primary me-2"></i>Tipo Factura <span class="text-danger">*</span>
+                  <i class="fas fa-tags text-secondary me-2"></i>Tipo Factura <span class="text-danger">*</span>
                 </label>
                 <select class="form-select" id="tipoFactura" name="tipoFactura" required>
                   <option th:each="tipo : ${tiposFactura}"
@@ -52,7 +52,7 @@
             <div class="row">
               <div class="col-md-3 mb-3">
                 <label for="serie" class="form-label">
-                  <i class="fas fa-hashtag text-primary me-2"></i>Serie
+                  <i class="fas fa-hashtag text-secondary me-2"></i>Serie
                 </label>
                 <input type="text" class="form-control" id="serie" name="serie" 
                        placeholder="Ej: F001" maxlength="10"
@@ -62,7 +62,7 @@
 
               <div class="col-md-9 mb-3">
                 <label for="numeroFactura" class="form-label">
-                  <i class="fas fa-file-invoice text-primary me-2"></i>Número de Factura
+                  <i class="fas fa-file-invoice text-secondary me-2"></i>Número de Factura
                 </label>
                 <input type="text" class="form-control" id="numeroFactura" name="numeroFactura" 
                        placeholder="Ej: 001-2025-00123" maxlength="50"
@@ -75,7 +75,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="fechaEntrega" class="form-label">
-                  <i class="fas fa-calendar text-primary me-2"></i>Fecha de Entrega <span class="text-danger">*</span>
+                  <i class="fas fa-calendar text-secondary me-2"></i>Fecha de Entrega <span class="text-danger">*</span>
                 </label>
                 <input type="date" class="form-control" id="fechaEntrega" name="fechaEntrega" required 
                        onchange="calcularFechaPago()" />
@@ -83,7 +83,7 @@
 
               <div class="col-md-6 mb-3">
                 <label for="fechaPago" class="form-label">
-                  <i class="fas fa-money-check-alt text-primary me-2"></i>Fecha Límite de Pago
+                  <i class="fas fa-money-check-alt text-secondary me-2"></i>Fecha Límite de Pago
                 </label>
                 <input type="date" class="form-control" id="fechaPago" name="fechaPago"
                        title="Se calcula automáticamente como Fecha de Entrega + 7 días">
@@ -95,7 +95,7 @@
             <div class="row">
               <div class="col-md-12 mb-3">
                 <label class="form-label">
-                  <i class="fas fa-truck text-primary me-2"></i>Estado de Entrega
+                  <i class="fas fa-truck text-secondary me-2"></i>Estado de Entrega
                 </label>
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" id="entregado" name="entregado">
@@ -109,7 +109,7 @@
 
             <div class="mb-3">
               <label for="descripcion" class="form-label">
-                <i class="fas fa-comment text-primary me-2"></i>Descripción
+                <i class="fas fa-comment text-secondary me-2"></i>Descripción
               </label>
               <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
             </div>
@@ -117,7 +117,7 @@
             <!-- Separador - Facturación Electrónica -->
             <div class="mt-4 mb-3">
               <hr>
-              <h6 class="text-warning">
+              <h6 class="text-secondary">
                 <i class="fas fa-file-invoice me-2"></i>
                 Facturación Electrónica Costa Rica
               </h6>
@@ -127,7 +127,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="condicionVentaFE" class="form-label">
-                  <i class="fas fa-handshake text-warning me-2"></i>Condición de Venta
+                  <i class="fas fa-handshake text-secondary me-2"></i>Condición de Venta
                 </label>
                 <select class="form-select" id="condicionVentaFE" name="condicionVentaFE" onchange="togglePlazoCredito()">
                   <option value="">Seleccione condición</option>
@@ -142,7 +142,7 @@
 
               <div class="col-md-6 mb-3">
                 <label for="medioPagoFE" class="form-label">
-                  <i class="fas fa-money-bill-wave text-warning me-2"></i>Medio de Pago
+                  <i class="fas fa-money-bill-wave text-secondary me-2"></i>Medio de Pago
                 </label>
                 <select class="form-select" id="medioPagoFE" name="medioPagoFE">
                   <option value="">Seleccione medio de pago</option>
@@ -160,7 +160,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="monedaFE" class="form-label">
-                  <i class="fas fa-coins text-warning me-2"></i>Moneda
+                  <i class="fas fa-coins text-secondary me-2"></i>Moneda
                 </label>
                 <select class="form-select" id="monedaFE" name="monedaFE" onchange="toggleTipoCambio()">
                   <option th:each="moneda : ${monedas}"
@@ -174,7 +174,7 @@
 
               <div class="col-md-6 mb-3" id="divTipoCambio" style="display: none;">
                 <label for="tipoCambio" class="form-label">
-                  <i class="fas fa-exchange-alt text-warning me-2"></i>Tipo de Cambio
+                  <i class="fas fa-exchange-alt text-secondary me-2"></i>Tipo de Cambio
                 </label>
                 <input type="number" 
                        class="form-control" 
@@ -192,7 +192,7 @@
 
               <div class="col-md-6 mb-3" id="divPlazoCredito" style="display: none;">
                 <label for="plazoCredito" class="form-label">
-                  <i class="fas fa-calendar-alt text-warning me-2"></i>Plazo de Crédito (días)
+                  <i class="fas fa-calendar-alt text-secondary me-2"></i>Plazo de Crédito (días)
                 </label>
                 <input type="number" 
                        class="form-control" 
@@ -208,7 +208,7 @@
           <!-- Paso 2: Líneas de factura -->
           <div id="paso-2" style="display: none;">
             <h5 class="mb-3">
-              <i class="fas fa-list text-primary me-2"></i>Líneas de Factura
+              <i class="fas fa-list text-secondary me-2"></i>Líneas de Factura
             </h5>
 
             <!-- VERSIÓN DESKTOP: Tabla -->
@@ -235,7 +235,7 @@
               <!-- Aquí se llenan dinámicamente las cards vía JS -->
             </div>
 
-            <button class="btn btn-success" type="button" onclick="addLinea()">
+            <button class="btn btn-primary" type="button" onclick="addLinea()">
               <i class="fas fa-plus me-2"></i>Agregar línea
             </button>
 
@@ -262,7 +262,7 @@
                   <div class="col-md-4">
                     <div class="d-flex justify-content-between align-items-center">
                       <span class="h5 mb-0">Total:</span>
-                      <strong class="h5 mb-0 text-success" id="resumen-total">$0.00</strong>
+                      <strong class="h5 mb-0" id="resumen-total">$0.00</strong>
                     </div>
                   </div>
                 </div>
@@ -284,7 +284,7 @@
         <button type="button" class="btn btn-primary" id="btnSiguiente" onclick="mostrarPaso2()">
           <i class="fas fa-arrow-right me-2"></i>Siguiente
         </button>
-        <button type="button" class="btn btn-success" id="btnGuardar" style="display: none;" onclick="guardarLineas()">
+        <button type="button" class="btn btn-primary" id="btnGuardar" style="display: none;" onclick="guardarLineas()">
           <i class="fas fa-save me-2"></i>Guardar factura
         </button>
       </div>

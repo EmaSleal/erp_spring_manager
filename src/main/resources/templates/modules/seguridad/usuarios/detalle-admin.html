@@ -6,20 +6,24 @@
     <title>Detalle de Usuario</title>
 </head>
 <body>
+    <!-- CSS específico del módulo -->
+    <link rel="stylesheet" th:href="@{/modules/seguridad/css/usuarios.css}">
+
     <!-- Estilos personalizados para esta página -->
     <style>
         .profile-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-top: 4px solid var(--module-usuarios);
             padding: 2rem;
             border-radius: 0.5rem;
-            color: white;
             margin-bottom: 2rem;
         }
         .profile-avatar {
             width: 120px;
             height: 120px;
             border-radius: 50%;
-            border: 4px solid white;
+            border: 4px solid var(--card-background);
             box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
             object-fit: cover;
         }
@@ -31,13 +35,13 @@
             transform: translateX(5px);
         }
         .activity-item {
-            border-left: 3px solid #dee2e6;
+            border-left: 3px solid var(--border-color);
             padding-left: 1rem;
             margin-bottom: 1rem;
         }
         .activity-item:hover {
-            border-left-color: #667eea;
-            background-color: #f8f9fa;
+            border-left-color: var(--module-usuarios);
+            background-color: var(--background-color);
         }
         .badge-level {
             font-size: 0.7rem;
@@ -52,7 +56,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-usuarios-scope">
         <div class="container-fluid py-4">
             <!-- Breadcrumb -->
             <nav aria-label="breadcrumb" class="mb-3">
@@ -82,17 +86,18 @@
                     <div class="col">
                         <h2 class="mb-1" th:text="${usuario.nombre}">Nombre Usuario</h2>
                         <p class="mb-2">
-                        <span class="badge" 
-                              th:classappend="${usuario.rol == 'ADMIN'} ? 'bg-light text-dark' : 
-                                             (${usuario.rol == 'GERENTE'} ? 'bg-warning text-dark' : 'bg-info')"
+                        <span class="badge"
+                              th:classappend="${usuario.rol == 'ADMIN'} ? 'badge-rol-admin' :
+                                             (${usuario.rol == 'GERENTE'} ? 'badge-rol-gerente' :
+                                             (${usuario.rol == 'VENDEDOR'} ? 'badge-rol-vendedor' : 'badge-rol-visualizador'))"
                               th:text="${usuario.rol}">
                         </span>
-                        <span class="badge ms-2" 
+                        <span class="badge ms-2"
                               th:classappend="${usuario.badgeEstado}"
                               th:text="${usuario.estadoDescripcion}">
                         </span>
                     </p>
-                    <div class="d-flex gap-3 text-white-50 small">
+                    <div class="d-flex gap-3 text-muted small">
                         <div>
                             <i class="fas fa-phone me-1"></i>
                             <span th:text="${usuario.telefono}">Teléfono</span>
@@ -106,23 +111,23 @@
                             <span th:text="'Miembro desde ' + ${usuario.fechaCreacionFormateada}">Fecha</span>
                         </div>
                     </div>
-                </div>
+                    </div>
                 <div class="col-auto">
                     <div class="btn-group-vertical" role="group">
-                        <a th:href="@{/admin/usuarios/editar/{id}(id=${usuario.idUsuario})}" 
-                           class="btn btn-light btn-sm">
+                        <a th:href="@{/admin/usuarios/editar/{id}(id=${usuario.idUsuario})}"
+                           class="btn btn-module-usuarios btn-sm">
                             <i class="fas fa-edit me-2"></i>Editar
                         </a>
-                        <a th:href="@{/admin/usuarios/{id}/permisos/gestionar(id=${usuario.idUsuario})}" 
-                           class="btn btn-outline-primary btn-sm">
+                        <a th:href="@{/admin/usuarios/{id}/permisos/gestionar(id=${usuario.idUsuario})}"
+                           class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-key me-2"></i>Permisos
                         </a>
-                        <button class="btn btn-warning btn-sm" 
+                        <button class="btn btn-warning btn-sm"
                                 th:if="${usuario.bloqueado == null or !usuario.bloqueado}"
                                 onclick="bloquearUsuario()">
                             <i class="fas fa-lock me-2"></i>Bloquear
                         </button>
-                        <button class="btn btn-success btn-sm" 
+                        <button class="btn btn-success btn-sm"
                                 th:if="${usuario.bloqueado != null and usuario.bloqueado}"
                                 onclick="desbloquearUsuario()">
                             <i class="fas fa-unlock me-2"></i>Desbloquear
@@ -139,48 +144,48 @@
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body">
                         <h5 class="card-title">
-                            <i class="fas fa-chart-bar text-primary me-2"></i>Estadísticas
+                            <i class="fas fa-chart-bar text-module-usuarios me-2"></i>Estadísticas
                         </h5>
-                        
-                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: #667eea;">
+
+                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: var(--usuarios-total);">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <small class="text-muted">Total Actividades</small>
                                     <h4 class="mb-0" th:text="${totalActividades}">0</h4>
                                 </div>
-                                <i class="fas fa-list fa-2x text-primary opacity-25"></i>
+                                <i class="fas fa-list fa-2x opacity-25" style="color: var(--usuarios-total);"></i>
                             </div>
                         </div>
 
-                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: #28a745;">
+                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: var(--usuarios-activos);">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <small class="text-muted">Total Logins</small>
                                     <h4 class="mb-0" th:text="${totalLogins}">0</h4>
                                 </div>
-                                <i class="fas fa-sign-in-alt fa-2x text-success opacity-25"></i>
+                                <i class="fas fa-sign-in-alt fa-2x opacity-25" style="color: var(--usuarios-activos);"></i>
                             </div>
                         </div>
 
-                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: #ffc107;">
+                        <div class="stat-card p-3 mb-2 bg-light rounded" style="border-left-color: var(--usuarios-bloqueados);">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <small class="text-muted">Intentos Fallidos</small>
                                     <h4 class="mb-0" th:text="${usuario.intentosFallidos}">0</h4>
                                 </div>
-                                <i class="fas fa-exclamation-triangle fa-2x text-warning opacity-25"></i>
+                                <i class="fas fa-exclamation-triangle fa-2x opacity-25" style="color: var(--usuarios-bloqueados);"></i>
                             </div>
                         </div>
 
-                        <div class="stat-card p-3 bg-light rounded" 
-                             style="border-left-color: #17a2b8;"
+                        <div class="stat-card p-3 bg-light rounded"
+                             style="border-left-color: var(--usuarios-admins);"
                              th:if="${usuario.cantidadSesionesActivas != null}">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <small class="text-muted">Sesiones Activas</small>
                                     <h4 class="mb-0" th:text="${usuario.cantidadSesionesActivas}">0</h4>
                                 </div>
-                                <i class="fas fa-desktop fa-2x text-info opacity-25"></i>
+                                <i class="fas fa-desktop fa-2x opacity-25" style="color: var(--usuarios-admins);"></i>
                             </div>
                         </div>
                     </div>
@@ -190,9 +195,9 @@
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body">
                         <h5 class="card-title">
-                            <i class="fas fa-info-circle text-primary me-2"></i>Información
+                            <i class="fas fa-info-circle text-module-usuarios me-2"></i>Información
                         </h5>
-                        
+
                         <table class="table table-sm table-borderless">
                             <tbody>
                                 <tr>
@@ -206,9 +211,10 @@
                                         <i class="fas fa-user-tag me-1"></i>Rol:
                                     </td>
                                     <td>
-                                        <span class="badge" 
-                                              th:classappend="${usuario.rol == 'ADMIN'} ? 'bg-danger' : 
-                                                             (${usuario.rol == 'GERENTE'} ? 'bg-warning' : 'bg-info')"
+                                        <span class="badge"
+                                              th:classappend="${usuario.rol == 'ADMIN'} ? 'badge-rol-admin' :
+                                                             (${usuario.rol == 'GERENTE'} ? 'badge-rol-gerente' :
+                                                             (${usuario.rol == 'VENDEDOR'} ? 'badge-rol-vendedor' : 'badge-rol-visualizador'))"
                                               th:text="${usuario.rol}">
                                         </span>
                                     </td>
@@ -218,7 +224,7 @@
                                         <i class="fas fa-toggle-on me-1"></i>Estado:
                                     </td>
                                     <td>
-                                        <span class="badge" 
+                                        <span class="badge"
                                               th:classappend="${usuario.badgeEstado}"
                                               th:text="${usuario.estadoDescripcion}">
                                         </span>
@@ -270,17 +276,17 @@
                     <div class="card-header bg-white border-0 py-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">
-                                <i class="fas fa-history text-primary me-2"></i>
+                                <i class="fas fa-history text-module-usuarios me-2"></i>
                                 Actividad Reciente
                             </h5>
                             <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-outline-primary active" data-filter="all">
+                                <button type="button" class="btn btn-outline-secondary active" data-filter="all">
                                     Todas
                                 </button>
-                                <button type="button" class="btn btn-outline-success" data-filter="LOGIN">
+                                <button type="button" class="btn btn-outline-secondary" data-filter="LOGIN">
                                     Logins
                                 </button>
-                                <button type="button" class="btn btn-outline-warning" data-filter="WARNING">
+                                <button type="button" class="btn btn-outline-secondary" data-filter="WARNING">
                                     Críticas
                                 </button>
                             </div>
@@ -332,7 +338,7 @@
                         </div>
 
                         <div class="text-center mt-3" th:if="${totalActividades > 20}">
-                            <button class="btn btn-outline-primary btn-sm" onclick="cargarMasActividades()">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="cargarMasActividades()">
                                 <i class="fas fa-chevron-down me-2"></i>
                                 Ver más actividades
                             </button>

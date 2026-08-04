@@ -18,7 +18,7 @@
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content module-usuarios-scope">
         <div class="container-fluid py-4">
             <section>
                 <!-- Breadcrumb -->
@@ -42,79 +42,73 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 class="mb-1">
-                            <i class="bi bi-key-fill me-2"></i>Gestión de Permisos
+                            <i class="bi bi-key-fill text-module-usuarios me-2"></i>Gestión de Permisos
                         </h2>
                         <p class="text-muted mb-0">Administra los permisos individuales del sistema</p>
                     </div>
                 </div>
-                    <div class="col-12">
-                        <h2>
-                            <i class="fas fa-key"></i> Gestión de Permisos del Sistema
-                        </h2>
-                        <p class="text-muted">Administra los 48 permisos individuales almacenados en base de datos</p>
-                    </div>
-                </div>
-                
+
                 <!-- Alertas -->
                 <div th:replace="~{shared/fragments/alerts :: alerts(${success}, ${error})}"></div>
                 
                 <!-- Tarjetas de estadísticas -->
                 <div class="row mb-4">
                     <div class="col-md-3">
-                        <div class="card stats-card bg-primary text-white">
+                        <div class="card stats-card stats-total">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Total Permisos</h6>
+                                        <h6 class="card-subtitle mb-2">Total Permisos</h6>
                                         <h3 class="card-title mb-0" th:text="${totalPermisos}">48</h3>
                                     </div>
                                     <div class="stats-icon">
-                                        <i class="bi bi-key-fill fs-1"></i>
+                                        <i class="bi bi-key-fill"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card stats-card bg-success text-white">
+                        <div class="card stats-card stats-activos">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Permisos Activos</h6>
+                                        <h6 class="card-subtitle mb-2">Permisos Activos</h6>
                                         <h3 class="card-title mb-0" th:text="${permisosActivos}">45</h3>
                                     </div>
                                     <div class="stats-icon">
-                                        <i class="bi bi-check-circle-fill fs-1"></i>
+                                        <i class="bi bi-check-circle-fill"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card stats-card bg-danger text-white">
+                        <!-- Críticos se queda en rojo real: mismo hazard que el badge CRÍTICO por fila, no es decorativo -->
+                        <div class="card border-0 shadow-sm">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Permisos Críticos</h6>
-                                        <h3 class="card-title mb-0" th:text="${permisosCriticos}">12</h3>
+                                        <h6 class="text-muted mb-2">Permisos Críticos</h6>
+                                        <h3 class="mb-0 text-danger" th:text="${permisosCriticos}">12</h3>
                                     </div>
-                                    <div class="stats-icon">
-                                        <i class="bi bi-exclamation-triangle-fill fs-1"></i>
+                                    <div class="rounded-circle p-3 bg-danger">
+                                        <i class="bi bi-exclamation-triangle-fill text-white"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card stats-card bg-info text-white">
+                        <div class="card stats-card stats-bloqueados">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-subtitle mb-2 text-white-50">Resultados Filtrados</h6>
+                                        <h6 class="card-subtitle mb-2">Resultados Filtrados</h6>
                                         <h3 class="card-title mb-0" th:text="${permisosFiltrados}">48</h3>
                                     </div>
                                     <div class="stats-icon">
-                                        <i class="bi bi-funnel-fill fs-1"></i>
+                                        <i class="bi bi-funnel-fill"></i>
                                     </div>
                                 </div>
                             </div>
@@ -173,7 +167,7 @@
                                 
                                 <!-- Botón de filtrar -->
                                 <div class="col-md-1 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-primary w-100">
+                                    <button type="submit" class="btn btn-outline-secondary w-100">
                                         <i class="bi bi-funnel-fill"></i>
                                     </button>
                                 </div>
@@ -197,7 +191,7 @@
                         <h5 class="mb-0">
                             <i class="bi bi-table me-2"></i>Listado de Permisos
                         </h5>
-                        <span class="badge bg-primary" th:text="${#lists.size(permisos)} + ' permisos'">0 permisos</span>
+                        <span class="badge bg-secondary" th:text="${#lists.size(permisos)} + ' permisos'">0 permisos</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -221,7 +215,7 @@
                                     <tr th:each="permiso, stat : ${permisos}">
                                         <td th:text="${stat.count}">1</td>
                                         <td>
-                                            <code class="text-primary" th:text="${permiso.codigo}">CLIENTE_VER</code>
+                                            <code th:text="${permiso.codigo}">CLIENTE_VER</code>
                                         </td>
                                         <td>
                                             <strong th:text="${permiso.nombre}">Ver Clientes</strong>
@@ -236,45 +230,45 @@
                                             </small>
                                         </td>
                                         <td>
-                                            <span class="badge bg-info" th:text="${permiso.categoria}">CLIENTE</span>
+                                            <span class="badge bg-secondary" th:text="${permiso.categoria}">CLIENTE</span>
                                         </td>
                                         <td class="text-center">
-                                            <span th:if="${permiso.activo}" class="badge bg-success">
+                                            <span th:if="${permiso.activo}" class="badge badge-secondary">
                                                 <i class="bi bi-check-circle-fill"></i> Activo
                                             </span>
-                                            <span th:unless="${permiso.activo}" class="badge bg-secondary">
+                                            <span th:unless="${permiso.activo}" class="badge badge-outline-secondary">
                                                 <i class="bi bi-x-circle-fill"></i> Inactivo
                                             </span>
                                         </td>
                                         <td class="text-center">
                                             <!-- Editar -->
-                                            <a th:href="@{/admin/permisos/editar/{id}(id=${permiso.idPermiso})}" 
-                                               class="btn btn-sm btn-primary"
+                                            <a th:href="@{/admin/permisos/editar/{id}(id=${permiso.idPermiso})}"
+                                               class="btn btn-sm btn-module-usuarios me-1"
                                                title="Editar permiso">
                                                 <i class="bi bi-pencil-fill"></i>
                                             </a>
-                                            
+
                                             <!-- Cambiar estado -->
-                                            <form th:action="@{/admin/permisos/cambiar-estado/{id}(id=${permiso.idPermiso})}" 
-                                                  method="post" 
-                                                  style="display: inline;"
-                                                  class="form-cambiar-estado"
+                                            <form th:action="@{/admin/permisos/cambiar-estado/{id}(id=${permiso.idPermiso})}"
+                                                  method="post"
+                                                  style="display: inline-block;"
+                                                  class="form-cambiar-estado me-1"
                                                   th:data-permiso-nombre="${permiso.nombre}">
-                                                <button type="submit" 
+                                                <button type="submit"
                                                         class="btn btn-sm"
-                                                        th:classappend="${permiso.activo} ? 'btn-warning' : 'btn-success'"
+                                                        th:classappend="${permiso.activo} ? 'btn-outline-danger' : 'btn-outline-success'"
                                                         th:title="${permiso.activo} ? 'Desactivar' : 'Activar'">
                                                     <i th:class="${permiso.activo} ? 'bi bi-toggle-off' : 'bi bi-toggle-on'"></i>
                                                 </button>
                                             </form>
-                                            
+
                                             <!-- Toggle crítico -->
-                                            <form th:action="@{/admin/permisos/toggle-critico/{id}(id=${permiso.idPermiso})}" 
-                                                  method="post" 
-                                                  style="display: inline;"
+                                            <form th:action="@{/admin/permisos/toggle-critico/{id}(id=${permiso.idPermiso})}"
+                                                  method="post"
+                                                  style="display: inline-block;"
                                                   class="form-toggle-critico"
                                                   th:data-permiso-nombre="${permiso.nombre}">
-                                                <button type="submit" 
+                                                <button type="submit"
                                                         class="btn btn-sm"
                                                         th:classappend="${permiso.esCritico} ? 'btn-danger' : 'btn-outline-secondary'"
                                                         th:title="${permiso.esCritico} ? 'Quitar CRÍTICO' : 'Marcar CRÍTICO'">
@@ -294,10 +288,10 @@
                         </small>
                     </div>
                 </div>
+                </section>
             </div>
         </main>
-    </div>
-    
+
     <!-- Scripts -->
     <div th:replace="~{shared/layout :: scripts}"></div>
     

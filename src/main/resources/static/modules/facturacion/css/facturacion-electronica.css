@@ -26,12 +26,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: rgba(0, 123, 255, 0.1);
+    background-color: rgba(0, 128, 64, 0.1);
     border-radius: 10px;
 }
 
 .icon-wrapper.bg-info {
-    background-color: rgba(23, 162, 184, 0.1);
+    background-color: rgba(33, 150, 243, 0.1);
 }
 
 /* ===== Estado Badges ===== */
@@ -39,27 +39,27 @@
     padding: 0.5rem 1rem;
     border-radius: 20px;
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
 }
 
 .badge-aceptado {
-    background-color: #d4edda;
-    color: #155724;
+    background-color: rgba(76, 175, 80, 0.15);
+    color: var(--success-text);
 }
 
 .badge-rechazado {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: rgba(244, 67, 54, 0.15);
+    color: var(--error-text);
 }
 
 .badge-pendiente {
-    background-color: #fff3cd;
-    color: #856404;
+    background-color: rgba(255, 152, 0, 0.15);
+    color: var(--warning-text);
 }
 
 .badge-error {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: rgba(244, 67, 54, 0.15);
+    color: var(--error-text);
 }
 
 /* ===== Tarjetas de Configuración ===== */
@@ -69,12 +69,12 @@
 }
 
 .config-card.activa {
-    border-left-color: #28a745;
-    background-color: #f8f9fa;
+    border-left-color: var(--success-color);
+    background-color: var(--background-color);
 }
 
 .config-card.inactiva {
-    border-left-color: #6c757d;
+    border-left-color: var(--text-secondary);
     opacity: 0.8;
 }
 
@@ -88,20 +88,20 @@
 }
 
 .table-comprobantes tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: var(--background-color);
 }
 
 /* ===== Botones de Acción ===== */
 .btn-action {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-    margin: 0 0.25rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-sm);
+    margin: 0 var(--spacing-xs);
 }
 
 /* ===== Modal Responsive ===== */
 @media (max-width: 768px) {
     .modal-dialog {
-        margin: 0.5rem;
+        margin: var(--spacing-sm);
     }
     
     .icon-wrapper {
@@ -131,7 +131,7 @@
 /* ===== Timeline de Estados ===== */
 .timeline {
     position: relative;
-    padding: 20px 0;
+    padding: var(--spacing-lg) 0;
 }
 
 .timeline::before {
@@ -141,13 +141,13 @@
     left: 20px;
     height: 100%;
     width: 3px;
-    background: linear-gradient(to bottom, #007bff, #6c757d);
+    background: linear-gradient(to bottom, var(--accent-color), var(--text-secondary));
 }
 
 .timeline-item {
     position: relative;
     padding-left: 60px;
-    margin-bottom: 30px;
+    margin-bottom: var(--spacing-xl);
 }
 
 .timeline-marker {
@@ -161,7 +161,7 @@
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 1.1rem;
+    font-size: var(--font-md);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     z-index: 1;
 }
@@ -169,14 +169,14 @@
 .timeline-content {
     background: #f8f9fa;
     border-radius: 8px;
-    padding: 15px;
-    border-left: 3px solid #007bff;
+    padding: var(--spacing-md);
+    border-left: 3px solid var(--accent-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .timeline-header h6 {
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .timeline-item:last-child {
@@ -195,11 +195,11 @@
 .xml-code {
     background-color: #2d2d2d;
     color: #f8f8f2;
-    padding: 20px;
+    padding: var(--spacing-md);
     margin: 0;
     border-radius: 8px;
     font-family: 'Courier New', Consolas, monospace;
-    font-size: 0.85rem;
+    font-size: var(--font-sm);
     line-height: 1.6;
     overflow-x: auto;
     white-space: pre-wrap;
@@ -241,20 +241,20 @@
 
 /* ===== Mejoras para tabs del modal ===== */
 .nav-tabs .nav-link {
-    color: #6c757d;
+    color: var(--text-secondary);
     border: none;
     border-bottom: 2px solid transparent;
-    padding: 0.75rem 1.25rem;
+    padding: var(--spacing-sm) var(--spacing-md);
 }
 
 .nav-tabs .nav-link:hover {
-    border-bottom-color: #dee2e6;
-    color: #495057;
+    border-bottom-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 .nav-tabs .nav-link.active {
-    color: #007bff;
-    border-bottom-color: #007bff;
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
     background-color: transparent;
     font-weight: 600;
 }

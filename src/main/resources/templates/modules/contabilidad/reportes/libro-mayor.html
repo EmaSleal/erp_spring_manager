@@ -9,7 +9,7 @@
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
     
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <nav aria-label="breadcrumb" class="mb-3">
                 <ol class="breadcrumb">
@@ -19,22 +19,22 @@
                     <li class="breadcrumb-item active">Libro Mayor</li>
                 </ol>
             </nav>
-            
+
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="h3 mb-1"><i class="fas fa-book text-primary"></i> Libro Mayor</h1>
+                    <h1 class="h3 mb-1"><i class="fas fa-book text-module-contabilidad"></i> Libro Mayor</h1>
                     <p class="text-muted">Movimientos contables de la cuenta seleccionada</p>
                 </div>
                 <div>
                     <button type="button" class="btn btn-outline-secondary me-2" onclick="window.location.href='/contabilidad/reportes'">
                         <i class="fas fa-arrow-left"></i> Volver
                     </button>
-                    <button type="button" class="btn btn-success" onclick="exportarPDF()">
+                    <button type="button" class="btn btn-outline-secondary" onclick="exportarPDF()">
                         <i class="fas fa-file-pdf"></i> Exportar PDF
                     </button>
                 </div>
             </div>
-            
+
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
                     <div class="row align-items-end g-3">
@@ -53,7 +53,7 @@
                             <input type="date" class="form-control" id="dtFechaFin" th:value="${fechaFin}">
                         </div>
                         <div class="col-md-2">
-                            <button type="button" class="btn btn-primary w-100" onclick="generarReporte()">
+                            <button type="button" class="btn btn-module-contabilidad w-100" onclick="generarReporte()">
                                 <i class="fas fa-search"></i> Consultar
                             </button>
                         </div>
@@ -83,8 +83,8 @@
                                     <td th:text="${#temporals.format(mov.fecha, 'dd/MM/yyyy')}">01/01/2024</td>
                                     <td><code th:text="${mov.asientoNumero}">ASI-001</code></td>
                                     <td th:text="${mov.descripcion}">Concepto</td>
-                                    <td class="text-end text-primary" th:text="'$' + ${#numbers.formatDecimal(mov.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
-                                    <td class="text-end text-success" th:text="'$' + ${#numbers.formatDecimal(mov.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end" th:text="'$' + ${#numbers.formatDecimal(mov.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end" th:text="'$' + ${#numbers.formatDecimal(mov.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
                                     <td class="text-end fw-bold" th:text="'$' + ${#numbers.formatDecimal(mov.saldo, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
                                 </tr>
                             </tbody>

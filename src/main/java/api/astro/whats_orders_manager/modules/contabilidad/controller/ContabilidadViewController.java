@@ -109,100 +109,100 @@ public class ContabilidadViewController {
             "Cuentas",
             "Plan de cuentas contable",
             "fas fa-list-alt",
-            "#667eea",
+            "var(--contabilidad-cuentas)",
             "/contabilidad/cuentas",
             true, // Próximamente
             true   // Visible
         ));
-        
+
         // Asientos Contables
         modulos.add(new ModuloDTO(
             "Asientos",
             "Registro de asientos contables",
             "fas fa-book-open",
-            "#f093fb",
+            "var(--contabilidad-asientos)",
             "/contabilidad/asientos",
             true, // Próximamente
             true   // Visible
         ));
-        
+
         // Cuentas por Cobrar
         modulos.add(new ModuloDTO(
             "Cuentas por Cobrar",
             "Gestión de cobros y saldos",
             "fas fa-hand-holding-usd",
-            "#4facfe",
+            "var(--contabilidad-cuentas-cobrar)",
             "/contabilidad/cuentas-cobrar",
             false,
             true
         ));
-        
+
         // Cuentas por Pagar
         modulos.add(new ModuloDTO(
             "Cuentas por Pagar",
             "Control de pagos a proveedores",
             "fas fa-file-invoice-dollar",
-            "#fa709a",
+            "var(--contabilidad-cuentas-pagar)",
             "/contabilidad/cuentas-pagar",
             true,
             true
         ));
-        
-        // Libro Mayor
-        modulos.add(new ModuloDTO(
-            "Libro Mayor",
-            "Registro de transacciones",
-            "fas fa-book",
-            "#a8edea",
-            "/contabilidad/libro-mayor",
-            false,
-            true
-        ));
-        
+
         // Reportes Contables
         modulos.add(new ModuloDTO(
             "Reportes",
             "Balance, estado de resultados",
             "fas fa-chart-line",
-            "#fbc2eb",
+            "var(--contabilidad-reportes)",
             "/contabilidad/reportes",
             true,
             true
         ));
-        
+
         // Balance General
         modulos.add(new ModuloDTO(
             "Balance General",
             "Estado financiero de activos",
             "fas fa-balance-scale",
-            "#fdcbf1",
-            "/contabilidad/balance",
-            false,
+            "var(--contabilidad-balance-general)",
+            "/contabilidad/reportes/balance-general",
+            true,
             true
         ));
-        
+
         // Estado de Resultados
         modulos.add(new ModuloDTO(
             "Estado de Resultados",
             "Ingresos, costos y utilidad",
             "fas fa-chart-bar",
-            "#e0c3fc",
-            "/contabilidad/estado-resultados",
-            false,
+            "var(--contabilidad-estado-resultados)",
+            "/contabilidad/reportes/estado-resultados",
+            true,
             true
         ));
-        
+
         // Flujo de Caja
         modulos.add(new ModuloDTO(
             "Flujo de Caja",
             "Movimientos de efectivo",
             "fas fa-money-bill-wave",
-            "#8ec5fc",
+            "var(--contabilidad-flujo-caja)",
             "/contabilidad/flujo-caja",
             false,
             true
         ));
-        
+
+        // Parámetros Contables
+        modulos.add(new ModuloDTO(
+            "Parámetros",
+            "Mapeo de claves a cuentas contables",
+            "fas fa-sliders-h",
+            "var(--contabilidad-parametros)",
+            "/contabilidad/parametros",
+            true,
+            true
+        ));
+
         log.debug("Submódulos de contabilidad cargados: {}", modulos.size());
         return modulos;
     }

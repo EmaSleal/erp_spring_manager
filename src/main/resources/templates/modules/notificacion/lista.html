@@ -38,7 +38,7 @@
                     </h2>
                     <p class="text-muted mb-0">
                         Mantente al tanto de todas tus actividades
-                        <span class="badge bg-primary ms-2" th:if="${contadorNoLeidas > 0}">
+                        <span class="badge bg-secondary ms-2" th:if="${contadorNoLeidas > 0}">
                             <span th:text="${contadorNoLeidas}">0</span> sin leer
                         </span>
                     </p>
@@ -81,7 +81,7 @@
                             </select>
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
-                            <button id="btnAplicarFiltros" class="btn btn-primary w-100">
+                            <button id="btnAplicarFiltros" class="btn btn-outline-secondary w-100">
                                 <i class="fas fa-search me-2"></i>Aplicar Filtros
                             </button>
                         </div>
@@ -120,12 +120,12 @@
     <div class="modal fade" id="confirmarModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="fas fa-check-double me-2"></i>
+                        <i class="fas fa-check-double text-primary me-2"></i>
                         Confirmar Acción
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <p>¿Estás seguro de que deseas marcar todas las notificaciones como leídas?</p>
@@ -183,7 +183,7 @@
         }
 
         .notification-item-page.unread {
-            background-color: rgba(33, 150, 243, 0.05);
+            background-color: rgba(0, 128, 64, 0.05);
             border-left: 4px solid var(--primary-color);
         }
 
@@ -198,6 +198,7 @@
             flex-shrink: 0;
         }
 
+        /* Colores alineados con TipoNotificacion.getColor() (Java) */
         .notification-icon-page.type-factura-creada {
             background-color: rgba(76, 175, 80, 0.1);
             color: var(--success-color);
@@ -214,13 +215,29 @@
         }
 
         .notification-icon-page.type-pago-recibido {
+            background-color: rgba(76, 175, 80, 0.1);
+            color: var(--success-color);
+        }
+
+        .notification-icon-page.type-stock-bajo {
+            background-color: rgba(244, 67, 54, 0.1);
+            color: var(--error-color);
+        }
+
+        .notification-icon-page.type-nuevo-cliente,
+        .notification-icon-page.type-nuevo-usuario {
             background-color: rgba(33, 150, 243, 0.1);
             color: var(--info-color);
         }
 
+        .notification-icon-page.type-mensaje-whatsapp {
+            background-color: var(--accent-light);
+            color: var(--primary-color);
+        }
+
         .notification-icon-page.type-sistema {
-            background-color: rgba(156, 39, 176, 0.1);
-            color: #9c27b0;
+            background-color: var(--background-color);
+            color: var(--text-secondary);
         }
 
         .notification-content-page {

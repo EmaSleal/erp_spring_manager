@@ -9,7 +9,7 @@
     <div th:replace="~{shared/components/navbar :: navbar}"></div>
     <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
     
-    <main class="main-content">
+    <main class="main-content module-contabilidad-scope">
         <div class="container-fluid py-4">
             <nav aria-label="breadcrumb" class="mb-3">
                 <ol class="breadcrumb">
@@ -19,27 +19,27 @@
                     <li class="breadcrumb-item active">Balance General</li>
                 </ol>
             </nav>
-            
+
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="h3 mb-1"><i class="fas fa-chart-pie text-primary"></i> Balance General</h1>
+                    <h1 class="h3 mb-1"><i class="fas fa-chart-pie text-module-contabilidad"></i> Balance General</h1>
                     <p class="text-muted">Al <span th:text="${#temporals.format(fecha, 'dd/MM/yyyy')}"></span></p>
                 </div>
                 <div>
                     <button type="button" class="btn btn-outline-secondary me-2" onclick="window.location.href='/contabilidad/reportes'">
                         <i class="fas fa-arrow-left"></i> Volver
                     </button>
-                    <button type="button" class="btn btn-success" onclick="exportarPDF()">
+                    <button type="button" class="btn btn-outline-secondary" onclick="exportarPDF()">
                         <i class="fas fa-file-pdf"></i> Exportar PDF
                     </button>
                 </div>
             </div>
-            
+
             <div class="row">
                 <!-- Activos -->
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-primary text-white">
+                        <div class="card-header bg-light border-bottom">
                             <h5 class="mb-0">ACTIVOS</h5>
                         </div>
                         <div class="card-body">
@@ -53,18 +53,18 @@
                             <div class="border-top pt-2 mt-2">
                                 <div class="d-flex justify-content-between fw-bold">
                                     <span>Total Activos:</span>
-                                    <span class="text-primary" th:text="'$' + ${#numbers.formatDecimal(balance.totalActivos, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    <span th:text="'$' + ${#numbers.formatDecimal(balance.totalActivos, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Pasivos y Patrimonio -->
                 <div class="col-md-6">
                     <!-- Pasivos -->
                     <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-danger text-white">
+                        <div class="card-header bg-light border-bottom">
                             <h5 class="mb-0">PASIVOS</h5>
                         </div>
                         <div class="card-body">
@@ -78,15 +78,15 @@
                             <div class="border-top pt-2 mt-2">
                                 <div class="d-flex justify-content-between fw-bold">
                                     <span>Total Pasivos:</span>
-                                    <span class="text-danger" th:text="'$' + ${#numbers.formatDecimal(balance.totalPasivos, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    <span th:text="'$' + ${#numbers.formatDecimal(balance.totalPasivos, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Patrimonio -->
                     <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-success text-white">
+                        <div class="card-header bg-light border-bottom">
                             <h5 class="mb-0">PATRIMONIO</h5>
                         </div>
                         <div class="card-body">
@@ -100,30 +100,30 @@
                             <div class="border-top pt-2 mt-2">
                                 <div class="d-flex justify-content-between fw-bold">
                                     <span>Total Patrimonio:</span>
-                                    <span class="text-success" th:text="'$' + ${#numbers.formatDecimal(balance.totalCapital, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    <span th:text="'$' + ${#numbers.formatDecimal(balance.totalCapital, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Ecuación Contable -->
                 <div class="col-md-12">
                     <div class="alert alert-info">
                         <div class="d-flex justify-content-around align-items-center">
                             <div class="text-center">
                                 <strong>ACTIVOS</strong>
-                                <div class="fs-4 text-primary fw-bold" th:text="'$' + ${#numbers.formatDecimal(balance.totalActivos, 1, 'COMMA', 2, 'POINT')}">$0.00</div>
+                                <div class="fs-4 fw-bold" th:text="'$' + ${#numbers.formatDecimal(balance.totalActivos, 1, 'COMMA', 2, 'POINT')}">$0.00</div>
                             </div>
                             <div class="fs-3">=</div>
                             <div class="text-center">
                                 <strong>PASIVOS</strong>
-                                <div class="fs-4 text-danger fw-bold" th:text="'$' + ${#numbers.formatDecimal(balance.totalPasivos, 1, 'COMMA', 2, 'POINT')}">$0.00</div>
+                                <div class="fs-4 fw-bold" th:text="'$' + ${#numbers.formatDecimal(balance.totalPasivos, 1, 'COMMA', 2, 'POINT')}">$0.00</div>
                             </div>
                             <div class="fs-3">+</div>
                             <div class="text-center">
                                 <strong>PATRIMONIO</strong>
-                                <div class="fs-4 text-success fw-bold" th:text="'$' + ${#numbers.formatDecimal(balance.totalCapital, 1, 'COMMA', 2, 'POINT')}">$0.00</div>
+                                <div class="fs-4 fw-bold" th:text="'$' + ${#numbers.formatDecimal(balance.totalCapital, 1, 'COMMA', 2, 'POINT')}">$0.00</div>
                             </div>
                         </div>
                     </div>
