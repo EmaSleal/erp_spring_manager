@@ -163,9 +163,10 @@ public class ReporteContableController {
      * Calcula el saldo de una cuenta.
      */
     @GetMapping("/api/saldo/{cuentaId}")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, '')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_REPORTES')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> calcularSaldo(
+            Authentication authentication,
             @PathVariable Long cuentaId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         log.debug("API: Calculando saldo de cuenta {} al {}", cuentaId, fecha);
@@ -183,9 +184,10 @@ public class ReporteContableController {
      * Obtiene el libro mayor de una cuenta.
      */
     @GetMapping("/api/libro-mayor/{cuentaId}")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, '')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_REPORTES')")
     @ResponseBody
     public ResponseEntity<List<MovimientoCuenta>> obtenerLibroMayor(
+            Authentication authentication,
             @PathVariable Long cuentaId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
@@ -199,9 +201,10 @@ public class ReporteContableController {
      * Genera el balance de comprobación.
      */
     @GetMapping("/api/balance-comprobacion")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, '')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_REPORTES')")
     @ResponseBody
     public ResponseEntity<List<SaldoCuenta>> obtenerBalanceComprobacion(
+            Authentication authentication,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
         log.debug("API: Generando balance de comprobación entre {} y {}", fechaInicio, fechaFin);
@@ -214,9 +217,10 @@ public class ReporteContableController {
      * Genera el balance general.
      */
     @GetMapping("/api/balance-general")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, '')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_REPORTES')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> obtenerBalanceGeneral(
+            Authentication authentication,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         log.debug("API: Generando balance general al {}", fecha);
         
@@ -228,9 +232,10 @@ public class ReporteContableController {
      * Genera el estado de resultados.
      */
     @GetMapping("/api/estado-resultados")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, '')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_REPORTES')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> obtenerEstadoResultados(
+            Authentication authentication,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
         log.debug("API: Generando estado de resultados entre {} y {}", fechaInicio, fechaFin);
@@ -243,9 +248,10 @@ public class ReporteContableController {
      * Calcula la utilidad del ejercicio.
      */
     @GetMapping("/api/utilidad")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, '')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_REPORTES')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> calcularUtilidad(
+            Authentication authentication,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
         log.debug("API: Calculando utilidad entre {} y {}", fechaInicio, fechaFin);
@@ -263,9 +269,9 @@ public class ReporteContableController {
      * Obtiene estadísticas generales de contabilidad.
      */
     @GetMapping("/api/estadisticas")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, '')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_REPORTES')")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> obtenerEstadisticas() {
+    public ResponseEntity<Map<String, Object>> obtenerEstadisticas(Authentication authentication) {
         log.debug("API: Obteniendo estadísticas contables");
         
         Map<String, Object> stats = calculoService.obtenerEstadisticas();
