@@ -51,9 +51,10 @@ services:
       # Configuración de Java
       JAVA_OPTS: "-Xmx1024m -Xms512m"
       SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: ${SERVER_PORT:-15808}
     ports:
-      # Puerto externo 9090 -> Puerto interno 9090
-      - "9090:9090"
+      # Puerto configurable vía SERVER_PORT en .env (default 15808)
+      - "${SERVER_PORT:-15808}:${SERVER_PORT:-15808}"
     networks:
       - app-network
     volumes:
@@ -64,7 +65,7 @@ services:
       - uploads_data:/app/uploads
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/actuator/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${SERVER_PORT:-15808}/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3

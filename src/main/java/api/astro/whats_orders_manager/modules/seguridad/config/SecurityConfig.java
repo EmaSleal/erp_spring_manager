@@ -36,7 +36,7 @@ public class SecurityConfig {
     @Autowired
     private DataSource dataSource;
 
-    @Value("${app.cors.allowed-origins:http://localhost:9090,http://localhost:8080}")
+    @Value("${app.cors.allowed-origins:http://localhost:15808,http://localhost:8080}")
     private String[] allowedOrigins;
 
     @Bean

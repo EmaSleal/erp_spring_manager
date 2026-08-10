@@ -190,7 +190,7 @@ mvn spring-boot:run
 
 ### 6. Acceder
 
-Abrí el navegador en: **http://localhost:9090**
+Abrí el navegador en: **http://localhost:15808** (o el puerto que hayas definido en `SERVER_PORT`)
 
 Credenciales por defecto:
 - **Usuario:** `admin`
@@ -208,8 +208,8 @@ DB_URL=jdbc:mysql://localhost:3306/erp_orders_manager
 DB_USERNAME=tu_usuario
 DB_PASSWORD=tu_password
 
-# Puerto
-SERVER_PORT=9090
+# Puerto (opcional, default 15808 si no se define)
+SERVER_PORT=15808
 
 # Perfil de Spring
 SPRING_PROFILES_ACTIVE=production
