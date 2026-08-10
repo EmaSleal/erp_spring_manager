@@ -35,8 +35,8 @@ RUN mkdir -p /app/logs /app/certificados /app/comprobantes \
     && chown -R spring:spring /app/logs /app/certificados /app/comprobantes
 USER spring:spring
 
-# Exponer puerto interno
-EXPOSE 9090
+# Exponer puerto interno (real puerto lo define SERVER_PORT en runtime)
+EXPOSE 15808
 
 # Variables de entorno por defecto (serán sobreescritas por docker-compose)
 ENV SPRING_PROFILES_ACTIVE=prod

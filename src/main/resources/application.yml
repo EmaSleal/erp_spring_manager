@@ -1,6 +1,6 @@
-# spring port 9090
+# spring port, configurable via SERVER_PORT (.env), default 15808
 server:
-    port: 9090
+    port: ${SERVER_PORT:15808}
 
 spring:
   config:
@@ -84,7 +84,7 @@ smtp:
     key: ${SMTP_ENCRYPTION_KEY:}
 
 app:
-  base-url: ${APP_BASE_URL:http://localhost:9090}
+  base-url: ${APP_BASE_URL:http://localhost:15808}
   certificados:
     directorio: ${CERTIFICADOS_DIR:/app/certificados}
   sellos:
