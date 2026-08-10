@@ -50,7 +50,7 @@ public class SecurityConfig {
                 // Configuración de autorización de requests
                 .authorizeHttpRequests(auth -> auth
                         // Recursos públicos (CSS, JS, imágenes, auth)
-                        .requestMatchers("/", "/auth/**", "/api/auth/login", "/shared/css/**", "/shared/js/**", "/images/**").permitAll()
+                        .requestMatchers("/auth/**", "/api/auth/login", "/shared/css/**", "/shared/js/**", "/images/**").permitAll()
 
                         // Healthcheck para Docker Compose
                         .requestMatchers("/actuator/health").permitAll()
