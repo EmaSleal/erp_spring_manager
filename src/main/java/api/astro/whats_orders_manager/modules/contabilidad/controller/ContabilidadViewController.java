@@ -39,7 +39,7 @@ public class ContabilidadViewController {
      */
     @GetMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_VER')")
-    public String mostrarContabilidad(Model model) {
+    public String mostrarContabilidad(Model model, Authentication authentication) {
         log.info("Accediendo a módulo de Contabilidad");
 
         try {
