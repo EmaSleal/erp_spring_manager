@@ -40,6 +40,13 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
      */
     List<Producto> findByArticuloMaestro_IdArticuloMaestro(Integer idArticuloMaestro);
 
+    /**
+     * Eager-fetches articuloMaestro to avoid LazyInitializationException
+     * when callers read it outside the originating transaction (e.g. report exports).
+     */
+    @Query("SELECT p FROM Producto p LEFT JOIN FETCH p.articuloMaestro")
+    List<Producto> findAllWithArticuloMaestro();
+
     @Query("SELECT p FROM Producto p WHERE p.stock <= p.stockBajo AND p.active = true")
     List<Producto> findProductosStockBajo();
 

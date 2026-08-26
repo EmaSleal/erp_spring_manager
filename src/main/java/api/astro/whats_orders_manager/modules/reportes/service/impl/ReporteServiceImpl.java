@@ -253,7 +253,7 @@ public class ReporteServiceImpl implements ReporteService {
                  stockBajo, sinVentas);
         
         // Obtener todos los productos
-        List<Producto> productos = productoRepository.findAll();
+        List<Producto> productos = productoRepository.findAllWithArticuloMaestro();
         
         // Aplicar filtros
         List<Producto> productosFiltrados = productos.stream()
