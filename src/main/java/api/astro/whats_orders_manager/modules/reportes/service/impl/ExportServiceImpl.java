@@ -639,28 +639,29 @@ public class ExportServiceImpl implements ExportService {
         CellStyle monedaStyle = crearEstiloMoneda(workbook);
         
         Row headerRow = sheet.createRow(rowNum++);
-        String[] headers = {"ID", "Código", "Descripción", "P. Institucional", "P. Mayorista", "Estado"};
+        String[] headers = {"ID", "Código", "Descripción", "Presentación", "P. Institucional", "P. Mayorista", "Estado"};
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
             cell.setCellStyle(headerStyle);
         }
-        
+
         for (Producto producto : productos) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(producto.getIdProducto());
             row.createCell(1).setCellValue(producto.getCodigo() != null ? producto.getCodigo() : "-");
             row.createCell(2).setCellValue(resolveDescripcion(producto) != null ? resolveDescripcion(producto) : "-");
-            
-            Cell precioInstCell = row.createCell(3);
+            row.createCell(3).setCellValue(producto.getPresentacion() != null ? producto.getPresentacion().getNombre() : "-");
+
+            Cell precioInstCell = row.createCell(4);
             precioInstCell.setCellValue(producto.getPrecioInstitucional() != null ? producto.getPrecioInstitucional().doubleValue() : 0);
             precioInstCell.setCellStyle(monedaStyle);
-            
-            Cell precioMayCell = row.createCell(4);
+
+            Cell precioMayCell = row.createCell(5);
             precioMayCell.setCellValue(producto.getPrecioMayorista() != null ? producto.getPrecioMayorista().doubleValue() : 0);
             precioMayCell.setCellStyle(monedaStyle);
-            
-            row.createCell(5).setCellValue(Boolean.TRUE.equals(resolveActive(producto)) ? "Activo" : "Inactivo");
+
+            row.createCell(6).setCellValue(Boolean.TRUE.equals(resolveActive(producto)) ? "Activo" : "Inactivo");
         }
     }
 
@@ -746,12 +747,13 @@ public class ExportServiceImpl implements ExportService {
         try {
             StringBuilder csv = new StringBuilder();
             
-            csv.append("ID,Código,Descripción,Precio Institucional,Precio Mayorista,Estado\n");
-            
+            csv.append("ID,Código,Descripción,Presentación,Precio Institucional,Precio Mayorista,Estado\n");
+
             for (Producto producto : productos) {
                 csv.append(producto.getIdProducto()).append(",");
                 csv.append(escapeCSV(producto.getCodigo())).append(",");
                 csv.append(escapeCSV(resolveDescripcion(producto))).append(",");
+                csv.append(escapeCSV(producto.getPresentacion() != null ? producto.getPresentacion().getNombre() : "")).append(",");
                 csv.append(producto.getPrecioInstitucional() != null ? producto.getPrecioInstitucional().toString() : "0").append(",");
                 csv.append(producto.getPrecioMayorista() != null ? producto.getPrecioMayorista().toString() : "0").append(",");
                 csv.append(Boolean.TRUE.equals(resolveActive(producto)) ? "Activo" : "Inactivo").append("\n");
