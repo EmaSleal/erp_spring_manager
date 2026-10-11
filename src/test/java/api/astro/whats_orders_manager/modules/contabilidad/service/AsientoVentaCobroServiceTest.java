@@ -49,6 +49,7 @@ import static org.mockito.Mockito.when;
  *
  * Pruebas unitarias de los generadores de AsientoContableService:
  * generarAsientoVenta, generarAsientoPago, generarAsientoReversion y sincronizarAsientoVenta.
+ * T-007 (ADR-011): cobros multimoneda con diferencial cambiario realizado (nested Multimoneda).
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -68,7 +69,8 @@ class AsientoVentaCobroServiceTest {
     private static final List<String> CLAVES = List.of(
             "VENTA_CXC_CLIENTES", "VENTA_INGRESOS", "VENTA_IVA_POR_PAGAR", "COBRO_ANTICIPOS_CLIENTES",
             "COBRO_CAJA_EFECTIVO", "COBRO_CAJA_TARJETA", "COBRO_CAJA_CHEQUE",
-            "COBRO_CAJA_TRANSFERENCIA", "COBRO_CAJA_RECAUDADO", "COBRO_CAJA_OTROS");
+            "COBRO_CAJA_TRANSFERENCIA", "COBRO_CAJA_RECAUDADO", "COBRO_CAJA_OTROS",
+            "DIFERENCIAL_CAMBIARIO_INGRESO", "DIFERENCIAL_CAMBIARIO_GASTO");
 
     @BeforeEach
     void setUp() {
@@ -290,6 +292,155 @@ class AsientoVentaCobroServiceTest {
     }
 
     // =========================================================================
+    // Cobro multimoneda (T-007, ADR-011)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("generarAsientoPago — multimoneda y diferencial cambiario (ADR-011)")
+    class Multimoneda {
+
+        @Test
+        @DisplayName("criterio 3: factura USD TC 500, pago 100 USD a TC 510 → DR Caja 51000 / CR CxC 50000 / CR Ingreso 1000")
+        void cobroUsdTcMayor_generaIngresoPorDiferencial() {
+            Factura factura = factura(40, "100.00", "13.00", "113.00", MonedaFE.USD, new BigDecimal("500"));
+            Pago pago = pagoMoneda(40L, "100.00", MonedaFE.USD, "510", "100.00", factura);
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(debe(asiento, "COBRO_CAJA_EFECTIVO")).isEqualByComparingTo("51000.00");
+            assertThat(haber(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("50000.00");
+            assertThat(haber(asiento, "DIFERENCIAL_CAMBIARIO_INGRESO")).isEqualByComparingTo("1000.00");
+            assertThat(debe(asiento, "DIFERENCIAL_CAMBIARIO_GASTO")).isEqualByComparingTo("0");
+            assertThat(asiento.getDetalles()).hasSize(3);
+            assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+        }
+
+        @Test
+        @DisplayName("criterio 4: mismo cobro a TC 490 → DR Caja 49000 / DR Gasto 1000 / CR CxC 50000")
+        void cobroUsdTcMenor_generaGastoPorDiferencial() {
+            Factura factura = factura(41, "100.00", "13.00", "113.00", MonedaFE.USD, new BigDecimal("500"));
+            Pago pago = pagoMoneda(41L, "100.00", MonedaFE.USD, "490", "100.00", factura);
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(debe(asiento, "COBRO_CAJA_EFECTIVO")).isEqualByComparingTo("49000.00");
+            assertThat(debe(asiento, "DIFERENCIAL_CAMBIARIO_GASTO")).isEqualByComparingTo("1000.00");
+            assertThat(haber(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("50000.00");
+            assertThat(haber(asiento, "DIFERENCIAL_CAMBIARIO_INGRESO")).isEqualByComparingTo("0");
+            assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+        }
+
+        @Test
+        @DisplayName("criterio 5: pago 51000 CRC de factura USD (TC 500) a TC 510 → CR CxC 50000 / CR Ingreso 1000")
+        void cobroCrcDeFacturaUsd_generaIngresoPorDiferencial() {
+            Factura factura = factura(42, "100.00", "13.00", "113.00", MonedaFE.USD, new BigDecimal("500"));
+            // montoAplicado no informado: se calcula 51000 / 510 = 100.00 USD
+            Pago pago = pagoMoneda(42L, "51000.00", MonedaFE.CRC, "510", null, factura);
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(debe(asiento, "COBRO_CAJA_EFECTIVO")).isEqualByComparingTo("51000.00");
+            assertThat(haber(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("50000.00");
+            assertThat(haber(asiento, "DIFERENCIAL_CAMBIARIO_INGRESO")).isEqualByComparingTo("1000.00");
+            assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+        }
+
+        @Test
+        @DisplayName("criterio 6: pago CRC de factura CRC no genera línea de diferencial")
+        void cobroCrcDeFacturaCrc_sinDiferencial() {
+            Factura factura = factura(43, "100000.00", "13000.00", "113000.00", MonedaFE.CRC, BigDecimal.ONE);
+            Pago pago = pagoMoneda(43L, "40000.00", MonedaFE.CRC, "1", "40000.00", factura);
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(asiento.getDetalles()).hasSize(2);
+            assertThat(debe(asiento, "COBRO_CAJA_EFECTIVO")).isEqualByComparingTo("40000.00");
+            assertThat(haber(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("40000.00");
+            verify(parametroContableRepository, never()).findByClave("DIFERENCIAL_CAMBIARIO_INGRESO");
+            verify(parametroContableRepository, never()).findByClave("DIFERENCIAL_CAMBIARIO_GASTO");
+        }
+
+        @Test
+        @DisplayName("criterio 6: pago USD con el mismo TC de la factura no genera línea de diferencial")
+        void cobroUsdMismoTc_sinDiferencial() {
+            Factura factura = factura(44, "100.00", "13.00", "113.00", MonedaFE.USD, new BigDecimal("500"));
+            Pago pago = pagoMoneda(44L, "100.00", MonedaFE.USD, "500", "100.00", factura);
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(asiento.getDetalles()).hasSize(2);
+            assertThat(debe(asiento, "COBRO_CAJA_EFECTIVO")).isEqualByComparingTo("50000.00");
+            assertThat(haber(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("50000.00");
+        }
+
+        @Test
+        @DisplayName("criterio 7: adelanto 100 USD sin factura a TC 505 → DR Caja 50500 / CR Anticipos 50500, sin diferencial")
+        void adelantoUsd_convierteSinDiferencial() {
+            Pago pago = pagoMoneda(45L, "100.00", MonedaFE.USD, "505", "100.00", null);
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(asiento.getDetalles()).hasSize(2);
+            assertThat(debe(asiento, "COBRO_CAJA_EFECTIVO")).isEqualByComparingTo("50500.00");
+            assertThat(haber(asiento, "COBRO_ANTICIPOS_CLIENTES")).isEqualByComparingTo("50500.00");
+        }
+
+        @Test
+        @DisplayName("criterio 12: pago USD sobre factura EUR se rechaza con mensaje claro")
+        void pagoUsdSobreFacturaEur_rechazado() {
+            Factura factura = factura(46, "100.00", "13.00", "113.00", MonedaFE.EUR, new BigDecimal("580"));
+            Pago pago = pagoMoneda(46L, "100.00", MonedaFE.USD, "510", "100.00", factura);
+
+            assertThatThrownBy(() -> service.generarAsientoPago(pago))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("USD")
+                    .hasMessageContaining("EUR");
+            verify(asientoRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("criterio 13: si falta DIFERENCIAL_CAMBIARIO_INGRESO y hay diferencia → IllegalStateException sin guardar")
+        void claveDiferencialFaltante_lanzaIllegalState() {
+            when(parametroContableRepository.findByClave("DIFERENCIAL_CAMBIARIO_INGRESO")).thenReturn(Optional.empty());
+            Factura factura = factura(47, "100.00", "13.00", "113.00", MonedaFE.USD, new BigDecimal("500"));
+            Pago pago = pagoMoneda(47L, "100.00", MonedaFE.USD, "510", "100.00", factura);
+
+            assertThatThrownBy(() -> service.generarAsientoPago(pago))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("DIFERENCIAL_CAMBIARIO_INGRESO");
+            verify(asientoRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("criterio 13: sin diferencia no se exige la clave DIFERENCIAL_CAMBIARIO_* aunque falte")
+        void claveDiferencialFaltanteSinDiferencia_noFalla() {
+            when(parametroContableRepository.findByClave("DIFERENCIAL_CAMBIARIO_GASTO")).thenReturn(Optional.empty());
+            when(parametroContableRepository.findByClave("DIFERENCIAL_CAMBIARIO_INGRESO")).thenReturn(Optional.empty());
+            Factura factura = factura(48, "100.00", "13.00", "113.00", MonedaFE.USD, new BigDecimal("500"));
+            Pago pago = pagoMoneda(48L, "100.00", MonedaFE.USD, "500", "100.00", factura);
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(asiento.estaCuadrado()).isTrue();
+        }
+
+        @Test
+        @DisplayName("la reversión de un cobro con diferencial incluye la línea espejo del diferencial")
+        void reversionIncluyeDiferencial() {
+            Factura factura = factura(49, "100.00", "13.00", "113.00", MonedaFE.USD, new BigDecimal("500"));
+            AsientoContable original = service.generarAsientoPago(
+                    pagoMoneda(49L, "100.00", MonedaFE.USD, "510", "100.00", factura));
+            original.setIdAsiento(900L);
+
+            AsientoContable reversion = service.generarAsientoReversion(original, "Anulación");
+
+            assertThat(debe(reversion, "DIFERENCIAL_CAMBIARIO_INGRESO")).isEqualByComparingTo("1000.00");
+            assertThat(saldoPorCuenta(original, reversion)).allSatisfy(
+                    (cuenta, saldo) -> assertThat(saldo).isEqualByComparingTo("0"));
+        }
+    }
+
+    // =========================================================================
     // Reversión
     // =========================================================================
 
@@ -488,6 +639,15 @@ class AsientoVentaCobroServiceTest {
         p.setEstado(estado);
         p.setFactura(factura);
         p.setFechaPago(LocalDateTime.now());
+        return p;
+    }
+
+    static Pago pagoMoneda(Long id, String monto, MonedaFE moneda, String tipoCambio, String montoAplicado,
+                           Factura factura) {
+        Pago p = pago(id, monto, MetodoPago.EFECTIVO, EstadoPago.CONFIRMADO, factura);
+        p.setMoneda(moneda);
+        p.setTipoCambio(new BigDecimal(tipoCambio));
+        p.setMontoAplicado(montoAplicado != null ? new BigDecimal(montoAplicado) : null);
         return p;
     }
 

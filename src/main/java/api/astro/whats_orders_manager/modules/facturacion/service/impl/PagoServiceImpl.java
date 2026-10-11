@@ -9,6 +9,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.ReporteCajaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -17,6 +18,8 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepo
 import api.astro.whats_orders_manager.modules.facturacion.repository.PagoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.NumeroPagoGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
+import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +69,9 @@ public class PagoServiceImpl implements PagoService {
 
     @Autowired
     private AsientoContableService asientoContableService;
+
+    @Autowired
+    private TipoCambioService tipoCambioService;
 
     // ==================== OPERACIONES CRUD ====================
     
@@ -178,13 +184,24 @@ public class PagoServiceImpl implements PagoService {
 
             // Asignar la factura completa al pago
             pago.setFactura(factura);
-        
-            // Validar que el monto no exceda el saldo pendiente
-            BigDecimal saldoPendiente = factura.calcularSaldoPendiente();
-            if (pago.getMonto().compareTo(saldoPendiente) > 0) {
+        }
+
+        // Establecer fecha de pago si no está definida (el tipo de cambio depende de ella)
+        if (pago.getFechaPago() == null) {
+            pago.setFechaPago(LocalDateTime.now());
+        }
+
+        // ADR-011: moneda, tipo de cambio y monto aplicado en la moneda de la factura
+        aplicarMonedaYTipoCambio(pago);
+
+        if (pago.getFactura() != null) {
+            // Validar que el monto aplicado (en la moneda de la factura) no exceda el saldo pendiente
+            BigDecimal saldoPendiente = pago.getFactura().calcularSaldoPendiente();
+            if (pago.getMontoAplicado().compareTo(saldoPendiente) > 0) {
                 throw new IllegalArgumentException(
-                    String.format("El monto del pago (%.2f) excede el saldo pendiente (%.2f)", 
-                        pago.getMonto(), saldoPendiente));
+                    String.format("El monto del pago (%.2f %s) excede el saldo pendiente (%.2f %s)",
+                        pago.getMontoAplicado(), monedaFactura(pago.getFactura()).getCodigo(),
+                        saldoPendiente, monedaFactura(pago.getFactura()).getCodigo()));
             }
         }
         
@@ -213,11 +230,6 @@ public class PagoServiceImpl implements PagoService {
                 throw new IllegalArgumentException(
                     "Ya existe un pago con el número: " + pago.getNumeroPago());
             }
-        }
-        
-        // Establecer fecha de pago si no está definida
-        if (pago.getFechaPago() == null) {
-            pago.setFechaPago(LocalDateTime.now());
         }
         
         // Estado por defecto: CONFIRMADO
@@ -421,6 +433,36 @@ public class PagoServiceImpl implements PagoService {
             .collect(Collectors.toList());
     }
     
+    /**
+     * Completa moneda, tipo de cambio y monto aplicado del pago (ADR-011).
+     * <ul>
+     *   <li>moneda null → moneda de la factura, o CRC si es un adelanto sin factura.</li>
+     *   <li>tipoCambio null → tasa de venta de la moneda extranjera involucrada en la fecha del pago
+     *       (1 si todo es CRC). Un valor indicado por el usuario se respeta.</li>
+     *   <li>montoAplicado: monto expresado en la moneda de la factura (= monto en adelantos).</li>
+     * </ul>
+     *
+     * @throws IllegalArgumentException si pago y factura están en monedas extranjeras distintas,
+     *                                  o no hay tipo de cambio registrado para sugerir
+     */
+    private void aplicarMonedaYTipoCambio(Pago pago) {
+        Factura factura = pago.getFactura();
+        MonedaFE monedaDocumento = factura != null ? monedaFactura(factura) : null;
+        if (pago.getMoneda() == null) {
+            pago.setMoneda(monedaDocumento != null ? monedaDocumento : MonedaFE.CRC);
+        }
+        // Un adelanto se registra en su propia moneda: el "documento" es el propio pago
+        MonedaFE referencia = monedaDocumento != null ? monedaDocumento : pago.getMoneda();
+        BigDecimal tipoCambio = tipoCambioService.resolverTipoCambioOperacion(
+            pago.getMoneda(), referencia, pago.getTipoCambio(), pago.getFechaPago().toLocalDate());
+        pago.setTipoCambio(tipoCambio);
+        pago.setMontoAplicado(ConversionMoneda.montoAplicado(pago.getMonto(), pago.getMoneda(), referencia, tipoCambio));
+    }
+
+    private static MonedaFE monedaFactura(Factura factura) {
+        return ConversionMoneda.oCrc(factura.getMonedaFE());
+    }
+
     /**
      * Genera el asiento de cobro cuando el pago pasa de un estado no válido
      * (nuevo, PENDIENTE, RECHAZADO o ANULADO) a uno válido (CONFIRMADO o CONCILIADO)
@@ -628,7 +670,9 @@ public class PagoServiceImpl implements PagoService {
         // Only CONFIRMADO and CONCILIADO payments count toward the paid total
         BigDecimal totalPagado = pagos.stream()
             .filter(PagoDTO::esValido)
-            .map(p -> p.getMonto() != null ? p.getMonto() : BigDecimal.ZERO)
+            // ADR-011: lo aplicado a la factura está en su moneda (montoAplicado)
+            .map(p -> p.getMontoAplicado() != null ? p.getMontoAplicado()
+                : (p.getMonto() != null ? p.getMonto() : BigDecimal.ZERO))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal saldoPendiente = totalFacturado.subtract(totalPagado);

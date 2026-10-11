@@ -3,16 +3,21 @@ package api.astro.whats_orders_manager.modules.facturacion.controller;
 import api.astro.whats_orders_manager.modules.facturacion.dto.TipoCambioDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.FuenteTipoCambio;
+import api.astro.whats_orders_manager.modules.facturacion.exception.TipoCambioNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.model.TipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tipos-cambio")
@@ -30,6 +35,32 @@ public class TipoCambioRestController {
         return tipoCambioService.getTasaActual(monedaFE)
                 .map(tc -> ResponseEntity.ok(toDTO(tc)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Tasa de venta sugerida para una moneda y fecha (ADR-011): la del registro activo más
+     * reciente con fecha &lt;= fecha. Usada por los formularios para precargar el tipo de cambio.
+     * Devuelve 404 con el mensaje cuando no hay tasa registrada.
+     */
+    @GetMapping("/venta")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> getTasaVenta(
+            @RequestParam String moneda,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fecha
+    ) {
+        MonedaFE monedaFE = MonedaFE.fromCodigo(moneda);
+        LocalDate dia = fecha != null ? fecha : LocalDate.now();
+        try {
+            return ResponseEntity.ok(Map.of(
+                    "moneda", monedaFE.getCodigo(),
+                    "fecha", dia.toString(),
+                    "tasaVenta", tipoCambioService.obtenerTasaVenta(monedaFE, dia)));
+        } catch (TipoCambioNoDisponibleException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping

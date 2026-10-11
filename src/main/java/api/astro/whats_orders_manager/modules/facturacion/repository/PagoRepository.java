@@ -59,7 +59,7 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param idFactura ID de la factura
      * @return Total pagado (0 si no hay pagos)
      */
-    @Query("SELECT COALESCE(SUM(p.monto), 0) FROM Pago p " +
+    @Query("SELECT COALESCE(SUM(COALESCE(p.montoAplicado, p.monto)), 0) FROM Pago p " +
            "WHERE p.factura.idFactura = :idFactura " +
            "AND p.estado IN ('CONFIRMADO', 'CONCILIADO')")
     BigDecimal calcularTotalPagadoPorFactura(@Param("idFactura") Integer idFactura);
@@ -253,7 +253,7 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
             p.factura.numeroFactura,
             p.factura.total,
             CASE WHEN p.factura IS NOT NULL 
-                THEN (p.factura.total - COALESCE((SELECT SUM(pg.monto) FROM Pago pg 
+                THEN (p.factura.total - COALESCE((SELECT SUM(COALESCE(pg.montoAplicado, pg.monto)) FROM Pago pg 
                     WHERE pg.factura.idFactura = p.factura.idFactura 
                     AND pg.estado IN ('CONFIRMADO', 'CONCILIADO')), 0)) 
                 ELSE NULL 

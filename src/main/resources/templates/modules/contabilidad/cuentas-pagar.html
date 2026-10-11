@@ -137,7 +137,7 @@
                                         <div class="btn-group" role="group">
                                             <button th:if="${cpp.estado.name() != 'PAGADA' and cpp.estado.name() != 'ANULADA'}"
                                                     class="btn btn-sm btn-outline-success btn-pagar"
-                                                    th:attr="data-id=${cpp.id}, data-numero=${cpp.numero}, data-saldo=${cpp.saldoPendiente}"
+                                                    th:attr="data-id=${cpp.id}, data-numero=${cpp.numero}, data-saldo=${cpp.saldoPendiente}, data-moneda=${cpp.moneda != null ? cpp.moneda.name() : 'CRC'}"
                                                     onclick="abrirModalPago(this)"
                                                     title="Registrar Pago">
                                                 <i class="fas fa-money-bill-wave"></i>
@@ -186,6 +186,20 @@
                             <input type="number" id="pagoMonto" class="form-control"
                                    step="0.01" min="0.01" required
                                    placeholder="0.00" />
+                        </div>
+
+                        <!-- ADR-011: moneda y tipo de cambio del pago (visible solo con moneda extranjera) -->
+                        <div class="row" id="pagoMonedaRow">
+                            <div class="col-md-6 mb-3">
+                                <label for="pagoMoneda" class="form-label">Moneda del pago</label>
+                                <select id="pagoMoneda" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6 mb-3" id="pagoTipoCambioGroup" style="display: none;">
+                                <label for="pagoTipoCambio" class="form-label">Tipo de Cambio</label>
+                                <input type="number" id="pagoTipoCambio" class="form-control"
+                                       step="0.00001" min="0.00001" placeholder="Ej: 510.00000" />
+                                <div class="form-text" id="pagoTipoCambioAyuda">Tasa de venta del día; puede editarla</div>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -296,10 +310,11 @@
         const id     = btn.dataset.id;
         const numero = btn.dataset.numero;
         const saldo  = parseFloat(btn.dataset.saldo);
+        const moneda = btn.dataset.moneda || 'CRC';
 
         document.getElementById('pagoCppId').value          = id;
         document.getElementById('pagoNumeroCpp').textContent = numero;
-        document.getElementById('pagoSaldoCpp').textContent  = '₡ ' + saldo.toFixed(2);
+        document.getElementById('pagoSaldoCpp').textContent  = moneda + ' ' + saldo.toFixed(2);
         document.getElementById('pagoMonto').value           = saldo.toFixed(2);
         document.getElementById('pagoMonto').max             = saldo;
         document.getElementById('pagoMetodo').value          = '';
@@ -307,8 +322,52 @@
         document.getElementById('pagoFecha').value           = new Date().toISOString().split('T')[0];
         document.getElementById('pagoNotas').value           = '';
 
+        // ADR-011: el pago puede hacerse en la moneda de la CxP o en CRC
+        const selMoneda = document.getElementById('pagoMoneda');
+        selMoneda.innerHTML = '';
+        [moneda, 'CRC'].filter((m, i, arr) => arr.indexOf(m) === i).forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            selMoneda.appendChild(opt);
+        });
+        selMoneda.value = moneda;
+        selMoneda.dataset.monedaCuenta = moneda;
+        document.getElementById('pagoMonedaRow').style.display = moneda === 'CRC' ? 'none' : '';
+        actualizarTipoCambioPagoProveedor();
+
         new bootstrap.Modal(document.getElementById('modalPago')).show();
     }
+
+    function actualizarTipoCambioPagoProveedor() {
+        const selMoneda = document.getElementById('pagoMoneda');
+        const grupo = document.getElementById('pagoTipoCambioGroup');
+        const input = document.getElementById('pagoTipoCambio');
+        const ayuda = document.getElementById('pagoTipoCambioAyuda');
+        const monedaCuenta = selMoneda.dataset.monedaCuenta || 'CRC';
+        const extranjera = selMoneda.value !== 'CRC' ? selMoneda.value : monedaCuenta;
+        if (extranjera === 'CRC') {
+            grupo.style.display = 'none';
+            input.value = '';
+            return;
+        }
+        grupo.style.display = '';
+        const fecha = document.getElementById('pagoFecha').value || new Date().toISOString().split('T')[0];
+        fetch(`/api/tipos-cambio/venta?moneda=${extranjera}&fecha=${fecha}`)
+            .then(async r => ({ ok: r.ok, data: await r.json().catch(() => null) }))
+            .then(({ ok, data }) => {
+                if (ok && data && data.tasaVenta) {
+                    input.value = data.tasaVenta;
+                    ayuda.textContent = `Tasa de venta de ${extranjera} al ${fecha}; puede editarla`;
+                } else {
+                    input.value = '';
+                    ayuda.textContent = (data && data.message) || `No hay tipo de cambio de ${extranjera}; ingréselo`;
+                }
+            })
+            .catch(() => { /* el usuario puede digitarlo */ });
+    }
+    document.getElementById('pagoMoneda').addEventListener('change', actualizarTipoCambioPagoProveedor);
+    document.getElementById('pagoFecha').addEventListener('change', actualizarTipoCambioPagoProveedor);
 
     async function confirmarPago() {
         const id       = document.getElementById('pagoCppId').value;
@@ -336,6 +395,9 @@
                 },
                 body: JSON.stringify({
                     monto:      parseFloat(monto),
+                    moneda:     document.getElementById('pagoMoneda').value || null,
+                    tipoCambio: document.getElementById('pagoTipoCambio').value
+                        ? parseFloat(document.getElementById('pagoTipoCambio').value) : null,
                     metodoPago: metodo,
                     referencia: ref || null,
                     fecha:      fecha,

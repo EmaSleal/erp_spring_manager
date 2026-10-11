@@ -18,6 +18,10 @@ public interface TipoCambioRepository extends JpaRepository<TipoCambio, Long> {
     // Latest active rate for a destination currency
     Optional<TipoCambio> findFirstByMonedaDestinoAndActivoTrueOrderByFechaDesc(MonedaFE monedaDestino);
 
+    // Latest active rate on or before a given date (ADR-011: rate in force for that day)
+    Optional<TipoCambio> findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(
+            MonedaFE monedaDestino, LocalDate fecha);
+
     // Exact date lookup for conflict detection on registrar
     Optional<TipoCambio> findByFechaAndMonedaDestinoAndActivoTrue(LocalDate fecha, MonedaFE monedaDestino);
 

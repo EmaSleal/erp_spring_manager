@@ -98,6 +98,8 @@ async function cargarFacturasCliente() {
             option.dataset.numeroFactura = factura.numeroFactura;
             option.dataset.totalFactura = factura.totalFactura;
             option.dataset.saldoPendiente = factura.saldoPendiente;
+            option.dataset.monedaFe = factura.monedaFE || 'CRC';
+            option.textContent = `${factura.numeroFactura} - Saldo: ${factura.monedaFE || 'CRC'} ${formatNumber(factura.saldoPendiente, 2)}`;
             facturaSelect.appendChild(option);
         });
 
@@ -117,6 +119,13 @@ function mostrarInfoFactura() {
     const selectedOption = facturaSelect.options[facturaSelect.selectedIndex];
     const montoInput = document.getElementById('monto');
     
+    // ADR-011: la moneda del pago por defecto es la de la factura (CRC para adelantos)
+    const monedaPago = document.getElementById('monedaPago');
+    if (monedaPago) {
+        monedaPago.value = selectedOption.value ? (selectedOption.dataset.monedaFe || 'CRC') : 'CRC';
+    }
+    actualizarTipoCambioPago();
+
     // Si no hay factura seleccionada, limpiar
     if (!selectedOption.value) {
         if (montoInput) {
@@ -192,10 +201,70 @@ function mostrarPanelInfoFactura(numeroFactura, nombreCliente, totalFactura, sal
     
     if (infoNumero) infoNumero.textContent = numeroFactura;
     if (infoCliente) infoCliente.textContent = nombreCliente;
-    if (infoTotal) infoTotal.textContent = `₡ ${formatNumber(totalFactura, 2)}`;
-    if (infoSaldo) infoSaldo.textContent = `₡ ${formatNumber(saldoPendiente, 2)}`;
+    const monedaFactura = monedaFacturaSeleccionada();
+    if (infoTotal) infoTotal.textContent = `${monedaFactura} ${formatNumber(totalFactura, 2)}`;
+    if (infoSaldo) infoSaldo.textContent = `${monedaFactura} ${formatNumber(saldoPendiente, 2)}`;
     
     panel.style.display = 'block';
+}
+
+/**
+ * Moneda de la factura seleccionada (CRC si no hay factura: adelanto)
+ */
+function monedaFacturaSeleccionada() {
+    const facturaSelect = document.getElementById('idFactura');
+    const opcion = facturaSelect ? facturaSelect.options[facturaSelect.selectedIndex] : null;
+    return opcion && opcion.value ? (opcion.dataset.monedaFe || 'CRC') : 'CRC';
+}
+
+let tipoCambioPagoFetch = null;
+
+/**
+ * ADR-011: muestra el tipo de cambio solo cuando hay moneda extranjera involucrada
+ * y lo precarga con la tasa de venta registrada para la fecha del pago (editable).
+ */
+function actualizarTipoCambioPago() {
+    const monedaPago = document.getElementById('monedaPago');
+    const grupo = document.getElementById('tipoCambioPagoGroup');
+    const input = document.getElementById('tipoCambioPago');
+    const ayuda = document.getElementById('tipoCambioPagoAyuda');
+    const simbolo = document.getElementById('montoSimbolo');
+    if (!monedaPago || !grupo || !input) return;
+
+    const pago = monedaPago.value || 'CRC';
+    const documento = monedaFacturaSeleccionada();
+    if (simbolo) simbolo.textContent = pago === 'CRC' ? '₡' : pago;
+
+    if (pago !== 'CRC' && documento !== 'CRC' && pago !== documento) {
+        grupo.style.display = 'none';
+        input.value = '';
+        showToast('warning', `No se admite un pago en ${pago} sobre una factura en ${documento}: pague en ${documento} o en CRC`);
+        return;
+    }
+    const extranjera = pago !== 'CRC' ? pago : documento;
+    if (extranjera === 'CRC') {
+        grupo.style.display = 'none';
+        input.value = '';
+        return;
+    }
+
+    grupo.style.display = 'block';
+    const fechaPago = (document.getElementById('fechaPago')?.value || '').substring(0, 10);
+    const fecha = fechaPago || new Date().toISOString().substring(0, 10);
+    if (tipoCambioPagoFetch) tipoCambioPagoFetch.abort();
+    tipoCambioPagoFetch = new AbortController();
+    fetch(`/api/tipos-cambio/venta?moneda=${extranjera}&fecha=${fecha}`, { signal: tipoCambioPagoFetch.signal })
+        .then(async r => ({ ok: r.ok, data: await r.json().catch(() => null) }))
+        .then(({ ok, data }) => {
+            if (ok && data && data.tasaVenta) {
+                input.value = data.tasaVenta;
+                if (ayuda) ayuda.textContent = `Tasa de venta de ${extranjera} al ${fecha}; puede editarla`;
+            } else {
+                input.value = '';
+                if (ayuda) ayuda.textContent = (data && data.message) || `No hay tipo de cambio de ${extranjera} para ${fecha}; ingréselo`;
+            }
+        })
+        .catch(err => { if (err.name !== 'AbortError') { /* el usuario puede digitarlo */ } });
 }
 
 /**
@@ -263,6 +332,16 @@ function initPagoForm() {
     if (metodoPagoSelect) {
         metodoPagoSelect.addEventListener('change', toggleReferencia);
     }
+
+    // ADR-011: moneda y tipo de cambio del pago
+    const monedaPagoSelect = document.getElementById('monedaPago');
+    if (monedaPagoSelect) {
+        monedaPagoSelect.addEventListener('change', actualizarTipoCambioPago);
+    }
+    const fechaPagoInput = document.getElementById('fechaPago');
+    if (fechaPagoInput) {
+        fechaPagoInput.addEventListener('change', actualizarTipoCambioPago);
+    }
     
     // Inicializar toggles
     toggleReferencia();
@@ -278,6 +357,8 @@ function initPagoForm() {
             idFactura: formData.get('idFactura') ? parseInt(formData.get('idFactura')) : null,
             tipoPago: formData.get('tipoPago'),
             monto: parseFloat(formData.get('monto')),
+            moneda: formData.get('moneda') || null,
+            tipoCambio: formData.get('tipoCambio') ? parseFloat(formData.get('tipoCambio')) : null,
             metodoPago: formData.get('metodoPago'),
             fechaPago: formData.get('fechaPago'),
             referenciaBancaria: formData.get('referenciaBancaria'),

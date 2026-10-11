@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.FuenteTipoCambio;
+import api.astro.whats_orders_manager.modules.facturacion.exception.TipoCambioNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.model.TipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.repository.TipoCambioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -149,5 +151,71 @@ class TipoCambioServiceTest {
         List<TipoCambio> result = service.listarPorMoneda(MonedaFE.EUR);
 
         assertThat(result).isEmpty();
+    }
+
+    // =========================================================================
+    // obtenerTasaVenta (T-007, ADR-011)
+    // =========================================================================
+
+    @Test
+    @DisplayName("criterio 2: obtenerTasaVenta devuelve la tasa de venta del registro activo más reciente con fecha <= consultada")
+    void obtenerTasaVenta_devuelveTasaVentaVigente() {
+        LocalDate fecha = LocalDate.of(2026, 10, 11);
+        when(repo.findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(MonedaFE.USD, fecha))
+                .thenReturn(Optional.of(usdRate));
+
+        assertThat(service.obtenerTasaVenta(MonedaFE.USD, fecha)).isEqualByComparingTo("532.15000");
+    }
+
+    @Test
+    @DisplayName("criterio 2: CRC devuelve 1 sin consultar la tabla")
+    void obtenerTasaVenta_crcDevuelveUno() {
+        assertThat(service.obtenerTasaVenta(MonedaFE.CRC, LocalDate.of(2026, 10, 11))).isEqualByComparingTo("1");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    @DisplayName("criterio 2: sin tasa registrada → excepción de negocio con moneda y fecha en el mensaje")
+    void obtenerTasaVenta_sinTasa_lanzaExcepcionConMonedaYFecha() {
+        LocalDate fecha = LocalDate.of(2026, 10, 11);
+        when(repo.findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(MonedaFE.USD, fecha))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.obtenerTasaVenta(MonedaFE.USD, fecha))
+                .isInstanceOf(TipoCambioNoDisponibleException.class)
+                .hasMessage("No hay tipo de cambio de USD para 2026-10-11; regístrelo");
+    }
+
+    @Test
+    @DisplayName("resolverTipoCambioOperacion respeta el tipo de cambio indicado por el usuario")
+    void resolverTipoCambioOperacion_respetaIndicado() {
+        BigDecimal tc = service.resolverTipoCambioOperacion(MonedaFE.CRC, MonedaFE.USD, new BigDecimal("515"),
+                LocalDate.of(2026, 10, 11));
+
+        assertThat(tc).isEqualByComparingTo("515");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    @DisplayName("resolverTipoCambioOperacion: pago CRC de documento USD sin TC toma la tasa de USD (no 1)")
+    void resolverTipoCambioOperacion_pagoCrcDocumentoUsd_usaTasaUsd() {
+        LocalDate fecha = LocalDate.of(2026, 10, 11);
+        when(repo.findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(MonedaFE.USD, fecha))
+                .thenReturn(Optional.of(usdRate));
+
+        assertThat(service.resolverTipoCambioOperacion(MonedaFE.CRC, MonedaFE.USD, null, fecha))
+                .isEqualByComparingTo("532.15000");
+    }
+
+    @Test
+    @DisplayName("criterio 12: pago USD sobre documento EUR (y viceversa) se rechaza con mensaje claro")
+    void resolverTipoCambioOperacion_monedasExtranjerasDistintas_rechaza() {
+        LocalDate fecha = LocalDate.of(2026, 10, 11);
+        assertThatThrownBy(() -> service.resolverTipoCambioOperacion(MonedaFE.USD, MonedaFE.EUR, null, fecha))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("USD").hasMessageContaining("EUR");
+        assertThatThrownBy(() -> service.resolverTipoCambioOperacion(MonedaFE.EUR, MonedaFE.USD, null, fecha))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("EUR").hasMessageContaining("USD");
     }
 }

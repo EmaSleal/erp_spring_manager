@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.model;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
@@ -91,6 +92,35 @@ public class Pago {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal monto;
     
+    /**
+     * Moneda en que se recibió el pago (ADR-011).
+     * Por defecto la moneda de la factura, o CRC para adelantos sin factura.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moneda", length = 10)
+    private MonedaFE moneda;
+
+    /**
+     * Tipo de cambio de la operación (ADR-011): tasa de venta, en CRC por unidad, de la moneda
+     * extranjera involucrada en la fecha del pago. Por defecto se toma de la tabla tipos_cambio y
+     * el usuario puede editarlo.
+     * <ul>
+     *   <li>Pago y factura en CRC → 1.</li>
+     *   <li>Pago en CRC sobre factura en moneda extranjera → tasa de la moneda de la factura ese día
+     *       (no 1): con ella se calcula {@link #montoAplicado} y el diferencial cambiario.</li>
+     *   <li>Pago en moneda extranjera → tasa de esa moneda.</li>
+     * </ul>
+     */
+    @Column(name = "tipo_cambio", precision = 18, scale = 5)
+    private BigDecimal tipoCambio;
+
+    /**
+     * Monto del pago expresado en la moneda de la factura (ADR-011). Es lo que reduce el saldo
+     * pendiente de la factura. En adelantos sin factura es igual a {@link #monto}.
+     */
+    @Column(name = "monto_aplicado", precision = 12, scale = 2)
+    private BigDecimal montoAplicado;
+
     /**
      * Método de pago utilizado (según catálogo Hacienda CR).
      */
@@ -206,6 +236,16 @@ public class Pago {
     }
     
     /**
+     * Monto que se aplica al saldo de la factura, en su moneda (ADR-011).
+     * Pagos anteriores a ADR-011 sin montoAplicado se aplican por su monto nominal.
+     * @return montoAplicado, o monto si es nulo
+     */
+    @Transient
+    public BigDecimal getMontoAplicadoEfectivo() {
+        return montoAplicado != null ? montoAplicado : (monto != null ? monto : BigDecimal.ZERO);
+    }
+
+    /**
      * Marca el pago como conciliado.
      */
     public void conciliar() {
@@ -247,10 +287,11 @@ public class Pago {
         
         if (factura != null) {
             BigDecimal saldoPendiente = factura.calcularSaldoPendiente();
-            if (monto.compareTo(saldoPendiente) > 0) {
+            BigDecimal aplicado = getMontoAplicadoEfectivo();
+            if (aplicado.compareTo(saldoPendiente) > 0) {
                 throw new IllegalStateException(
                     String.format("El monto del pago (%.2f) excede el saldo pendiente (%.2f)",
-                        monto, saldoPendiente)
+                        aplicado, saldoPendiente)
                 );
             }
         }

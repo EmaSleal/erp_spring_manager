@@ -6,6 +6,8 @@ import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
@@ -33,6 +35,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     private final ProveedorRepository proveedorRepository;
     private final OrdenCompraRepository ordenCompraRepository;
     private final AsientoContableService asientoService;
+    private final TipoCambioService tipoCambioService;
 
     @Override
     @Transactional
@@ -46,6 +49,15 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
                 .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + dto.getOrdenCompraId()));
         }
 
+        // ADR-011: tipo de cambio propio; si viene de una OC se hereda el de la orden
+        MonedaFE moneda = dto.getMoneda() != null ? dto.getMoneda()
+            : (oc != null && oc.getMoneda() != null ? oc.getMoneda() : MonedaFE.CRC);
+        LocalDate fechaEmision = dto.getFechaEmision() != null ? dto.getFechaEmision() : LocalDate.now();
+        BigDecimal tipoCambioSugerido = dto.getTipoCambio() != null ? dto.getTipoCambio()
+            : (oc != null && oc.getMoneda() == moneda ? oc.getTipoCambio() : null);
+        BigDecimal tipoCambio = tipoCambioService.resolverTipoCambioOperacion(
+            moneda, moneda, tipoCambioSugerido, fechaEmision);
+
         CuentaPorPagar cuenta = CuentaPorPagar.builder()
             .numero(generarNumero())
             .proveedor(proveedor)
@@ -53,8 +65,9 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .descripcion(dto.getDescripcion())
             .monto(dto.getMonto())
             .saldoPendiente(dto.getMonto())
-            .moneda(dto.getMoneda())
-            .fechaEmision(dto.getFechaEmision() != null ? dto.getFechaEmision() : LocalDate.now())
+            .moneda(moneda)
+            .tipoCambio(tipoCambio)
+            .fechaEmision(fechaEmision)
             .fechaVencimiento(dto.getFechaVencimiento())
             .notas(dto.getNotas())
             .build();
@@ -79,6 +92,11 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             throw new IllegalStateException("Ya existe una cuenta por pagar para la OC " + oc.getNumero());
         }
 
+        // ADR-011: la CxP hereda la moneda y el tipo de cambio de la OC
+        MonedaFE monedaOc = oc.getMoneda() != null ? oc.getMoneda() : MonedaFE.CRC;
+        BigDecimal tipoCambioOc = tipoCambioService.resolverTipoCambioOperacion(
+            monedaOc, monedaOc, oc.getTipoCambio(), oc.getFecha());
+
         CuentaPorPagar cuenta = CuentaPorPagar.builder()
             .numero(generarNumero())
             .proveedor(oc.getProveedor())
@@ -86,7 +104,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .descripcion("Compra según OC " + oc.getNumero())
             .monto(oc.getTotal())
             .saldoPendiente(oc.getTotal())
-            .moneda(oc.getMoneda())
+            .moneda(monedaOc)
+            .tipoCambio(tipoCambioOc)
             .fechaEmision(LocalDate.now())
             .fechaVencimiento(oc.getProveedor().getDiasCredito() != null && oc.getProveedor().getDiasCredito() > 0
                 ? LocalDate.now().plusDays(oc.getProveedor().getDiasCredito())

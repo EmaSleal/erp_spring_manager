@@ -214,6 +214,17 @@ public interface AsientoContableRepository extends JpaRepository<AsientoContable
     List<AsientoContable> findAsientosPagoVigentes(@Param("pagoId") Long pagoId);
 
     /**
+     * Asientos vigentes (contabilizados, no reversiones y no revertidos) de un pago a proveedor (ADR-011).
+     * @param pagoProveedorId ID del pago a proveedor
+     * @return Lista de asientos vigentes (normalmente uno)
+     */
+    @Query("SELECT a FROM AsientoContable a WHERE a.pagoProveedor.id = :pagoProveedorId " +
+           "AND a.tipo = 'AUTOMATICO_GASTO' " +
+           "AND a.estado = 'CONTABILIZADO' AND a.asientoRevertido IS NULL " +
+           "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
+    List<AsientoContable> findAsientosPagoProveedorVigentes(@Param("pagoProveedorId") Long pagoProveedorId);
+
+    /**
      * Verifica si un asiento ya fue revertido por otro asiento.
      * @param idAsiento ID del asiento original
      * @return true si existe un asiento de reversión que lo referencia

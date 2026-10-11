@@ -135,7 +135,7 @@
                                         Monto del Pago <span class="text-danger">*</span>
                                     </label>
                                     <div class="input-group">
-                                        <span class="input-group-text">₡</span>
+                                        <span class="input-group-text" id="montoSimbolo">₡</span>
                                         <input type="number" 
                                                step="0.01" 
                                                min="0.01"
@@ -149,6 +149,37 @@
                                     </div>
                                     <div class="form-text" th:if="${pago.saldoPendiente != null}">
                                         Máximo permitido: <span class="fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">₡ 0.00</span>
+                                    </div>
+                                </div>
+
+                                <!-- Moneda y Tipo de Cambio del pago (ADR-011) -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="monedaPago" class="form-label">
+                                            <i class="fas fa-coins text-secondary me-1"></i>
+                                            Moneda del Pago
+                                        </label>
+                                        <select class="form-select" id="monedaPago" name="moneda">
+                                            <option th:each="m : ${monedas}"
+                                                    th:value="${m.name()}"
+                                                    th:text="${m.getFormatoCompleto()}"
+                                                    th:selected="${m.name() == 'CRC'}"></option>
+                                        </select>
+                                        <div class="form-text">Por defecto la moneda de la factura (CRC en adelantos)</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3" id="tipoCambioPagoGroup" style="display: none;">
+                                        <label for="tipoCambioPago" class="form-label">
+                                            <i class="fas fa-exchange-alt text-secondary me-1"></i>
+                                            Tipo de Cambio
+                                        </label>
+                                        <input type="number"
+                                               step="0.00001"
+                                               min="0.00001"
+                                               class="form-control"
+                                               id="tipoCambioPago"
+                                               name="tipoCambio"
+                                               placeholder="Ej: 510.00000">
+                                        <div class="form-text" id="tipoCambioPagoAyuda">Tasa de venta del día del pago; puede editarla</div>
                                     </div>
                                 </div>
 

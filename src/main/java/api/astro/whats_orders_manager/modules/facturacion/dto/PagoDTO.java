@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.dto;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
@@ -53,6 +54,24 @@ public class PagoDTO {
     @Positive(message = "El monto debe ser mayor a 0")
     private BigDecimal monto;
     
+    /**
+     * Moneda del pago (ADR-011). Null → moneda de la factura, o CRC para adelantos.
+     */
+    private MonedaFE moneda;
+
+    /**
+     * Tipo de cambio de la operación (ADR-011). Null → tasa de venta registrada para la fecha del pago.
+     */
+    private BigDecimal tipoCambio;
+
+    /**
+     * Monto aplicado al saldo de la factura, en la moneda de la factura (solo lectura; lo calcula el servicio).
+     */
+    private BigDecimal montoAplicado;
+
+    /** Moneda de la factura asociada (solo lectura, para vistas). */
+    private MonedaFE monedaFactura;
+
     @NotNull(message = "El método de pago es obligatorio")
     private MetodoPago metodoPago;
     
