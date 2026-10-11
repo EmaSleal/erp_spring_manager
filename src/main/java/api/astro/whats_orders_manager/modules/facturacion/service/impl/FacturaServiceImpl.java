@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -63,6 +64,9 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Autowired
     private MovimientoInventarioService movimientoInventarioService;
+
+    @Autowired
+    private AsientoContableService asientoContableService;
 
     @Override
     @Transactional(readOnly = true)
@@ -158,10 +162,35 @@ public class FacturaServiceImpl implements FacturaService {
         // Capture isNew before save — after save() the ID is always assigned
         boolean isNew = factura.getIdFactura() == null;
 
+        // Anulación: nunca se recibe del cliente; una factura anulada no se edita
+        if (isNew) {
+            factura.setAnulada(false);
+            factura.setFechaAnulacion(null);
+            factura.setMotivoAnulacion(null);
+        } else {
+            facturaRepository.findById(factura.getIdFactura()).ifPresent(existente -> {
+                if (existente.estaAnulada()) {
+                    throw new IllegalStateException("No se puede editar una factura anulada");
+                }
+                factura.setAnulada(existente.getAnulada());
+                factura.setFechaAnulacion(existente.getFechaAnulacion());
+                factura.setMotivoAnulacion(existente.getMotivoAnulacion());
+            });
+        }
+
         // Guardar la factura
         Factura facturaGuardada = facturaRepository.save(factura);
         log.info("Factura guardada exitosamente con ID: {} y número: {}",
                 facturaGuardada.getIdFactura(), facturaGuardada.getNumeroFactura());
+
+        // ADR-008: asiento de venta en la misma transacción. Si falla, la excepción
+        // se propaga y la transacción hace rollback (la factura no queda persistida).
+        if (isNew) {
+            asientoContableService.generarAsientoVenta(facturaGuardada);
+        } else {
+            // Edición de montos de una factura contabilizada: reversión + asiento nuevo
+            asientoContableService.sincronizarAsientoVenta(facturaGuardada);
+        }
 
         // Incrementar el contador solo al crear (no en updates)
         if (isNew) {
@@ -187,6 +216,7 @@ public class FacturaServiceImpl implements FacturaService {
     @Transactional
     public void deleteById(Integer id) { 
         log.debug("Eliminando factura con ID: {}", id);
+        validarSinAsientoContabilizado(id);
         facturaRepository.deleteById(id); 
         log.info("Factura eliminada exitosamente con ID: {}", id);
     }
@@ -311,6 +341,7 @@ public class FacturaServiceImpl implements FacturaService {
     public void eliminarConValidacion(Integer id) {
         Factura factura = facturaRepository.findById(id)
             .orElseThrow(() -> new NoSuchElementException("La factura no existe"));
+        validarSinAsientoContabilizado(id);
         if (!pagoService.findByFacturaId(id).isEmpty())
             throw new IllegalStateException("No se puede eliminar: la factura tiene pagos registrados");
         if (Boolean.TRUE.equals(factura.getEntregado()))
@@ -319,6 +350,44 @@ public class FacturaServiceImpl implements FacturaService {
         if (lineas != null) lineas.forEach(l -> lineaFacturaService.deleteById(l.getIdLineaFactura()));
         facturaRepository.deleteById(id);
         log.info("Factura eliminada con validación, ID: {}", id);
+    }
+
+    @Override
+    @Transactional
+    public Factura anular(Integer id, String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new IllegalArgumentException("El motivo de anulación es obligatorio");
+        }
+        Factura factura = facturaRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("La factura no existe"));
+        if (factura.estaAnulada()) {
+            throw new IllegalStateException("La factura " + factura.getNumeroFactura() + " ya está anulada");
+        }
+        if (!pagoService.findPagosValidosByFacturaId(id).isEmpty()) {
+            throw new IllegalStateException(
+                "No se puede anular: la factura tiene pagos confirmados o conciliados. Anule primero los pagos");
+        }
+
+        // ADR-008: el asiento de venta no se edita ni se borra; se revierte con líneas espejo
+        asientoContableService.revertirAsientoVenta(factura,
+            "Anulación de factura " + factura.getNumeroFactura() + ": " + motivo.trim());
+
+        factura.setAnulada(true);
+        factura.setFechaAnulacion(LocalDateTime.now());
+        factura.setMotivoAnulacion(motivo.trim().length() > 500 ? motivo.trim().substring(0, 500) : motivo.trim());
+        Factura anulada = facturaRepository.save(factura); // direct repo save — avoids side effects in service.save()
+        log.info("Factura {} anulada. Motivo: {}", factura.getNumeroFactura(), motivo);
+        return anulada;
+    }
+
+    /**
+     * Rechaza el borrado físico de una factura con asientos contabilizados (ADR-008).
+     */
+    private void validarSinAsientoContabilizado(Integer id) {
+        if (asientoContableService.tieneAsientoContabilizadoFactura(id)) {
+            throw new IllegalStateException(
+                "No se puede eliminar: la factura tiene asientos contables contabilizados. Anúlela en su lugar");
+        }
     }
 
     @Override

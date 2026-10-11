@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.facturacion.dto.EstadoCuentaClienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
@@ -63,6 +64,9 @@ public class PagoServiceImpl implements PagoService {
     @Autowired
     private FacturaMapper facturaMapper;
 
+    @Autowired
+    private AsientoContableService asientoContableService;
+
     // ==================== OPERACIONES CRUD ====================
     
     @Override
@@ -104,6 +108,12 @@ public class PagoServiceImpl implements PagoService {
         if (pagoOpt.isPresent()) {
             Pago pago = pagoOpt.get();
             Factura factura = pago.getFactura();
+
+            // ADR-008: los asientos contabilizados no se borran; el pago debe anularse
+            if (asientoContableService.tieneAsientoContabilizadoPago(id)) {
+                throw new IllegalStateException(
+                    "No se puede eliminar: el pago tiene asientos contables contabilizados. Anúlelo en su lugar");
+            }
             
             // Eliminar el pago
             pagoRepository.deleteById(id);
@@ -162,6 +172,10 @@ public class PagoServiceImpl implements PagoService {
                 .orElseThrow(() -> new EntityNotFoundException(
                     "Factura no encontrada con ID: " + pago.getFactura().getIdFactura()));
             
+            if (factura.estaAnulada()) {
+                throw new IllegalStateException("No se pueden registrar pagos sobre una factura anulada");
+            }
+
             // Asignar la factura completa al pago
             pago.setFactura(factura);
         
@@ -215,6 +229,10 @@ public class PagoServiceImpl implements PagoService {
         Pago pagoGuardado = pagoRepository.save(pago);
         log.info("Pago {} registrado exitosamente - ID: {}, Tipo: {}", 
             pagoGuardado.getNumeroPago(), pagoGuardado.getIdPago(), pagoGuardado.getTipoPago());
+
+        // ADR-008: un pago creado directamente como CONFIRMADO (o CONCILIADO) se contabiliza
+        // en la misma transacción. PENDIENTE no genera asiento hasta confirmarse.
+        contabilizarSiCorresponde(pagoGuardado, null);
         
         // Actualizar estado de la factura (si tiene factura asignada)
         if (pagoGuardado.getFactura() != null) {
@@ -263,8 +281,12 @@ public class PagoServiceImpl implements PagoService {
             return pago;
         }
         
+        EstadoPago estadoAnterior = pago.getEstado();
         pago.setEstado(EstadoPago.CONFIRMADO);
         Pago pagoConfirmado = pagoRepository.save(pago);
+
+        // ADR-008: el asiento de cobro se genera cuando el pago pasa a CONFIRMADO
+        contabilizarSiCorresponde(pagoConfirmado, estadoAnterior);
         
         // Actualizar estado de la factura
         Factura factura = pago.getFactura();
@@ -294,8 +316,13 @@ public class PagoServiceImpl implements PagoService {
             throw new IllegalStateException("No se puede conciliar un pago rechazado");
         }
         
+        EstadoPago estadoAnterior = pago.getEstado();
         pago.conciliar();
         Pago pagoConciliado = pagoRepository.save(pago);
+
+        // ADR-008: conciliar un pago ya contabilizado (CONFIRMADO) no genera un segundo asiento;
+        // solo se contabiliza si llega a CONCILIADO sin haber pasado por CONFIRMADO
+        contabilizarSiCorresponde(pagoConciliado, estadoAnterior);
         
         // Actualizar estado de la factura
         Factura factura = pago.getFactura();
@@ -322,6 +349,10 @@ public class PagoServiceImpl implements PagoService {
         
         pago.rechazar(motivo);
         Pago pagoRechazado = pagoRepository.save(pago);
+
+        // ADR-008: si el pago rechazado ya estaba contabilizado, se revierte su asiento de cobro
+        asientoContableService.revertirAsientoPago(pagoRechazado,
+            "Rechazo de pago " + pago.getNumeroPago() + ": " + motivo);
         
         // Actualizar estado de la factura
         Factura factura = pago.getFactura();
@@ -362,6 +393,10 @@ public class PagoServiceImpl implements PagoService {
         // Usar método de negocio del modelo
         pago.anular(motivo, usuarioId);
         Pago pagoAnulado = pagoRepository.save(pago);
+
+        // ADR-008: el asiento de cobro no se edita ni se borra; se revierte con líneas espejo
+        asientoContableService.revertirAsientoPago(pagoAnulado,
+            "Anulación de pago " + pago.getNumeroPago() + ": " + motivo);
         
         // Actualizar estado de la factura si tiene factura asignada
         Factura factura = pago.getFactura();
@@ -386,6 +421,26 @@ public class PagoServiceImpl implements PagoService {
             .collect(Collectors.toList());
     }
     
+    /**
+     * Genera el asiento de cobro cuando el pago pasa de un estado no válido
+     * (nuevo, PENDIENTE, RECHAZADO o ANULADO) a uno válido (CONFIRMADO o CONCILIADO)
+     * y todavía no tiene un asiento de cobro vigente (ADR-008, regla 3).
+     *
+     * @param pago           Pago ya persistido con su nuevo estado
+     * @param estadoAnterior Estado previo, o null si el pago se acaba de registrar
+     */
+    private void contabilizarSiCorresponde(Pago pago, EstadoPago estadoAnterior) {
+        boolean eraValido = estadoAnterior != null && estadoAnterior.esValido();
+        if (!pago.esValido() || eraValido) {
+            return;
+        }
+        if (asientoContableService.tieneAsientoPagoVigente(pago)) {
+            log.debug("El pago {} ya tiene asiento de cobro vigente — no se duplica", pago.getNumeroPago());
+            return;
+        }
+        asientoContableService.generarAsientoPago(pago);
+    }
+
     // ==================== CONSULTAS POR FACTURA ====================
     
     @Override

@@ -183,6 +183,10 @@
                                         <span th:unless="${factura.entregado}" class="badge badge-outline-secondary">
                                             <i class="fas fa-clock me-1"></i>Pendiente
                                         </span>
+                                        <span th:if="${factura.estaAnulada()}" class="badge bg-danger ms-1"
+                                              th:title="${factura.motivoAnulacion}">
+                                            <i class="fas fa-ban me-1"></i>Anulada
+                                        </span>
                                     </td>
                                     <!-- Estado Facturación Electrónica -->
                                     <td class="text-center">
@@ -281,6 +285,17 @@
                                                     </button>
                                                 </li>
                                                 <!-- Con pagos: no se muestra nada -->
+                                                <!-- Anular (ADR-008): revierte el asiento de venta -->
+                                                <li th:unless="${factura.estaAnulada()}"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                                    <form th:action="@{/facturas/anular/{id}(id=${factura.idFactura})}" method="post"
+                                                          onsubmit="return confirmarAnulacion(event)">
+                                                        <input type="hidden" name="motivo" value="">
+                                                        <button type="submit" class="dropdown-item text-warning">
+                                                            <i class="fas fa-ban me-2"></i>Anular
+                                                        </button>
+                                                    </form>
+                                                </li>
                                             </ul>
                                         </div>
                                     </td>
@@ -390,6 +405,17 @@
                                             </button>
                                         </li>
                                         <!-- Con pagos: no se muestra nada -->
+                                        <!-- Anular (ADR-008): revierte el asiento de venta -->
+                                        <li th:unless="${factura.estaAnulada()}"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                            <form th:action="@{/facturas/anular/{id}(id=${factura.idFactura})}" method="post"
+                                                  onsubmit="return confirmarAnulacion(event)">
+                                                <input type="hidden" name="motivo" value="">
+                                                <button type="submit" class="dropdown-item text-warning">
+                                                    <i class="fas fa-ban me-2"></i>Anular
+                                                </button>
+                                            </form>
+                                        </li>
                                     </ul>
                                 </div>
                             </div>

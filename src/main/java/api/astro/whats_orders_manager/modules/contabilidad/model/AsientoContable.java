@@ -44,7 +44,7 @@ import java.util.List;
 })
 @Getter
 @Setter
-@ToString(exclude = {"detalles", "factura", "pago", "cuentaPorPagar", "pagoProveedor", "nomina"})
+@ToString(exclude = {"detalles", "factura", "pago", "cuentaPorPagar", "pagoProveedor", "nomina", "asientoRevertido"})
 @AllArgsConstructor
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -136,6 +136,14 @@ public class AsientoContable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nomina_id")
     private Nomina nomina;
+
+    /**
+     * Asiento original que este asiento revierte (solo en asientos de reversión).
+     * El asiento original nunca se edita ni se borra; se compensa con líneas espejo.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asiento_revertido_id")
+    private AsientoContable asientoRevertido;
 
     // ==================== AUDITORÍA ====================
     

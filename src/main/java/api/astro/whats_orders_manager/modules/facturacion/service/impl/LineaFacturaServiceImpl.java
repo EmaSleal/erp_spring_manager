@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
@@ -28,6 +29,9 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
 
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
+
+    @Autowired
+    private AsientoContableService asientoContableService;
 
     @Override
     public List<LineaFactura> findAll() { return lineaFacturaRepository.findAll(); }
@@ -80,10 +84,15 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
 
         subtotalesPorFactura.forEach((idFactura, subtotal) ->
                 facturaRepository.findByIdFactura(idFactura).ifPresent(factura -> {
+                    if (factura.estaAnulada()) {
+                        throw new IllegalStateException("No se pueden modificar las líneas de una factura anulada");
+                    }
                     factura.setSubtotal(subtotal);
                     factura.setIgv(BigDecimal.ZERO);
                     factura.setTotal(subtotal);
                     facturaRepository.save(factura);
+                    // ADR-008: si la factura ya estaba contabilizada, revertir y regenerar su asiento de venta
+                    asientoContableService.sincronizarAsientoVenta(factura);
                     log.info("Totales actualizados para factura {}: subtotal={}, total={}", idFactura, subtotal, subtotal);
                 })
         );

@@ -11,6 +11,8 @@ import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoCon
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.DetalleAsientoRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
+import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.nomina.model.DetalleNomina;
@@ -24,9 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -347,144 +352,448 @@ public class AsientoContableService {
         log.info("Asiento eliminado: {}", asiento.getNumero());
     }
     
+    // ==================== VENTAS Y COBROS (ADR-008) ====================
+
+    /** Clave de la cuenta de cuentas por cobrar a clientes (DR en venta, CR en cobro). */
+    public static final String CLAVE_VENTA_CXC_CLIENTES = "VENTA_CXC_CLIENTES";
+    /** Clave de la cuenta de ingresos por ventas (CR en venta). */
+    public static final String CLAVE_VENTA_INGRESOS = "VENTA_INGRESOS";
+    /** Clave de la cuenta de IVA por pagar (CR en venta). */
+    public static final String CLAVE_VENTA_IVA_POR_PAGAR = "VENTA_IVA_POR_PAGAR";
+    /** Clave de la cuenta de anticipos de clientes (CR en cobro sin factura). */
+    public static final String CLAVE_COBRO_ANTICIPOS_CLIENTES = "COBRO_ANTICIPOS_CLIENTES";
+    /** Prefijo de las claves de caja/banco por método de pago: COBRO_CAJA_&lt;MetodoPago&gt;. */
+    public static final String PREFIJO_COBRO_CAJA = "COBRO_CAJA_";
+
+    /** Tolerancia de redondeo (en CRC) que se ajusta en la línea de ingresos. */
+    private static final BigDecimal TOLERANCIA_REDONDEO = new BigDecimal("0.02");
+
     /**
-     * Genera un asiento automático desde una factura.
-     * @param factura Factura origen
-     * @param cuentaClienteId ID de la cuenta de clientes
-     * @param cuentaVentaId ID de la cuenta de ventas
-     * @param cuentaIvaId ID de la cuenta de IVA por pagar
-     * @return Asiento generado
+     * Genera y contabiliza el asiento de venta de una factura (ADR-008, regla 2).
+     *
+     * Estructura (montos en CRC, ADR-004):
+     *   DR VENTA_CXC_CLIENTES  — total
+     *   CR VENTA_INGRESOS      — subtotal (absorbe el ajuste de redondeo)
+     *   CR VENTA_IVA_POR_PAGAR — impuesto (solo si &gt; 0)
+     *
+     * Si la factura no está en CRC, cada línea se multiplica por factura.tipoCambio
+     * (HALF_UP, 2 decimales).
+     *
+     * @param factura Factura origen (ya persistida)
+     * @return Asiento contabilizado, o null si la factura tiene total cero
+     * @throws IllegalStateException si falta una clave contable, el tipo de cambio es inválido
+     *                               o el asiento no cuadra
      */
     @Transactional
-    public AsientoContable generarAsientoVenta(Factura factura, Long cuentaClienteId, 
-                                               Long cuentaVentaId, Long cuentaIvaId) {
+    public AsientoContable generarAsientoVenta(Factura factura) {
+        if (factura == null || factura.getIdFactura() == null) {
+            throw new IllegalArgumentException("La factura debe estar persistida para generar su asiento de venta");
+        }
         log.info("Generando asiento automático para factura: {}", factura.getNumeroFactura());
-        
-        // Verificar que no exista ya un asiento para esta factura
-        if (asientoRepository.existeAsientoVentaParaFactura(Long.getLong(factura.getIdFactura().toString()))) {
+
+        // Verificar que no exista ya un asiento vigente para esta factura
+        if (asientoRepository.existeAsientoVentaParaFactura(factura.getIdFactura().longValue())) {
             throw new IllegalArgumentException("Ya existe un asiento contable para esta factura");
         }
-        
-        CuentaContable cuentaCliente = cuentaRepository.findById(cuentaClienteId)
-            .orElseThrow(() -> new IllegalArgumentException("Cuenta de clientes no encontrada"));
-        CuentaContable cuentaVenta = cuentaRepository.findById(cuentaVentaId)
-            .orElseThrow(() -> new IllegalArgumentException("Cuenta de ventas no encontrada"));
-        CuentaContable cuentaIva = cuentaRepository.findById(cuentaIvaId)
-            .orElseThrow(() -> new IllegalArgumentException("Cuenta de IVA no encontrada"));
-        
-        AsientoContable asiento = new AsientoContable();
-        asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(factura.getFechaEmision());
-        asiento.setConcepto("Venta según factura " + factura.getNumeroFactura() + " - " + factura.getCliente().getNombre());
-        asiento.setTipo(TipoAsiento.AUTOMATICO_VENTA);
-        asiento.setEstado(EstadoAsiento.BORRADOR);
-        asiento.setFactura(factura);
-        
-        List<DetalleAsiento> detalles = new ArrayList<>();
-        
-        // Débito: Cuentas por Cobrar (Total factura)
-        DetalleAsiento debitoCxC = new DetalleAsiento();
-        debitoCxC.setCuenta(cuentaCliente);
-        debitoCxC.setDebe(factura.getTotal());
-        debitoCxC.setHaber(BigDecimal.ZERO);
-        debitoCxC.setDescripcion("Cliente: " + factura.getCliente().getNombre());
-        debitoCxC.setAsiento(asiento);
-        detalles.add(debitoCxC);
-        
-        // Crédito: Ventas (Subtotal)
-        DetalleAsiento creditoVentas = new DetalleAsiento();
-        creditoVentas.setCuenta(cuentaVenta);
-        creditoVentas.setDebe(BigDecimal.ZERO);
-        creditoVentas.setHaber(factura.getSubtotal());
-        creditoVentas.setDescripcion("Venta de mercadería");
-        creditoVentas.setAsiento(asiento);
-        detalles.add(creditoVentas);
-        
-        // Crédito: IVA por Pagar (Impuesto)
-        if (factura.getImpuesto().compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento creditoIva = new DetalleAsiento();
-            creditoIva.setCuenta(cuentaIva);
-            creditoIva.setDebe(BigDecimal.ZERO);
-            creditoIva.setHaber(factura.getImpuesto());
-            creditoIva.setDescripcion("IVA 13%");
-            creditoIva.setAsiento(asiento);
-            detalles.add(creditoIva);
+
+        AsientoContable asiento = construirAsientoVenta(factura);
+        if (asiento == null) {
+            log.warn("Factura {} con total cero — no se genera asiento de venta", factura.getNumeroFactura());
+            return null;
         }
-        
-        asiento.setDetalles(detalles);
-        
+
+        validarCuadre(asiento, "venta");
+
         AsientoContable guardado = asientoRepository.save(asiento);
-        
-        // Contabilizar automáticamente
         guardado.contabilizar();
         guardado = asientoRepository.save(guardado);
-        
+
         log.info("Asiento de venta generado y contabilizado: {}", guardado.getNumero());
         return guardado;
     }
-    
+
     /**
-     * Genera un asiento automático desde un pago.
-     * @param pago Pago origen
-     * @param cuentaClienteId ID de la cuenta de clientes
-     * @param cuentaCajaId ID de la cuenta de caja/banco según método de pago
-     * @return Asiento generado
+     * Genera y contabiliza el asiento de cobro de un pago (ADR-008, regla 3).
+     *
+     * Estructura (montos en CRC):
+     *   DR COBRO_CAJA_&lt;MetodoPago&gt;                    — monto
+     *   CR VENTA_CXC_CLIENTES (pago con factura)        — monto
+     *   CR COBRO_ANTICIPOS_CLIENTES (adelanto sin factura) — monto
+     *
+     * Si la factura está en moneda extranjera se usa factura.tipoCambio (sin diferencial).
+     *
+     * @param pago Pago origen en estado CONFIRMADO o CONCILIADO
+     * @return Asiento contabilizado
+     * @throws IllegalStateException si el pago no es válido, falta una clave contable o no cuadra
      */
     @Transactional
-    public AsientoContable generarAsientoPago(Pago pago, Long cuentaClienteId, Long cuentaCajaId) {
+    public AsientoContable generarAsientoPago(Pago pago) {
+        if (pago == null || pago.getIdPago() == null) {
+            throw new IllegalArgumentException("El pago debe estar persistido para generar su asiento de cobro");
+        }
         log.info("Generando asiento automático para pago ID: {}", pago.getIdPago());
-        
-        // Verificar que no exista ya un asiento para este pago
+
+        if (!pago.esValido()) {
+            throw new IllegalStateException(
+                "Solo se contabilizan pagos CONFIRMADOS o CONCILIADOS. Estado actual: " + pago.getEstado());
+        }
+
+        // Verificar que no exista ya un asiento vigente para este pago
         if (asientoRepository.existeAsientoPagoParaPago(pago.getIdPago())) {
             throw new IllegalArgumentException("Ya existe un asiento contable para este pago");
         }
-        
-        CuentaContable cuentaCliente = cuentaRepository.findById(cuentaClienteId)
-            .orElseThrow(() -> new IllegalArgumentException("Cuenta de clientes no encontrada"));
-        CuentaContable cuentaCaja = cuentaRepository.findById(cuentaCajaId)
-            .orElseThrow(() -> new IllegalArgumentException("Cuenta de caja/banco no encontrada"));
-        
+
+        if (pago.getMetodoPago() == null) {
+            throw new IllegalStateException("El pago " + pago.getNumeroPago() + " no tiene método de pago");
+        }
+
+        Factura factura = pago.getFactura();
+        CuentaContable cuentaCaja = resolverCuenta(PREFIJO_COBRO_CAJA + pago.getMetodoPago().name());
+        CuentaContable cuentaCredito = factura != null
+            ? resolverCuenta(CLAVE_VENTA_CXC_CLIENTES)
+            : resolverCuenta(CLAVE_COBRO_ANTICIPOS_CLIENTES);
+
+        // Adelantos sin factura se registran por su monto nominal (se asume CRC)
+        BigDecimal tipoCambio = factura != null ? resolverTipoCambio(factura) : BigDecimal.ONE;
+        BigDecimal montoCrc = convertirACrc(pago.getMonto(), tipoCambio);
+
+        String nombreCliente = nombreCliente(pago.getCliente() != null ? pago.getCliente()
+            : (factura != null ? factura.getCliente() : null));
+        String origen = factura != null ? "Factura " + factura.getNumeroFactura() : "Adelanto sin factura";
+
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(pago.getFechaPago().toLocalDate());
-        asiento.setConcepto("Recibo de pago - " + pago.getMetodoPago().getDescripcion() + 
-                           " - Factura " + pago.getFactura().getNumeroFactura());
+        asiento.setFecha(pago.getFechaPago() != null ? pago.getFechaPago().toLocalDate() : LocalDate.now());
+        asiento.setConcepto(truncar("Cobro " + pago.getNumeroPago() + " - " + pago.getMetodoPago().getDescripcion()
+            + " - " + origen + nombreCliente, 500));
         asiento.setTipo(TipoAsiento.AUTOMATICO_PAGO);
         asiento.setEstado(EstadoAsiento.BORRADOR);
         asiento.setPago(pago);
-        
+
         List<DetalleAsiento> detalles = new ArrayList<>();
-        
-        // Débito: Caja/Banco (Monto recibido)
+
+        // Débito: Caja/Banco según método de pago
         DetalleAsiento debitoCaja = new DetalleAsiento();
         debitoCaja.setCuenta(cuentaCaja);
-        debitoCaja.setDebe(pago.getMonto());
-        debitoCaja.setHaber(BigDecimal.ZERO);
+        debitoCaja.setDebe(montoCrc);
         debitoCaja.setDescripcion("Recibo: " + pago.getMetodoPago().getDescripcion());
         debitoCaja.setAsiento(asiento);
         detalles.add(debitoCaja);
-        
-        // Crédito: Cuentas por Cobrar (Aplicado a cuenta)
-        DetalleAsiento creditoCxC = new DetalleAsiento();
-        creditoCxC.setCuenta(cuentaCliente);
-        creditoCxC.setDebe(BigDecimal.ZERO);
-        creditoCxC.setHaber(pago.getMonto());
-        creditoCxC.setDescripcion("Cliente: " + pago.getFactura().getCliente().getNombre());
-        creditoCxC.setAsiento(asiento);
-        detalles.add(creditoCxC);
-        
+
+        // Crédito: CxC clientes (con factura) o anticipos de clientes (adelanto)
+        DetalleAsiento credito = new DetalleAsiento();
+        credito.setCuenta(cuentaCredito);
+        credito.setHaber(montoCrc);
+        credito.setDescripcion(factura != null ? "Aplicado a " + origen : "Anticipo de cliente");
+        credito.setAsiento(asiento);
+        detalles.add(credito);
+
         asiento.setDetalles(detalles);
-        
+
+        validarCuadre(asiento, "cobro");
+
         AsientoContable guardado = asientoRepository.save(asiento);
-        
-        // Contabilizar automáticamente
         guardado.contabilizar();
         guardado = asientoRepository.save(guardado);
-        
+
         log.info("Asiento de pago generado y contabilizado: {}", guardado.getNumero());
         return guardado;
     }
-    
+
+    /**
+     * Genera y contabiliza el asiento de reversión de un asiento contabilizado (ADR-008, regla 4).
+     * Crea líneas espejo (debe ↔ haber) con el mismo tipo y los mismos vínculos de origen,
+     * y referencia el asiento original en {@code asientoRevertido} y en el concepto.
+     * El asiento original no se edita ni se borra.
+     *
+     * @param original Asiento contabilizado a revertir
+     * @param motivo   Motivo de la reversión
+     * @return Asiento de reversión contabilizado
+     * @throws IllegalStateException si el original no es reversible o la reversión no cuadra
+     */
+    @Transactional
+    public AsientoContable generarAsientoReversion(AsientoContable original, String motivo) {
+        if (original == null) {
+            throw new IllegalArgumentException("El asiento a revertir es obligatorio");
+        }
+        if (original.getEstado() != EstadoAsiento.CONTABILIZADO) {
+            throw new IllegalStateException(
+                "Solo se revierten asientos contabilizados. Estado actual: " + original.getEstado());
+        }
+        if (original.getAsientoRevertido() != null) {
+            throw new IllegalStateException("El asiento " + original.getNumero() + " es una reversión y no puede revertirse");
+        }
+        if (original.getIdAsiento() != null
+                && asientoRepository.existsByAsientoRevertidoIdAsiento(original.getIdAsiento())) {
+            throw new IllegalStateException("El asiento " + original.getNumero() + " ya fue revertido");
+        }
+
+        log.info("Generando reversión del asiento {}", original.getNumero());
+
+        AsientoContable reversion = new AsientoContable();
+        reversion.setNumero(generarNumeroAsiento());
+        reversion.setFecha(LocalDate.now());
+        String sufijoMotivo = (motivo != null && !motivo.isBlank()) ? " - " + motivo.trim() : "";
+        reversion.setConcepto(truncar("Reversión del asiento " + original.getNumero() + sufijoMotivo, 500));
+        reversion.setTipo(original.getTipo());
+        reversion.setEstado(EstadoAsiento.BORRADOR);
+        reversion.setFactura(original.getFactura());
+        reversion.setPago(original.getPago());
+        reversion.setCuentaPorPagar(original.getCuentaPorPagar());
+        reversion.setPagoProveedor(original.getPagoProveedor());
+        reversion.setNomina(original.getNomina());
+        reversion.setAsientoRevertido(original);
+
+        List<DetalleAsiento> detalles = new ArrayList<>();
+        for (DetalleAsiento linea : original.getDetalles()) {
+            DetalleAsiento espejo = new DetalleAsiento();
+            espejo.setCuenta(linea.getCuenta());
+            // Líneas espejo: el debe original pasa al haber y viceversa
+            espejo.setDebe(linea.getHaber());
+            espejo.setHaber(linea.getDebe());
+            espejo.setDescripcion(truncar("Reversión: " + (linea.getDescripcion() != null ? linea.getDescripcion() : ""), 500));
+            espejo.setAsiento(reversion);
+            detalles.add(espejo);
+        }
+        reversion.setDetalles(detalles);
+
+        validarCuadre(reversion, "reversión");
+
+        AsientoContable guardado = asientoRepository.save(reversion);
+        guardado.contabilizar();
+        guardado = asientoRepository.save(guardado);
+
+        log.info("Asiento de reversión {} generado para {}", guardado.getNumero(), original.getNumero());
+        return guardado;
+    }
+
+    /**
+     * Revierte los asientos de venta vigentes de una factura.
+     * @param factura Factura origen
+     * @param motivo  Motivo de la reversión
+     * @return Asientos de reversión generados (vacío si no había asiento vigente)
+     */
+    @Transactional
+    public List<AsientoContable> revertirAsientoVenta(Factura factura, String motivo) {
+        List<AsientoContable> reversiones = new ArrayList<>();
+        for (AsientoContable vigente : asientoRepository.findAsientosVentaVigentes(factura.getIdFactura().longValue())) {
+            reversiones.add(generarAsientoReversion(vigente, motivo));
+        }
+        return reversiones;
+    }
+
+    /**
+     * Revierte los asientos de cobro vigentes de un pago.
+     * @param pago   Pago origen
+     * @param motivo Motivo de la reversión
+     * @return Asientos de reversión generados (vacío si el pago no estaba contabilizado)
+     */
+    @Transactional
+    public List<AsientoContable> revertirAsientoPago(Pago pago, String motivo) {
+        List<AsientoContable> reversiones = new ArrayList<>();
+        for (AsientoContable vigente : asientoRepository.findAsientosPagoVigentes(pago.getIdPago())) {
+            reversiones.add(generarAsientoReversion(vigente, motivo));
+        }
+        return reversiones;
+    }
+
+    /**
+     * Indica si el pago ya tiene un asiento de cobro vigente.
+     * @param pago Pago a verificar
+     * @return true si existe un asiento de cobro vigente
+     */
+    public boolean tieneAsientoPagoVigente(Pago pago) {
+        return pago.getIdPago() != null && asientoRepository.existeAsientoPagoParaPago(pago.getIdPago());
+    }
+
+    /**
+     * Indica si la factura tiene algún asiento contabilizado vinculado.
+     * @param facturaId ID de la factura
+     * @return true si existe al menos un asiento contabilizado
+     */
+    public boolean tieneAsientoContabilizadoFactura(Integer facturaId) {
+        return facturaId != null && asientoRepository.existeAsientoContabilizadoParaFactura(facturaId.longValue());
+    }
+
+    /**
+     * Indica si el pago tiene algún asiento contabilizado vinculado.
+     * @param pagoId ID del pago
+     * @return true si existe al menos un asiento contabilizado
+     */
+    public boolean tieneAsientoContabilizadoPago(Long pagoId) {
+        return pagoId != null && asientoRepository.existeAsientoContabilizadoParaPago(pagoId);
+    }
+
+    /**
+     * Sincroniza el asiento de venta tras editar una factura ya contabilizada.
+     * Si los montos en CRC (subtotal, impuesto, total, moneda o tipo de cambio) cambiaron
+     * respecto del asiento vigente, revierte el asiento vigente y genera uno nuevo.
+     * Las facturas sin asiento vigente (históricas) no se contabilizan aquí.
+     *
+     * @param factura Factura editada
+     * @return El nuevo asiento de venta, o null si no hubo cambios o no había asiento
+     */
+    @Transactional
+    public AsientoContable sincronizarAsientoVenta(Factura factura) {
+        if (factura == null || factura.getIdFactura() == null) {
+            return null;
+        }
+        List<AsientoContable> vigentes = asientoRepository.findAsientosVentaVigentes(factura.getIdFactura().longValue());
+        if (vigentes.isEmpty()) {
+            return null;
+        }
+
+        AsientoContable esperado = construirAsientoVenta(factura);
+        boolean sinCambios = vigentes.size() == 1 && esperado != null
+            && resumenPorCuenta(vigentes.get(0)).equals(resumenPorCuenta(esperado));
+        if (sinCambios) {
+            return null;
+        }
+
+        log.info("Montos de la factura {} cambiaron — se revierte y regenera el asiento de venta",
+            factura.getNumeroFactura());
+        for (AsientoContable vigente : vigentes) {
+            generarAsientoReversion(vigente, "Modificación de montos de la factura " + factura.getNumeroFactura());
+        }
+        return generarAsientoVenta(factura);
+    }
+
+    /**
+     * Construye (sin persistir ni numerar) el asiento de venta de una factura, con montos en CRC.
+     * @return Asiento en borrador, o null si el total es cero
+     */
+    private AsientoContable construirAsientoVenta(Factura factura) {
+        BigDecimal tipoCambio = resolverTipoCambio(factura);
+
+        BigDecimal total = valorONulo(factura.getTotal());
+        if (total.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        BigDecimal subtotal = valorONulo(factura.getSubtotal());
+        BigDecimal impuesto = valorONulo(factura.getImpuesto());
+
+        BigDecimal totalCrc = convertirACrc(total, tipoCambio);
+        BigDecimal impuestoCrc = convertirACrc(impuesto, tipoCambio);
+        BigDecimal ingresosCrc = convertirACrc(subtotal, tipoCambio);
+
+        // Ajuste del centavo: la diferencia de redondeo se lleva a la línea de ingresos
+        BigDecimal diferencia = totalCrc.subtract(ingresosCrc).subtract(impuestoCrc);
+        if (diferencia.signum() != 0 && diferencia.abs().compareTo(TOLERANCIA_REDONDEO) <= 0) {
+            ingresosCrc = ingresosCrc.add(diferencia);
+        }
+
+        CuentaContable cuentaCxC = resolverCuenta(CLAVE_VENTA_CXC_CLIENTES);
+        CuentaContable cuentaIngresos = resolverCuenta(CLAVE_VENTA_INGRESOS);
+
+        String nombreCliente = nombreCliente(factura.getCliente());
+
+        AsientoContable asiento = new AsientoContable();
+        asiento.setNumero(generarNumeroAsiento());
+        asiento.setFecha(factura.getFechaEmision() != null ? factura.getFechaEmision() : LocalDate.now());
+        asiento.setConcepto(truncar("Venta según factura " + factura.getNumeroFactura() + nombreCliente, 500));
+        asiento.setTipo(TipoAsiento.AUTOMATICO_VENTA);
+        asiento.setEstado(EstadoAsiento.BORRADOR);
+        asiento.setFactura(factura);
+
+        List<DetalleAsiento> detalles = new ArrayList<>();
+
+        // Débito: Cuentas por Cobrar (Total factura)
+        DetalleAsiento debitoCxC = new DetalleAsiento();
+        debitoCxC.setCuenta(cuentaCxC);
+        debitoCxC.setDebe(totalCrc);
+        debitoCxC.setDescripcion("Cuentas por cobrar" + nombreCliente);
+        debitoCxC.setAsiento(asiento);
+        detalles.add(debitoCxC);
+
+        // Crédito: Ingresos por ventas (Subtotal + ajuste de redondeo)
+        if (ingresosCrc.compareTo(BigDecimal.ZERO) > 0) {
+            DetalleAsiento creditoVentas = new DetalleAsiento();
+            creditoVentas.setCuenta(cuentaIngresos);
+            creditoVentas.setHaber(ingresosCrc);
+            creditoVentas.setDescripcion("Venta de mercadería");
+            creditoVentas.setAsiento(asiento);
+            detalles.add(creditoVentas);
+        }
+
+        // Crédito: IVA por Pagar (Impuesto)
+        if (impuestoCrc.compareTo(BigDecimal.ZERO) > 0) {
+            CuentaContable cuentaIva = resolverCuenta(CLAVE_VENTA_IVA_POR_PAGAR);
+            DetalleAsiento creditoIva = new DetalleAsiento();
+            creditoIva.setCuenta(cuentaIva);
+            creditoIva.setHaber(impuestoCrc);
+            creditoIva.setDescripcion("IVA por pagar");
+            creditoIva.setAsiento(asiento);
+            detalles.add(creditoIva);
+        }
+
+        asiento.setDetalles(detalles);
+        return asiento;
+    }
+
+    /**
+     * Determina el tipo de cambio a CRC de una factura (ADR-004).
+     * @return 1 para CRC; factura.tipoCambio en otro caso
+     * @throws IllegalStateException si la moneda no es CRC y el tipo de cambio es nulo o &lt;= 0
+     */
+    private BigDecimal resolverTipoCambio(Factura factura) {
+        if (factura.getMonedaFE() == null || factura.getMonedaFE() == MonedaFE.CRC) {
+            return BigDecimal.ONE;
+        }
+        BigDecimal tipoCambio = factura.getTipoCambio();
+        if (tipoCambio == null || tipoCambio.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException(String.format(
+                "La factura %s está en %s y requiere un tipo de cambio mayor a 0 para contabilizarse en CRC",
+                factura.getNumeroFactura(), factura.getMonedaFE().getCodigo()));
+        }
+        return tipoCambio;
+    }
+
+    private static BigDecimal convertirACrc(BigDecimal monto, BigDecimal tipoCambio) {
+        return valorONulo(monto).multiply(tipoCambio).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal valorONulo(BigDecimal valor) {
+        return valor != null ? valor : BigDecimal.ZERO;
+    }
+
+    private static String nombreCliente(Cliente cliente) {
+        return cliente != null && cliente.getNombre() != null ? " - " + cliente.getNombre() : "";
+    }
+
+    private static String truncar(String texto, int max) {
+        return texto.length() > max ? texto.substring(0, max) : texto;
+    }
+
+    /**
+     * Valida que el asiento cuadre antes de guardarlo (ADR-008, regla 6).
+     * @throws IllegalStateException si total debe != total haber
+     */
+    private static void validarCuadre(AsientoContable asiento, String origen) {
+        if (!asiento.estaCuadrado()) {
+            throw new IllegalStateException(String.format(
+                "El asiento de %s no cuadra — debe: %s, haber: %s",
+                origen, asiento.getTotalDebe(), asiento.getTotalHaber()));
+        }
+    }
+
+    /**
+     * Resume un asiento como mapa (cuenta|lado → monto) para comparar asientos sin importar el orden.
+     */
+    private static Map<String, BigDecimal> resumenPorCuenta(AsientoContable asiento) {
+        Map<String, BigDecimal> resumen = new HashMap<>();
+        for (DetalleAsiento d : asiento.getDetalles()) {
+            CuentaContable c = d.getCuenta();
+            String cuenta = c == null ? "?" : (c.getIdCuenta() != null ? "id:" + c.getIdCuenta() : "cod:" + c.getCodigo());
+            if (d.getDebe() != null && d.getDebe().signum() > 0) {
+                resumen.merge(cuenta + "|D", d.getDebe().setScale(2, RoundingMode.HALF_UP), BigDecimal::add);
+            }
+            if (d.getHaber() != null && d.getHaber().signum() > 0) {
+                resumen.merge(cuenta + "|H", d.getHaber().setScale(2, RoundingMode.HALF_UP), BigDecimal::add);
+            }
+        }
+        return resumen;
+    }
+
     // ==================== CPP / SUPPLIER PAYMENT GENERATORS ====================
 
     /**
