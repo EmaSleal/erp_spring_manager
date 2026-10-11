@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -64,6 +65,13 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
                 .orElseThrow(() -> new RuntimeException("No se pudo obtener el ID del usuario actual"));
 
         log.info("Actualizando líneas: {}", lineas);
+
+        // Facturas que aún no tenían líneas (flujo de creación): su asiento de venta se genera al guardar las líneas
+        Set<Integer> facturasSinLineasPrevias = lineas.stream()
+                .map(LineaFacturaR::id_factura)
+                .filter(idFactura -> !existsByFacturaId(idFactura))
+                .collect(Collectors.toSet());
+
         for (LineaFacturaR linea : lineas) {
             lineaFacturaRepository.updateLinea(linea.id_linea_factura(),
                     linea.numero_linea(),
@@ -91,8 +99,10 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
                     factura.setIgv(BigDecimal.ZERO);
                     factura.setTotal(subtotal);
                     facturaRepository.save(factura);
-                    // ADR-008: si la factura ya estaba contabilizada, revertir y regenerar su asiento de venta
-                    asientoContableService.sincronizarAsientoVenta(factura);
+                    // ADR-008: primera carga de líneas → generar el asiento de venta;
+                    // si ya estaba contabilizada → revertir y regenerar su asiento de venta
+                    asientoContableService.contabilizarVentaTrasGuardarLineas(factura,
+                            facturasSinLineasPrevias.contains(idFactura));
                     log.info("Totales actualizados para factura {}: subtotal={}, total={}", idFactura, subtotal, subtotal);
                 })
         );

@@ -235,7 +235,7 @@ public class FacturaController {
      * No se permite si la factura tiene pagos confirmados o conciliados.
      */
     @PostMapping("/anular/{id}")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ANULAR')")
     public String anularFactura(
             @PathVariable Integer id,
             @RequestParam(required = false) String motivo,

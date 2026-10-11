@@ -659,6 +659,31 @@ public class AsientoContableService {
     }
 
     /**
+     * Contabiliza el asiento de venta tras guardar las líneas de una factura.
+     *
+     * El flujo de creación guarda primero la factura sin líneas (total cero, sin asiento)
+     * y luego sus líneas. Si la factura no tenía líneas antes de este guardado
+     * ({@code primeraCargaDeLineas}) y no tiene asiento de venta vigente, se genera aquí.
+     * En cualquier otro caso se delega en {@link #sincronizarAsientoVenta(Factura)}, de modo
+     * que las facturas históricas (con líneas y sin asiento) siguen sin contabilizarse.
+     *
+     * @param factura              Factura con totales ya actualizados
+     * @param primeraCargaDeLineas true si la factura no tenía líneas antes del guardado
+     * @return El asiento generado, o null si no hubo nada que contabilizar
+     */
+    @Transactional
+    public AsientoContable contabilizarVentaTrasGuardarLineas(Factura factura, boolean primeraCargaDeLineas) {
+        if (factura == null || factura.getIdFactura() == null) {
+            return null;
+        }
+        if (primeraCargaDeLineas
+                && !asientoRepository.existeAsientoVentaParaFactura(factura.getIdFactura().longValue())) {
+            return generarAsientoVenta(factura);
+        }
+        return sincronizarAsientoVenta(factura);
+    }
+
+    /**
      * Construye (sin persistir ni numerar) el asiento de venta de una factura, con montos en CRC.
      * @return Asiento en borrador, o null si el total es cero
      */

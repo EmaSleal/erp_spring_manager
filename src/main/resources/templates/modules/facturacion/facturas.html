@@ -287,7 +287,7 @@
                                                 <!-- Con pagos: no se muestra nada -->
                                                 <!-- Anular (ADR-008): revierte el asiento de venta -->
                                                 <li th:unless="${factura.estaAnulada()}"
-                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ANULAR')">
                                                     <form th:action="@{/facturas/anular/{id}(id=${factura.idFactura})}" method="post"
                                                           onsubmit="return confirmarAnulacion(event)">
                                                         <input type="hidden" name="motivo" value="">
@@ -407,7 +407,7 @@
                                         <!-- Con pagos: no se muestra nada -->
                                         <!-- Anular (ADR-008): revierte el asiento de venta -->
                                         <li th:unless="${factura.estaAnulada()}"
-                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ELIMINAR')">
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ANULAR')">
                                             <form th:action="@{/facturas/anular/{id}(id=${factura.idFactura})}" method="post"
                                                   onsubmit="return confirmarAnulacion(event)">
                                                 <input type="hidden" name="motivo" value="">

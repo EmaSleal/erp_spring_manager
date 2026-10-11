@@ -386,6 +386,43 @@ class AsientoVentaCobroServiceTest {
         }
 
         @Test
+        @DisplayName("primera carga de líneas (flujo de creación) sin asiento vigente → genera el asiento de venta")
+        void primeraCargaDeLineas_generaAsiento() {
+            Factura factura = factura(33, "100.00", "13.00", "113.00", MonedaFE.CRC, BigDecimal.ONE);
+            when(asientoRepository.existeAsientoVentaParaFactura(33L)).thenReturn(false);
+
+            AsientoContable asiento = service.contabilizarVentaTrasGuardarLineas(factura, true);
+
+            assertThat(asiento).isNotNull();
+            assertThat(asiento.getEstado()).isEqualTo(EstadoAsiento.CONTABILIZADO);
+            assertThat(debe(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("113.00");
+            assertThat(haber(asiento, "VENTA_INGRESOS")).isEqualByComparingTo("100.00");
+            assertThat(haber(asiento, "VENTA_IVA_POR_PAGAR")).isEqualByComparingTo("13.00");
+        }
+
+        @Test
+        @DisplayName("factura histórica (ya tenía líneas, sin asiento) al guardar líneas no se contabiliza")
+        void lineasDeFacturaHistorica_noContabiliza() {
+            Factura factura = factura(34, "100.00", "13.00", "113.00", MonedaFE.CRC, BigDecimal.ONE);
+
+            assertThat(service.contabilizarVentaTrasGuardarLineas(factura, false)).isNull();
+            verify(asientoRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("primera carga de líneas con asiento vigente → sincroniza sin duplicar")
+        void primeraCargaConAsientoVigente_sincronizaSinDuplicar() {
+            Factura factura = factura(35, "100.00", "13.00", "113.00", MonedaFE.CRC, BigDecimal.ONE);
+            AsientoContable vigente = service.generarAsientoVenta(factura);
+            org.mockito.Mockito.clearInvocations(asientoRepository);
+            when(asientoRepository.existeAsientoVentaParaFactura(35L)).thenReturn(true);
+            when(asientoRepository.findAsientosVentaVigentes(35L)).thenReturn(List.of(vigente));
+
+            assertThat(service.contabilizarVentaTrasGuardarLineas(factura, true)).isNull();
+            verify(asientoRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("criterio 7c: montos cambiados → reversión del vigente + asiento nuevo")
         void conCambios_reversionYNuevo() {
             Factura factura = factura(32, "100.00", "13.00", "113.00", MonedaFE.CRC, BigDecimal.ONE);
