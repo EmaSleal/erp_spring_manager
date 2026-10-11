@@ -136,6 +136,7 @@ function mostrarInfoFactura() {
             }
         }
         ocultarPanelInfoFactura();
+        actualizarMontoAplicado();
         return;
     }
     
@@ -145,16 +146,17 @@ function mostrarInfoFactura() {
     const idCliente = document.getElementById('idCliente');
     const nombreCliente = idCliente.options[idCliente.selectedIndex].text;
     
-    // Establecer máximo en monto
+    // Auto-llenar con el saldo pendiente (en la moneda de la factura). El máximo se valida
+    // sobre el monto aplicado, en actualizarMontoAplicado (ADR-011).
     if (montoInput) {
-        montoInput.setAttribute('max', saldoPendiente);
-        montoInput.value = saldoPendiente; // Auto-llenar con saldo pendiente
+        montoInput.value = saldoPendiente;
         
         const formText = montoInput.closest('.mb-3').querySelector('.form-text');
         if (formText) {
-            formText.innerHTML = `Máximo permitido: <span class="fw-bold">₡ ${formatNumber(saldoPendiente, 2)}</span>`;
+            formText.innerHTML = `Máximo permitido: <span class="fw-bold">${selectedOption.dataset.monedaFe || 'CRC'} ${formatNumber(saldoPendiente, 2)}</span> (en la moneda de la factura)`;
         }
     }
+    actualizarMontoAplicado();
     
     // Mostrar panel de información
     mostrarPanelInfoFactura(numeroFactura, nombreCliente, totalFactura, saldoPendiente);
@@ -217,6 +219,62 @@ function monedaFacturaSeleccionada() {
     return opcion && opcion.value ? (opcion.dataset.monedaFe || 'CRC') : 'CRC';
 }
 
+/**
+ * Saldo pendiente de la factura seleccionada, en su moneda (null si no hay factura).
+ */
+function saldoFacturaSeleccionada() {
+    const facturaSelect = document.getElementById('idFactura');
+    const opcion = facturaSelect ? facturaSelect.options[facturaSelect.selectedIndex] : null;
+    if (!opcion || !opcion.value || opcion.dataset.saldoPendiente === undefined) return null;
+    const saldo = parseFloat(opcion.dataset.saldoPendiente);
+    return isNaN(saldo) ? null : saldo;
+}
+
+/**
+ * ADR-011: muestra el monto que se aplicará al saldo, en la moneda de la factura, y valida
+ * que no exceda el saldo pendiente. Misma regla que ConversionMoneda.montoAplicado:
+ *   P = D → monto; P = CRC y D extranjera → monto / tc; P extranjera y D = CRC → monto × tc.
+ */
+function actualizarMontoAplicado() {
+    const preview = document.getElementById('montoAplicadoPreview');
+    const montoInput = document.getElementById('monto');
+    if (!montoInput) return;
+    montoInput.removeAttribute('max');
+    montoInput.setCustomValidity('');
+
+    const facturaSelect = document.getElementById('idFactura');
+    const hayFactura = facturaSelect && facturaSelect.value;
+    const pago = document.getElementById('monedaPago')?.value || 'CRC';
+    const documento = monedaFacturaSeleccionada();
+    const monto = parseFloat(montoInput.value);
+    const tc = parseFloat(document.getElementById('tipoCambioPago')?.value);
+
+    if (!hayFactura || isNaN(monto) || monto <= 0) {
+        if (preview) preview.style.display = 'none';
+        return;
+    }
+
+    let aplicado = null;
+    if (pago === documento) {
+        aplicado = monto;
+    } else if (!isNaN(tc) && tc > 0 && (pago === 'CRC' || documento === 'CRC')) {
+        aplicado = pago === 'CRC' ? monto / tc : monto * tc;
+    }
+    aplicado = aplicado === null ? null : Math.round(aplicado * 100) / 100;
+
+    if (preview) {
+        preview.innerHTML = aplicado === null
+            ? `<i class="fas fa-calculator me-1"></i>Monto aplicado a la factura: ingrese el tipo de cambio`
+            : `<i class="fas fa-calculator me-1"></i>Monto aplicado a la factura: <strong>${documento} ${formatNumber(aplicado, 2)}</strong>`;
+        preview.style.display = 'block';
+    }
+
+    const saldo = saldoFacturaSeleccionada();
+    if (aplicado !== null && saldo !== null && aplicado > saldo + 0.005) {
+        montoInput.setCustomValidity(`El monto aplicado (${documento} ${formatNumber(aplicado, 2)}) excede el saldo pendiente (${documento} ${formatNumber(saldo, 2)})`);
+    }
+}
+
 let tipoCambioPagoFetch = null;
 
 /**
@@ -239,12 +297,14 @@ function actualizarTipoCambioPago() {
         grupo.style.display = 'none';
         input.value = '';
         showToast('warning', `No se admite un pago en ${pago} sobre una factura en ${documento}: pague en ${documento} o en CRC`);
+        actualizarMontoAplicado();
         return;
     }
     const extranjera = pago !== 'CRC' ? pago : documento;
     if (extranjera === 'CRC') {
         grupo.style.display = 'none';
         input.value = '';
+        actualizarMontoAplicado();
         return;
     }
 
@@ -258,6 +318,7 @@ function actualizarTipoCambioPago() {
         .then(({ ok, data }) => {
             if (ok && data && data.tasaVenta) {
                 input.value = data.tasaVenta;
+                actualizarMontoAplicado();
                 if (ayuda) ayuda.textContent = `Tasa de venta de ${extranjera} al ${fecha}; puede editarla`;
             } else {
                 input.value = '';
@@ -342,6 +403,8 @@ function initPagoForm() {
     if (fechaPagoInput) {
         fechaPagoInput.addEventListener('change', actualizarTipoCambioPago);
     }
+    document.getElementById('monto')?.addEventListener('input', actualizarMontoAplicado);
+    document.getElementById('tipoCambioPago')?.addEventListener('input', actualizarMontoAplicado);
     
     // Inicializar toggles
     toggleReferencia();

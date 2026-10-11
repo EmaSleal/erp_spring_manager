@@ -122,7 +122,7 @@ public class PagoDTO {
                    String referenciaBancaria, String observaciones, Boolean conciliado,
                    LocalDateTime fechaConciliacion, Integer idCliente, String nombreCliente,
                    Integer idFactura, String numeroFactura, BigDecimal totalFactura,
-                   BigDecimal saldoPendiente) {
+                   BigDecimal saldoPendiente, MonedaFE moneda, MonedaFE monedaFactura) {
         this.idPago = idPago;
         this.numeroPago = numeroPago;
         this.monto = monto;
@@ -143,6 +143,8 @@ public class PagoDTO {
         this.numeroFactura = numeroFactura;
         this.totalFactura = totalFactura;
         this.saldoPendiente = saldoPendiente;
+        this.moneda = moneda;
+        this.monedaFactura = monedaFactura;
     }
     
     /**

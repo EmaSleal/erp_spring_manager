@@ -142,6 +142,41 @@ class AsientoCompraMultimonedaTest {
     }
 
     @Test
+    @DisplayName("criterio 18: el asiento de compra se fecha con la emisión de la CxP (2026-09-30), no con hoy")
+    void compra_fechaAsientoEsFechaEmision() {
+        CuentaPorPagar cpp = cpp(oc("100.00", "13.00", "113.00", MonedaFE.USD, "500"), MonedaFE.USD, "500");
+        cpp.setFechaEmision(LocalDate.of(2026, 9, 30));
+
+        AsientoContable asiento = service.generarAsientoCompra(cpp);
+
+        assertThat(asiento.getFecha()).isEqualTo(LocalDate.of(2026, 9, 30));
+    }
+
+    @Test
+    @DisplayName("criterio 18: sin fecha de emisión el asiento de compra toma la fecha de recepción de la OC")
+    void compra_sinFechaEmision_usaRecepcionOc() {
+        OrdenCompra oc = oc("100.00", "13.00", "113.00", MonedaFE.USD, "500");
+        oc.setFechaRecepcion(LocalDate.of(2026, 9, 28));
+        CuentaPorPagar cpp = cpp(oc, MonedaFE.USD, "500");
+        cpp.setFechaEmision(null);
+
+        AsientoContable asiento = service.generarAsientoCompra(cpp);
+
+        assertThat(asiento.getFecha()).isEqualTo(LocalDate.of(2026, 9, 28));
+    }
+
+    @Test
+    @DisplayName("criterio 18: sin fecha de emisión ni de recepción el asiento de compra se fecha hoy")
+    void compra_sinFechas_usaHoy() {
+        CuentaPorPagar cpp = cpp(oc("100.00", "13.00", "113.00", MonedaFE.USD, "500"), MonedaFE.USD, "500");
+        cpp.setFechaEmision(null);
+
+        AsientoContable asiento = service.generarAsientoCompra(cpp);
+
+        assertThat(asiento.getFecha()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
     @DisplayName("compra USD sin tipo de cambio falla con mensaje claro y no se guarda")
     void compraUsdSinTipoCambio_falla() {
         CuentaPorPagar cpp = cpp(oc("100.00", "13.00", "113.00", MonedaFE.USD, null), MonedaFE.USD, null);

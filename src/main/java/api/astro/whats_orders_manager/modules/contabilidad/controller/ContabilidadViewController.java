@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.contabilidad.controller;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.seguridad.dto.ModuloDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,9 +71,10 @@ public class ContabilidadViewController {
 
         List<CuentaPorPagar> cuentas = cuentaPorPagarService.findAll();
 
+        // ADR-011: totales en CRC; cada CxP se convierte con su propio tipo de cambio
         BigDecimal totalSaldoPendiente = cuentas.stream()
             .filter(c -> c.getEstado() != EstadoCuentaPorPagar.PAGADA)
-            .map(CuentaPorPagar::getSaldoPendiente)
+            .map(c -> ConversionMoneda.montoEnCrcReporte(c.getSaldoPendiente(), c.getMoneda(), c.getTipoCambio()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long countVencidas = cuentas.stream()
@@ -81,7 +83,7 @@ public class ContabilidadViewController {
 
         BigDecimal totalPagado = cuentas.stream()
             .filter(c -> c.getEstado() == EstadoCuentaPorPagar.PAGADA)
-            .map(CuentaPorPagar::getMonto)
+            .map(c -> ConversionMoneda.montoEnCrcReporte(c.getMonto(), c.getMoneda(), c.getTipoCambio()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         model.addAttribute("cuentas", cuentas);

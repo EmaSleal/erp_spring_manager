@@ -67,6 +67,9 @@ public class CuentaPorPagarRestController {
                 m.put("numero",     p.getNumero());
                 m.put("fecha",      p.getFecha() != null ? p.getFecha().toString() : null);
                 m.put("monto",      p.getMonto());
+                m.put("moneda",     p.getMoneda() != null ? p.getMoneda().name() : null);
+                m.put("tipoCambio", p.getTipoCambio());
+                m.put("montoAplicado", p.getMontoAplicado());
                 m.put("metodoPago", p.getMetodoPago() != null ? p.getMetodoPago().name() : null);
                 m.put("referencia", p.getReferencia());
                 m.put("estado",     p.getEstado() != null ? p.getEstado().name() : null);

@@ -233,7 +233,7 @@
                                     <td th:text="${pago.nombreCliente}">Cliente</td>
                                     <td><span class="badge bg-light text-dark" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span></td>
                                     <td th:text="${pago.referenciaBancaria ?: '-'}">-</td>
-                                    <td class="text-end" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</td>
+                                    <td class="text-end" th:text="${(pago.moneda != null ? pago.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.monto, 1, 2)}">CRC 0.00</td>
                                 </tr>
                                 <tr th:if="${#lists.isEmpty(reporte.pagosDetalle)}">
                                     <td colspan="6" class="text-center text-muted">No hay pagos registrados en esta fecha</td>

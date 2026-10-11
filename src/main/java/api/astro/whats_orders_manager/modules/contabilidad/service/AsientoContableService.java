@@ -948,7 +948,8 @@ public class AsientoContableService {
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(LocalDate.now());
+        // La fecha del asiento es la del documento, coherente con el tipo de cambio con que se convierte
+        asiento.setFecha(fechaAsientoCompra(cpp));
         asiento.setConcepto(truncar("Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre(), 500));
         asiento.setTipo(TipoAsiento.AUTOMATICO_COMPRA);
         asiento.setEstado(EstadoAsiento.BORRADOR);
@@ -981,6 +982,20 @@ public class AsientoContableService {
 
         log.info("Purchase journal entry {} posted for CPP {}", guardado.getNumero(), cpp.getNumero());
         return guardado;
+    }
+
+    /**
+     * Fecha del asiento de compra: la de emisión de la CxP; si falta, la de recepción de la OC;
+     * como último recurso, hoy.
+     */
+    private LocalDate fechaAsientoCompra(CuentaPorPagar cpp) {
+        if (cpp.getFechaEmision() != null) {
+            return cpp.getFechaEmision();
+        }
+        if (cpp.getOrdenCompra() != null && cpp.getOrdenCompra().getFechaRecepcion() != null) {
+            return cpp.getOrdenCompra().getFechaRecepcion();
+        }
+        return LocalDate.now();
     }
 
     /**

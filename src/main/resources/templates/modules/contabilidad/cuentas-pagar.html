@@ -110,11 +110,11 @@
                                     </td>
                                     <td class="text-end">
                                         <span class="fw-bold"
-                                              th:text="'₡ ' + ${#numbers.formatDecimal(cpp.monto, 1, 2)}">₡ 0.00</span>
+                                              th:text="${(cpp.moneda != null ? cpp.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(cpp.monto, 1, 2)}">CRC 0.00</span>
                                     </td>
                                     <td class="text-end">
                                         <span th:classappend="${cpp.saldoPendiente.signum() > 0} ? 'text-danger' : 'text-success'"
-                                              th:text="'₡ ' + ${#numbers.formatDecimal(cpp.saldoPendiente, 1, 2)}">₡ 0.00</span>
+                                              th:text="${(cpp.moneda != null ? cpp.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(cpp.saldoPendiente, 1, 2)}">CRC 0.00</span>
                                     </td>
                                     <td class="text-center">
                                         <span th:if="${cpp.fechaVencimiento != null}"
@@ -450,7 +450,7 @@
                 return `<tr>
                     <td class="fw-bold">${p.numero ?? '—'}</td>
                     <td>${p.fecha ?? '—'}</td>
-                    <td class="text-end">₡ ${parseFloat(p.monto ?? 0).toFixed(2)}</td>
+                    <td class="text-end">${p.moneda ?? 'CRC'} ${parseFloat(p.monto ?? 0).toFixed(2)}${p.tipoCambio && p.moneda !== 'CRC' ? ` <small class="text-muted">(TC ${p.tipoCambio})</small>` : ''}</td>
                     <td class="text-center"><span class="badge bg-secondary">${p.metodoPago ?? '—'}</span></td>
                     <td>${p.referencia ?? '—'}</td>
                     <td class="text-center">${estadoBadge}</td>

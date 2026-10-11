@@ -80,6 +80,26 @@ public final class ConversionMoneda {
         return monto.multiply(tcPago).setScale(2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Monto de un pago en CRC para reportes y totales de caja (tolerante a datos históricos).
+     * <ul>
+     *   <li>Moneda CRC o nula → monto. La decisión se toma por la moneda del pago, nunca por el tipo
+     *       de cambio: un pago en CRC sobre factura USD guarda la tasa del USD pero ya está en colones.</li>
+     *   <li>Moneda extranjera con tipo de cambio &gt; 0 → monto × tipoCambio (HALF_UP, 2 decimales).</li>
+     *   <li>Moneda extranjera sin tipo de cambio (filas anteriores a ADR-011) → monto nominal.</li>
+     * </ul>
+     * Un monto nulo se toma como 0.
+     */
+    public static BigDecimal montoEnCrcReporte(BigDecimal monto, MonedaFE monedaPago, BigDecimal tipoCambio) {
+        if (monto == null) {
+            return BigDecimal.ZERO;
+        }
+        if (oCrc(monedaPago) == MonedaFE.CRC || tipoCambio == null || tipoCambio.signum() <= 0) {
+            return monto;
+        }
+        return monto.multiply(tipoCambio).setScale(2, RoundingMode.HALF_UP);
+    }
+
     private static void validarTipoCambio(BigDecimal tipoCambio) {
         if (tipoCambio == null || tipoCambio.signum() <= 0) {
             throw new IllegalArgumentException("El tipo de cambio de la operación debe ser mayor a 0");

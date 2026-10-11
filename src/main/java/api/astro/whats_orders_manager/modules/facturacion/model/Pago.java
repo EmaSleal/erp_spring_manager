@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
+import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -243,6 +244,16 @@ public class Pago {
     @Transient
     public BigDecimal getMontoAplicadoEfectivo() {
         return montoAplicado != null ? montoAplicado : (monto != null ? monto : BigDecimal.ZERO);
+    }
+
+    /**
+     * Monto del pago en CRC para reportes de caja e ingresos (ADR-011).
+     * @see ConversionMoneda#montoEnCrcReporte
+     */
+    @Transient
+    @JsonIgnore
+    public BigDecimal getMontoEnCrc() {
+        return ConversionMoneda.montoEnCrcReporte(monto, moneda, tipoCambio);
     }
 
     /**

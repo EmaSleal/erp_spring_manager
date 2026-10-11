@@ -33,6 +33,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -569,7 +570,9 @@ public class PagoServiceImpl implements PagoService {
     @Transactional(readOnly = true)
     public BigDecimal sumIngresosDiaActual() {
         log.debug("Calculando ingresos del día actual");
-        return pagoRepository.sumIngresosDiaActual();
+        LocalDate hoy = LocalDate.now();
+        return sumarEnCrc(pagoRepository.findValidosByFechaPagoRango(
+            hoy.atStartOfDay(), hoy.plusDays(1).atStartOfDay()));
     }
     
     @Override
@@ -593,7 +596,20 @@ public class PagoServiceImpl implements PagoService {
                                               LocalDateTime fechaFin) {
         log.debug("Calculando total de pagos por método {} entre {} y {}", 
             metodoPago, fechaInicio, fechaFin);
-        return pagoRepository.sumByMetodoPagoAndFecha(metodoPago, fechaInicio, fechaFin);
+        // fechaFin inclusive (contrato del servicio) → límite superior exclusivo para la consulta
+        return sumarEnCrc(pagoRepository.findValidosByFechaPagoRango(fechaInicio, fechaFin.plusNanos(1)).stream()
+            .filter(p -> p.getMetodoPago() == metodoPago)
+            .toList());
+    }
+
+    /**
+     * Suma pagos en CRC (ADR-011): cada pago aporta {@link Pago#getMontoEnCrc()}, nunca su monto
+     * nominal, para no mezclar monedas en totales de caja e ingresos.
+     */
+    private static BigDecimal sumarEnCrc(List<Pago> pagos) {
+        return pagos.stream()
+            .map(Pago::getMontoEnCrc)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     
     @Override
@@ -613,21 +629,23 @@ public class PagoServiceImpl implements PagoService {
 
         LocalDateTime inicio = fecha.atStartOfDay();
         LocalDateTime fin = fecha.atTime(23, 59, 59);
-        List<EstadoPago> estadosValidos = List.of(EstadoPago.CONFIRMADO, EstadoPago.CONCILIADO);
 
-        // Single grouped query replaces the 12-query fan-out (6 sums + 6 counts).
-        // Column order: [0] MetodoPago, [1] BigDecimal total (SUM), [2] Long count (COUNT)
-        List<Object[]> totales = pagoRepository.findTotalesByMetodoPagoAndFecha(inicio, fin, estadosValidos);
+        // Una sola consulta de pagos válidos del día; los totales por método se acumulan en CRC
+        // (ADR-011: pagos en moneda extranjera se convierten con su propio tipo de cambio).
+        Map<MetodoPago, List<Pago>> porMetodo = pagoRepository
+            .findValidosByFechaPagoRango(inicio, fecha.plusDays(1).atStartOfDay()).stream()
+            .filter(p -> p.getMetodoPago() != null)
+            .collect(Collectors.groupingBy(Pago::getMetodoPago));
 
         ReporteCajaDTO reporte = ReporteCajaDTO.builder()
             .fecha(fecha)
             .fechaGeneracion(LocalDateTime.now())
             .build();
 
-        for (Object[] row : totales) {
-            MetodoPago metodo = (MetodoPago) row[0];
-            BigDecimal total = (BigDecimal) row[1];
-            Long cantidad = (Long) row[2];
+        for (Map.Entry<MetodoPago, List<Pago>> entry : porMetodo.entrySet()) {
+            MetodoPago metodo = entry.getKey();
+            BigDecimal total = sumarEnCrc(entry.getValue());
+            Long cantidad = (long) entry.getValue().size();
             switch (metodo) {
                 case EFECTIVO      -> { reporte.setTotalEfectivo(total);      reporte.setCantidadEfectivo(cantidad); }
                 case TARJETA       -> { reporte.setTotalTarjeta(total);       reporte.setCantidadTarjeta(cantidad); }
