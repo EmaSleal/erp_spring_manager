@@ -128,25 +128,16 @@
                             </h5>
                         </div>
 
-                        <!-- IGV/IVA -->
+                        <!-- Tarifa de IVA: no se configura aquí (ADR-009) -->
                         <div class="col-md-6 mb-3">
-                            <label for="igv" class="form-label">
-                                <i class="fas fa-percentage me-1"></i> IGV / IVA (%)
-                                <span class="text-danger">*</span>
+                            <label class="form-label d-block">
+                                <i class="fas fa-percentage me-1"></i> Tarifa de IVA
                             </label>
-                            <div class="input-group">
-                                <input type="number" 
-                                       class="form-control" 
-                                       id="igv"
-                                       name="igv"
-                                       step="0.01"
-                                       min="0"
-                                       max="100"
-                                       value="18"
-                                       required>
-                                <span class="input-group-text">%</span>
+                            <div class="form-text">
+                                La tarifa general de IVA se define en Parámetros del sistema
+                                (FACTURA_IVA_PORCENTAJE). Cada producto puede marcarse como gravado
+                                o exento, con su propio porcentaje, en el artículo maestro.
                             </div>
-                            <div class="form-text">Porcentaje de impuesto (Ej: 18 para Perú)</div>
                         </div>
 
                         <!-- Incluir IGV en Precio -->

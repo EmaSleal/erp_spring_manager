@@ -54,7 +54,6 @@ const ConfiguracionFacturacion = {
                 document.getElementById('numeroInicial').value = datos.numeroInicial || 1;
                 document.getElementById('numeroActual').value = datos.numeroActual || 1;
                 document.getElementById('formatoNumero').value = datos.formatoNumero || '';
-                document.getElementById('igv').value = datos.igv || 0;
                 document.getElementById('incluirIgvEnPrecio').checked = datos.incluirIgvEnPrecio || false;
                 document.getElementById('moneda').value = datos.moneda || '';
                 document.getElementById('simboloMoneda').value = datos.simboloMoneda || '';
@@ -93,7 +92,6 @@ const ConfiguracionFacturacion = {
                 numeroInicial: parseInt(document.getElementById('numeroInicial').value) || 1,
                 numeroActual: parseInt(document.getElementById('numeroActual').value) || 1,
                 formatoNumero: document.getElementById('formatoNumero').value || null,
-                igv: parseFloat(document.getElementById('igv').value) || 0,
                 incluirIgvEnPrecio: document.getElementById('incluirIgvEnPrecio').checked,
                 moneda: document.getElementById('moneda').value || null,
                 simboloMoneda: document.getElementById('simboloMoneda').value || null,

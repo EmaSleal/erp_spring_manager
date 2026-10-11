@@ -9,7 +9,7 @@ import java.util.Optional;
  * 
  * Esta configuración controla aspectos clave como:
  * - Numeración automática de facturas (serie y secuencia)
- * - Configuración de impuestos (IGV/IVA)
+ * - La tarifa de IVA NO vive aquí: es el parámetro FACTURA_IVA_PORCENTAJE (ADR-009)
  * - Formato de números y moneda
  * - Términos y condiciones para facturas
  * 
@@ -104,7 +104,6 @@ public interface ConfiguracionFacturacionService {
      * Verifica reglas de negocio como:
      * - Serie no puede estar vacía
      * - Número actual >= número inicial
-     * - IGV debe estar entre 0 y 100
      * - Decimales entre 0 y 4
      * 
      * @param configuracion Configuración a validar

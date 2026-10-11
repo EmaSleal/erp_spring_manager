@@ -268,7 +268,7 @@
                     <span th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.subtotal, 1, 2)}">₡ 1,000.00</span>
                 </div>
                 <div class="total-row iva">
-                    <span>IGV (18%):</span>
+                    <span>IVA:</span>
                     <span th:text="${(simboloMoneda ?: '₡') + ' ' + #numbers.formatDecimal(factura.igv, 1, 2)}">₡ 160.00</span>
                 </div>
                 <div class="total-row final">
