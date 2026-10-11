@@ -4,7 +4,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Tipo
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
+import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,8 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -28,6 +32,13 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     private static final String NAMESPACE = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/facturaElectronica";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
     private static final ZoneOffset CR_ZONE_OFFSET = ZoneOffset.of("-06:00");
+
+    /** Componente único de desglose de IVA (ADR-009): mismo cálculo que la factura y el asiento. */
+    private final CalculadoraImpuestoService calculadoraImpuestoService;
+
+    public XmlGeneratorServiceImpl(CalculadoraImpuestoService calculadoraImpuestoService) {
+        this.calculadoraImpuestoService = calculadoraImpuestoService;
+    }
 
     @Override
     public String generarXmlFactura(ComprobanteElectronico comprobante) {
@@ -303,34 +314,31 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             // descripcion — resolved via master with null-safe fallback (XML-1)
             xml.append("<Detalle>").append(escaparXml(resolveDescripcion(producto))).append("</Detalle>");
 
-            BigDecimal precioUnitario = linea.getPrecioUnitario() != null ? linea.getPrecioUnitario() : BigDecimal.ZERO;
-            BigDecimal montoTotal = precioUnitario.multiply(cantidad).setScale(5, RoundingMode.HALF_UP);
-            BigDecimal subtotal = linea.getSubtotal() != null ? linea.getSubtotal().setScale(5, RoundingMode.HALF_UP) : montoTotal;
+            // ADR-009: desglose por línea con el mismo componente que la factura y el asiento.
+            // Todos los montos salen del desglose a 2 decimales y se expresan con 5 decimales,
+            // de modo que las sumas del resumen coinciden al céntimo con la factura.
+            DesgloseImpuesto desglose = desglosarLinea(linea);
+            BigDecimal base = desglose.base();
+            BigDecimal precioUnitarioSinIva = cantidad.signum() > 0
+                ? base.divide(cantidad, 5, RoundingMode.HALF_UP)
+                : base;
 
-            xml.append("<PrecioUnitario>").append(fmt(precioUnitario, 5)).append("</PrecioUnitario>");
-            xml.append("<MontoTotal>").append(fmt(montoTotal, 5)).append("</MontoTotal>");
-            xml.append("<SubTotal>").append(fmt(subtotal, 5)).append("</SubTotal>");
-            xml.append("<BaseImponible>").append(fmt(subtotal, 5)).append("</BaseImponible>");
-
-            // gravado + porcentajeImpuesto — resolved via master with null-safe fallback (XML-1)
-            boolean esGravado = Boolean.TRUE.equals(resolveGravado(producto));
-            BigDecimal porcentajeIVA = esGravado
-                ? Optional.ofNullable(resolvePorcentajeImpuesto(producto)).orElse(BigDecimal.ZERO)
-                : BigDecimal.ZERO;
-            BigDecimal montoImpuesto = subtotal.multiply(porcentajeIVA)
-                .divide(new BigDecimal("100"), 5, RoundingMode.HALF_UP);
+            xml.append("<PrecioUnitario>").append(fmt(precioUnitarioSinIva, 5)).append("</PrecioUnitario>");
+            xml.append("<MontoTotal>").append(fmt(base, 5)).append("</MontoTotal>");
+            xml.append("<SubTotal>").append(fmt(base, 5)).append("</SubTotal>");
+            xml.append("<BaseImponible>").append(fmt(base, 5)).append("</BaseImponible>");
 
             // Impuesto siempre presente — exento usa CodigoTarifaIVA=10, Tarifa=0
             xml.append("<Impuesto>");
             xml.append("<Codigo>01</Codigo>");
-            xml.append("<CodigoTarifaIVA>").append(resolverCodigoTarifaIVA(porcentajeIVA)).append("</CodigoTarifaIVA>");
-            xml.append("<Tarifa>").append(porcentajeIVA.toPlainString()).append("</Tarifa>");
-            xml.append("<Monto>").append(fmt(montoImpuesto, 5)).append("</Monto>");
+            xml.append("<CodigoTarifaIVA>").append(resolverCodigoTarifaIVA(desglose.tarifa())).append("</CodigoTarifaIVA>");
+            xml.append("<Tarifa>").append(fmt(desglose.tarifa(), 2)).append("</Tarifa>");
+            xml.append("<Monto>").append(fmt(desglose.impuesto(), 5)).append("</Monto>");
             xml.append("</Impuesto>");
 
             xml.append("<ImpuestoAsumidoEmisorFabrica>0.00000</ImpuestoAsumidoEmisorFabrica>");
-            xml.append("<ImpuestoNeto>").append(fmt(montoImpuesto, 5)).append("</ImpuestoNeto>");
-            xml.append("<MontoTotalLinea>").append(fmt(subtotal.add(montoImpuesto), 5)).append("</MontoTotalLinea>");
+            xml.append("<ImpuestoNeto>").append(fmt(desglose.impuesto(), 5)).append("</ImpuestoNeto>");
+            xml.append("<MontoTotalLinea>").append(fmt(desglose.total(), 5)).append("</MontoTotalLinea>");
 
             xml.append("</LineaDetalle>");
         }
@@ -343,27 +351,24 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
 
         var factura = comprobante.getFactura();
 
-        // Calcular totales desde líneas
+        // ADR-009: totales = sumas del desglose por línea (mismo componente que la factura)
         BigDecimal totalMercanciasGravadas = BigDecimal.ZERO;
         BigDecimal totalMercanciasExentas = BigDecimal.ZERO;
         BigDecimal totalImpuesto = BigDecimal.ZERO;
-        String codigoTarifaPrincipal = "10"; // exento por defecto
+        Map<String, BigDecimal> impuestoPorCodigoTarifa = new LinkedHashMap<>();
 
         for (LineaFactura linea : factura.getLineas()) {
-            var producto = linea.getProducto();
-            // gravado + porcentajeImpuesto — resolved via master with null-safe fallback (XML-1)
-            boolean esGravado = Boolean.TRUE.equals(resolveGravado(producto));
-            BigDecimal subtotal = linea.getSubtotal() != null ? linea.getSubtotal() : BigDecimal.ZERO;
-
-            if (esGravado) {
-                totalMercanciasGravadas = totalMercanciasGravadas.add(subtotal);
-                BigDecimal porc = Optional.ofNullable(resolvePorcentajeImpuesto(producto))
-                        .orElse(new BigDecimal("13"));
-                totalImpuesto = totalImpuesto.add(subtotal.multiply(porc).divide(new BigDecimal("100"), 5, RoundingMode.HALF_UP));
-                codigoTarifaPrincipal = resolverCodigoTarifaIVA(porc);
+            DesgloseImpuesto desglose = desglosarLinea(linea);
+            if (desglose.gravado()) {
+                totalMercanciasGravadas = totalMercanciasGravadas.add(desglose.base());
+                totalImpuesto = totalImpuesto.add(desglose.impuesto());
+                impuestoPorCodigoTarifa.merge(resolverCodigoTarifaIVA(desglose.tarifa()), desglose.impuesto(), BigDecimal::add);
             } else {
-                totalMercanciasExentas = totalMercanciasExentas.add(subtotal);
+                totalMercanciasExentas = totalMercanciasExentas.add(desglose.base());
             }
+        }
+        if (impuestoPorCodigoTarifa.isEmpty()) {
+            impuestoPorCodigoTarifa.put("10", BigDecimal.ZERO); // exento por defecto
         }
 
         BigDecimal totalGravado = totalMercanciasGravadas;
@@ -371,6 +376,10 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         BigDecimal totalVenta = totalGravado.add(totalExento);
         BigDecimal totalVentaNeta = totalVenta;
         BigDecimal totalComprobante = totalVentaNeta.add(totalImpuesto);
+        if (factura.getTotal() != null && factura.getTotal().compareTo(totalComprobante) != 0) {
+            log.warn("Factura {}: total almacenado {} difiere del total desglosado por líneas {} — el XML declara el desglose",
+                factura.getNumeroFactura(), factura.getTotal(), totalComprobante);
+        }
 
         String codigoMoneda = (factura.getMonedaFE() != null) ? factura.getMonedaFE().getCodigo() : "CRC";
         BigDecimal tipoCambio = (factura.getTipoCambio() != null) ? factura.getTipoCambio() : BigDecimal.ONE;
@@ -396,11 +405,13 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<TotalVentaNeta>").append(fmt(totalVentaNeta, 5)).append("</TotalVentaNeta>");
 
         // TotalDesgloseImpuesto — siempre presente (con monto 0 si todo es exento)
-        xml.append("<TotalDesgloseImpuesto>");
-        xml.append("<Codigo>01</Codigo>");
-        xml.append("<CodigoTarifaIVA>").append(codigoTarifaPrincipal).append("</CodigoTarifaIVA>");
-        xml.append("<TotalMontoImpuesto>").append(fmt(totalImpuesto, 5)).append("</TotalMontoImpuesto>");
-        xml.append("</TotalDesgloseImpuesto>");
+        impuestoPorCodigoTarifa.forEach((codigoTarifa, monto) -> {
+            xml.append("<TotalDesgloseImpuesto>");
+            xml.append("<Codigo>01</Codigo>");
+            xml.append("<CodigoTarifaIVA>").append(codigoTarifa).append("</CodigoTarifaIVA>");
+            xml.append("<TotalMontoImpuesto>").append(fmt(monto, 5)).append("</TotalMontoImpuesto>");
+            xml.append("</TotalDesgloseImpuesto>");
+        });
 
         xml.append("<TotalImpuesto>").append(fmt(totalImpuesto, 5)).append("</TotalImpuesto>");
 
@@ -438,22 +449,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
                 .orElse(produto.getCodigoCabys());
     }
 
-    /** Resolves gravado: reads from master when present, falls back to deprecated Produto field. */
-    @SuppressWarnings("deprecation")
-    private Boolean resolveGravado(Producto produto) {
-        return Optional.ofNullable(produto.getArticuloMaestro())
-                .map(ArticuloMaestro::getGravado)
-                .orElse(produto.getGravado());
-    }
-
-    /** Resolves porcentajeImpuesto: reads from master when present, falls back to deprecated Producto field. */
-    @SuppressWarnings("deprecation")
-    private BigDecimal resolvePorcentajeImpuesto(Producto produto) {
-        return Optional.ofNullable(produto.getArticuloMaestro())
-                .map(ArticuloMaestro::getPorcentajeImpuesto)
-                .orElse(produto.getPorcentajeImpuesto());
-    }
-
     /** Resolves descripcionCabys: reads from master when present, falls back to deprecated Producto field. */
     @SuppressWarnings("deprecation")
     private String resolveDescripcionCabys(Producto produto) {
@@ -474,17 +469,29 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     // Utilidades
     // =====================================================================
 
+    /** Desglose de IVA de una línea con el componente único (ADR-009). */
+    private DesgloseImpuesto desglosarLinea(LineaFactura linea) {
+        BigDecimal importe = linea.getSubtotal();
+        if (importe == null) {
+            BigDecimal precio = linea.getPrecioUnitario() != null ? linea.getPrecioUnitario() : BigDecimal.ZERO;
+            BigDecimal cantidad = linea.getCantidad() != null ? BigDecimal.valueOf(linea.getCantidad()) : BigDecimal.ONE;
+            importe = precio.multiply(cantidad);
+        }
+        return calculadoraImpuestoService.desglosarLinea(linea.getProducto(), importe);
+    }
+
     /**
-     * Resuelve el CodigoTarifaIVA según el porcentaje:
-     * 10=exento(0%), 03=1%, 04=2%, 05=4%, 06=8%, 07=13%
+     * Resuelve el CodigoTarifaIVA (Hacienda v4.4) según el porcentaje:
+     * 10=exenta(0%), 09=0,5%, 02=1%, 03=2%, 04=4%, 07=8%, 08=13% (tarifa general).
      */
     private String resolverCodigoTarifaIVA(BigDecimal porcentaje) {
         if (porcentaje == null || porcentaje.compareTo(BigDecimal.ZERO) == 0) return "10";
-        if (porcentaje.compareTo(new BigDecimal("1")) == 0)  return "03";
-        if (porcentaje.compareTo(new BigDecimal("2")) == 0)  return "04";
-        if (porcentaje.compareTo(new BigDecimal("4")) == 0)  return "05";
-        if (porcentaje.compareTo(new BigDecimal("8")) == 0)  return "06";
-        return "07"; // 13% general
+        if (porcentaje.compareTo(new BigDecimal("0.5")) == 0) return "09";
+        if (porcentaje.compareTo(new BigDecimal("1")) == 0)  return "02";
+        if (porcentaje.compareTo(new BigDecimal("2")) == 0)  return "03";
+        if (porcentaje.compareTo(new BigDecimal("4")) == 0)  return "04";
+        if (porcentaje.compareTo(new BigDecimal("8")) == 0)  return "07";
+        return "08"; // 13% tarifa general
     }
 
     private String fmt(BigDecimal value, int decimals) {

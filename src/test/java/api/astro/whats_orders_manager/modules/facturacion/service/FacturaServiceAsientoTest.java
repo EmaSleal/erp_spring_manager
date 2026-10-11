@@ -16,11 +16,13 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.impl.FacturaServiceImpl;
 import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -172,6 +174,61 @@ class FacturaServiceAsientoTest {
         assertThat(monto(asiento, cxc, true)).isEqualByComparingTo("56500.00");
         assertThat(monto(asiento, ingresos, false)).isEqualByComparingTo("50000.00");
         assertThat(monto(asiento, iva, false)).isEqualByComparingTo("6500.00");
+    }
+
+    // =========================================================================
+    // T-006 (ADR-009) — save() toma los totales del desglose por línea
+    // =========================================================================
+
+    @Test
+    @DisplayName("T-006 criterio 4: factura con líneas 1130 + 565 → 1500.00 + 195.00 = 1695.00 (desglose ADR-009)")
+    void crearFacturaConLineas_totalesDelDesglose() {
+        FacturaServiceImpl service = servicio(new AsientoContableService(
+                asientoRepository, detalleRepository, cuentaRepository, parametroContableRepository));
+        ReflectionTestUtils.setField(service, "calculadoraImpuestoService", new CalculadoraImpuestoService(null));
+        Factura factura = nuevaFactura("1695.00", "0.00", "0.00", MonedaFE.CRC, null);
+        factura.getLineas().add(lineaGravada(factura, 1, "1130.00", "1130.00"));
+        factura.getLineas().add(lineaGravada(factura, 5, "113.00", "565.00"));
+
+        Factura guardada = service.save(factura);
+
+        assertThat(guardada.getSubtotal()).isEqualByComparingTo("1500.00");
+        assertThat(guardada.getIgv()).isEqualByComparingTo("195.00");
+        assertThat(guardada.getTotal()).isEqualByComparingTo("1695.00");
+
+        ArgumentCaptor<AsientoContable> captor = ArgumentCaptor.forClass(AsientoContable.class);
+        verify(asientoRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        AsientoContable asiento = captor.getValue();
+        assertThat(monto(asiento, cxc, true)).isEqualByComparingTo("1695.00");
+        assertThat(monto(asiento, ingresos, false)).isEqualByComparingTo("1500.00");
+        assertThat(monto(asiento, iva, false)).isEqualByComparingTo("195.00");
+    }
+
+    @Test
+    @DisplayName("T-006 criterio 4: factura sin líneas no suma IVA sobre el subtotal (montos recibidos)")
+    void crearFacturaSinLineas_noSumaIva() {
+        FacturaServiceImpl service = servicio(asientoServiceMock);
+        Factura factura = nuevaFactura("1000.00", "0.00", "0.00", MonedaFE.CRC, null);
+
+        Factura guardada = service.save(factura);
+
+        assertThat(guardada.getSubtotal()).isEqualByComparingTo("1000.00");
+        assertThat(guardada.getIgv()).isEqualByComparingTo("0.00");
+        assertThat(guardada.getTotal()).isEqualByComparingTo("1000.00");
+    }
+
+    @SuppressWarnings("deprecation")
+    private static LineaFactura lineaGravada(Factura factura, int cantidad, String precio, String subtotal) {
+        Producto producto = new Producto();
+        producto.setGravado(true);
+        producto.setPorcentajeImpuesto(new BigDecimal("13.00"));
+        LineaFactura linea = new LineaFactura();
+        linea.setFactura(factura);
+        linea.setProducto(producto);
+        linea.setCantidad(cantidad);
+        linea.setPrecioUnitario(new BigDecimal(precio));
+        linea.setSubtotal(new BigDecimal(subtotal));
+        return linea;
     }
 
     // =========================================================================

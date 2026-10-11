@@ -1,18 +1,22 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.seguridad.service.impl.UserDetailsServiceImpl;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +37,12 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
 
     @Autowired
     private AsientoContableService asientoContableService;
+
+    @Autowired
+    private ProductoRepository productoRepository;
+
+    @Autowired
+    private CalculadoraImpuestoService calculadoraImpuestoService;
 
     @Override
     public List<LineaFactura> findAll() { return lineaFacturaRepository.findAll(); }
@@ -83,27 +93,31 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
                     linea.id_factura());
         }
 
-        // Recalcular totales por factura
-        Map<Integer, BigDecimal> subtotalesPorFactura = lineas.stream()
-                .collect(Collectors.groupingBy(
-                        LineaFacturaR::id_factura,
-                        Collectors.reducing(BigDecimal.ZERO, LineaFacturaR::subtotal, BigDecimal::add)
-                ));
+        // ADR-009: desglose de IVA por línea con el componente único; totales = sumas
+        Map<Integer, DesgloseImpuesto> desglosePorFactura = new LinkedHashMap<>();
+        for (LineaFacturaR linea : lineas) {
+            Producto producto = linea.id_producto() != null
+                    ? productoRepository.findById(linea.id_producto()).orElse(null)
+                    : null;
+            DesgloseImpuesto desglose = calculadoraImpuestoService.desglosarLinea(producto, linea.subtotal());
+            desglosePorFactura.merge(linea.id_factura(), desglose, DesgloseImpuesto::sumar);
+        }
 
-        subtotalesPorFactura.forEach((idFactura, subtotal) ->
+        desglosePorFactura.forEach((idFactura, desglose) ->
                 facturaRepository.findByIdFactura(idFactura).ifPresent(factura -> {
                     if (factura.estaAnulada()) {
                         throw new IllegalStateException("No se pueden modificar las líneas de una factura anulada");
                     }
-                    factura.setSubtotal(subtotal);
-                    factura.setIgv(BigDecimal.ZERO);
-                    factura.setTotal(subtotal);
+                    factura.setSubtotal(desglose.base());
+                    factura.setIgv(desglose.impuesto());
+                    factura.setTotal(desglose.total());
                     facturaRepository.save(factura);
                     // ADR-008: primera carga de líneas → generar el asiento de venta;
                     // si ya estaba contabilizada → revertir y regenerar su asiento de venta
                     asientoContableService.contabilizarVentaTrasGuardarLineas(factura,
                             facturasSinLineasPrevias.contains(idFactura));
-                    log.info("Totales actualizados para factura {}: subtotal={}, total={}", idFactura, subtotal, subtotal);
+                    log.info("Totales actualizados para factura {}: subtotal={}, igv={}, total={}",
+                            idFactura, desglose.base(), desglose.impuesto(), desglose.total());
                 })
         );
 

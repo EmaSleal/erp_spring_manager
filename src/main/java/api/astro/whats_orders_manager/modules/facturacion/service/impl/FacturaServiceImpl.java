@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -9,11 +10,14 @@ import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFac
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
@@ -67,6 +71,12 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Autowired
     private AsientoContableService asientoContableService;
+
+    @Autowired
+    private CalculadoraImpuestoService calculadoraImpuestoService;
+
+    @Autowired
+    private ProductoRepository productoRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -141,24 +151,11 @@ public class FacturaServiceImpl implements FacturaService {
             );
         }
 
-        // Calcular IGV y total si no están establecidos
-        if (factura.getSubtotal() != null && factura.getSubtotal().compareTo(BigDecimal.ZERO) > 0) {
-            
-            // Si el IGV no está calculado, calcularlo
-            if (factura.getIgv() == null || factura.getIgv().compareTo(BigDecimal.ZERO) == 0) {
-                BigDecimal igvCalculado = config.calcularIgv(factura.getSubtotal());
-                factura.setIgv(igvCalculado);
-                log.debug("IGV calculado: {} ({}%)", igvCalculado, config.getIgv());
-            }
-            
-            // Si el total no está calculado, calcularlo
-            if (factura.getTotal() == null || factura.getTotal().compareTo(BigDecimal.ZERO) == 0) {
-                BigDecimal totalCalculado = config.calcularTotal(factura.getSubtotal());
-                factura.setTotal(totalCalculado);
-                log.debug("Total calculado: {}", totalCalculado);
-            }
-        }
-        
+        // ADR-009: los totales de una factura con líneas vienen del desglose por línea
+        // (CalculadoraImpuestoService). Sin líneas no hay producto del que resolver tarifa
+        // ni precioIncluyeIva: no se calcula IVA y se respetan los montos recibidos.
+        aplicarTotalesDesdeLineas(factura);
+
         // Capture isNew before save — after save() the ID is always assigned
         boolean isNew = factura.getIdFactura() == null;
 
@@ -210,6 +207,43 @@ public class FacturaServiceImpl implements FacturaService {
         }
 
         return facturaGuardada;
+    }
+
+    /**
+     * ADR-009: si la factura trae líneas, subtotal = Σ bases, igv = Σ impuestos y
+     * total = Σ importes, desglosados por CalculadoraImpuestoService. Sin líneas no se
+     * calcula IVA (el flujo de la UI guarda la factura en cero y luego sus líneas,
+     * cuyos totales fija LineaFacturaServiceImpl.updateLineas con el mismo componente);
+     * solo se completa un total ausente como subtotal + igv recibidos.
+     */
+    private void aplicarTotalesDesdeLineas(Factura factura) {
+        List<LineaFactura> lineas = factura.getLineas();
+        if (lineas != null && !lineas.isEmpty()) {
+            DesgloseImpuesto desglose = DesgloseImpuesto.CERO;
+            for (LineaFactura linea : lineas) {
+                Producto producto = resolverProducto(linea.getProducto());
+                desglose = desglose.sumar(calculadoraImpuestoService.desglosarLinea(producto, linea.getSubtotal()));
+            }
+            factura.setSubtotal(desglose.base());
+            factura.setIgv(desglose.impuesto());
+            factura.setTotal(desglose.total());
+            log.debug("Totales desde líneas (ADR-009): subtotal={}, igv={}, total={}",
+                    desglose.base(), desglose.impuesto(), desglose.total());
+            return;
+        }
+        boolean sinTotal = factura.getTotal() == null || factura.getTotal().signum() == 0;
+        if (sinTotal && factura.getSubtotal() != null && factura.getSubtotal().signum() > 0) {
+            BigDecimal igv = factura.getIgv() != null ? factura.getIgv() : BigDecimal.ZERO;
+            factura.setTotal(factura.getSubtotal().add(igv));
+        }
+    }
+
+    /** Producto completo (gravado/tarifa/precioIncluyeIva); el recibido puede traer solo el id. */
+    private Producto resolverProducto(Producto producto) {
+        if (producto == null || producto.getIdProducto() == null) {
+            return producto;
+        }
+        return productoRepository.findById(producto.getIdProducto()).orElse(producto);
     }
 
     @Override

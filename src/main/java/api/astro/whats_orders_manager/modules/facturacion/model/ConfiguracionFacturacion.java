@@ -190,48 +190,8 @@ public class ConfiguracionFacturacion implements Serializable {
         }
     }
 
-    /**
-     * Calcula el IGV de un monto
-     * 
-     * @param subtotal Monto base
-     * @return Monto de IGV
-     */
-    public BigDecimal calcularIgv(BigDecimal subtotal) {
-        if (subtotal == null || igv == null) {
-            return BigDecimal.ZERO;
-        }
-        
-        if (incluirIgvEnPrecio) {
-            // Si el precio incluye IGV, extraer el IGV del total
-            BigDecimal divisor = BigDecimal.ONE.add(igv.divide(new BigDecimal("100"), decimales, RoundingMode.HALF_UP));
-            BigDecimal base = subtotal.divide(divisor, decimales, RoundingMode.HALF_UP);
-            return subtotal.subtract(base);
-        } else {
-            // Si el precio no incluye IGV, calcular el IGV sobre el subtotal
-            return subtotal.multiply(igv).divide(new BigDecimal("100"), decimales, RoundingMode.HALF_UP);
-        }
-    }
-
-    /**
-     * Calcula el total con IGV
-     * 
-     * @param subtotal Monto base
-     * @return Total con IGV
-     */
-    public BigDecimal calcularTotal(BigDecimal subtotal) {
-        if (subtotal == null) {
-            return BigDecimal.ZERO;
-        }
-        
-        if (incluirIgvEnPrecio) {
-            // El precio ya incluye IGV
-            return subtotal;
-        } else {
-            // Sumar IGV al subtotal
-            BigDecimal montoIgv = calcularIgv(subtotal);
-            return subtotal.add(montoIgv);
-        }
-    }
+    // ADR-009 (T-006): el cálculo de IVA de ventas vive solo en CalculadoraImpuestoService.
+    // Se eliminaron calcularIgv/calcularTotal, que sumaban el IGV sobre el subtotal.
 
     /**
      * Método helper para verificar si tiene términos y condiciones

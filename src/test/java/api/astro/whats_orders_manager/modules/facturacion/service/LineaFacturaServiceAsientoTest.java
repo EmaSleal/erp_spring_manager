@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.impl.LineaFacturaServiceImpl;
+import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.seguridad.service.impl.UserDetailsServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -43,6 +45,13 @@ class LineaFacturaServiceAsientoTest {
 
     @Mock
     private AsientoContableService asientoContableService;
+
+    // T-006: dependencias nuevas de updateLineas (desglose de IVA, ADR-009)
+    @Mock
+    private ProductoRepository productoRepository;
+
+    @Spy
+    private CalculadoraImpuestoService calculadoraImpuestoService = new CalculadoraImpuestoService(null);
 
     @InjectMocks
     private LineaFacturaServiceImpl service;
