@@ -20,6 +20,7 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepo
 import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import lombok.extern.slf4j.Slf4j;
@@ -77,6 +78,9 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Autowired
     private ProductoRepository productoRepository;
+
+    @Autowired
+    private TipoCambioService tipoCambioService;
 
     @Override
     @Transactional(readOnly = true)
@@ -145,9 +149,15 @@ public class FacturaServiceImpl implements FacturaService {
         if (factura.getMonedaFE() == null || factura.getMonedaFE() == MonedaFE.CRC) {
             factura.setMonedaFE(MonedaFE.CRC);
             factura.setTipoCambio(BigDecimal.ONE);
-        } else if (factura.getTipoCambio() == null || factura.getTipoCambio().compareTo(BigDecimal.ZERO) <= 0) {
+        } else if (factura.getTipoCambio() == null) {
+            // ADR-011: sin tipo de cambio indicado se toma la tasa de venta registrada para la fecha
+            // de la factura; si no hay tasa registrada falla con un mensaje claro
+            LocalDate fechaFactura = factura.getFechaEmision() != null ? factura.getFechaEmision() : LocalDate.now();
+            factura.setTipoCambio(tipoCambioService.obtenerTasaVenta(factura.getMonedaFE(), fechaFactura));
+            log.info("Tipo de cambio de {} sugerido para la factura: {}", factura.getMonedaFE(), factura.getTipoCambio());
+        } else if (factura.getTipoCambio().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
-                "tipoCambio es obligatorio y debe ser mayor a 0 para facturas en " + factura.getMonedaFE().getCodigo()
+                "tipoCambio debe ser mayor a 0 para facturas en " + factura.getMonedaFE().getCodigo()
             );
         }
 

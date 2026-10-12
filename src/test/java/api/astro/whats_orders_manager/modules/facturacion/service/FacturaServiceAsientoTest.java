@@ -19,6 +19,9 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.repository.TipoCambioRepository;
+import api.astro.whats_orders_manager.modules.facturacion.enums.FuenteTipoCambio;
+import api.astro.whats_orders_manager.modules.facturacion.model.TipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.service.impl.FacturaServiceImpl;
 import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
@@ -36,6 +39,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,6 +76,7 @@ class FacturaServiceAsientoTest {
     @Mock private DetalleAsientoRepository detalleRepository;
     @Mock private CuentaContableRepository cuentaRepository;
     @Mock private ParametroContableRepository parametroContableRepository;
+    @Mock private TipoCambioRepository tipoCambioRepository;
 
     private CuentaContable cxc;
     private CuentaContable ingresos;
@@ -147,16 +152,39 @@ class FacturaServiceAsientoTest {
     }
 
     @Test
-    @DisplayName("criterio 4: crear factura USD sin tipo de cambio falla con mensaje claro y no genera asiento")
+    @DisplayName("T-007 criterio 11: crear factura USD sin tipo de cambio y sin tasa registrada falla con mensaje claro y no genera asiento")
     void crearFacturaUsdSinTipoCambio_falla() {
         FacturaServiceImpl service = servicio(asientoServiceMock);
+        when(tipoCambioRepository.findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(
+                any(), any())).thenReturn(Optional.empty());
         Factura factura = nuevaFactura("100.00", "13.00", "113.00", MonedaFE.USD, null);
 
         assertThatThrownBy(() -> service.save(factura))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("tipoCambio");
+                .hasMessage("No hay tipo de cambio de USD para " + LocalDate.now() + "; regístrelo");
         verify(asientoServiceMock, never()).generarAsientoVenta(any());
         verify(facturaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("T-007 criterio 11: crear factura USD sin tipo de cambio usa la tasa de venta registrada para su fecha")
+    void crearFacturaUsdSinTipoCambio_usaTasaDeLaTabla() {
+        FacturaServiceImpl service = servicio(new AsientoContableService(
+                asientoRepository, detalleRepository, cuentaRepository, parametroContableRepository));
+        when(tipoCambioRepository.findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(
+                MonedaFE.USD, LocalDate.now())).thenReturn(Optional.of(TipoCambio.builder()
+                        .monedaOrigen(MonedaFE.CRC).monedaDestino(MonedaFE.USD).fecha(LocalDate.now())
+                        .tasaCompra(new BigDecimal("495")).tasaVenta(new BigDecimal("505.12345"))
+                        .fuente(FuenteTipoCambio.MANUAL).activo(true).build()));
+        Factura factura = nuevaFactura("100.00", "13.00", "113.00", MonedaFE.USD, null);
+
+        Factura guardada = service.save(factura);
+
+        assertThat(guardada.getTipoCambio()).isEqualByComparingTo("505.12345");
+        ArgumentCaptor<AsientoContable> captor = ArgumentCaptor.forClass(AsientoContable.class);
+        verify(asientoRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        // 113 × 505.12345 = 57078.95 (HALF_UP)
+        assertThat(monto(captor.getValue(), cxc, true)).isEqualByComparingTo("57078.95");
     }
 
     @Test
@@ -430,6 +458,7 @@ class FacturaServiceAsientoTest {
         ReflectionTestUtils.setField(service, "facturaMapper", facturaMapper);
         ReflectionTestUtils.setField(service, "movimientoInventarioService", movimientoInventarioService);
         ReflectionTestUtils.setField(service, "asientoContableService", asientoService);
+        ReflectionTestUtils.setField(service, "tipoCambioService", new TipoCambioService(tipoCambioRepository));
         return service;
     }
 

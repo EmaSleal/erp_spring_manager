@@ -9,6 +9,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.ReporteCajaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -17,6 +18,8 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepo
 import api.astro.whats_orders_manager.modules.facturacion.repository.PagoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.NumeroPagoGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
+import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +33,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -66,6 +70,9 @@ public class PagoServiceImpl implements PagoService {
 
     @Autowired
     private AsientoContableService asientoContableService;
+
+    @Autowired
+    private TipoCambioService tipoCambioService;
 
     // ==================== OPERACIONES CRUD ====================
     
@@ -178,13 +185,24 @@ public class PagoServiceImpl implements PagoService {
 
             // Asignar la factura completa al pago
             pago.setFactura(factura);
-        
-            // Validar que el monto no exceda el saldo pendiente
-            BigDecimal saldoPendiente = factura.calcularSaldoPendiente();
-            if (pago.getMonto().compareTo(saldoPendiente) > 0) {
+        }
+
+        // Establecer fecha de pago si no está definida (el tipo de cambio depende de ella)
+        if (pago.getFechaPago() == null) {
+            pago.setFechaPago(LocalDateTime.now());
+        }
+
+        // ADR-011: moneda, tipo de cambio y monto aplicado en la moneda de la factura
+        aplicarMonedaYTipoCambio(pago);
+
+        if (pago.getFactura() != null) {
+            // Validar que el monto aplicado (en la moneda de la factura) no exceda el saldo pendiente
+            BigDecimal saldoPendiente = pago.getFactura().calcularSaldoPendiente();
+            if (pago.getMontoAplicado().compareTo(saldoPendiente) > 0) {
                 throw new IllegalArgumentException(
-                    String.format("El monto del pago (%.2f) excede el saldo pendiente (%.2f)", 
-                        pago.getMonto(), saldoPendiente));
+                    String.format("El monto del pago (%.2f %s) excede el saldo pendiente (%.2f %s)",
+                        pago.getMontoAplicado(), monedaFactura(pago.getFactura()).getCodigo(),
+                        saldoPendiente, monedaFactura(pago.getFactura()).getCodigo()));
             }
         }
         
@@ -213,11 +231,6 @@ public class PagoServiceImpl implements PagoService {
                 throw new IllegalArgumentException(
                     "Ya existe un pago con el número: " + pago.getNumeroPago());
             }
-        }
-        
-        // Establecer fecha de pago si no está definida
-        if (pago.getFechaPago() == null) {
-            pago.setFechaPago(LocalDateTime.now());
         }
         
         // Estado por defecto: CONFIRMADO
@@ -422,6 +435,36 @@ public class PagoServiceImpl implements PagoService {
     }
     
     /**
+     * Completa moneda, tipo de cambio y monto aplicado del pago (ADR-011).
+     * <ul>
+     *   <li>moneda null → moneda de la factura, o CRC si es un adelanto sin factura.</li>
+     *   <li>tipoCambio null → tasa de venta de la moneda extranjera involucrada en la fecha del pago
+     *       (1 si todo es CRC). Un valor indicado por el usuario se respeta.</li>
+     *   <li>montoAplicado: monto expresado en la moneda de la factura (= monto en adelantos).</li>
+     * </ul>
+     *
+     * @throws IllegalArgumentException si pago y factura están en monedas extranjeras distintas,
+     *                                  o no hay tipo de cambio registrado para sugerir
+     */
+    private void aplicarMonedaYTipoCambio(Pago pago) {
+        Factura factura = pago.getFactura();
+        MonedaFE monedaDocumento = factura != null ? monedaFactura(factura) : null;
+        if (pago.getMoneda() == null) {
+            pago.setMoneda(monedaDocumento != null ? monedaDocumento : MonedaFE.CRC);
+        }
+        // Un adelanto se registra en su propia moneda: el "documento" es el propio pago
+        MonedaFE referencia = monedaDocumento != null ? monedaDocumento : pago.getMoneda();
+        BigDecimal tipoCambio = tipoCambioService.resolverTipoCambioOperacion(
+            pago.getMoneda(), referencia, pago.getTipoCambio(), pago.getFechaPago().toLocalDate());
+        pago.setTipoCambio(tipoCambio);
+        pago.setMontoAplicado(ConversionMoneda.montoAplicado(pago.getMonto(), pago.getMoneda(), referencia, tipoCambio));
+    }
+
+    private static MonedaFE monedaFactura(Factura factura) {
+        return ConversionMoneda.oCrc(factura.getMonedaFE());
+    }
+
+    /**
      * Genera el asiento de cobro cuando el pago pasa de un estado no válido
      * (nuevo, PENDIENTE, RECHAZADO o ANULADO) a uno válido (CONFIRMADO o CONCILIADO)
      * y todavía no tiene un asiento de cobro vigente (ADR-008, regla 3).
@@ -527,7 +570,9 @@ public class PagoServiceImpl implements PagoService {
     @Transactional(readOnly = true)
     public BigDecimal sumIngresosDiaActual() {
         log.debug("Calculando ingresos del día actual");
-        return pagoRepository.sumIngresosDiaActual();
+        LocalDate hoy = LocalDate.now();
+        return sumarEnCrc(pagoRepository.findValidosByFechaPagoRango(
+            hoy.atStartOfDay(), hoy.plusDays(1).atStartOfDay()));
     }
     
     @Override
@@ -551,7 +596,20 @@ public class PagoServiceImpl implements PagoService {
                                               LocalDateTime fechaFin) {
         log.debug("Calculando total de pagos por método {} entre {} y {}", 
             metodoPago, fechaInicio, fechaFin);
-        return pagoRepository.sumByMetodoPagoAndFecha(metodoPago, fechaInicio, fechaFin);
+        // fechaFin inclusive (contrato del servicio) → límite superior exclusivo para la consulta
+        return sumarEnCrc(pagoRepository.findValidosByFechaPagoRango(fechaInicio, fechaFin.plusNanos(1)).stream()
+            .filter(p -> p.getMetodoPago() == metodoPago)
+            .toList());
+    }
+
+    /**
+     * Suma pagos en CRC (ADR-011): cada pago aporta {@link Pago#getMontoEnCrc()}, nunca su monto
+     * nominal, para no mezclar monedas en totales de caja e ingresos.
+     */
+    private static BigDecimal sumarEnCrc(List<Pago> pagos) {
+        return pagos.stream()
+            .map(Pago::getMontoEnCrc)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     
     @Override
@@ -571,21 +629,23 @@ public class PagoServiceImpl implements PagoService {
 
         LocalDateTime inicio = fecha.atStartOfDay();
         LocalDateTime fin = fecha.atTime(23, 59, 59);
-        List<EstadoPago> estadosValidos = List.of(EstadoPago.CONFIRMADO, EstadoPago.CONCILIADO);
 
-        // Single grouped query replaces the 12-query fan-out (6 sums + 6 counts).
-        // Column order: [0] MetodoPago, [1] BigDecimal total (SUM), [2] Long count (COUNT)
-        List<Object[]> totales = pagoRepository.findTotalesByMetodoPagoAndFecha(inicio, fin, estadosValidos);
+        // Una sola consulta de pagos válidos del día; los totales por método se acumulan en CRC
+        // (ADR-011: pagos en moneda extranjera se convierten con su propio tipo de cambio).
+        Map<MetodoPago, List<Pago>> porMetodo = pagoRepository
+            .findValidosByFechaPagoRango(inicio, fecha.plusDays(1).atStartOfDay()).stream()
+            .filter(p -> p.getMetodoPago() != null)
+            .collect(Collectors.groupingBy(Pago::getMetodoPago));
 
         ReporteCajaDTO reporte = ReporteCajaDTO.builder()
             .fecha(fecha)
             .fechaGeneracion(LocalDateTime.now())
             .build();
 
-        for (Object[] row : totales) {
-            MetodoPago metodo = (MetodoPago) row[0];
-            BigDecimal total = (BigDecimal) row[1];
-            Long cantidad = (Long) row[2];
+        for (Map.Entry<MetodoPago, List<Pago>> entry : porMetodo.entrySet()) {
+            MetodoPago metodo = entry.getKey();
+            BigDecimal total = sumarEnCrc(entry.getValue());
+            Long cantidad = (long) entry.getValue().size();
             switch (metodo) {
                 case EFECTIVO      -> { reporte.setTotalEfectivo(total);      reporte.setCantidadEfectivo(cantidad); }
                 case TARJETA       -> { reporte.setTotalTarjeta(total);       reporte.setCantidadTarjeta(cantidad); }
@@ -628,7 +688,9 @@ public class PagoServiceImpl implements PagoService {
         // Only CONFIRMADO and CONCILIADO payments count toward the paid total
         BigDecimal totalPagado = pagos.stream()
             .filter(PagoDTO::esValido)
-            .map(p -> p.getMonto() != null ? p.getMonto() : BigDecimal.ZERO)
+            // ADR-011: lo aplicado a la factura está en su moneda (montoAplicado)
+            .map(p -> p.getMontoAplicado() != null ? p.getMontoAplicado()
+                : (p.getMonto() != null ? p.getMonto() : BigDecimal.ZERO))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal saldoPendiente = totalFacturado.subtract(totalPagado);

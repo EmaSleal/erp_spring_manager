@@ -59,7 +59,7 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param idFactura ID de la factura
      * @return Total pagado (0 si no hay pagos)
      */
-    @Query("SELECT COALESCE(SUM(p.monto), 0) FROM Pago p " +
+    @Query("SELECT COALESCE(SUM(COALESCE(p.montoAplicado, p.monto)), 0) FROM Pago p " +
            "WHERE p.factura.idFactura = :idFactura " +
            "AND p.estado IN ('CONFIRMADO', 'CONCILIADO')")
     BigDecimal calcularTotalPagadoPorFactura(@Param("idFactura") Integer idFactura);
@@ -117,20 +117,18 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     );
     
     /**
-     * Suma total de pagos por método de pago en un rango de fechas.
-     * Útil para reportes de caja y cuadre diario.
-     * @param metodoPago Método de pago
-     * @param fechaInicio Fecha inicial
-     * @param fechaFin Fecha final
-     * @return Total de pagos
+     * Pagos válidos (CONFIRMADO o CONCILIADO) con fecha en [desde, hasta).
+     * Base de los totales de caja e ingresos: el total en CRC se calcula en el servicio con
+     * {@link Pago#getMontoEnCrc()} (ADR-011), porque los pagos pueden estar en distintas monedas.
+     * @param desde Inicio del rango (inclusive)
+     * @param hasta Fin del rango (exclusive)
+     * @return Pagos válidos del rango
      */
-    @Query("SELECT COALESCE(SUM(p.monto), 0) FROM Pago p WHERE p.metodoPago = :metodoPago " +
-           "AND p.fechaPago BETWEEN :fechaInicio AND :fechaFin " +
-           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO')")
-    BigDecimal sumByMetodoPagoAndFecha(
-        @Param("metodoPago") MetodoPago metodoPago,
-        @Param("fechaInicio") LocalDateTime fechaInicio,
-        @Param("fechaFin") LocalDateTime fechaFin
+    @Query("SELECT p FROM Pago p WHERE p.fechaPago >= :desde AND p.fechaPago < :hasta " +
+           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO') ORDER BY p.fechaPago")
+    List<Pago> findValidosByFechaPagoRango(
+        @Param("desde") LocalDateTime desde,
+        @Param("hasta") LocalDateTime hasta
     );
     
     /**
@@ -149,16 +147,6 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      */
     @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Pago p WHERE p.referenciaBancaria = :referenciaBancaria")
     boolean existsByReferenciaBancaria(@Param("referenciaBancaria") String referenciaBancaria);
-    
-    /**
-     * Obtiene el total de ingresos del día actual.
-     * Solo considera pagos confirmados y conciliados.
-     * @return Total de ingresos del día
-     */
-    @Query("SELECT COALESCE(SUM(p.monto), 0) FROM Pago p " +
-           "WHERE CAST(p.fechaPago AS date) = CURRENT_DATE " +
-           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO')")
-    BigDecimal sumIngresosDiaActual();
     
     /**
      * Obtiene pagos creados hoy para reporte de caja diaria.
@@ -211,23 +199,6 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     boolean existsByNumeroPago(@Param("numeroPago") String numeroPago);
     
     /**
-     * Returns grouped payment totals by MetodoPago for a date range and estado filter.
-     * Column order in Object[]: [0] MetodoPago, [1] BigDecimal total (SUM), [2] Long count (COUNT)
-     *
-     * @param inicio start of date range (inclusive)
-     * @param fin    end of date range (inclusive)
-     * @param estados list of valid estados to include
-     * @return list of Object[] rows with aggregated data
-     */
-    @Query("SELECT p.metodoPago, SUM(p.monto), COUNT(p) FROM Pago p " +
-           "WHERE p.fechaPago BETWEEN :inicio AND :fin AND p.estado IN :estados " +
-           "GROUP BY p.metodoPago")
-    List<Object[]> findTotalesByMetodoPagoAndFecha(
-        @Param("inicio") LocalDateTime inicio,
-        @Param("fin") LocalDateTime fin,
-        @Param("estados") List<EstadoPago> estados);
-
-    /**
      * Obtiene todos los pagos como DTOs con paginación.
      * Proyección optimizada para listar pagos sin cargar entidades completas.
      * 
@@ -253,11 +224,13 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
             p.factura.numeroFactura,
             p.factura.total,
             CASE WHEN p.factura IS NOT NULL 
-                THEN (p.factura.total - COALESCE((SELECT SUM(pg.monto) FROM Pago pg 
+                THEN (p.factura.total - COALESCE((SELECT SUM(COALESCE(pg.montoAplicado, pg.monto)) FROM Pago pg 
                     WHERE pg.factura.idFactura = p.factura.idFactura 
                     AND pg.estado IN ('CONFIRMADO', 'CONCILIADO')), 0)) 
                 ELSE NULL 
-            END
+            END,
+            p.moneda,
+            p.factura.monedaFE
         )
         FROM Pago p
         LEFT JOIN p.cliente

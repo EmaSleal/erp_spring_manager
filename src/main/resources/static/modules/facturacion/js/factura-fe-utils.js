@@ -92,10 +92,11 @@ function toggleTipoCambio() {
                 } else if (moneda === 'EUR') {
                     tipoCambio.placeholder = 'Ej: 580.50000 (1 EUR = 580.50 CRC)';
                 }
-                // Auto-fill from the stored exchange rate when available
+                // ADR-011: precarga la tasa de venta registrada para la fecha de la factura (hoy); editable
                 if (tipoCambioFetchController) tipoCambioFetchController.abort();
                 tipoCambioFetchController = new AbortController();
-                fetch(`/api/tipos-cambio/actual?moneda=${moneda}`, { signal: tipoCambioFetchController.signal })
+                const fechaFactura = new Date().toISOString().substring(0, 10);
+                fetch(`/api/tipos-cambio/venta?moneda=${moneda}&fecha=${fechaFactura}`, { signal: tipoCambioFetchController.signal })
                     .then(r => r.ok ? r.json() : null)
                     .then(data => {
                         if (data && data.tasaVenta) {

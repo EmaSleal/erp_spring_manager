@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.model;
 
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.enums.MetodoPagoProveedor;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
@@ -39,6 +40,29 @@ public class PagoProveedor {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal monto;
+
+    /**
+     * Moneda en que se pagó (ADR-011). Por defecto la de la cuenta por pagar.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moneda", length = 10)
+    private MonedaFE moneda;
+
+    /**
+     * Tipo de cambio de la operación (ADR-011): tasa de venta, en CRC por unidad, de la moneda
+     * extranjera involucrada en la fecha del pago (1 si pago y cuenta están en CRC). Un pago en CRC
+     * de una cuenta en moneda extranjera guarda la tasa de la moneda de la cuenta (no 1), con la
+     * que se calculan {@link #montoAplicado} y el diferencial cambiario.
+     */
+    @Column(name = "tipo_cambio", precision = 18, scale = 5)
+    private BigDecimal tipoCambio;
+
+    /**
+     * Monto del pago expresado en la moneda de la cuenta por pagar (ADR-011).
+     * Es lo que reduce el saldo pendiente de la cuenta.
+     */
+    @Column(name = "monto_aplicado", precision = 19, scale = 2)
+    private BigDecimal montoAplicado;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "metodo_pago", nullable = false, length = 20)

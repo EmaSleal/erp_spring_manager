@@ -148,14 +148,14 @@
                                     <td>
                                         <div class="fw-semibold" th:text="${pago.nombreCliente}">Cliente</div>
                                         <small class="text-muted" th:if="${pago.saldoPendiente != null && pago.saldoPendiente > 0}">
-                                            Saldo: <span class="fw-bold text-danger" th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">₡ 0.00</span>
+                                            Saldo: <span class="fw-bold text-danger" th:text="${(pago.monedaFactura != null ? pago.monedaFactura.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">CRC 0.00</span>
                                         </small>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-light text-dark" th:text="${pago.tipoPagoDescripcion}">Total</span>
                                     </td>
                                     <td class="text-end">
-                                        <span class="fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
+                                        <span class="fw-bold" th:text="${(pago.moneda != null ? pago.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.monto, 1, 2)}">CRC 0.00</span>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
@@ -291,7 +291,7 @@
                                 <div class="mobile-card-row">
                                     <span class="mobile-card-label">Monto</span>
                                     <span class="mobile-card-value">
-                                        <strong th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
+                                        <strong th:text="${(pago.moneda != null ? pago.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.monto, 1, 2)}">CRC 0.00</strong>
                                     </span>
                                 </div>
                                 
@@ -313,7 +313,7 @@
                                 <div class="mobile-card-row" th:if="${pago.saldoPendiente != null && pago.saldoPendiente > 0}">
                                     <span class="mobile-card-label">Saldo</span>
                                     <span class="mobile-card-value">
-                                        <strong class="text-danger" th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">₡ 0.00</strong>
+                                        <strong class="text-danger" th:text="${(pago.monedaFactura != null ? pago.monedaFactura.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">CRC 0.00</strong>
                                     </span>
                                 </div>
                             </div>

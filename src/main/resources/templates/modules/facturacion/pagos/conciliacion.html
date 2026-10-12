@@ -101,7 +101,7 @@
                                             <span class="badge bg-secondary" th:text="${pago.metodoPagoDescripcion}">EFECTIVO</span>
                                         </td>
                                         <td class="text-end">
-                                            <span class="fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</span>
+                                            <span class="fw-bold" th:text="${(pago.moneda != null ? pago.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.monto, 1, 2)}">CRC 0.00</span>
                                         </td>
                                         <td class="text-center" th:text="${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}">01/01/2025 10:00</td>
                                         <td class="text-center">
@@ -168,7 +168,7 @@
                                     <div class="mobile-card-row">
                                         <span class="mobile-card-label">Monto</span>
                                         <span class="mobile-card-value">
-                                            <strong th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</strong>
+                                            <strong th:text="${(pago.moneda != null ? pago.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.monto, 1, 2)}">CRC 0.00</strong>
                                         </span>
                                     </div>
                                     <div class="mobile-card-row">

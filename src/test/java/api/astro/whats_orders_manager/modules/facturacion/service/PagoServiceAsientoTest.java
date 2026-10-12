@@ -20,6 +20,9 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.PagoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.repository.TipoCambioRepository;
+import api.astro.whats_orders_manager.modules.facturacion.enums.FuenteTipoCambio;
+import api.astro.whats_orders_manager.modules.facturacion.model.TipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.service.impl.PagoServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +36,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -59,6 +63,8 @@ import static org.mockito.Mockito.when;
  *   confirmarPago: PENDIENTE/RECHAZADO/ANULADO → CONFIRMADO genera asiento; CONFIRMADO es no-op.
  *   conciliarPago: CONFIRMADO → CONCILIADO no genera asiento; PENDIENTE → CONCILIADO lo genera si no existe.
  *   anularPago / rechazarPago: revierten el asiento de cobro vigente (si existe).
+ *
+ * T-007 (ADR-011): moneda, tipo de cambio y monto aplicado del pago; diferencial cambiario.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -77,6 +83,7 @@ class PagoServiceAsientoTest {
     @Mock private DetalleAsientoRepository detalleRepository;
     @Mock private CuentaContableRepository cuentaRepository;
     @Mock private ParametroContableRepository parametroContableRepository;
+    @Mock private TipoCambioRepository tipoCambioRepository;
 
     private PagoServiceImpl service;
     private final Map<String, CuentaContable> cuentas = new HashMap<>();
@@ -94,10 +101,12 @@ class PagoServiceAsientoTest {
         ReflectionTestUtils.setField(service, "pagoMapper", pagoMapper);
         ReflectionTestUtils.setField(service, "facturaMapper", facturaMapper);
         ReflectionTestUtils.setField(service, "asientoContableService", asientoService);
+        ReflectionTestUtils.setField(service, "tipoCambioService", new TipoCambioService(tipoCambioRepository));
 
         long id = 1;
         for (String clave : List.of("VENTA_CXC_CLIENTES", "COBRO_ANTICIPOS_CLIENTES",
-                "COBRO_CAJA_EFECTIVO", "COBRO_CAJA_TRANSFERENCIA")) {
+                "COBRO_CAJA_EFECTIVO", "COBRO_CAJA_TRANSFERENCIA",
+                "DIFERENCIAL_CAMBIARIO_INGRESO", "DIFERENCIAL_CAMBIARIO_GASTO")) {
             CuentaContable c = new CuentaContable();
             c.setIdCuenta(id++);
             c.setCodigo(clave);
@@ -285,6 +294,145 @@ class PagoServiceAsientoTest {
     }
 
     // =========================================================================
+    // T-007 — multimoneda (ADR-011)
+    // =========================================================================
+
+    @Test
+    @DisplayName("criterio 5: pago 51000 CRC de factura USD (TC 500) con tasa del día 510 → montoAplicado 100 USD, saldo baja 100 USD, diferencial 1000")
+    void pagoCrcDeFacturaUsd_aplica100UsdYDiferencial() {
+        Factura factura = facturaUsd(8, "500");
+        when(facturaRepository.findById(8)).thenReturn(Optional.of(factura));
+        tasaDelDia(MonedaFE.USD, "510");
+        Pago pago = nuevoPago("51000.00", MetodoPago.EFECTIVO, null, factura);
+        pago.setMoneda(MonedaFE.CRC);
+
+        Pago registrado = service.registrarPago(pago);
+
+        assertThat(registrado.getMoneda()).isEqualTo(MonedaFE.CRC);
+        assertThat(registrado.getTipoCambio()).isEqualByComparingTo("510");
+        assertThat(registrado.getMontoAplicado()).isEqualByComparingTo("100.00");
+        factura.getPagos().add(registrado);
+        assertThat(factura.calcularSaldoPendiente()).isEqualByComparingTo("13.00");
+
+        AsientoContable asiento = ultimoAsiento();
+        assertThat(monto(asiento, "COBRO_CAJA_EFECTIVO", true)).isEqualByComparingTo("51000.00");
+        assertThat(monto(asiento, "VENTA_CXC_CLIENTES", false)).isEqualByComparingTo("50000.00");
+        assertThat(monto(asiento, "DIFERENCIAL_CAMBIARIO_INGRESO", false)).isEqualByComparingTo("1000.00");
+        assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+    }
+
+    @Test
+    @DisplayName("pago sin moneda de una factura USD toma USD y la tasa de venta del día; el usuario puede indicar otra")
+    void monedaPorDefectoYTipoCambioEditable() {
+        Factura factura = facturaUsd(9, "500");
+        when(facturaRepository.findById(9)).thenReturn(Optional.of(factura));
+        tasaDelDia(MonedaFE.USD, "510");
+
+        Pago porDefecto = service.registrarPago(nuevoPago("10.00", MetodoPago.EFECTIVO, null, factura));
+        assertThat(porDefecto.getMoneda()).isEqualTo(MonedaFE.USD);
+        assertThat(porDefecto.getTipoCambio()).isEqualByComparingTo("510");
+        assertThat(porDefecto.getMontoAplicado()).isEqualByComparingTo("10.00");
+
+        Pago editado = nuevoPago("10.00", MetodoPago.EFECTIVO, null, factura);
+        editado.setTipoCambio(new BigDecimal("490"));
+        editado.setIdPago(null);
+        assertThat(service.registrarPago(editado).getTipoCambio()).isEqualByComparingTo("490");
+    }
+
+    @Test
+    @DisplayName("el saldo pendiente se valida con el monto aplicado (en la moneda de la factura)")
+    void saldoSeValidaConMontoAplicado() {
+        Factura factura = facturaUsd(10, "500");
+        when(facturaRepository.findById(10)).thenReturn(Optional.of(factura));
+        tasaDelDia(MonedaFE.USD, "510");
+        // 60000 CRC / 510 = 117.65 USD > 113 USD de saldo
+        Pago pago = nuevoPago("60000.00", MetodoPago.EFECTIVO, null, factura);
+        pago.setMoneda(MonedaFE.CRC);
+
+        assertThatThrownBy(() -> service.registrarPago(pago))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("excede el saldo pendiente");
+        verify(pagoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("criterio 7: adelanto en USD sin factura toma la tasa del día y acredita anticipos en CRC")
+    void adelantoUsd_tasaDelDia() {
+        tasaDelDia(MonedaFE.USD, "505");
+        Pago pago = nuevoPago("100.00", MetodoPago.EFECTIVO, EstadoPago.CONFIRMADO, null);
+        pago.setTipoPago(TipoPago.ADELANTO);
+        pago.setMoneda(MonedaFE.USD);
+
+        Pago registrado = service.registrarPago(pago);
+
+        assertThat(registrado.getMontoAplicado()).isEqualByComparingTo("100.00");
+        AsientoContable asiento = ultimoAsiento();
+        assertThat(monto(asiento, "COBRO_CAJA_EFECTIVO", true)).isEqualByComparingTo("50500.00");
+        assertThat(monto(asiento, "COBRO_ANTICIPOS_CLIENTES", false)).isEqualByComparingTo("50500.00");
+        assertThat(asiento.getDetalles()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("adelanto sin moneda queda en CRC con tipo de cambio 1")
+    void adelantoSinMoneda_crc() {
+        Pago pago = nuevoPago("15000.00", MetodoPago.EFECTIVO, EstadoPago.CONFIRMADO, null);
+        pago.setTipoPago(TipoPago.ADELANTO);
+
+        Pago registrado = service.registrarPago(pago);
+
+        assertThat(registrado.getMoneda()).isEqualTo(MonedaFE.CRC);
+        assertThat(registrado.getTipoCambio()).isEqualByComparingTo("1");
+        assertThat(registrado.getMontoAplicado()).isEqualByComparingTo("15000.00");
+    }
+
+    @Test
+    @DisplayName("criterio 12: pago en USD sobre factura en EUR se rechaza con mensaje claro y no se guarda")
+    void pagoUsdSobreFacturaEur_rechazado() {
+        Factura factura = facturaUsd(11, "580");
+        factura.setMonedaFE(MonedaFE.EUR);
+        when(facturaRepository.findById(11)).thenReturn(Optional.of(factura));
+        Pago pago = nuevoPago("10.00", MetodoPago.EFECTIVO, null, factura);
+        pago.setMoneda(MonedaFE.USD);
+
+        assertThatThrownBy(() -> service.registrarPago(pago))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("USD")
+                .hasMessageContaining("EUR");
+        verify(pagoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("pago en USD sin tasa registrada para su fecha falla con mensaje claro y no se guarda")
+    void pagoUsdSinTasa_falla() {
+        Factura factura = facturaUsd(12, "500");
+        when(facturaRepository.findById(12)).thenReturn(Optional.of(factura));
+        when(tipoCambioRepository.findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(
+                any(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.registrarPago(nuevoPago("10.00", MetodoPago.EFECTIVO, null, factura)))
+                .hasMessageContaining("No hay tipo de cambio de USD");
+        verify(pagoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("criterio 13: si falta DIFERENCIAL_CAMBIARIO_INGRESO la excepción se propaga en la transacción del pago (rollback) y no se guarda asiento")
+    void claveDiferencialFaltante_propagaYNoGuardaAsiento() throws Exception {
+        when(parametroContableRepository.findByClave("DIFERENCIAL_CAMBIARIO_INGRESO")).thenReturn(Optional.empty());
+        Factura factura = facturaUsd(13, "500");
+        when(facturaRepository.findById(13)).thenReturn(Optional.of(factura));
+        tasaDelDia(MonedaFE.USD, "510");
+
+        assertThatThrownBy(() -> service.registrarPago(nuevoPago("100.00", MetodoPago.EFECTIVO, null, factura)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DIFERENCIAL_CAMBIARIO_INGRESO");
+        verify(asientoRepository, never()).save(any());
+        // La factura no se actualiza y registrarPago es transaccional: el pago guardado se revierte
+        verify(facturaRepository, never()).save(any());
+        assertThat(PagoServiceImpl.class.getMethod("registrarPago", Pago.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isTrue();
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
 
@@ -299,6 +447,30 @@ class PagoServiceAsientoTest {
         f.setMonedaFE(MonedaFE.CRC);
         f.setTipoCambio(BigDecimal.ONE);
         return f;
+    }
+
+    private Factura facturaUsd(int id, String tipoCambio) {
+        Factura f = factura(id);
+        f.setSubtotal(new BigDecimal("100.00"));
+        f.setIgv(new BigDecimal("13.00"));
+        f.setTotal(new BigDecimal("113.00"));
+        f.setMonedaFE(MonedaFE.USD);
+        f.setTipoCambio(new BigDecimal(tipoCambio));
+        return f;
+    }
+
+    private void tasaDelDia(MonedaFE moneda, String tasaVenta) {
+        TipoCambio tc = TipoCambio.builder()
+                .monedaOrigen(MonedaFE.CRC)
+                .monedaDestino(moneda)
+                .fecha(LocalDate.now())
+                .tasaCompra(new BigDecimal(tasaVenta))
+                .tasaVenta(new BigDecimal(tasaVenta))
+                .fuente(FuenteTipoCambio.MANUAL)
+                .activo(true)
+                .build();
+        when(tipoCambioRepository.findFirstByMonedaDestinoAndActivoTrueAndFechaLessThanEqualOrderByFechaDescIdDesc(
+                org.mockito.ArgumentMatchers.eq(moneda), any())).thenReturn(Optional.of(tc));
     }
 
     private Pago nuevoPago(String monto, MetodoPago metodo, EstadoPago estado, Factura factura) {

@@ -190,9 +190,10 @@ public class Factura {
             return BigDecimal.ZERO;
         }
         
+        // ADR-011: cada pago se aplica en la moneda de la factura (montoAplicado)
         return pagos.stream()
             .filter(Pago::esValido)
-            .map(Pago::getMonto)
+            .map(Pago::getMontoAplicadoEfectivo)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     

@@ -15,6 +15,7 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
+import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.nomina.model.DetalleNomina;
 import api.astro.whats_orders_manager.modules.nomina.model.Nomina;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
@@ -365,6 +366,11 @@ public class AsientoContableService {
     /** Prefijo de las claves de caja/banco por método de pago: COBRO_CAJA_&lt;MetodoPago&gt;. */
     public static final String PREFIJO_COBRO_CAJA = "COBRO_CAJA_";
 
+    /** Clave de la cuenta de ingreso por diferencial cambiario realizado (ADR-011). */
+    public static final String CLAVE_DIFERENCIAL_CAMBIARIO_INGRESO = "DIFERENCIAL_CAMBIARIO_INGRESO";
+    /** Clave de la cuenta de gasto por diferencial cambiario realizado (ADR-011). */
+    public static final String CLAVE_DIFERENCIAL_CAMBIARIO_GASTO = "DIFERENCIAL_CAMBIARIO_GASTO";
+
     /** Tolerancia de redondeo (en CRC) que se ajusta en la línea de ingresos. */
     private static final BigDecimal TOLERANCIA_REDONDEO = new BigDecimal("0.02");
 
@@ -413,18 +419,22 @@ public class AsientoContableService {
     }
 
     /**
-     * Genera y contabiliza el asiento de cobro de un pago (ADR-008, regla 3).
+     * Genera y contabiliza el asiento de cobro de un pago (ADR-008 regla 3, ADR-011).
      *
      * Estructura (montos en CRC):
-     *   DR COBRO_CAJA_&lt;MetodoPago&gt;                    — monto
-     *   CR VENTA_CXC_CLIENTES (pago con factura)        — monto
-     *   CR COBRO_ANTICIPOS_CLIENTES (adelanto sin factura) — monto
+     *   DR COBRO_CAJA_&lt;MetodoPago&gt;          — monto del pago en CRC al tipo de cambio del pago
+     *   CR VENTA_CXC_CLIENTES (con factura)   — montoAplicado × factura.tipoCambio
+     *   CR COBRO_ANTICIPOS_CLIENTES (adelanto) — monto del pago en CRC (sin diferencial)
+     *   CR DIFERENCIAL_CAMBIARIO_INGRESO      — si caja &gt; CxC
+     *   DR DIFERENCIAL_CAMBIARIO_GASTO        — si caja &lt; CxC
      *
-     * Si la factura está en moneda extranjera se usa factura.tipoCambio (sin diferencial).
+     * Pagos anteriores a ADR-011 (sin moneda/tipoCambio/montoAplicado) se tratan como pagos en la
+     * moneda de la factura al tipo de cambio de la factura (CRC para adelantos): sin diferencial.
      *
      * @param pago Pago origen en estado CONFIRMADO o CONCILIADO
      * @return Asiento contabilizado
-     * @throws IllegalStateException si el pago no es válido, falta una clave contable o no cuadra
+     * @throws IllegalStateException si el pago no es válido, falta una clave contable
+     *                               (incluidas DIFERENCIAL_CAMBIARIO_* cuando hay diferencia) o no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoPago(Pago pago) {
@@ -453,9 +463,23 @@ public class AsientoContableService {
             ? resolverCuenta(CLAVE_VENTA_CXC_CLIENTES)
             : resolverCuenta(CLAVE_COBRO_ANTICIPOS_CLIENTES);
 
-        // Adelantos sin factura se registran por su monto nominal (se asume CRC)
-        BigDecimal tipoCambio = factura != null ? resolverTipoCambio(factura) : BigDecimal.ONE;
-        BigDecimal montoCrc = convertirACrc(pago.getMonto(), tipoCambio);
+        // ADR-011: moneda y tipo de cambio propios del pago
+        MonedaFE monedaDocumento = factura != null ? ConversionMoneda.oCrc(factura.getMonedaFE()) : null;
+        MonedaFE monedaPago = pago.getMoneda() != null ? pago.getMoneda()
+            : (monedaDocumento != null ? monedaDocumento : MonedaFE.CRC);
+        BigDecimal tipoCambioPago = tipoCambioDelPago(pago, monedaPago, monedaDocumento, factura);
+        BigDecimal montoCajaCrc = ConversionMoneda.montoEnCrc(pago.getMonto(), monedaPago, tipoCambioPago);
+
+        BigDecimal creditoCrc;
+        if (factura != null) {
+            BigDecimal montoAplicado = pago.getMontoAplicado() != null
+                ? pago.getMontoAplicado()
+                : ConversionMoneda.montoAplicado(pago.getMonto(), monedaPago, monedaDocumento, tipoCambioPago);
+            creditoCrc = convertirACrc(montoAplicado, resolverTipoCambio(factura));
+        } else {
+            // Adelanto sin factura: se acredita al tipo de cambio del pago, sin diferencial
+            creditoCrc = montoCajaCrc;
+        }
 
         String nombreCliente = nombreCliente(pago.getCliente() != null ? pago.getCliente()
             : (factura != null ? factura.getCliente() : null));
@@ -473,20 +497,16 @@ public class AsientoContableService {
         List<DetalleAsiento> detalles = new ArrayList<>();
 
         // Débito: Caja/Banco según método de pago
-        DetalleAsiento debitoCaja = new DetalleAsiento();
-        debitoCaja.setCuenta(cuentaCaja);
-        debitoCaja.setDebe(montoCrc);
-        debitoCaja.setDescripcion("Recibo: " + pago.getMetodoPago().getDescripcion());
-        debitoCaja.setAsiento(asiento);
-        detalles.add(debitoCaja);
+        detalles.add(linea(asiento, cuentaCaja, montoCajaCrc, null,
+            "Recibo: " + pago.getMetodoPago().getDescripcion()));
 
         // Crédito: CxC clientes (con factura) o anticipos de clientes (adelanto)
-        DetalleAsiento credito = new DetalleAsiento();
-        credito.setCuenta(cuentaCredito);
-        credito.setHaber(montoCrc);
-        credito.setDescripcion(factura != null ? "Aplicado a " + origen : "Anticipo de cliente");
-        credito.setAsiento(asiento);
-        detalles.add(credito);
+        detalles.add(linea(asiento, cuentaCredito, null, creditoCrc,
+            factura != null ? "Aplicado a " + origen : "Anticipo de cliente"));
+
+        // Diferencial cambiario realizado: lo recibido en CRC vs lo que se rebaja de la CxC
+        agregarDiferencialCambiario(asiento, detalles, montoCajaCrc.subtract(creditoCrc),
+            "Cobro " + pago.getNumeroPago());
 
         asiento.setDetalles(detalles);
 
@@ -498,6 +518,65 @@ public class AsientoContableService {
 
         log.info("Asiento de pago generado y contabilizado: {}", guardado.getNumero());
         return guardado;
+    }
+
+    /**
+     * Tipo de cambio del pago (ADR-011). Si el pago no lo trae (pagos anteriores a ADR-011) se usa
+     * el de la factura, o 1 para adelantos en CRC.
+     * @throws IllegalStateException si hay moneda extranjera involucrada y no hay tipo de cambio válido
+     */
+    private BigDecimal tipoCambioDelPago(Pago pago, MonedaFE monedaPago, MonedaFE monedaDocumento, Factura factura) {
+        MonedaFE extranjera;
+        try {
+            extranjera = ConversionMoneda.monedaExtranjera(monedaPago,
+                monedaDocumento != null ? monedaDocumento : monedaPago);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException(e.getMessage(), e);
+        }
+        if (extranjera == MonedaFE.CRC) {
+            return BigDecimal.ONE;
+        }
+        BigDecimal tipoCambio = pago.getTipoCambio();
+        if (tipoCambio == null && factura != null) {
+            tipoCambio = resolverTipoCambio(factura);
+        }
+        if (tipoCambio == null || tipoCambio.signum() <= 0) {
+            throw new IllegalStateException(String.format(
+                "El pago %s involucra %s y requiere un tipo de cambio mayor a 0 para contabilizarse en CRC",
+                pago.getNumeroPago(), extranjera.getCodigo()));
+        }
+        return tipoCambio;
+    }
+
+    /**
+     * Agrega la línea de diferencial cambiario realizado (ADR-011).
+     * @param ganancia &gt; 0 → CR DIFERENCIAL_CAMBIARIO_INGRESO; &lt; 0 → DR DIFERENCIAL_CAMBIARIO_GASTO; 0 → nada
+     * @throws IllegalStateException si la clave contable requerida no está configurada
+     */
+    private void agregarDiferencialCambiario(AsientoContable asiento, List<DetalleAsiento> detalles,
+                                             BigDecimal ganancia, String referencia) {
+        if (ganancia.signum() > 0) {
+            detalles.add(linea(asiento, resolverCuenta(CLAVE_DIFERENCIAL_CAMBIARIO_INGRESO), null, ganancia,
+                "Diferencial cambiario (ingreso) — " + referencia));
+        } else if (ganancia.signum() < 0) {
+            detalles.add(linea(asiento, resolverCuenta(CLAVE_DIFERENCIAL_CAMBIARIO_GASTO), ganancia.negate(), null,
+                "Diferencial cambiario (gasto) — " + referencia));
+        }
+    }
+
+    private static DetalleAsiento linea(AsientoContable asiento, CuentaContable cuenta,
+                                        BigDecimal debe, BigDecimal haber, String descripcion) {
+        DetalleAsiento detalle = new DetalleAsiento();
+        detalle.setCuenta(cuenta);
+        if (debe != null) {
+            detalle.setDebe(debe);
+        }
+        if (haber != null) {
+            detalle.setHaber(haber);
+        }
+        detalle.setDescripcion(truncar(descripcion, 500));
+        detalle.setAsiento(asiento);
+        return detalle;
     }
 
     /**
@@ -822,19 +901,24 @@ public class AsientoContableService {
     // ==================== CPP / SUPPLIER PAYMENT GENERATORS ====================
 
     /**
-     * Generates a balanced purchase journal entry for a CPP created from a
-     * received purchase order.
+     * Genera y contabiliza el asiento de compra de una CxP creada desde una orden de compra
+     * recibida (ADR-011: montos en CRC).
      *
-     * Entry structure:
-     *   DR Compras         — oc.subtotal
-     *   DR IVA Crédito     — oc.impuesto (only when > 0)
-     *   CR Cuentas x Pagar — oc.total
+     * Estructura:
+     *   DR CPP_CUENTA_COMPRAS      — oc.subtotal × tc (absorbe el ajuste de redondeo)
+     *   DR CPP_IVA_CREDITO_FISCAL  — oc.impuesto × tc (solo si &gt; 0)
+     *   CR CPP_CUENTA_POR_PAGAR    — oc.total × tc
      *
-     * No-op (returns null) when {@code cpp.getOrdenCompra()} is null, because
-     * manually created CPPs carry no subtotal/IVA breakdown.
+     * tc = cpp.tipoCambio (heredado de la OC); 1 si la CxP está en CRC. Cada línea se convierte con
+     * HALF_UP a 2 decimales y la diferencia de redondeo (hasta 0,02) se lleva a la línea de compras,
+     * con el mismo criterio que el asiento de venta.
      *
-     * @param cpp the newly saved CuentaPorPagar
-     * @return the posted AsientoContable, or null if skipped
+     * No-op (devuelve null) si {@code cpp.getOrdenCompra()} es null: las CxP manuales no traen
+     * desglose de subtotal/IVA.
+     *
+     * @param cpp la CuentaPorPagar recién guardada
+     * @return el asiento contabilizado, o null si se omite
+     * @throws IllegalStateException si falta una clave contable, el tipo de cambio o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoCompra(CuentaPorPagar cpp) {
@@ -844,57 +928,53 @@ public class AsientoContableService {
         }
 
         var oc = cpp.getOrdenCompra();
+        MonedaFE moneda = ConversionMoneda.oCrc(cpp.getMoneda() != null ? cpp.getMoneda() : oc.getMoneda());
+        BigDecimal tipoCambio = tipoCambioDocumento(moneda,
+            cpp.getTipoCambio() != null ? cpp.getTipoCambio() : oc.getTipoCambio(),
+            "La cuenta por pagar " + cpp.getNumero());
+
+        BigDecimal subtotalCrc = convertirACrc(oc.getSubtotal(), tipoCambio);
+        BigDecimal impuestoCrc = convertirACrc(oc.getImpuesto(), tipoCambio);
+        BigDecimal totalCrc = convertirACrc(oc.getTotal(), tipoCambio);
+
+        // Ajuste del centavo: la diferencia de redondeo se lleva a la línea de compras
+        BigDecimal diferencia = totalCrc.subtract(subtotalCrc).subtract(impuestoCrc);
+        if (diferencia.signum() != 0 && diferencia.abs().compareTo(TOLERANCIA_REDONDEO) <= 0) {
+            subtotalCrc = subtotalCrc.add(diferencia);
+        }
 
         CuentaContable cuentaCompras   = resolverCuenta("CPP_CUENTA_COMPRAS");
         CuentaContable cuentaPorPagar  = resolverCuenta("CPP_CUENTA_POR_PAGAR");
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(java.time.LocalDate.now());
-        asiento.setConcepto("Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre());
+        // La fecha del asiento es la del documento, coherente con el tipo de cambio con que se convierte
+        asiento.setFecha(fechaAsientoCompra(cpp));
+        asiento.setConcepto(truncar("Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre(), 500));
         asiento.setTipo(TipoAsiento.AUTOMATICO_COMPRA);
         asiento.setEstado(EstadoAsiento.BORRADOR);
         asiento.setCuentaPorPagar(cpp);
 
-        java.util.List<DetalleAsiento> detalles = new java.util.ArrayList<>();
+        List<DetalleAsiento> detalles = new ArrayList<>();
 
-        // DR Compras (subtotal)
-        DetalleAsiento drCompras = new DetalleAsiento();
-        drCompras.setCuenta(cuentaCompras);
-        drCompras.setDebe(oc.getSubtotal());
-        drCompras.setHaber(java.math.BigDecimal.ZERO);
-        drCompras.setDescripcion("Compras — OC " + oc.getNumero());
-        drCompras.setAsiento(asiento);
-        detalles.add(drCompras);
+        // DR Compras (subtotal + ajuste de redondeo)
+        if (subtotalCrc.signum() > 0) {
+            detalles.add(linea(asiento, cuentaCompras, subtotalCrc, null, "Compras — OC " + oc.getNumero()));
+        }
 
-        // DR IVA Crédito Fiscal (when applicable)
-        if (oc.getImpuesto() != null && oc.getImpuesto().compareTo(java.math.BigDecimal.ZERO) > 0) {
+        // DR IVA Crédito Fiscal (cuando aplica)
+        if (impuestoCrc.signum() > 0) {
             CuentaContable cuentaIva = resolverCuenta("CPP_IVA_CREDITO_FISCAL");
-            DetalleAsiento drIva = new DetalleAsiento();
-            drIva.setCuenta(cuentaIva);
-            drIva.setDebe(oc.getImpuesto());
-            drIva.setHaber(java.math.BigDecimal.ZERO);
-            drIva.setDescripcion("IVA Crédito Fiscal — OC " + oc.getNumero());
-            drIva.setAsiento(asiento);
-            detalles.add(drIva);
+            detalles.add(linea(asiento, cuentaIva, impuestoCrc, null, "IVA Crédito Fiscal — OC " + oc.getNumero()));
         }
 
         // CR Cuentas por Pagar (total)
-        DetalleAsiento crCxP = new DetalleAsiento();
-        crCxP.setCuenta(cuentaPorPagar);
-        crCxP.setDebe(java.math.BigDecimal.ZERO);
-        crCxP.setHaber(oc.getTotal());
-        crCxP.setDescripcion("Cuentas por Pagar — " + cpp.getProveedor().getNombre());
-        crCxP.setAsiento(asiento);
-        detalles.add(crCxP);
+        detalles.add(linea(asiento, cuentaPorPagar, null, totalCrc,
+            "Cuentas por Pagar — " + cpp.getProveedor().getNombre()));
 
         asiento.setDetalles(detalles);
 
-        if (!asiento.estaCuadrado()) {
-            throw new IllegalStateException(
-                String.format("Purchase journal entry is not balanced — debe: %s, haber: %s",
-                    asiento.getTotalDebe(), asiento.getTotalHaber()));
-        }
+        validarCuadre(asiento, "compra");
 
         AsientoContable guardado = asientoRepository.save(asiento);
         guardado.contabilizar();
@@ -905,14 +985,34 @@ public class AsientoContableService {
     }
 
     /**
-     * Generates a balanced supplier-payment journal entry.
+     * Fecha del asiento de compra: la de emisión de la CxP; si falta, la de recepción de la OC;
+     * como último recurso, hoy.
+     */
+    private LocalDate fechaAsientoCompra(CuentaPorPagar cpp) {
+        if (cpp.getFechaEmision() != null) {
+            return cpp.getFechaEmision();
+        }
+        if (cpp.getOrdenCompra() != null && cpp.getOrdenCompra().getFechaRecepcion() != null) {
+            return cpp.getOrdenCompra().getFechaRecepcion();
+        }
+        return LocalDate.now();
+    }
+
+    /**
+     * Genera y contabiliza el asiento de un pago a proveedor (ADR-011: montos en CRC).
      *
-     * Entry structure:
-     *   DR Cuentas x Pagar — pago.monto
-     *   CR Banco/Caja       — pago.monto (account resolved from MetodoPagoProveedor)
+     * Estructura:
+     *   DR CPP_CUENTA_POR_PAGAR          — montoAplicado × cpp.tipoCambio
+     *   CR CPP_BANCO_&lt;método&gt;           — monto del pago en CRC al tipo de cambio del pago
+     *   DR DIFERENCIAL_CAMBIARIO_GASTO   — si se pagaron más colones de los registrados en la CxP
+     *   CR DIFERENCIAL_CAMBIARIO_INGRESO — si se pagaron menos colones
      *
-     * @param pago the newly saved PagoProveedor
-     * @return the posted AsientoContable
+     * Pagos anteriores a ADR-011 (sin moneda/tipoCambio/montoAplicado) se tratan como pagos en la
+     * moneda de la CxP a su tipo de cambio: sin diferencial.
+     *
+     * @param pago el PagoProveedor recién guardado
+     * @return el asiento contabilizado
+     * @throws IllegalStateException si falta una clave contable o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoPagoProveedor(PagoProveedor pago) {
@@ -927,41 +1027,53 @@ public class AsientoContableService {
         CuentaContable cuentaPorPagar = resolverCuenta("CPP_CUENTA_POR_PAGAR");
         CuentaContable cuentaBanco    = resolverCuenta(bancoKey);
 
+        CuentaPorPagar cpp = pago.getCuentaPorPagar();
+        MonedaFE monedaCuenta = ConversionMoneda.oCrc(cpp != null ? cpp.getMoneda() : null);
+        BigDecimal tipoCambioCuenta = tipoCambioDocumento(monedaCuenta, cpp != null ? cpp.getTipoCambio() : null,
+            "La cuenta por pagar " + (cpp != null ? cpp.getNumero() : ""));
+        MonedaFE monedaPago = pago.getMoneda() != null ? pago.getMoneda() : monedaCuenta;
+
+        MonedaFE extranjera;
+        try {
+            extranjera = ConversionMoneda.monedaExtranjera(monedaPago, monedaCuenta);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException(e.getMessage(), e);
+        }
+        BigDecimal tipoCambioPago = extranjera == MonedaFE.CRC ? BigDecimal.ONE
+            : (pago.getTipoCambio() != null ? pago.getTipoCambio() : tipoCambioCuenta);
+        if (tipoCambioPago == null || tipoCambioPago.signum() <= 0) {
+            throw new IllegalStateException("El pago " + pago.getNumero()
+                + " requiere un tipo de cambio mayor a 0 para contabilizarse en CRC");
+        }
+
+        BigDecimal montoAplicado = pago.getMontoAplicado() != null
+            ? pago.getMontoAplicado()
+            : ConversionMoneda.montoAplicado(pago.getMonto(), monedaPago, monedaCuenta, tipoCambioPago);
+        BigDecimal cxpCrc = convertirACrc(montoAplicado, tipoCambioCuenta);
+        BigDecimal bancoCrc = ConversionMoneda.montoEnCrc(pago.getMonto(), monedaPago, tipoCambioPago);
+
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(pago.getFecha() != null ? pago.getFecha() : java.time.LocalDate.now());
+        asiento.setFecha(pago.getFecha() != null ? pago.getFecha() : LocalDate.now());
         asiento.setConcepto("Pago proveedor " + pago.getNumero() + " — " + pago.getMetodoPago());
         asiento.setTipo(TipoAsiento.AUTOMATICO_GASTO);
         asiento.setEstado(EstadoAsiento.BORRADOR);
         asiento.setPagoProveedor(pago);
 
-        java.util.List<DetalleAsiento> detalles = new java.util.ArrayList<>();
+        List<DetalleAsiento> detalles = new ArrayList<>();
 
-        // DR Cuentas por Pagar
-        DetalleAsiento drCxP = new DetalleAsiento();
-        drCxP.setCuenta(cuentaPorPagar);
-        drCxP.setDebe(pago.getMonto());
-        drCxP.setHaber(java.math.BigDecimal.ZERO);
-        drCxP.setDescripcion("Pago a proveedor — " + pago.getNumero());
-        drCxP.setAsiento(asiento);
-        detalles.add(drCxP);
+        // DR Cuentas por Pagar (lo que se rebaja de la CxP, a su tipo de cambio)
+        detalles.add(linea(asiento, cuentaPorPagar, cxpCrc, null, "Pago a proveedor — " + pago.getNumero()));
 
-        // CR Banco/Caja
-        DetalleAsiento crBanco = new DetalleAsiento();
-        crBanco.setCuenta(cuentaBanco);
-        crBanco.setDebe(java.math.BigDecimal.ZERO);
-        crBanco.setHaber(pago.getMonto());
-        crBanco.setDescripcion(pago.getMetodoPago() + " — " + pago.getNumero());
-        crBanco.setAsiento(asiento);
-        detalles.add(crBanco);
+        // CR Banco/Caja (lo que salió en CRC, al tipo de cambio del pago)
+        detalles.add(linea(asiento, cuentaBanco, null, bancoCrc, pago.getMetodoPago() + " — " + pago.getNumero()));
+
+        // Diferencial cambiario: ganancia si se pagaron menos colones de los registrados
+        agregarDiferencialCambiario(asiento, detalles, cxpCrc.subtract(bancoCrc), "Pago proveedor " + pago.getNumero());
 
         asiento.setDetalles(detalles);
 
-        if (!asiento.estaCuadrado()) {
-            throw new IllegalStateException(
-                String.format("Supplier payment journal entry is not balanced — debe: %s, haber: %s",
-                    asiento.getTotalDebe(), asiento.getTotalHaber()));
-        }
+        validarCuadre(asiento, "pago a proveedor");
 
         AsientoContable guardado = asientoRepository.save(asiento);
         guardado.contabilizar();
@@ -969,6 +1081,40 @@ public class AsientoContableService {
 
         log.info("Supplier payment journal entry {} posted for pago {}", guardado.getNumero(), pago.getNumero());
         return guardado;
+    }
+
+    /**
+     * Revierte los asientos vigentes de un pago a proveedor (ADR-008 regla 4, ADR-011).
+     * @param pago   Pago a proveedor origen
+     * @param motivo Motivo de la reversión
+     * @return Asientos de reversión generados (vacío si el pago no estaba contabilizado)
+     */
+    @Transactional
+    public List<AsientoContable> revertirAsientoPagoProveedor(PagoProveedor pago, String motivo) {
+        List<AsientoContable> reversiones = new ArrayList<>();
+        if (pago.getId() == null) {
+            return reversiones;
+        }
+        for (AsientoContable vigente : asientoRepository.findAsientosPagoProveedorVigentes(pago.getId())) {
+            reversiones.add(generarAsientoReversion(vigente, motivo));
+        }
+        return reversiones;
+    }
+
+    /**
+     * Tipo de cambio de un documento (CxP/OC) a CRC: 1 si está en CRC; el indicado en otro caso.
+     * @throws IllegalStateException si la moneda es extranjera y el tipo de cambio es nulo o &lt;= 0
+     */
+    private static BigDecimal tipoCambioDocumento(MonedaFE moneda, BigDecimal tipoCambio, String documento) {
+        if (moneda == MonedaFE.CRC) {
+            return BigDecimal.ONE;
+        }
+        if (tipoCambio == null || tipoCambio.signum() <= 0) {
+            throw new IllegalStateException(String.format(
+                "%s está en %s y requiere un tipo de cambio mayor a 0 para contabilizarse en CRC",
+                documento, moneda.getCodigo()));
+        }
+        return tipoCambio;
     }
 
     /**

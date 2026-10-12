@@ -144,13 +144,15 @@ public class FacturaMapper {
      * Converts a Factura entity to a FacturaPendienteDTO projection.
      *
      * @param f Factura entity
-     * @return DTO with the four pending-balance fields, or null if the entity is null
+     * @return DTO with the pending-balance fields and currency, or null if the entity is null
      */
     public FacturaPendienteDTO toPendingDTO(Factura f) {
         if (f == null) return null;
         return new FacturaPendienteDTO(
             f.getIdFactura(), f.getNumeroFactura(),
-            f.getTotal(), f.calcularSaldoPendiente());
+            f.getTotal(), f.calcularSaldoPendiente(),
+            f.getMonedaFE() != null ? f.getMonedaFE().name() : "CRC",
+            f.getTipoCambio());
     }
 
     /**
