@@ -110,6 +110,23 @@ facturacion:
       url: ${HACIENDA_WEBHOOK_URL:https://tu-dominio.com/api/hacienda/callback}
 
 # ========================================
+# TIPO DE CAMBIO - SINCRONIZACIÓN DIARIA (T-008)
+# ========================================
+tipo-cambio:
+  sync:
+    # Job diario que guarda el tipo de cambio del día con fuente API_EXTERNA
+    enabled: ${TIPO_CAMBIO_SYNC_ENABLED:true}
+    # Todos los días a las 06:15 (hora de Costa Rica)
+    cron: "${TIPO_CAMBIO_SYNC_CRON:0 15 6 * * *}"
+    zone: ${TIPO_CAMBIO_SYNC_ZONE:America/Costa_Rica}
+    # Monedas separadas por coma. EUR usa /indicadores/tc/euro ({fecha, dolares, colones}; fecha de la última publicación).
+    monedas: ${TIPO_CAMBIO_SYNC_MONEDAS:USD}
+  hacienda:
+    # API pública sin credenciales: {url-base}/dolar y {url-base}/euro
+    url-base: ${TIPO_CAMBIO_HACIENDA_URL:https://api.hacienda.go.cr/indicadores/tc}
+    timeout-segundos: ${TIPO_CAMBIO_HACIENDA_TIMEOUT:10}
+
+# ========================================
 # RESILIENCE4J - CIRCUIT BREAKER Y RETRY
 # ========================================
 resilience4j:

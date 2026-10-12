@@ -1,6 +1,9 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
+import api.astro.whats_orders_manager.modules.facturacion.dto.TasaDelDia;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
+import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoSincronizacionTipoCambio;
+import api.astro.whats_orders_manager.modules.facturacion.enums.FuenteTipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.exception.TipoCambioNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.model.TipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.repository.TipoCambioRepository;
@@ -20,6 +23,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class TipoCambioService {
+
+    /** Valor de creadoPor de las tasas registradas por la sincronización automática (T-008). */
+    public static final String CREADO_POR_SINCRONIZACION = "SINCRONIZACION";
 
     private final TipoCambioRepository repo;
 
@@ -82,6 +88,54 @@ public class TipoCambioService {
         repo.deactivateExisting(tipoCambio.getFecha(), tipoCambio.getMonedaDestino());
         tipoCambio.setActivo(true);
         return repo.save(tipoCambio);
+    }
+
+    /**
+     * Guarda la tasa obtenida de un proveedor automático (T-008), en la convención de filas de
+     * T-007: moneda_origen = CRC, moneda_destino = moneda extranjera, fecha = la del proveedor.
+     *
+     * <ul>
+     *   <li>Sin tasa activa para ese día y moneda → crea una fila activa con la fuente del proveedor.</li>
+     *   <li>Tasa activa de otra fuente (MANUAL, o BCCR para la API) → se conserva intacta.</li>
+     *   <li>Tasa activa de la misma fuente → se actualiza solo si cambió compra o venta.</li>
+     * </ul>
+     */
+    public EstadoSincronizacionTipoCambio registrarDesdeProveedor(MonedaFE moneda, TasaDelDia tasa,
+                                                                  FuenteTipoCambio fuente) {
+        Optional<TipoCambio> existente = repo.findByFechaAndMonedaDestinoAndActivoTrue(tasa.fecha(), moneda);
+        if (existente.isPresent()) {
+            TipoCambio actual = existente.get();
+            if (actual.getFuente() != fuente) {
+                log.info("Se conserva el tipo de cambio {} activo de {} para {} (id={}); no se reemplaza con {}",
+                        actual.getFuente(), moneda, tasa.fecha(), actual.getId(), fuente);
+                return EstadoSincronizacionTipoCambio.CONSERVADO;
+            }
+            if (actual.getTasaCompra().compareTo(tasa.compra()) == 0
+                    && actual.getTasaVenta().compareTo(tasa.venta()) == 0) {
+                log.debug("Tipo de cambio {} de {} para {} sin cambios", fuente, moneda, tasa.fecha());
+                return EstadoSincronizacionTipoCambio.SIN_CAMBIOS;
+            }
+            log.info("Actualizando tipo de cambio {} de {} para {}: compra {} → {}, venta {} → {}",
+                    fuente, moneda, tasa.fecha(), actual.getTasaCompra(), tasa.compra(),
+                    actual.getTasaVenta(), tasa.venta());
+            actual.setTasaCompra(tasa.compra());
+            actual.setTasaVenta(tasa.venta());
+            repo.save(actual);
+            return EstadoSincronizacionTipoCambio.ACTUALIZADO;
+        }
+        log.info("Registrando tipo de cambio {} de {} para {}: compra {}, venta {}",
+                fuente, moneda, tasa.fecha(), tasa.compra(), tasa.venta());
+        repo.save(TipoCambio.builder()
+                .monedaOrigen(MonedaFE.CRC)
+                .monedaDestino(moneda)
+                .fecha(tasa.fecha())
+                .tasaCompra(tasa.compra())
+                .tasaVenta(tasa.venta())
+                .fuente(fuente)
+                .activo(true)
+                .creadoPor(CREADO_POR_SINCRONIZACION)
+                .build());
+        return EstadoSincronizacionTipoCambio.CREADO;
     }
 
     /** Returns the last 30 entries for a currency ordered most-recent first. */

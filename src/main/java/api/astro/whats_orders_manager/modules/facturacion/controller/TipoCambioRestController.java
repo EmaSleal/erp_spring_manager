@@ -1,11 +1,13 @@
 package api.astro.whats_orders_manager.modules.facturacion.controller;
 
+import api.astro.whats_orders_manager.modules.facturacion.dto.ResultadoSincronizacionTipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.dto.TipoCambioDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.FuenteTipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.exception.TipoCambioNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.model.TipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioSyncService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ import java.util.Map;
 public class TipoCambioRestController {
 
     private final TipoCambioService tipoCambioService;
+    private final TipoCambioSyncService tipoCambioSyncService;
 
     @GetMapping("/actual")
     @PreAuthorize("isAuthenticated()")
@@ -76,6 +79,18 @@ public class TipoCambioRestController {
             log.error("Error registering exchange rate: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * Sincronización manual con el proveedor automático (T-008): mismo proceso que el job diario.
+     * Solo administradores (igual que el registro manual). Devuelve el resultado por moneda;
+     * un fallo del proveedor se informa con estado ERROR, sin escribir nada.
+     */
+    @PostMapping("/sincronizar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ResultadoSincronizacionTipoCambio>> sincronizar() {
+        log.info("Sincronización manual del tipo de cambio solicitada");
+        return ResponseEntity.ok(tipoCambioSyncService.sincronizar());
     }
 
     @GetMapping("/historial")
