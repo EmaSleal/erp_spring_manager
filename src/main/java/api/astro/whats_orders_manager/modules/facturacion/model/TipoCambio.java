@@ -14,9 +14,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
     name = "tipos_cambio",
+    // V26: a lo sumo una tasa ACTIVA por fecha y par de monedas; las inactivas (historial) no colisionan
+    // porque activo_unico es NULL para ellas.
     uniqueConstraints = @UniqueConstraint(
-        name = "uk_tipos_cambio_fecha_origen_destino",
-        columnNames = {"fecha", "moneda_origen", "moneda_destino"}
+        name = "uk_tipos_cambio_fecha_origen_destino_activo",
+        columnNames = {"fecha", "moneda_origen", "moneda_destino", "activo_unico"}
     )
 )
 @Getter
@@ -57,6 +59,16 @@ public class TipoCambio {
     @Builder.Default
     @Column(nullable = false)
     private boolean activo = true;
+
+    /**
+     * Columna generada por la base (V26): 1 si la fila está activa, NULL si no. Solo existe para la
+     * restricción única; Hibernate nunca la escribe y el valor en memoria no se refresca.
+     */
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "activo_unico", insertable = false, updatable = false,
+            columnDefinition = "tinyint generated always as (case when activo then 1 end)")
+    private Byte activoUnico;
 
     @Column(length = 100)
     private String creadoPor;
