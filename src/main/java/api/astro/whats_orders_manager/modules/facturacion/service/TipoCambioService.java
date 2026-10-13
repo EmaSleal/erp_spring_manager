@@ -82,6 +82,9 @@ public class TipoCambioService {
     /**
      * Saves a new exchange rate. If an active entry already exists for the same
      * fecha + monedaDestino, that entry is deactivated before saving the new one.
+     * The previous row is kept as history (inactive). The unique key of V26 allows a single
+     * ACTIVE row per fecha + par de monedas, so the deactivation must reach the database before
+     * the INSERT: deactivateExisting is a bulk UPDATE executed immediately (not queued until flush).
      */
     public TipoCambio registrar(TipoCambio tipoCambio) {
         log.info("Deactivating any existing active rate for {}/{}", tipoCambio.getFecha(), tipoCambio.getMonedaDestino());
