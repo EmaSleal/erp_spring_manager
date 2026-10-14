@@ -336,6 +336,64 @@ class AsientoNominaIntegrationTest {
         verify(asientoRepository, never()).save(any());
     }
 
+    // =========================================================================
+    // T-011 — entry date = nomina.periodoFin (ADR-014)
+    // =========================================================================
+
+    private static final LocalDate SEPT_INICIO = LocalDate.of(2026, 9, 1);
+    private static final LocalDate SEPT_FIN    = LocalDate.of(2026, 9, 30);
+
+    @Test
+    @DisplayName("T-011 the payroll entry is dated with periodoFin (2026-09-30), not with the system date")
+    void generarAsientoNomina_fechaEsPeriodoFin() {
+        seedAllKeys();
+        when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AsientoContable result = service.generarAsientoNomina(nominaSeptiembre());
+
+        assertThat(result.getFecha()).isEqualTo(SEPT_FIN);
+    }
+
+    @Test
+    @DisplayName("T-011 nomina without periodoFin → IllegalStateException naming the nomina; nothing saved")
+    void generarAsientoNomina_sinPeriodoFin_lanzaIllegalState() {
+        Nomina nomina = nominaSeptiembre();
+        nomina.setPeriodoFin(null);
+
+        assertThatThrownBy(() -> service.generarAsientoNomina(nomina))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NOM-2026-0001")
+                .hasMessageContaining("periodoFin");
+
+        verify(asientoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("T-011 reversing the payroll entry: the reversal is dated today, the original keeps periodoFin")
+    void generarAsientoReversion_deNomina_fechaDeAnulacion() {
+        seedAllKeys();
+        when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
+        AsientoContable original = service.generarAsientoNomina(nominaSeptiembre());
+        original.setIdAsiento(900L);
+
+        LocalDate antes = LocalDate.now();
+        AsientoContable reversion = service.generarAsientoReversion(original, "Nómina anulada");
+        LocalDate despues = LocalDate.now();
+
+        assertThat(reversion.getFecha()).isBetween(antes, despues);
+        assertThat(reversion.getAsientoRevertido()).isSameAs(original);
+        assertThat(original.getFecha()).isEqualTo(SEPT_FIN);
+    }
+
+    /** buildNomina() moved to September 2026 (periodoInicio 2026-09-01, periodoFin 2026-09-30). */
+    private Nomina nominaSeptiembre() {
+        Nomina nomina = buildNomina();
+        nomina.setPeriodoInicio(SEPT_INICIO);
+        nomina.setPeriodoFin(SEPT_FIN);
+        nomina.setFechaPago(SEPT_FIN.plusDays(5));
+        return nomina;
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private static final CuentaContable C_GASTO_SUELDOS = cuenta(10L, "5.1.01.001");
