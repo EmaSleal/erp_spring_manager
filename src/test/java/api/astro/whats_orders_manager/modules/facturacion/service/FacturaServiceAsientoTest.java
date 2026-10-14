@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -90,6 +91,10 @@ class FacturaServiceAsientoTest {
             Factura f = inv.getArgument(0);
             if (f.getIdFactura() == null) {
                 f.setIdFactura(42);
+            }
+            // Simulates AuditingEntityListener: @CreatedDate (fechaEmision) is set on insert
+            if (f.getCreateDate() == null) {
+                f.setCreateDate(LocalDateTime.now());
             }
             return f;
         });
@@ -481,6 +486,8 @@ class FacturaServiceAsientoTest {
     private static Factura existente(int id) {
         Factura f = nuevaFactura("100000.00", "13000.00", "113000.00", MonedaFE.CRC, BigDecimal.ONE);
         f.setIdFactura(id);
+        // Already persisted: its @CreatedDate (fechaEmision) was set on insert
+        f.setCreateDate(LocalDateTime.of(2026, 9, 15, 10, 0));
         return f;
     }
 

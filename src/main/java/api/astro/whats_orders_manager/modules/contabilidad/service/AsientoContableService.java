@@ -387,10 +387,12 @@ public class AsientoContableService {
      * Si la factura no está en CRC, cada línea se multiplica por factura.tipoCambio
      * (HALF_UP, 2 decimales).
      *
+     * Fecha (ADR-014): la de emisión de la factura, nunca la del sistema.
+     *
      * @param factura Factura origen (ya persistida)
      * @return Asiento contabilizado, o null si la factura tiene total cero
-     * @throws IllegalStateException si falta una clave contable, el tipo de cambio es inválido
-     *                               o el asiento no cuadra
+     * @throws IllegalStateException si la factura no tiene fecha de emisión, falta una clave contable,
+     *                               el tipo de cambio es inválido o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoVenta(Factura factura) {
@@ -433,9 +435,11 @@ public class AsientoContableService {
      * Pagos anteriores a ADR-011 (sin moneda/tipoCambio/montoAplicado) se tratan como pagos en la
      * moneda de la factura al tipo de cambio de la factura (CRC para adelantos): sin diferencial.
      *
+     * Fecha (ADR-014): la del pago (pago.fechaPago), nunca la del sistema.
+     *
      * @param pago Pago origen en estado CONFIRMADO o CONCILIADO
      * @return Asiento contabilizado
-     * @throws IllegalStateException si el pago no es válido, falta una clave contable
+     * @throws IllegalStateException si el pago no es válido o no tiene fecha, falta una clave contable
      *                               (incluidas DIFERENCIAL_CAMBIARIO_* cuando hay diferencia) o no cuadra
      */
     @Transactional
@@ -458,6 +462,8 @@ public class AsientoContableService {
         if (pago.getMetodoPago() == null) {
             throw new IllegalStateException("El pago " + pago.getNumeroPago() + " no tiene método de pago");
         }
+        LocalDate fecha = fechaEconomica(pago.getFechaPago() != null ? pago.getFechaPago().toLocalDate() : null,
+            "El pago " + pago.getNumeroPago(), "fechaPago");
 
         Factura factura = pago.getFactura();
         CuentaContable cuentaCaja = resolverCuenta(PREFIJO_COBRO_CAJA + pago.getMetodoPago().name());
@@ -489,7 +495,7 @@ public class AsientoContableService {
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(pago.getFechaPago() != null ? pago.getFechaPago().toLocalDate() : LocalDate.now());
+        asiento.setFecha(fecha);
         asiento.setConcepto(truncar("Cobro " + pago.getNumeroPago() + " - " + pago.getMetodoPago().getDescripcion()
             + " - " + origen + nombreCliente, 500));
         asiento.setTipo(TipoAsiento.AUTOMATICO_PAGO);
@@ -775,6 +781,8 @@ public class AsientoContableService {
         if (total.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
         }
+        LocalDate fecha = fechaEconomica(factura.getFechaEmision(),
+            "La factura " + factura.getNumeroFactura(), "fechaEmision");
         BigDecimal subtotal = valorONulo(factura.getSubtotal());
         BigDecimal impuesto = valorONulo(factura.getImpuesto());
 
@@ -795,7 +803,7 @@ public class AsientoContableService {
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(factura.getFechaEmision() != null ? factura.getFechaEmision() : LocalDate.now());
+        asiento.setFecha(fecha);
         asiento.setConcepto(truncar("Venta según factura " + factura.getNumeroFactura() + nombreCliente, 500));
         asiento.setTipo(TipoAsiento.AUTOMATICO_VENTA);
         asiento.setEstado(EstadoAsiento.BORRADOR);
@@ -918,9 +926,12 @@ public class AsientoContableService {
      * No-op (devuelve null) si {@code cpp.getOrdenCompra()} es null: las CxP manuales no traen
      * desglose de subtotal/IVA.
      *
+     * Fecha (ADR-014): cpp.fechaEmision y, si falta, oc.fechaRecepcion; nunca la del sistema.
+     *
      * @param cpp la CuentaPorPagar recién guardada
      * @return el asiento contabilizado, o null si se omite
-     * @throws IllegalStateException si falta una clave contable, el tipo de cambio o el asiento no cuadra
+     * @throws IllegalStateException si no hay fecha de emisión ni de recepción, falta una clave contable,
+     *                               el tipo de cambio o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoCompra(CuentaPorPagar cpp) {
@@ -928,6 +939,7 @@ public class AsientoContableService {
             log.warn("CPP {} has no OrdenCompra — skipping purchase journal entry", cpp.getNumero());
             return null;
         }
+        LocalDate fecha = fechaAsientoCompra(cpp);
 
         var oc = cpp.getOrdenCompra();
         MonedaFE moneda = ConversionMoneda.oCrc(cpp.getMoneda() != null ? cpp.getMoneda() : oc.getMoneda());
@@ -951,7 +963,7 @@ public class AsientoContableService {
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
         // La fecha del asiento es la del documento, coherente con el tipo de cambio con que se convierte
-        asiento.setFecha(fechaAsientoCompra(cpp));
+        asiento.setFecha(fecha);
         asiento.setConcepto(truncar("Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre(), 500));
         asiento.setTipo(TipoAsiento.AUTOMATICO_COMPRA);
         asiento.setEstado(EstadoAsiento.BORRADOR);
@@ -987,17 +999,17 @@ public class AsientoContableService {
     }
 
     /**
-     * Fecha del asiento de compra: la de emisión de la CxP; si falta, la de recepción de la OC;
-     * como último recurso, hoy.
+     * Fecha del asiento de compra (ADR-014): la de emisión de la CxP; si falta, la de recepción de
+     * la OC. Nunca la fecha del sistema.
+     * @throws IllegalStateException si no hay ninguna de las dos
      */
     private LocalDate fechaAsientoCompra(CuentaPorPagar cpp) {
         if (cpp.getFechaEmision() != null) {
             return cpp.getFechaEmision();
         }
-        if (cpp.getOrdenCompra() != null && cpp.getOrdenCompra().getFechaRecepcion() != null) {
-            return cpp.getOrdenCompra().getFechaRecepcion();
-        }
-        return LocalDate.now();
+        LocalDate fechaRecepcion = cpp.getOrdenCompra() != null ? cpp.getOrdenCompra().getFechaRecepcion() : null;
+        return fechaEconomica(fechaRecepcion, "La cuenta por pagar " + cpp.getNumero(),
+            "fechaEmision ni fechaRecepcion de la orden de compra");
     }
 
     /**
@@ -1012,12 +1024,16 @@ public class AsientoContableService {
      * Pagos anteriores a ADR-011 (sin moneda/tipoCambio/montoAplicado) se tratan como pagos en la
      * moneda de la CxP a su tipo de cambio: sin diferencial.
      *
+     * Fecha (ADR-014): la del pago (pagoProveedor.fecha), nunca la del sistema.
+     *
      * @param pago el PagoProveedor recién guardado
      * @return el asiento contabilizado
-     * @throws IllegalStateException si falta una clave contable o el asiento no cuadra
+     * @throws IllegalStateException si el pago no tiene fecha, falta una clave contable o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoPagoProveedor(PagoProveedor pago) {
+        LocalDate fecha = fechaEconomica(pago.getFecha(), "El pago a proveedor " + pago.getNumero(), "fecha");
+
         String bancoKey = switch (pago.getMetodoPago()) {
             case TRANSFERENCIA -> "CPP_BANCO_TRANSFERENCIA";
             case CHEQUE        -> "CPP_BANCO_CHEQUE";
@@ -1056,7 +1072,7 @@ public class AsientoContableService {
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(pago.getFecha() != null ? pago.getFecha() : LocalDate.now());
+        asiento.setFecha(fecha);
         asiento.setConcepto("Pago proveedor " + pago.getNumero() + " — " + pago.getMetodoPago());
         asiento.setTipo(TipoAsiento.AUTOMATICO_GASTO);
         asiento.setEstado(EstadoAsiento.BORRADOR);
@@ -1141,13 +1157,19 @@ public class AsientoContableService {
      * The six base keys are always required. The solidarista, pensión and ASE keys are resolved
      * only when the corresponding total is greater than zero.
      *
+     * Date (ADR-014): the entry is dated with nomina.periodoFin (accrual date, the same date used to
+     * resolve the CCSS, income tax and ASE rates), never with the system date. nomina.fechaPago is
+     * reserved for the future payroll payment entry.
+     *
      * @param nomina the approved Nomina to post
      * @return the posted AsientoContable
-     * @throws IllegalStateException if a required NOMINA_* key is not configured, or the entry does
-     *         not balance (the message includes Debe, Haber and the difference)
+     * @throws IllegalStateException if the nomina has no periodoFin, a required NOMINA_* key is not
+     *         configured, or the entry does not balance (the message includes Debe, Haber and the difference)
      */
     @Transactional
     public AsientoContable generarAsientoNomina(Nomina nomina) {
+        LocalDate fecha = fechaEconomica(nomina.getPeriodoFin(), "La nómina " + nomina.getNumero(), "periodoFin");
+
         // Resolve the 6 base accounts — fail fast if any missing
         CuentaContable cuentaGastoSueldos  = resolverCuenta("NOMINA_GASTO_SUELDOS");
         CuentaContable cuentaCcssPatronal  = resolverCuenta("NOMINA_CCSS_PATRONAL_POR_PAGAR");
@@ -1176,7 +1198,7 @@ public class AsientoContableService {
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
-        asiento.setFecha(LocalDate.now());
+        asiento.setFecha(fecha);
         asiento.setConcepto("Nómina " + nomina.getNumero() + " — período "
                 + nomina.getPeriodoInicio() + " / " + nomina.getPeriodoFin());
         asiento.setTipo(TipoAsiento.AUTOMATICO_NOMINA);
@@ -1257,6 +1279,25 @@ public class AsientoContableService {
         linea.setDescripcion(descripcion);
         linea.setAsiento(asiento);
         detalles.add(linea);
+    }
+
+    /**
+     * Economic date of the source document for an automatic entry (ADR-014). There is no fallback
+     * to the system date: a document without its date cannot be posted.
+     *
+     * @param fecha     the document's economic date
+     * @param documento description of the document for the message (e.g. "La factura FAC-0001")
+     * @param campo     name of the missing field
+     * @return the date itself
+     * @throws IllegalStateException if the date is null
+     */
+    private static LocalDate fechaEconomica(LocalDate fecha, String documento, String campo) {
+        if (fecha == null) {
+            throw new IllegalStateException(String.format(
+                "%s no tiene %s: el asiento automático se fecha con la fecha económica del documento (ADR-014)",
+                documento, campo));
+        }
+        return fecha;
     }
 
     /**
