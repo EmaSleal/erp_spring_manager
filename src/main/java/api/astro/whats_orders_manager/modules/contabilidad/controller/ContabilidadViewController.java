@@ -3,7 +3,9 @@ package api.astro.whats_orders_manager.modules.contabilidad.controller;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
+import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
 import api.astro.whats_orders_manager.modules.seguridad.dto.ModuloDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ import java.util.List;
 public class ContabilidadViewController {
 
     private final CuentaPorPagarService cuentaPorPagarService;
+    private final ProveedorService proveedorService;
 
 
     /**
@@ -91,6 +94,9 @@ public class ContabilidadViewController {
         model.addAttribute("totalSaldoPendiente", totalSaldoPendiente);
         model.addAttribute("countVencidas", countVencidas);
         model.addAttribute("totalPagado", totalPagado);
+        // Alta de CxP manual (ADR-016): proveedores activos y monedas del modal
+        model.addAttribute("proveedores", proveedorService.findActivos());
+        model.addAttribute("monedas", MonedaFE.values());
 
         return "modules/contabilidad/cuentas-pagar";
     }
