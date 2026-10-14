@@ -26,6 +26,8 @@ import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRe
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -245,6 +247,84 @@ class AsientoCompraCxpManualTest {
         assertThat(debe(asientoCrear, cuentas.get("CPP_CUENTA_COMPRAS"))).isEqualByComparingTo("56500.00");
         assertThat(debe(asientoCrear, cuentas.get("CPP_IVA_CREDITO_FISCAL"))).isEqualByComparingTo("7345.00");
         assertThat(haber(asientoCrear, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("63845.00");
+    }
+
+    // ── Revisión 1: mismas reglas de moneda/TC y estado que crearDesdeOrdenCompra ──
+
+    @Test
+    @DisplayName("crear() con OC USD a TC 520 y dto.moneda null → CxP en USD a 520 y mismo asiento que crearDesdeOrdenCompra")
+    void crearConOc_monedaNull_heredaMonedaYTipoCambioDeLaOc() {
+        OrdenCompra oc = oc();
+        oc.setTipoCambio(new BigDecimal("520.00"));
+        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+
+        CuentaPorPagarDTO dto = dtoConOc(null);
+        dto.setTipoCambio(new BigDecimal("999.00")); // con OC se ignora
+        CuentaPorPagar viaCrear = cxpService.crear(dto);
+        AsientoContable asientoCrear = ultimoAsientoGuardado();
+
+        CuentaPorPagar viaOc = cxpService.crearDesdeOrdenCompra(5L);
+        AsientoContable asientoOc = ultimoAsientoGuardado();
+
+        assertThat(viaCrear.getMoneda()).isEqualTo(MonedaFE.USD);
+        assertThat(viaCrear.getTipoCambio()).isEqualByComparingTo("520.00");
+        assertThat(viaCrear.getTipoCambio()).isEqualByComparingTo(viaOc.getTipoCambio());
+        assertThat(lineas(asientoCrear)).isEqualTo(lineas(asientoOc));
+        assertThat(haber(asientoCrear, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("58760.00");
+    }
+
+    @Test
+    @DisplayName("crear() con OC USD y dto.moneda = USD → usa la moneda y el TC de la OC")
+    void crearConOc_monedaIgual_usaLaDeLaOc() {
+        OrdenCompra oc = oc();
+        oc.setTipoCambio(new BigDecimal("520.00"));
+        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+
+        CuentaPorPagarDTO dto = dtoConOc(null);
+        dto.setMoneda(MonedaFE.USD);
+        CuentaPorPagar cpp = cxpService.crear(dto);
+
+        assertThat(cpp.getMoneda()).isEqualTo(MonedaFE.USD);
+        assertThat(cpp.getTipoCambio()).isEqualByComparingTo("520.00");
+    }
+
+    @Test
+    @DisplayName("crear() con OC USD y dto.moneda = CRC → IllegalArgumentException con ambas monedas, sin guardar")
+    void crearConOc_monedaDistinta_rechaza() {
+        OrdenCompra oc = oc();
+        oc.setTipoCambio(new BigDecimal("520.00"));
+        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+
+        CuentaPorPagarDTO dto = dtoConOc(null);
+        dto.setMoneda(MonedaFE.CRC);
+
+        assertThatThrownBy(() -> cxpService.crear(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("CRC")
+                .hasMessageContaining("USD");
+        verify(cuentaPorPagarRepository, never()).save(any());
+        verify(asientoRepository, never()).save(any());
+        verify(proveedorRepository, never()).save(any());
+    }
+
+    @ParameterizedTest(name = "OC en {0}")
+    @EnumSource(value = EstadoOrdenCompra.class, names = {"RECIBIDA", "RECIBIDA_PARCIAL"},
+            mode = EnumSource.Mode.EXCLUDE)
+    @DisplayName("crear() con una OC no recibida → mismo rechazo que crearDesdeOrdenCompra, sin guardar")
+    void crearConOc_noRecibida_rechaza(EstadoOrdenCompra estado) {
+        OrdenCompra oc = oc();
+        oc.setEstado(estado);
+        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+
+        assertThatThrownBy(() -> cxpService.crear(dtoConOc(null)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Solo se puede generar CPP de una OC recibida");
+        assertThatThrownBy(() -> cxpService.crearDesdeOrdenCompra(5L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Solo se puede generar CPP de una OC recibida");
+        verify(cuentaPorPagarRepository, never()).save(any());
+        verify(asientoRepository, never()).save(any());
+        verify(proveedorRepository, never()).save(any());
     }
 
     // =========================================================================

@@ -41,8 +41,10 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     /**
      * Crea una CxP y genera su asiento de compra en la misma transacción (ADR-015).
      *
-     * Con ordenCompraId: el desglose sale de la OC (se ignoran subtotal, impuesto y cuentaGastoId); se
-     * rechaza si la OC ya tiene CxP o si el monto indicado difiere de oc.total.
+     * Con ordenCompraId: mismas reglas que {@link #crearDesdeOrdenCompra(Long)}. El desglose, la moneda y
+     * el tipo de cambio salen de la OC (se ignoran subtotal, impuesto, cuentaGastoId y tipoCambio); se
+     * rechaza si la OC no está recibida, si ya tiene CxP, si el monto indicado difiere de oc.total o si
+     * la moneda indicada difiere de la de la OC.
      * Sin ordenCompraId (CxP manual, ADR-016): exige subtotal &gt;= 0, impuesto &gt;= 0,
      * subtotal + impuesto = monto (monto null → la suma) y una contrapartida válida
      * ({@link AsientoContableService#validarContrapartidaCxpManual(Long)}).
@@ -59,6 +61,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .orElseThrow(() -> new NoSuchElementException("Proveedor no encontrado: " + dto.getProveedorId()));
 
         OrdenCompra oc = null;
+        MonedaOc monedaOc = null;
         BigDecimal monto;
         BigDecimal subtotal = null;
         BigDecimal impuesto = null;
@@ -67,8 +70,12 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         if (dto.getOrdenCompraId() != null) {
             oc = ordenCompraRepository.findById(dto.getOrdenCompraId())
                 .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + dto.getOrdenCompraId()));
-            if (cuentaRepository.existsByOrdenCompra(oc)) {
-                throw new IllegalStateException("Ya existe una cuenta por pagar para la OC " + oc.getNumero());
+            validarOcParaCxp(oc);
+            monedaOc = monedaYTipoCambioDeOc(oc);
+            if (dto.getMoneda() != null && dto.getMoneda() != monedaOc.moneda()) {
+                throw new IllegalArgumentException(String.format(
+                    "La moneda indicada (%s) no coincide con la moneda de la OC %s (%s)",
+                    dto.getMoneda().getCodigo(), oc.getNumero(), monedaOc.moneda().getCodigo()));
             }
             if (dto.getMonto() != null && dto.getMonto().compareTo(oc.getTotal()) != 0) {
                 throw new IllegalArgumentException(String.format(
@@ -102,14 +109,18 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             cuentaGasto = asientoService.validarContrapartidaCxpManual(dto.getCuentaGastoId());
         }
 
-        // ADR-011: tipo de cambio propio; si viene de una OC se hereda el de la orden
-        MonedaFE moneda = dto.getMoneda() != null ? dto.getMoneda()
-            : (oc != null && oc.getMoneda() != null ? oc.getMoneda() : MonedaFE.CRC);
+        // ADR-011: tipo de cambio propio; con OC, moneda y tipo de cambio salen de la orden (ADR-015)
         LocalDate fechaEmision = dto.getFechaEmision() != null ? dto.getFechaEmision() : LocalDate.now();
-        BigDecimal tipoCambioSugerido = dto.getTipoCambio() != null ? dto.getTipoCambio()
-            : (oc != null && oc.getMoneda() == moneda ? oc.getTipoCambio() : null);
-        BigDecimal tipoCambio = tipoCambioService.resolverTipoCambioOperacion(
-            moneda, moneda, tipoCambioSugerido, fechaEmision);
+        MonedaFE moneda;
+        BigDecimal tipoCambio;
+        if (monedaOc != null) {
+            moneda = monedaOc.moneda();
+            tipoCambio = monedaOc.tipoCambio();
+        } else {
+            moneda = dto.getMoneda() != null ? dto.getMoneda() : MonedaFE.CRC;
+            tipoCambio = tipoCambioService.resolverTipoCambioOperacion(
+                moneda, moneda, dto.getTipoCambio(), fechaEmision);
+        }
 
         CuentaPorPagar cuenta = CuentaPorPagar.builder()
             .numero(generarNumero())
@@ -143,18 +154,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         OrdenCompra oc = ordenCompraRepository.findById(ordenCompraId)
             .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + ordenCompraId));
 
-        if (oc.getEstado() != EstadoOrdenCompra.RECIBIDA && oc.getEstado() != EstadoOrdenCompra.RECIBIDA_PARCIAL) {
-            throw new IllegalStateException("Solo se puede generar CPP de una OC recibida");
-        }
-
-        if (cuentaRepository.existsByOrdenCompra(oc)) {
-            throw new IllegalStateException("Ya existe una cuenta por pagar para la OC " + oc.getNumero());
-        }
-
-        // ADR-011: la CxP hereda la moneda y el tipo de cambio de la OC
-        MonedaFE monedaOc = oc.getMoneda() != null ? oc.getMoneda() : MonedaFE.CRC;
-        BigDecimal tipoCambioOc = tipoCambioService.resolverTipoCambioOperacion(
-            monedaOc, monedaOc, oc.getTipoCambio(), oc.getFecha());
+        validarOcParaCxp(oc);
+        MonedaOc monedaOc = monedaYTipoCambioDeOc(oc);
 
         CuentaPorPagar cuenta = CuentaPorPagar.builder()
             .numero(generarNumero())
@@ -163,8 +164,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .descripcion("Compra según OC " + oc.getNumero())
             .monto(oc.getTotal())
             .saldoPendiente(oc.getTotal())
-            .moneda(monedaOc)
-            .tipoCambio(tipoCambioOc)
+            .moneda(monedaOc.moneda())
+            .tipoCambio(monedaOc.tipoCambio())
             .fechaEmision(LocalDate.now())
             .fechaVencimiento(oc.getProveedor().getDiasCredito() != null && oc.getProveedor().getDiasCredito() > 0
                 ? LocalDate.now().plusDays(oc.getProveedor().getDiasCredito())
@@ -177,6 +178,29 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         log.info("CPP {} generada desde OC {}", guardada.getNumero(), oc.getNumero());
         return guardada;
     }
+
+    /**
+     * Reglas comunes para crear una CxP desde una OC, por cualquiera de las dos vías (ADR-015):
+     * la OC debe estar recibida (total o parcialmente) y no tener ya una CxP.
+     */
+    private void validarOcParaCxp(OrdenCompra oc) {
+        if (oc.getEstado() != EstadoOrdenCompra.RECIBIDA && oc.getEstado() != EstadoOrdenCompra.RECIBIDA_PARCIAL) {
+            throw new IllegalStateException("Solo se puede generar CPP de una OC recibida");
+        }
+        if (cuentaRepository.existsByOrdenCompra(oc)) {
+            throw new IllegalStateException("Ya existe una cuenta por pagar para la OC " + oc.getNumero());
+        }
+    }
+
+    /** Moneda y tipo de cambio que hereda de la OC una CxP creada desde ella (ADR-011). */
+    private MonedaOc monedaYTipoCambioDeOc(OrdenCompra oc) {
+        MonedaFE moneda = oc.getMoneda() != null ? oc.getMoneda() : MonedaFE.CRC;
+        BigDecimal tipoCambio = tipoCambioService.resolverTipoCambioOperacion(
+            moneda, moneda, oc.getTipoCambio(), oc.getFecha());
+        return new MonedaOc(moneda, tipoCambio);
+    }
+
+    private record MonedaOc(MonedaFE moneda, BigDecimal tipoCambio) {}
 
     @Override
     @Transactional(readOnly = true)
