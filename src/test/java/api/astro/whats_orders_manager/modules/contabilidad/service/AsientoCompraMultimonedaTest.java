@@ -17,7 +17,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.facturacion.repository.TipoCambioRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
+import api.astro.whats_orders_manager.modules.proveedores.enums.MetodoPagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
+import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import api.astro.whats_orders_manager.modules.proveedores.repository.OrdenCompraRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
@@ -75,7 +77,8 @@ class AsientoCompraMultimonedaTest {
         service = new AsientoContableService(asientoRepository, detalleRepository, cuentaRepository,
                 parametroContableRepository);
         long id = 1;
-        for (String clave : List.of("CPP_CUENTA_COMPRAS", "CPP_IVA_CREDITO_FISCAL", "CPP_CUENTA_POR_PAGAR")) {
+        for (String clave : List.of("CPP_CUENTA_COMPRAS", "CPP_IVA_CREDITO_FISCAL", "CPP_CUENTA_POR_PAGAR",
+                "CPP_BANCO_TRANSFERENCIA")) {
             CuentaContable c = new CuentaContable();
             c.setIdCuenta(id++);
             c.setCodigo(clave);
@@ -166,14 +169,17 @@ class AsientoCompraMultimonedaTest {
     }
 
     @Test
-    @DisplayName("criterio 18: sin fecha de emisión ni de recepción el asiento de compra se fecha hoy")
-    void compra_sinFechas_usaHoy() {
+    @DisplayName("ADR-014: sin fecha de emisión ni de recepción de la OC → IllegalStateException con la CxP y el campo, sin guardar")
+    void compra_sinFechas_lanzaIllegalState() {
         CuentaPorPagar cpp = cpp(oc("100.00", "13.00", "113.00", MonedaFE.USD, "500"), MonedaFE.USD, "500");
         cpp.setFechaEmision(null);
 
-        AsientoContable asiento = service.generarAsientoCompra(cpp);
-
-        assertThat(asiento.getFecha()).isEqualTo(LocalDate.now());
+        assertThatThrownBy(() -> service.generarAsientoCompra(cpp))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CPP-2026-00001")
+                .hasMessageContaining("fechaEmision")
+                .hasMessageContaining("fechaRecepcion");
+        verify(asientoRepository, never()).save(any());
     }
 
     @Test
@@ -208,9 +214,45 @@ class AsientoCompraMultimonedaTest {
         assertThat(haber(captor.getValue(), "CPP_CUENTA_POR_PAGAR")).isEqualByComparingTo("56500.00");
     }
 
+    @Test
+    @DisplayName("ADR-014: el asiento de pago a proveedor conserva la fecha del pago")
+    void pagoProveedor_conservaFechaDelPago() {
+        PagoProveedor pago = pagoProveedor(cpp(oc("100000.00", "13000.00", "113000.00", MonedaFE.CRC, "1"),
+                MonedaFE.CRC, "1"));
+
+        AsientoContable asiento = service.generarAsientoPagoProveedor(pago);
+
+        assertThat(asiento.getFecha()).isEqualTo(LocalDate.of(2026, 9, 25));
+    }
+
+    @Test
+    @DisplayName("ADR-014: pago a proveedor sin fecha → IllegalStateException con el número del pago y el campo, sin guardar")
+    void pagoProveedor_sinFecha_lanzaIllegalState() {
+        PagoProveedor pago = pagoProveedor(cpp(oc("100000.00", "13000.00", "113000.00", MonedaFE.CRC, "1"),
+                MonedaFE.CRC, "1"));
+        pago.setFecha(null);
+
+        assertThatThrownBy(() -> service.generarAsientoPagoProveedor(pago))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("PP-2026-00001")
+                .hasMessageContaining("fecha");
+        verify(asientoRepository, never()).save(any());
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================
+
+    private PagoProveedor pagoProveedor(CuentaPorPagar cpp) {
+        return PagoProveedor.builder()
+                .id(20L)
+                .numero("PP-2026-00001")
+                .cuentaPorPagar(cpp)
+                .monto(new BigDecimal("50000.00"))
+                .metodoPago(MetodoPagoProveedor.TRANSFERENCIA)
+                .fecha(LocalDate.of(2026, 9, 25))
+                .build();
+    }
 
     private OrdenCompra oc(String subtotal, String impuesto, String total, MonedaFE moneda, String tipoCambio) {
         return OrdenCompra.builder()
@@ -236,6 +278,7 @@ class AsientoCompraMultimonedaTest {
                 .saldoPendiente(oc.getTotal())
                 .moneda(moneda)
                 .tipoCambio(tipoCambio != null ? new BigDecimal(tipoCambio) : null)
+                .fechaEmision(LocalDate.of(2026, 10, 12))
                 .build();
     }
 

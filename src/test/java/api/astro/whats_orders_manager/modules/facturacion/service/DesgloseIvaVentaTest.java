@@ -152,6 +152,8 @@ class DesgloseIvaVentaTest {
         factura.setSubtotal(BigDecimal.ZERO);
         factura.setIgv(BigDecimal.ZERO);
         factura.setTotal(BigDecimal.ZERO);
+        // Persisted invoice: its @CreatedDate (fechaEmision) was set on insert (ADR-014)
+        factura.setCreateDate(LocalDateTime.of(2026, 9, 15, 10, 0));
 
         when(userDetailsService.getCurrentUserID()).thenReturn(Optional.of(1));
         when(facturaRepository.findByIdFactura(ID_FACTURA)).thenReturn(Optional.of(factura));

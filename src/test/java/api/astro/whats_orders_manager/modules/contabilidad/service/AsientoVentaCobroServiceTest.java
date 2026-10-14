@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -601,8 +602,65 @@ class AsientoVentaCobroServiceTest {
     }
 
     // =========================================================================
+    // Fecha del asiento (ADR-014)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("fecha económica del documento (ADR-014)")
+    class FechaEconomica {
+
+        @Test
+        @DisplayName("venta: el asiento conserva la fecha de emisión de la factura")
+        void venta_conservaFechaEmision() {
+            AsientoContable asiento = service.generarAsientoVenta(
+                    factura(60, "100.00", "13.00", "113.00", MonedaFE.CRC, BigDecimal.ONE));
+
+            assertThat(asiento.getFecha()).isEqualTo(FECHA_EMISION_FACTURA);
+        }
+
+        @Test
+        @DisplayName("venta sin fecha de emisión: IllegalStateException con número de factura y campo, sin guardar")
+        void venta_sinFechaEmision_lanzaIllegalState() {
+            Factura factura = factura(61, "100.00", "13.00", "113.00", MonedaFE.CRC, BigDecimal.ONE);
+            factura.setCreateDate(null);
+
+            assertThatThrownBy(() -> service.generarAsientoVenta(factura))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("F-61")
+                    .hasMessageContaining("fechaEmision");
+            verify(asientoRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("cobro: el asiento conserva la fecha del pago")
+        void cobro_conservaFechaPago() {
+            AsientoContable asiento = service.generarAsientoPago(
+                    pago(62L, "5000.00", MetodoPago.EFECTIVO, EstadoPago.CONFIRMADO, null));
+
+            assertThat(asiento.getFecha()).isEqualTo(FECHA_PAGO);
+        }
+
+        @Test
+        @DisplayName("cobro sin fecha de pago: IllegalStateException con número de pago y campo, sin guardar")
+        void cobro_sinFechaPago_lanzaIllegalState() {
+            Pago pago = pago(63L, "5000.00", MetodoPago.EFECTIVO, EstadoPago.CONFIRMADO, null);
+            pago.setFechaPago(null);
+
+            assertThatThrownBy(() -> service.generarAsientoPago(pago))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("PAG-63")
+                    .hasMessageContaining("fechaPago");
+            verify(asientoRepository, never()).save(any());
+        }
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
+
+    /** Fechas fijas de los documentos, distintas del día en que corre la prueba. */
+    static final LocalDate FECHA_EMISION_FACTURA = LocalDate.of(2026, 9, 15);
+    static final LocalDate FECHA_PAGO = LocalDate.of(2026, 9, 20);
 
     private static CuentaContable cuenta(long id, String codigo) {
         CuentaContable c = new CuentaContable();
@@ -627,6 +685,7 @@ class AsientoVentaCobroServiceTest {
         f.setTotal(new BigDecimal(total));
         f.setMonedaFE(moneda);
         f.setTipoCambio(tipoCambio);
+        f.setCreateDate(FECHA_EMISION_FACTURA.atTime(10, 0));
         return f;
     }
 
@@ -638,7 +697,7 @@ class AsientoVentaCobroServiceTest {
         p.setMetodoPago(metodo);
         p.setEstado(estado);
         p.setFactura(factura);
-        p.setFechaPago(LocalDateTime.now());
+        p.setFechaPago(FECHA_PAGO.atTime(15, 30));
         return p;
     }
 
