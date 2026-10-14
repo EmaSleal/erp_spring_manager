@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.contabilidad.repository;
 import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -27,4 +28,13 @@ public interface ParametroContableRepository extends JpaRepository<ParametroCont
      */
     @Query("SELECT p FROM ParametroContable p JOIN FETCH p.cuentaContable ORDER BY p.clave")
     List<ParametroContable> findAllWithCuentas();
+
+    /**
+     * Claves configuradas sobre una cuenta contable.
+     *
+     * @param cuentaId id de la cuenta contable
+     * @return claves que apuntan a esa cuenta, ordenadas
+     */
+    @Query("SELECT p.clave FROM ParametroContable p WHERE p.cuentaContable.idCuenta = :cuentaId ORDER BY p.clave")
+    List<String> findClavesByCuentaId(@Param("cuentaId") Long cuentaId);
 }
