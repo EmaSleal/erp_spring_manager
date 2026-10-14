@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.contabilidad.controller;
 
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
 import api.astro.whats_orders_manager.modules.proveedores.service.PagoProveedorService;
@@ -29,6 +30,7 @@ public class CuentaPorPagarRestController {
     private final CuentaPorPagarService cuentaPorPagarService;
     private final PagoProveedorService pagoProveedorService;
     private final UsuarioService usuarioService;
+    private final AsientoContableService asientoContableService;
 
     @GetMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
@@ -46,6 +48,32 @@ public class CuentaPorPagarRestController {
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
     public ResponseEntity<ResponseDTO> vencidas(Authentication authentication) {
         return ResponseEntity.ok(ResponseDTO.success("OK", cuentaPorPagarService.findVencidas()));
+    }
+
+    /**
+     * Cuentas elegibles como contrapartida de una CxP manual (ADR-016), ordenadas por código.
+     * cuentaComprasId es la cuenta de CPP_CUENTA_COMPRAS (null si no está configurada); la cuenta
+     * correspondiente de la lista viene con predeterminada = true para preseleccionarla.
+     */
+    @GetMapping("/cuentas-contrapartida")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
+    public ResponseEntity<ResponseDTO> cuentasContrapartida(Authentication authentication) {
+        Long cuentaComprasId = asientoContableService.obtenerIdCuentaComprasCpp().orElse(null);
+        var cuentas = asientoContableService.obtenerCuentasContrapartidaCxpManual().stream()
+            .map(c -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id",             c.getIdCuenta());
+                m.put("codigo",         c.getCodigo());
+                m.put("nombre",         c.getNombre());
+                m.put("tipo",           c.getTipo() != null ? c.getTipo().name() : null);
+                m.put("predeterminada", c.getIdCuenta().equals(cuentaComprasId));
+                return m;
+            })
+            .toList();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("cuentaComprasId", cuentaComprasId);
+        data.put("cuentas", cuentas);
+        return ResponseEntity.ok(ResponseDTO.success("OK", data));
     }
 
     @GetMapping("/{id}")

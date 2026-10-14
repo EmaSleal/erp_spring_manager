@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.contabilidad.service.impl;
 
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
@@ -37,16 +38,68 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     private final AsientoContableService asientoService;
     private final TipoCambioService tipoCambioService;
 
+    /**
+     * Crea una CxP y genera su asiento de compra en la misma transacción (ADR-015).
+     *
+     * Con ordenCompraId: el desglose sale de la OC (se ignoran subtotal, impuesto y cuentaGastoId); se
+     * rechaza si la OC ya tiene CxP o si el monto indicado difiere de oc.total.
+     * Sin ordenCompraId (CxP manual, ADR-016): exige subtotal &gt;= 0, impuesto &gt;= 0,
+     * subtotal + impuesto = monto (monto null → la suma) y una contrapartida válida
+     * ({@link AsientoContableService#validarContrapartidaCxpManual(Long)}).
+     *
+     * Si la validación o el asiento fallan no queda guardada la CxP ni el cambio de saldo del proveedor.
+     */
     @Override
     @Transactional
     public CuentaPorPagar crear(CuentaPorPagarDTO dto) {
+        if (dto.getProveedorId() == null) {
+            throw new IllegalArgumentException("El proveedor es obligatorio");
+        }
         Proveedor proveedor = proveedorRepository.findById(dto.getProveedorId())
             .orElseThrow(() -> new NoSuchElementException("Proveedor no encontrado: " + dto.getProveedorId()));
 
         OrdenCompra oc = null;
+        BigDecimal monto;
+        BigDecimal subtotal = null;
+        BigDecimal impuesto = null;
+        CuentaContable cuentaGasto = null;
+        String descripcion = dto.getDescripcion();
         if (dto.getOrdenCompraId() != null) {
             oc = ordenCompraRepository.findById(dto.getOrdenCompraId())
                 .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + dto.getOrdenCompraId()));
+            if (cuentaRepository.existsByOrdenCompra(oc)) {
+                throw new IllegalStateException("Ya existe una cuenta por pagar para la OC " + oc.getNumero());
+            }
+            if (dto.getMonto() != null && dto.getMonto().compareTo(oc.getTotal()) != 0) {
+                throw new IllegalArgumentException(String.format(
+                    "El monto %s no coincide con el total de la OC %s (%s)", dto.getMonto(), oc.getNumero(), oc.getTotal()));
+            }
+            monto = oc.getTotal();
+            if (descripcion == null || descripcion.isBlank()) {
+                descripcion = "Compra según OC " + oc.getNumero();
+            }
+        } else {
+            subtotal = dto.getSubtotal();
+            impuesto = dto.getImpuesto();
+            if (subtotal == null || impuesto == null) {
+                throw new IllegalArgumentException("La cuenta por pagar manual requiere subtotal e impuesto");
+            }
+            if (subtotal.signum() < 0 || impuesto.signum() < 0) {
+                throw new IllegalArgumentException("El subtotal y el impuesto no pueden ser negativos");
+            }
+            BigDecimal suma = subtotal.add(impuesto);
+            monto = dto.getMonto() != null ? dto.getMonto() : suma;
+            if (monto.compareTo(suma) != 0) {
+                throw new IllegalArgumentException(String.format(
+                    "Subtotal + impuesto (%s) no coincide con el monto (%s)", suma, monto));
+            }
+            if (monto.signum() <= 0) {
+                throw new IllegalArgumentException("El monto de la cuenta por pagar debe ser mayor a 0");
+            }
+            if (descripcion == null || descripcion.isBlank()) {
+                throw new IllegalArgumentException("La descripción es obligatoria");
+            }
+            cuentaGasto = asientoService.validarContrapartidaCxpManual(dto.getCuentaGastoId());
         }
 
         // ADR-011: tipo de cambio propio; si viene de una OC se hereda el de la orden
@@ -62,9 +115,12 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .numero(generarNumero())
             .proveedor(proveedor)
             .ordenCompra(oc)
-            .descripcion(dto.getDescripcion())
-            .monto(dto.getMonto())
-            .saldoPendiente(dto.getMonto())
+            .descripcion(descripcion)
+            .monto(monto)
+            .saldoPendiente(monto)
+            .subtotal(subtotal)
+            .impuesto(impuesto)
+            .cuentaGasto(cuentaGasto)
             .moneda(moneda)
             .tipoCambio(tipoCambio)
             .fechaEmision(fechaEmision)
@@ -73,7 +129,10 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .build();
 
         CuentaPorPagar guardada = cuentaRepository.save(cuenta);
-        actualizarSaldoProveedor(proveedor, dto.getMonto(), true);
+        // ADR-015: el asiento va en la misma transacción; si falla, se revierte también la CxP.
+        // El saldo del proveedor se toca después, para no dejarlo modificado en memoria si el asiento falla.
+        asientoService.generarAsientoCompra(guardada);
+        actualizarSaldoProveedor(proveedor, monto, true);
         log.info("Cuenta por pagar {} creada para proveedor {}", guardada.getNumero(), proveedor.getNombre());
         return guardada;
     }

@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.contabilidad.service;
 
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoCuenta;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
@@ -30,6 +31,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -910,76 +912,113 @@ public class AsientoContableService {
 
     // ==================== CPP / SUPPLIER PAYMENT GENERATORS ====================
 
+    /** Clave de la cuenta de compras: contrapartida de la CxP con OC y preseleccionada en la CxP manual. */
+    public static final String CLAVE_CPP_CUENTA_COMPRAS = "CPP_CUENTA_COMPRAS";
+    /** Clave de la cuenta de proveedores (CR en compra, DR en pago a proveedor). */
+    public static final String CLAVE_CPP_CUENTA_POR_PAGAR = "CPP_CUENTA_POR_PAGAR";
+    /** Clave de la cuenta de IVA crédito fiscal (DR en compra). */
+    public static final String CLAVE_CPP_IVA_CREDITO_FISCAL = "CPP_IVA_CREDITO_FISCAL";
+    /** Prefijo de las claves de banco/caja de pagos a proveedor: CPP_BANCO_&lt;MetodoPagoProveedor&gt;. */
+    public static final String PREFIJO_CPP_BANCO = "CPP_BANCO_";
+
     /**
-     * Genera y contabiliza el asiento de compra de una CxP creada desde una orden de compra
-     * recibida (ADR-011: montos en CRC).
+     * Genera y contabiliza el asiento de compra de una CxP (ADR-011: montos en CRC; ADR-015: toda
+     * CxP genera su asiento al crearse).
      *
-     * Estructura:
+     * CxP con orden de compra — el desglose sale de la OC:
      *   DR CPP_CUENTA_COMPRAS      — oc.subtotal × tc (absorbe el ajuste de redondeo)
      *   DR CPP_IVA_CREDITO_FISCAL  — oc.impuesto × tc (solo si &gt; 0)
      *   CR CPP_CUENTA_POR_PAGAR    — oc.total × tc
      *
-     * tc = cpp.tipoCambio (heredado de la OC); 1 si la CxP está en CRC. Cada línea se convierte con
-     * HALF_UP a 2 decimales y la diferencia de redondeo (hasta 0,02) se lleva a la línea de compras,
-     * con el mismo criterio que el asiento de venta.
+     * CxP manual (ADR-016) — desglose y contrapartida de la propia CxP:
+     *   DR cpp.cuentaGasto         — cpp.subtotal × tc (absorbe el ajuste de redondeo)
+     *   DR CPP_IVA_CREDITO_FISCAL  — cpp.impuesto × tc (solo si &gt; 0)
+     *   CR CPP_CUENTA_POR_PAGAR    — cpp.monto × tc
      *
-     * No-op (devuelve null) si {@code cpp.getOrdenCompra()} es null: las CxP manuales no traen
-     * desglose de subtotal/IVA.
+     * tc = cpp.tipoCambio (en la CxP con OC, heredado de la OC); 1 si la CxP está en CRC. Cada línea
+     * se convierte con HALF_UP a 2 decimales y la diferencia de redondeo (hasta 0,02) se lleva a la
+     * línea de compras/gasto, con el mismo criterio que el asiento de venta.
      *
      * Fecha (ADR-014): cpp.fechaEmision y, si falta, oc.fechaRecepcion; nunca la del sistema.
      *
      * @param cpp la CuentaPorPagar recién guardada
-     * @return el asiento contabilizado, o null si se omite
-     * @throws IllegalStateException si no hay fecha de emisión ni de recepción, falta una clave contable,
-     *                               el tipo de cambio o el asiento no cuadra
+     * @return el asiento contabilizado
+     * @throws IllegalStateException si a una CxP manual le falta subtotal, impuesto o cuentaGasto, no hay
+     *                               fecha de emisión ni de recepción, falta una clave contable, el tipo de
+     *                               cambio o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoCompra(CuentaPorPagar cpp) {
-        if (cpp.getOrdenCompra() == null) {
-            log.warn("CPP {} has no OrdenCompra — skipping purchase journal entry", cpp.getNumero());
-            return null;
+        var oc = cpp.getOrdenCompra();
+        BigDecimal subtotal;
+        BigDecimal impuesto;
+        BigDecimal total;
+        CuentaContable cuentaDebito;
+        String concepto;
+        String referencia;
+        if (oc != null) {
+            subtotal = oc.getSubtotal();
+            impuesto = oc.getImpuesto();
+            total = oc.getTotal();
+            cuentaDebito = null; // CPP_CUENTA_COMPRAS, se resuelve junto con las demás claves
+            concepto = "Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre();
+            referencia = "OC " + oc.getNumero();
+        } else {
+            if (cpp.getSubtotal() == null || cpp.getImpuesto() == null || cpp.getCuentaGasto() == null) {
+                throw new IllegalStateException("La cuenta por pagar manual " + cpp.getNumero()
+                    + " requiere subtotal, impuesto y cuenta de gasto para generar su asiento de compra (ADR-016)");
+            }
+            subtotal = cpp.getSubtotal();
+            impuesto = cpp.getImpuesto();
+            total = cpp.getMonto();
+            cuentaDebito = cpp.getCuentaGasto();
+            concepto = "CxP manual " + cpp.getNumero() + " - " + cpp.getProveedor().getNombre()
+                + " - " + cpp.getDescripcion();
+            referencia = "CxP " + cpp.getNumero();
         }
         LocalDate fecha = fechaAsientoCompra(cpp);
 
-        var oc = cpp.getOrdenCompra();
-        MonedaFE moneda = ConversionMoneda.oCrc(cpp.getMoneda() != null ? cpp.getMoneda() : oc.getMoneda());
+        MonedaFE moneda = ConversionMoneda.oCrc(cpp.getMoneda() != null ? cpp.getMoneda()
+            : (oc != null ? oc.getMoneda() : null));
         BigDecimal tipoCambio = tipoCambioDocumento(moneda,
-            cpp.getTipoCambio() != null ? cpp.getTipoCambio() : oc.getTipoCambio(),
+            cpp.getTipoCambio() != null ? cpp.getTipoCambio() : (oc != null ? oc.getTipoCambio() : null),
             "La cuenta por pagar " + cpp.getNumero());
 
-        BigDecimal subtotalCrc = convertirACrc(oc.getSubtotal(), tipoCambio);
-        BigDecimal impuestoCrc = convertirACrc(oc.getImpuesto(), tipoCambio);
-        BigDecimal totalCrc = convertirACrc(oc.getTotal(), tipoCambio);
+        BigDecimal subtotalCrc = convertirACrc(subtotal, tipoCambio);
+        BigDecimal impuestoCrc = convertirACrc(impuesto, tipoCambio);
+        BigDecimal totalCrc = convertirACrc(total, tipoCambio);
 
-        // Ajuste del centavo: la diferencia de redondeo se lleva a la línea de compras
+        // Ajuste del centavo: la diferencia de redondeo se lleva a la línea de compras/gasto
         BigDecimal diferencia = totalCrc.subtract(subtotalCrc).subtract(impuestoCrc);
         if (diferencia.signum() != 0 && diferencia.abs().compareTo(TOLERANCIA_REDONDEO) <= 0) {
             subtotalCrc = subtotalCrc.add(diferencia);
         }
 
-        CuentaContable cuentaCompras   = resolverCuenta("CPP_CUENTA_COMPRAS");
-        CuentaContable cuentaPorPagar  = resolverCuenta("CPP_CUENTA_POR_PAGAR");
+        if (cuentaDebito == null) {
+            cuentaDebito = resolverCuenta(CLAVE_CPP_CUENTA_COMPRAS);
+        }
+        CuentaContable cuentaPorPagar  = resolverCuenta(CLAVE_CPP_CUENTA_POR_PAGAR);
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
         // La fecha del asiento es la del documento, coherente con el tipo de cambio con que se convierte
         asiento.setFecha(fecha);
-        asiento.setConcepto(truncar("Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre(), 500));
+        asiento.setConcepto(truncar(concepto, 500));
         asiento.setTipo(TipoAsiento.AUTOMATICO_COMPRA);
         asiento.setEstado(EstadoAsiento.BORRADOR);
         asiento.setCuentaPorPagar(cpp);
 
         List<DetalleAsiento> detalles = new ArrayList<>();
 
-        // DR Compras (subtotal + ajuste de redondeo)
+        // DR Compras / contrapartida elegida (subtotal + ajuste de redondeo)
         if (subtotalCrc.signum() > 0) {
-            detalles.add(linea(asiento, cuentaCompras, subtotalCrc, null, "Compras — OC " + oc.getNumero()));
+            detalles.add(linea(asiento, cuentaDebito, subtotalCrc, null, "Compras — " + referencia));
         }
 
         // DR IVA Crédito Fiscal (cuando aplica)
         if (impuestoCrc.signum() > 0) {
-            CuentaContable cuentaIva = resolverCuenta("CPP_IVA_CREDITO_FISCAL");
-            detalles.add(linea(asiento, cuentaIva, impuestoCrc, null, "IVA Crédito Fiscal — OC " + oc.getNumero()));
+            CuentaContable cuentaIva = resolverCuenta(CLAVE_CPP_IVA_CREDITO_FISCAL);
+            detalles.add(linea(asiento, cuentaIva, impuestoCrc, null, "IVA Crédito Fiscal — " + referencia));
         }
 
         // CR Cuentas por Pagar (total)
@@ -996,6 +1035,86 @@ public class AsientoContableService {
 
         log.info("Purchase journal entry {} posted for CPP {}", guardado.getNumero(), cpp.getNumero());
         return guardado;
+    }
+
+    /**
+     * Cuentas elegibles como contrapartida de una CxP manual (ADR-016), ordenadas por código: activas,
+     * que aceptan movimientos, de tipo EGRESO o ACTIVO y que no estén configuradas en
+     * parametros_contables como banco/caja, cuentas por cobrar, cuentas por pagar ni IVA crédito
+     * fiscal (ver {@link #esClaveExcluidaDeContrapartida(String)}).
+     */
+    public List<CuentaContable> obtenerCuentasContrapartidaCxpManual() {
+        Map<Long, String> excluidas = cuentasExcluidasDeContrapartida();
+        return cuentaRepository.findByAceptaMovimientosAndActiva(true, true).stream()
+            .filter(c -> c.getTipo() == TipoCuenta.EGRESO || c.getTipo() == TipoCuenta.ACTIVO)
+            .filter(c -> !excluidas.containsKey(c.getIdCuenta()))
+            .sorted(Comparator.comparing(CuentaContable::getCodigo))
+            .toList();
+    }
+
+    /** Id de la cuenta configurada en CPP_CUENTA_COMPRAS (preselección de la contrapartida), si existe. */
+    public Optional<Long> obtenerIdCuentaComprasCpp() {
+        return parametroContableRepository.findByClave(CLAVE_CPP_CUENTA_COMPRAS)
+            .map(p -> p.getCuentaContable().getIdCuenta());
+    }
+
+    /**
+     * Valida la contrapartida de una CxP manual (ADR-016) con las mismas reglas de
+     * {@link #obtenerCuentasContrapartidaCxpManual()}.
+     * @param cuentaId id de la cuenta elegida
+     * @return la cuenta validada
+     * @throws IllegalArgumentException si falta, no existe, está inactiva, no acepta movimientos, no es de
+     *                                  tipo EGRESO o ACTIVO, o está configurada como banco/caja, CxC, CxP o IVA
+     */
+    public CuentaContable validarContrapartidaCxpManual(Long cuentaId) {
+        if (cuentaId == null) {
+            throw new IllegalArgumentException("La cuenta por pagar manual requiere la cuenta de contrapartida (cuentaGastoId)");
+        }
+        CuentaContable cuenta = cuentaRepository.findById(cuentaId)
+            .orElseThrow(() -> new IllegalArgumentException("Cuenta contable no encontrada: " + cuentaId));
+        String etiqueta = cuenta.getCodigo() + " - " + cuenta.getNombre();
+        if (!Boolean.TRUE.equals(cuenta.getActiva())) {
+            throw new IllegalArgumentException("La cuenta " + etiqueta + " está inactiva");
+        }
+        if (!Boolean.TRUE.equals(cuenta.getAceptaMovimientos())) {
+            throw new IllegalArgumentException("La cuenta " + etiqueta + " no acepta movimientos");
+        }
+        if (cuenta.getTipo() != TipoCuenta.EGRESO && cuenta.getTipo() != TipoCuenta.ACTIVO) {
+            throw new IllegalArgumentException("La cuenta " + etiqueta + " es de tipo "
+                + (cuenta.getTipo() != null ? cuenta.getTipo().name() : "sin tipo")
+                + "; la contrapartida de una CxP manual debe ser de tipo EGRESO o ACTIVO");
+        }
+        String clave = cuentasExcluidasDeContrapartida().get(cuenta.getIdCuenta());
+        if (clave != null) {
+            throw new IllegalArgumentException("La cuenta " + etiqueta + " está configurada como " + clave
+                + " y no puede usarse como contrapartida de una CxP manual");
+        }
+        return cuenta;
+    }
+
+    /**
+     * Claves de parametros_contables cuyas cuentas no pueden ser contrapartida de una CxP manual:
+     * banco/caja de pagos a proveedor (CPP_BANCO_*) y de cobros (COBRO_CAJA_*), cuentas por cobrar
+     * (VENTA_CXC_CLIENTES), cuentas por pagar (CPP_CUENTA_POR_PAGAR) e IVA crédito fiscal
+     * (CPP_IVA_CREDITO_FISCAL).
+     */
+    static boolean esClaveExcluidaDeContrapartida(String clave) {
+        return clave.startsWith(PREFIJO_CPP_BANCO)
+            || clave.startsWith(PREFIJO_COBRO_CAJA)
+            || clave.equals(CLAVE_VENTA_CXC_CLIENTES)
+            || clave.equals(CLAVE_CPP_CUENTA_POR_PAGAR)
+            || clave.equals(CLAVE_CPP_IVA_CREDITO_FISCAL);
+    }
+
+    /** Id de cuenta → clave de parametros_contables que la excluye como contrapartida. */
+    private Map<Long, String> cuentasExcluidasDeContrapartida() {
+        Map<Long, String> excluidas = new HashMap<>();
+        for (ParametroContable p : parametroContableRepository.findAllWithCuentas()) {
+            if (esClaveExcluidaDeContrapartida(p.getClave())) {
+                excluidas.putIfAbsent(p.getCuentaContable().getIdCuenta(), p.getClave());
+            }
+        }
+        return excluidas;
     }
 
     /**
@@ -1042,7 +1161,7 @@ public class AsientoContableService {
             case DEPOSITO      -> "CPP_BANCO_DEPOSITO";
         };
 
-        CuentaContable cuentaPorPagar = resolverCuenta("CPP_CUENTA_POR_PAGAR");
+        CuentaContable cuentaPorPagar = resolverCuenta(CLAVE_CPP_CUENTA_POR_PAGAR);
         CuentaContable cuentaBanco    = resolverCuenta(bancoKey);
 
         CuentaPorPagar cpp = pago.getCuentaPorPagar();
