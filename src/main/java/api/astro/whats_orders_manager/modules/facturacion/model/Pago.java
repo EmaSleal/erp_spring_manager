@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.model;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
@@ -155,6 +156,17 @@ public class Pago {
      */
     @Column(name = "cuentaBancaria", length = 50)
     private String cuentaBancaria;
+
+    /**
+     * Cuenta bancaria propia en la que entra el cobro (ADR-018). Obligatoria solo con
+     * {@link MetodoPago#TRANSFERENCIA}: el asiento debita su hoja contable. Distinta de
+     * {@link #banco}/{@link #cuentaBancaria}, que son la referencia del cliente (texto libre).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuenta_bancaria_id")
+    @ToString.Exclude
+    @JsonIgnore
+    private CuentaBancaria cuentaBancariaDestino;
     
     /**
      * Estado actual del pago.

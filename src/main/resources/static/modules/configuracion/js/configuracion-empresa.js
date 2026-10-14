@@ -509,12 +509,38 @@ const EmpresaPdf = {
     },
 
     // --------------------------------------------------------- Bank accounts
+    // ADR-018: each bank account owns an accounting leaf under 1.1.01.002 Bancos. The backend
+    // creates/renames/activates/deletes the leaf together with the account; its validation
+    // messages (e.g. "Desactívela en su lugar") are shown to the user as returned.
+
+    _cuentas: [],
+
+    /** fetch that always returns the JSON body (also on 4xx/5xx) so backend messages reach the UI. */
+    _api: async function (method, url, body) {
+        const csrf = Configuracion.getCsrfToken();
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (csrf.token && csrf.header) headers[csrf.header] = csrf.token;
+        const response = await fetch(url, {
+            method: method,
+            headers: headers,
+            body: body !== undefined ? JSON.stringify(body) : undefined
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok && data.success === undefined) {
+            data.success = false;
+            data.message = data.message || `Error HTTP ${response.status}`;
+        }
+        return data;
+    },
 
     cargarCuentas: async function () {
         try {
-            const res = await Configuracion.get('/api/empresa/cuentas-bancarias');
+            const res = await this._api('GET', '/api/empresa/cuentas-bancarias?incluirInactivas=true');
             if (res.success) {
-                this._renderCuentas(res.data || []);
+                this._cuentas = res.data || [];
+                this._renderCuentas(this._cuentas);
+            } else {
+                showToast('error', res.message || 'No se pudieron cargar las cuentas bancarias');
             }
         } catch (err) {
             console.error('Error loading bank accounts:', err);
@@ -531,17 +557,26 @@ const EmpresaPdf = {
         }
 
         const rows = cuentas.map(c => `
-            <tr>
+            <tr class="${c.activa ? '' : 'text-muted'}">
                 <td>${this._esc(c.entidad)}</td>
                 <td><code>${this._esc(c.cuentaIban)}</code></td>
                 <td>${this._esc(c.cuentaBanco)}</td>
                 <td><span class="badge bg-secondary">${this._esc(c.moneda)}</span></td>
-                <td class="text-end">
-                    <button type="button" class="btn btn-sm btn-outline-primary me-1"
+                <td><code title="${this._esc(c.nombreCuentaContable)}">${this._esc(c.codigoCuentaContable)}</code></td>
+                <td>${c.activa
+                    ? '<span class="badge bg-success">Activa</span>'
+                    : '<span class="badge bg-secondary">Inactiva</span>'}</td>
+                <td class="text-end text-nowrap">
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Editar"
                             onclick="EmpresaPdf.mostrarFormCuenta(${c.idCuentaBancaria})">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger"
+                    <button type="button" class="btn btn-sm btn-outline-${c.activa ? 'warning' : 'success'} me-1"
+                            title="${c.activa ? 'Desactivar' : 'Activar'}"
+                            onclick="EmpresaPdf.cambiarEstadoCuenta(${c.idCuentaBancaria}, ${!c.activa})">
+                        <i class="fas fa-${c.activa ? 'ban' : 'check'}"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" title="Eliminar"
                             onclick="EmpresaPdf.eliminarCuenta(${c.idCuentaBancaria})">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -552,11 +587,14 @@ const EmpresaPdf = {
             <table class="table table-sm table-hover">
                 <thead class="table-light">
                     <tr>
-                        <th>Entidad</th><th>IBAN</th><th>Cuenta Banco</th><th>Moneda</th><th></th>
+                        <th>Entidad</th><th>IBAN</th><th>Cuenta Banco</th><th>Moneda</th>
+                        <th>Cuenta contable</th><th>Estado</th><th></th>
                     </tr>
                 </thead>
                 <tbody>${rows}</tbody>
-            </table>`;
+            </table>
+            <div class="form-text">Cada cuenta bancaria tiene su cuenta contable bajo 1.1.01.002 Bancos.
+                Solo las cuentas activas aparecen en el PDF y en los cobros y pagos.</div>`;
     },
 
     mostrarFormCuenta: async function (id) {
@@ -570,21 +608,13 @@ const EmpresaPdf = {
         document.getElementById('cuentaMoneda').value   = 'CRC';
 
         if (id) {
-            // Load existing account data from the rendered table if possible
-            try {
-                const res = await Configuracion.get('/api/empresa/cuentas-bancarias');
-                if (res.success) {
-                    const cuenta = (res.data || []).find(c => c.idCuentaBancaria === id);
-                    if (cuenta) {
-                        document.getElementById('cuentaId').value     = cuenta.idCuentaBancaria;
-                        document.getElementById('cuentaEntidad').value = cuenta.entidad  || '';
-                        document.getElementById('cuentaIban').value    = cuenta.cuentaIban  || '';
-                        document.getElementById('cuentaBanco').value   = cuenta.cuentaBanco || '';
-                        document.getElementById('cuentaMoneda').value  = cuenta.moneda || 'CRC';
-                    }
-                }
-            } catch (err) {
-                console.error('Error loading account for edit:', err);
+            const cuenta = (this._cuentas || []).find(c => c.idCuentaBancaria === id);
+            if (cuenta) {
+                document.getElementById('cuentaId').value     = cuenta.idCuentaBancaria;
+                document.getElementById('cuentaEntidad').value = cuenta.entidad  || '';
+                document.getElementById('cuentaIban').value    = cuenta.cuentaIban  || '';
+                document.getElementById('cuentaBanco').value   = cuenta.cuentaBanco || '';
+                document.getElementById('cuentaMoneda').value  = cuenta.moneda || 'CRC';
             }
         }
 
@@ -612,40 +642,61 @@ const EmpresaPdf = {
         }
 
         try {
-            let res;
-            if (id) {
-                res = await Configuracion.put(`/api/empresa/cuentas-bancarias/${id}`, payload);
-            } else {
-                res = await Configuracion.post('/api/empresa/cuentas-bancarias', payload);
-            }
+            const res = id
+                ? await this._api('PUT', `/api/empresa/cuentas-bancarias/${id}`, payload)
+                : await this._api('POST', '/api/empresa/cuentas-bancarias', payload);
 
             if (res.success) {
                 this.cancelarCuenta();
                 await this.cargarCuentas();
-                showToast('success', 'Guardado');
+                showToast('success', res.message || 'Guardado');
             } else {
-                showToast('error', res.message);
+                showToast('error', res.message || 'No se pudo guardar la cuenta bancaria');
             }
         } catch (err) {
             console.error('Error saving bank account:', err);
-            showToast('error', 'Unexpected error saving bank account');
+            showToast('error', 'Error inesperado al guardar la cuenta bancaria');
+        }
+    },
+
+    cambiarEstadoCuenta: async function (id, activa) {
+        if (!activa) {
+            const confirmed = await showConfirmDialog('¿Desactivar cuenta?',
+                'Dejará de aparecer en el PDF y en los cobros y pagos; su cuenta contable también se desactiva.',
+                'Sí, desactivar');
+            if (!confirmed) return;
+        }
+        try {
+            const res = await this._api('PATCH', `/api/empresa/cuentas-bancarias/${id}/estado`, { activa: activa });
+            if (res.success) {
+                await this.cargarCuentas();
+                showToast('success', res.message || (activa ? 'Activada' : 'Desactivada'));
+            } else {
+                showToast('error', res.message || 'No se pudo cambiar el estado');
+            }
+        } catch (err) {
+            console.error('Error changing bank account state:', err);
+            showToast('error', 'Error inesperado al cambiar el estado de la cuenta bancaria');
         }
     },
 
     eliminarCuenta: async function (id) {
-        const confirmed = await showConfirmDialog('¿Eliminar cuenta?', 'Se quitará esta cuenta bancaria del PDF.', 'Sí, eliminar');
+        const confirmed = await showConfirmDialog('¿Eliminar cuenta?',
+            'Se eliminan la cuenta bancaria y su cuenta contable. Si tiene cobros, pagos o movimientos no se puede eliminar: desactívela.',
+            'Sí, eliminar');
         if (!confirmed) return;
 
         try {
-            const res = await Configuracion.delete(`/api/empresa/cuentas-bancarias/${id}`);
+            const res = await this._api('DELETE', `/api/empresa/cuentas-bancarias/${id}`);
             if (res.success) {
                 await this.cargarCuentas();
-                showToast('success', 'Eliminada');
+                showToast('success', res.message || 'Eliminada');
             } else {
-                showToast('error', res.message);
+                showToast('error', res.message || 'No se pudo eliminar la cuenta bancaria');
             }
         } catch (err) {
             console.error('Error deleting bank account:', err);
+            showToast('error', 'Error inesperado al eliminar la cuenta bancaria');
         }
     },
 

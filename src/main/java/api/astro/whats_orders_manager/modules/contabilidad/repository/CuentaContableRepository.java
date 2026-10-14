@@ -169,5 +169,20 @@ public interface CuentaContableRepository extends JpaRepository<CuentaContable, 
 
     //query para findByAceptaMovimientos
     List<CuentaContable> findByAceptaMovimientos(Boolean aceptaMovimientos);
+
+    /**
+     * Entidad de la cuenta bancaria cuya hoja contable es la cuenta indicada (ADR-018).
+     * @param cuentaId ID de la cuenta contable
+     * @return Entidad bancaria, vacío si la cuenta no es hoja de una cuenta bancaria
+     */
+    @Query("SELECT cb.entidad FROM CuentaBancaria cb WHERE cb.cuentaContable.idCuenta = :cuentaId")
+    Optional<String> findEntidadCuentaBancariaPorCuenta(@Param("cuentaId") Long cuentaId);
+
+    /**
+     * Hojas contables de las cuentas bancarias (ADR-018): pares [idCuenta, entidad].
+     * @return Una fila por cuenta bancaria
+     */
+    @Query("SELECT cb.cuentaContable.idCuenta, cb.entidad FROM CuentaBancaria cb")
+    List<Object[]> findCuentasDeCuentasBancarias();
     
 }

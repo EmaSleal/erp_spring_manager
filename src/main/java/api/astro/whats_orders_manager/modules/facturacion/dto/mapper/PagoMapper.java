@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.dto.mapper;
 
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import org.springframework.stereotype.Component;
@@ -74,6 +75,12 @@ public class PagoMapper {
             }
         }
         
+        // ADR-018: cuenta bancaria propia de destino
+        if (pago.getCuentaBancariaDestino() != null) {
+            dto.setIdCuentaBancariaDestino(pago.getCuentaBancariaDestino().getIdCuentaBancaria());
+            dto.setCuentaBancariaDestinoDescripcion(pago.getCuentaBancariaDestino().getEntidad());
+        }
+        
         // Agregar descripciones para la vista
         if (pago.getTipoPago() != null) {
             dto.setTipoPagoDescripcion(pago.getTipoPago().getDescripcion());
@@ -122,6 +129,12 @@ public class PagoMapper {
         pago.setAnuladoPor(dto.getAnuladoPor());
         pago.setAnuladoEn(dto.getAnuladoEn());
         pago.setMotivoAnulacion(dto.getMotivoAnulacion());
+        // ADR-018: solo la referencia; el servicio la resuelve y valida (activa, moneda, medio)
+        if (dto.getIdCuentaBancariaDestino() != null) {
+            CuentaBancaria destino = new CuentaBancaria();
+            destino.setIdCuentaBancaria(dto.getIdCuentaBancariaDestino());
+            pago.setCuentaBancariaDestino(destino);
+        }
         
         // Nota: Cliente y factura deben asignarse en el servicio usando idCliente e idFactura
         

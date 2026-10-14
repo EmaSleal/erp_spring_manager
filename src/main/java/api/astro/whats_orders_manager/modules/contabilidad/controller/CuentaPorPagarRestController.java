@@ -100,6 +100,8 @@ public class CuentaPorPagarRestController {
                 m.put("montoAplicado", p.getMontoAplicado());
                 m.put("metodoPago", p.getMetodoPago() != null ? p.getMetodoPago().name() : null);
                 m.put("referencia", p.getReferencia());
+                m.put("cuentaBancaria", p.getCuentaBancariaOrigen() != null
+                    ? p.getCuentaBancariaOrigen().getEntidad() : null);
                 m.put("estado",     p.getEstado() != null ? p.getEstado().name() : null);
                 return m;
             })

@@ -299,14 +299,24 @@
 
                         <div class="mb-3">
                             <label for="pagoMetodo" class="form-label">Método de Pago <span class="text-danger">*</span></label>
+                            <!-- ADR-018: los medios bancarios salen de una cuenta bancaria propia -->
                             <select id="pagoMetodo" class="form-select" required>
                                 <option value="">Seleccione...</option>
-                                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
-                                <option value="CHEQUE">CHEQUE</option>
-                                <option value="EFECTIVO">EFECTIVO</option>
-                                <option value="SINPE">SINPE</option>
-                                <option value="DEPOSITO">DEPOSITO</option>
+                                <option value="TRANSFERENCIA" data-requiere-cuenta-bancaria="true">TRANSFERENCIA</option>
+                                <option value="CHEQUE" data-requiere-cuenta-bancaria="true">CHEQUE</option>
+                                <option value="EFECTIVO" data-requiere-cuenta-bancaria="false">EFECTIVO</option>
+                                <option value="SINPE" data-requiere-cuenta-bancaria="true">SINPE</option>
+                                <option value="DEPOSITO" data-requiere-cuenta-bancaria="true">DEPOSITO</option>
                             </select>
+                        </div>
+
+                        <!-- Cuenta bancaria propia de origen (ADR-018): visible y obligatoria con medios bancarios -->
+                        <div class="mb-3" id="pagoCuentaBancariaGroup" style="display: none;">
+                            <label for="pagoCuentaBancaria" class="form-label">Cuenta bancaria de origen <span class="text-danger">*</span></label>
+                            <select id="pagoCuentaBancaria" class="form-select">
+                                <option value="">Seleccione la cuenta bancaria...</option>
+                            </select>
+                            <div class="form-text" id="pagoCuentaBancariaAyuda">Cuenta de la empresa de la que sale el pago. Solo cuentas activas en la moneda del pago.</div>
                         </div>
 
                         <div class="mb-3">
@@ -534,6 +544,7 @@
         document.getElementById('pagoMonto').value           = saldo.toFixed(2);
         document.getElementById('pagoMonto').max             = saldo;
         document.getElementById('pagoMetodo').value          = '';
+        document.getElementById('pagoCuentaBancaria').value  = '';
         document.getElementById('pagoReferencia').value      = '';
         document.getElementById('pagoFecha').value           = new Date().toISOString().split('T')[0];
         document.getElementById('pagoNotas').value           = '';
@@ -551,9 +562,57 @@
         selMoneda.dataset.monedaCuenta = moneda;
         document.getElementById('pagoMonedaRow').style.display = moneda === 'CRC' ? 'none' : '';
         actualizarTipoCambioPagoProveedor();
+        actualizarCuentaBancariaOrigen();
 
         new bootstrap.Modal(document.getElementById('modalPago')).show();
     }
+
+    // ADR-018: con TRANSFERENCIA, CHEQUE, SINPE o DEPOSITO el pago sale de una cuenta bancaria propia,
+    // activa y en la moneda del pago; con EFECTIVO no se pide.
+    let cuentasBancariasOrigenFetch = null;
+    function actualizarCuentaBancariaOrigen() {
+        const metodo = document.getElementById('pagoMetodo');
+        const grupo  = document.getElementById('pagoCuentaBancariaGroup');
+        const select = document.getElementById('pagoCuentaBancaria');
+        const ayuda  = document.getElementById('pagoCuentaBancariaAyuda');
+        const opcion = metodo.selectedIndex > 0 ? metodo.options[metodo.selectedIndex] : null;
+        const requiere = opcion && opcion.dataset.requiereCuentaBancaria === 'true';
+        if (!requiere) {
+            grupo.style.display = 'none';
+            select.required = false;
+            select.value = '';
+            return;
+        }
+        grupo.style.display = '';
+        select.required = true;
+        const moneda = document.getElementById('pagoMoneda').value || 'CRC';
+        const anterior = select.value;
+        if (cuentasBancariasOrigenFetch) cuentasBancariasOrigenFetch.abort();
+        cuentasBancariasOrigenFetch = new AbortController();
+        fetch(`/api/cuentas-bancarias/activas?moneda=${encodeURIComponent(moneda)}`, { signal: cuentasBancariasOrigenFetch.signal })
+            .then(async r => ({ ok: r.ok, data: await r.json().catch(() => null) }))
+            .then(({ ok, data }) => {
+                select.innerHTML = '<option value="">Seleccione la cuenta bancaria...</option>';
+                const cuentas = ok && data && Array.isArray(data.data) ? data.data : [];
+                cuentas.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.idCuentaBancaria;
+                    opt.textContent = `${c.entidad} (${c.moneda})${c.cuentaBanco ? ' - ' + c.cuentaBanco : ''}`;
+                    select.appendChild(opt);
+                });
+                if (cuentas.some(c => String(c.idCuentaBancaria) === anterior)) {
+                    select.value = anterior;
+                }
+                ayuda.textContent = !ok
+                    ? ((data && data.message) || 'No se pudieron cargar las cuentas bancarias')
+                    : (cuentas.length
+                        ? `Cuenta de la empresa de la que sale el pago. Solo cuentas activas en ${moneda}.`
+                        : `No hay cuentas bancarias activas en ${moneda}. Configúrelas en Configuración → Empresa.`);
+            })
+            .catch(err => { if (err.name !== 'AbortError') console.error('Error al cargar cuentas bancarias:', err); });
+    }
+    document.getElementById('pagoMetodo').addEventListener('change', actualizarCuentaBancariaOrigen);
+    document.getElementById('pagoMoneda').addEventListener('change', actualizarCuentaBancariaOrigen);
 
     function actualizarTipoCambioPagoProveedor() {
         const selMoneda = document.getElementById('pagoMoneda');
@@ -597,6 +656,12 @@
             mostrarToast('Por favor complete los campos requeridos.', 'warning');
             return;
         }
+        const selCuenta = document.getElementById('pagoCuentaBancaria');
+        const cuentaOrigen = selCuenta.required && selCuenta.value ? parseInt(selCuenta.value) : null;
+        if (selCuenta.required && !cuentaOrigen) {
+            mostrarToast('Seleccione la cuenta bancaria de origen.', 'warning');
+            return;
+        }
 
         const btn = document.getElementById('btnConfirmarPago');
         btn.disabled = true;
@@ -615,6 +680,7 @@
                     tipoCambio: document.getElementById('pagoTipoCambio').value
                         ? parseFloat(document.getElementById('pagoTipoCambio').value) : null,
                     metodoPago: metodo,
+                    idCuentaBancariaOrigen: cuentaOrigen,
                     referencia: ref || null,
                     fecha:      fecha,
                     notas:      notas || null
@@ -667,7 +733,9 @@
                     <td class="fw-bold">${p.numero ?? '—'}</td>
                     <td>${p.fecha ?? '—'}</td>
                     <td class="text-end">${p.moneda ?? 'CRC'} ${parseFloat(p.monto ?? 0).toFixed(2)}${p.tipoCambio && p.moneda !== 'CRC' ? ` <small class="text-muted">(TC ${p.tipoCambio})</small>` : ''}</td>
-                    <td class="text-center"><span class="badge bg-secondary">${p.metodoPago ?? '—'}</span></td>
+                    <td class="text-center"><span class="badge bg-secondary">${p.metodoPago ?? '—'}</span>${p.cuentaBancaria
+                        ? `<br><small class="text-muted">${String(p.cuentaBancaria).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</small>`
+                        : ''}</td>
                     <td>${p.referencia ?? '—'}</td>
                     <td class="text-center">${estadoBadge}</td>
                 </tr>`;

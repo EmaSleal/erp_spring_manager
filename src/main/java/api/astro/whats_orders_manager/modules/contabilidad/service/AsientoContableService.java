@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service;
 
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoCuenta;
@@ -430,7 +431,8 @@ public class AsientoContableService {
      * Genera y contabiliza el asiento de cobro de un pago (ADR-008 regla 3, ADR-011).
      *
      * Estructura (montos en CRC):
-     *   DR COBRO_CAJA_&lt;MetodoPago&gt;          — monto del pago en CRC al tipo de cambio del pago
+     *   DR hoja de la cuenta bancaria de destino (TRANSFERENCIA, ADR-018) o
+     *      COBRO_CAJA_&lt;MetodoPago&gt; (demás medios) — monto del pago en CRC al tipo de cambio del pago
      *   CR VENTA_CXC_CLIENTES (con factura)   — montoAplicado × factura.tipoCambio
      *   CR COBRO_ANTICIPOS_CLIENTES (adelanto) — monto del pago en CRC (sin diferencial)
      *   CR DIFERENCIAL_CAMBIARIO_INGRESO      — si caja &gt; CxC
@@ -444,7 +446,9 @@ public class AsientoContableService {
      * @param pago Pago origen en estado CONFIRMADO o CONCILIADO
      * @return Asiento contabilizado
      * @throws IllegalStateException si el pago no es válido o no tiene fecha, falta una clave contable
-     *                               (incluidas DIFERENCIAL_CAMBIARIO_* cuando hay diferencia) o no cuadra
+     *                               (incluidas DIFERENCIAL_CAMBIARIO_* cuando hay diferencia), un cobro por
+     *                               TRANSFERENCIA no tiene cuenta bancaria de destino (sin respaldo, ADR-014/018)
+     *                               o su hoja no es una hoja activa, o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoPago(Pago pago) {
@@ -470,7 +474,7 @@ public class AsientoContableService {
             "El pago " + pago.getNumeroPago(), "fechaPago");
 
         Factura factura = pago.getFactura();
-        CuentaContable cuentaCaja = resolverCuenta(PREFIJO_COBRO_CAJA + pago.getMetodoPago().name());
+        CuentaContable cuentaCaja = cuentaDebitoCobro(pago);
         CuentaContable cuentaCredito = factura != null
             ? resolverCuenta(CLAVE_VENTA_CXC_CLIENTES)
             : resolverCuenta(CLAVE_COBRO_ANTICIPOS_CLIENTES);
@@ -508,9 +512,11 @@ public class AsientoContableService {
 
         List<DetalleAsiento> detalles = new ArrayList<>();
 
-        // Débito: Caja/Banco según método de pago
+        // Débito: hoja de la cuenta bancaria de destino (TRANSFERENCIA) o caja según método de pago
         detalles.add(linea(asiento, cuentaCaja, montoCajaCrc, null,
-            "Recibo: " + pago.getMetodoPago().getDescripcion()));
+            truncar("Recibo: " + pago.getMetodoPago().getDescripcion()
+                + (pago.getCuentaBancariaDestino() != null && pago.getMetodoPago().requiereCuentaBancaria()
+                    ? " — " + pago.getCuentaBancariaDestino().getEntidad() : ""), 500)));
 
         // Crédito: CxC clientes (con factura) o anticipos de clientes (adelanto)
         detalles.add(linea(asiento, cuentaCredito, null, creditoCrc,
@@ -530,6 +536,46 @@ public class AsientoContableService {
 
         log.info("Asiento de pago generado y contabilizado: {}", guardado.getNumero());
         return guardado;
+    }
+
+    /**
+     * Cuenta que se debita en un cobro (ADR-018): la hoja de la cuenta bancaria de destino para
+     * TRANSFERENCIA; la clave COBRO_CAJA_&lt;MetodoPago&gt; para los demás medios.
+     * @throws IllegalStateException si un cobro por TRANSFERENCIA no tiene cuenta bancaria (sin respaldo)
+     */
+    private CuentaContable cuentaDebitoCobro(Pago pago) {
+        if (!pago.getMetodoPago().requiereCuentaBancaria()) {
+            return resolverCuenta(PREFIJO_COBRO_CAJA + pago.getMetodoPago().name());
+        }
+        CuentaBancaria destino = pago.getCuentaBancariaDestino();
+        if (destino == null) {
+            throw new IllegalStateException("El cobro " + pago.getNumeroPago() + " por "
+                + pago.getMetodoPago().getDescripcion()
+                + " no tiene cuenta bancaria de destino; no se puede contabilizar sin ella (ADR-018)");
+        }
+        return cuentaContableDeCuentaBancaria(destino, "el cobro " + pago.getNumeroPago());
+    }
+
+    /**
+     * Hoja contable de una cuenta bancaria (ADR-018), con la misma regla que {@link #resolverCuenta}:
+     * activa, que acepta movimientos y sin subcuentas (ADR-017).
+     * @param documento texto del documento para el mensaje (p. ej. "el cobro PAG-...")
+     * @throws IllegalStateException si la cuenta bancaria no tiene hoja o la hoja no puede recibir movimientos
+     */
+    private CuentaContable cuentaContableDeCuentaBancaria(CuentaBancaria cuentaBancaria, String documento) {
+        CuentaContable cuenta = cuentaBancaria.getCuentaContable();
+        if (cuenta == null) {
+            throw new IllegalStateException("La cuenta bancaria " + cuentaBancaria.getEntidad() + " de " + documento
+                + " no tiene cuenta contable (ADR-018)");
+        }
+        String motivo = motivoNoEsHojaUtilizable(cuenta);
+        if (motivo != null) {
+            throw new IllegalStateException(String.format(
+                "La cuenta bancaria %s de %s apunta a la cuenta %s, que %s; solo una cuenta hoja activa "
+                    + "que acepta movimientos puede recibir asientos automáticos (ADR-017)",
+                cuentaBancaria.getEntidad(), documento, cuenta.getCodigo(), motivo));
+        }
+        return cuenta;
     }
 
     /**
@@ -920,8 +966,13 @@ public class AsientoContableService {
     public static final String CLAVE_CPP_CUENTA_POR_PAGAR = "CPP_CUENTA_POR_PAGAR";
     /** Clave de la cuenta de IVA crédito fiscal (DR en compra). */
     public static final String CLAVE_CPP_IVA_CREDITO_FISCAL = "CPP_IVA_CREDITO_FISCAL";
-    /** Prefijo de las claves de banco/caja de pagos a proveedor: CPP_BANCO_&lt;MetodoPagoProveedor&gt;. */
+    /**
+     * Prefijo de las claves de banco/caja de pagos a proveedor. Desde ADR-018 (V30) solo existe
+     * CPP_BANCO_EFECTIVO; los medios bancarios usan la hoja de la cuenta bancaria de origen.
+     */
     public static final String PREFIJO_CPP_BANCO = "CPP_BANCO_";
+    /** Caja de los pagos a proveedor en efectivo. */
+    public static final String CLAVE_CPP_BANCO_EFECTIVO = "CPP_BANCO_EFECTIVO";
 
     /**
      * Genera y contabiliza el asiento de compra de una CxP (ADR-011: montos en CRC; ADR-015: toda
@@ -1115,12 +1166,23 @@ public class AsientoContableService {
             || clave.equals(CLAVE_CPP_IVA_CREDITO_FISCAL);
     }
 
-    /** Id de cuenta → clave de parametros_contables que la excluye como contrapartida. */
+    /**
+     * Id de cuenta → motivo que la excluye como contrapartida: la clave de parametros_contables, o la
+     * cuenta bancaria cuya hoja es (ADR-018: las hojas bancarias no tienen clave).
+     */
     private Map<Long, String> cuentasExcluidasDeContrapartida() {
         Map<Long, String> excluidas = new HashMap<>();
         for (ParametroContable p : parametroContableRepository.findAllWithCuentas()) {
             if (esClaveExcluidaDeContrapartida(p.getClave())) {
                 excluidas.putIfAbsent(p.getCuentaContable().getIdCuenta(), p.getClave());
+            }
+        }
+        List<Object[]> hojasBancarias = cuentaRepository.findCuentasDeCuentasBancarias();
+        if (hojasBancarias != null) {
+            for (Object[] fila : hojasBancarias) {
+                if (fila != null && fila[0] != null) {
+                    excluidas.putIfAbsent(((Number) fila[0]).longValue(), "cuenta bancaria " + fila[1]);
+                }
             }
         }
         return excluidas;
@@ -1145,7 +1207,8 @@ public class AsientoContableService {
      *
      * Estructura:
      *   DR CPP_CUENTA_POR_PAGAR          — montoAplicado × cpp.tipoCambio
-     *   CR CPP_BANCO_&lt;método&gt;           — monto del pago en CRC al tipo de cambio del pago
+     *   CR hoja de la cuenta bancaria de origen (TRANSFERENCIA, CHEQUE, SINPE, DEPOSITO; ADR-018) o
+     *      CPP_BANCO_EFECTIVO (EFECTIVO) — monto del pago en CRC al tipo de cambio del pago
      *   DR DIFERENCIAL_CAMBIARIO_GASTO   — si se pagaron más colones de los registrados en la CxP
      *   CR DIFERENCIAL_CAMBIARIO_INGRESO — si se pagaron menos colones
      *
@@ -1156,22 +1219,19 @@ public class AsientoContableService {
      *
      * @param pago el PagoProveedor recién guardado
      * @return el asiento contabilizado
-     * @throws IllegalStateException si el pago no tiene fecha, falta una clave contable o el asiento no cuadra
+     * @throws IllegalStateException si el pago no tiene fecha, falta una clave contable, un pago por medio
+     *                               bancario no tiene cuenta bancaria de origen (sin respaldo, ADR-014/018) o su
+     *                               hoja no es una hoja activa, o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoPagoProveedor(PagoProveedor pago) {
         LocalDate fecha = fechaEconomica(pago.getFecha(), "El pago a proveedor " + pago.getNumero(), "fecha");
 
-        String bancoKey = switch (pago.getMetodoPago()) {
-            case TRANSFERENCIA -> "CPP_BANCO_TRANSFERENCIA";
-            case CHEQUE        -> "CPP_BANCO_CHEQUE";
-            case EFECTIVO      -> "CPP_BANCO_EFECTIVO";
-            case SINPE         -> "CPP_BANCO_SINPE";
-            case DEPOSITO      -> "CPP_BANCO_DEPOSITO";
-        };
-
+        if (pago.getMetodoPago() == null) {
+            throw new IllegalStateException("El pago a proveedor " + pago.getNumero() + " no tiene método de pago");
+        }
         CuentaContable cuentaPorPagar = resolverCuenta(CLAVE_CPP_CUENTA_POR_PAGAR);
-        CuentaContable cuentaBanco    = resolverCuenta(bancoKey);
+        CuentaContable cuentaBanco    = cuentaCreditoPagoProveedor(pago);
 
         CuentaPorPagar cpp = pago.getCuentaPorPagar();
         MonedaFE monedaCuenta = ConversionMoneda.oCrc(cpp != null ? cpp.getMoneda() : null);
@@ -1211,8 +1271,10 @@ public class AsientoContableService {
         // DR Cuentas por Pagar (lo que se rebaja de la CxP, a su tipo de cambio)
         detalles.add(linea(asiento, cuentaPorPagar, cxpCrc, null, "Pago a proveedor — " + pago.getNumero()));
 
-        // CR Banco/Caja (lo que salió en CRC, al tipo de cambio del pago)
-        detalles.add(linea(asiento, cuentaBanco, null, bancoCrc, pago.getMetodoPago() + " — " + pago.getNumero()));
+        // CR hoja de la cuenta bancaria de origen o caja (lo que salió en CRC, al tipo de cambio del pago)
+        detalles.add(linea(asiento, cuentaBanco, null, bancoCrc, truncar(pago.getMetodoPago() + " — " + pago.getNumero()
+            + (pago.getCuentaBancariaOrigen() != null && pago.getMetodoPago().requiereCuentaBancaria()
+                ? " — " + pago.getCuentaBancariaOrigen().getEntidad() : ""), 500)));
 
         // Diferencial cambiario: ganancia si se pagaron menos colones de los registrados
         agregarDiferencialCambiario(asiento, detalles, cxpCrc.subtract(bancoCrc), "Pago proveedor " + pago.getNumero());
@@ -1227,6 +1289,23 @@ public class AsientoContableService {
 
         log.info("Supplier payment journal entry {} posted for pago {}", guardado.getNumero(), pago.getNumero());
         return guardado;
+    }
+
+    /**
+     * Cuenta que se acredita en un pago a proveedor (ADR-018): la hoja de la cuenta bancaria de origen
+     * para TRANSFERENCIA, CHEQUE, SINPE y DEPOSITO; la clave CPP_BANCO_EFECTIVO para EFECTIVO.
+     * @throws IllegalStateException si un pago por medio bancario no tiene cuenta bancaria (sin respaldo)
+     */
+    private CuentaContable cuentaCreditoPagoProveedor(PagoProveedor pago) {
+        if (!pago.getMetodoPago().requiereCuentaBancaria()) {
+            return resolverCuenta(CLAVE_CPP_BANCO_EFECTIVO);
+        }
+        CuentaBancaria origen = pago.getCuentaBancariaOrigen();
+        if (origen == null) {
+            throw new IllegalStateException("El pago a proveedor " + pago.getNumero() + " por " + pago.getMetodoPago()
+                + " no tiene cuenta bancaria de origen; no se puede contabilizar sin ella (ADR-018)");
+        }
+        return cuentaContableDeCuentaBancaria(origen, "el pago a proveedor " + pago.getNumero());
     }
 
     /**
@@ -1449,14 +1528,7 @@ public class AsientoContableService {
         CuentaContable cuenta = parametroContableRepository.findByClave(clave)
             .map(ParametroContable::getCuentaContable)
             .orElseThrow(() -> new IllegalStateException("Parámetro contable no configurado: " + clave));
-        String motivo = null;
-        if (!Boolean.TRUE.equals(cuenta.getActiva())) {
-            motivo = "está inactiva";
-        } else if (!Boolean.TRUE.equals(cuenta.getAceptaMovimientos())) {
-            motivo = "no acepta movimientos";
-        } else if (tieneSubcuentas(cuenta)) {
-            motivo = "tiene subcuentas (es agrupadora)";
-        }
+        String motivo = motivoNoEsHojaUtilizable(cuenta);
         if (motivo != null) {
             throw new IllegalStateException(String.format(
                 "El parámetro contable %s apunta a la cuenta %s, que %s; solo una cuenta hoja activa "
@@ -1464,6 +1536,23 @@ public class AsientoContableService {
                 clave, cuenta.getCodigo(), motivo));
         }
         return cuenta;
+    }
+
+    /**
+     * Motivo por el que una cuenta no puede recibir un asiento automático (ADR-017), o null si es una
+     * hoja activa que acepta movimientos.
+     */
+    private String motivoNoEsHojaUtilizable(CuentaContable cuenta) {
+        if (!Boolean.TRUE.equals(cuenta.getActiva())) {
+            return "está inactiva";
+        }
+        if (!Boolean.TRUE.equals(cuenta.getAceptaMovimientos())) {
+            return "no acepta movimientos";
+        }
+        if (tieneSubcuentas(cuenta)) {
+            return "tiene subcuentas (es agrupadora)";
+        }
+        return null;
     }
 
     /** True si la cuenta tiene al menos una subcuenta por la FK cuenta_padre_id. */

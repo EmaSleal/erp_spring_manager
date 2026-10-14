@@ -21,6 +21,11 @@ public class PagoProveedorDTO {
     /** Tipo de cambio de la operación (ADR-011). Null → tasa de venta registrada para la fecha del pago. */
     private BigDecimal tipoCambio;
     private MetodoPagoProveedor metodoPago;
+    /**
+     * Cuenta bancaria propia de origen (ADR-018): obligatoria para TRANSFERENCIA, CHEQUE, SINPE y
+     * DEPOSITO, ignorada en EFECTIVO. Debe estar activa y en la moneda del pago.
+     */
+    private Integer idCuentaBancariaOrigen;
     private String referencia;
     private LocalDate fecha;
     private String notas;

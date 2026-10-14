@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.service;
 
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
+import api.astro.whats_orders_manager.modules.configuracion.service.CuentaBancariaService;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
@@ -77,6 +79,7 @@ class PagoProveedorMultimonedaTest {
     @Mock private DetalleAsientoRepository detalleRepository;
     @Mock private CuentaContableRepository cuentaRepository;
     @Mock private ParametroContableRepository parametroContableRepository;
+    @Mock private CuentaBancariaService cuentaBancariaService;
 
     private PagoProveedorServiceImpl service;
     private final Map<String, CuentaContable> cuentas = new HashMap<>();
@@ -91,10 +94,10 @@ class PagoProveedorMultimonedaTest {
         CuentaPorPagarServiceImpl cuentaService = new CuentaPorPagarServiceImpl(cuentaPorPagarRepository,
                 proveedorRepository, ordenCompraRepository, asientoService, tipoCambioService);
         service = new PagoProveedorServiceImpl(pagoRepository, cuentaPorPagarRepository, cuentaService,
-                asientoService, tipoCambioService);
+                asientoService, tipoCambioService, cuentaBancariaService);
 
         long id = 1;
-        for (String clave : List.of("CPP_CUENTA_POR_PAGAR", "CPP_BANCO_TRANSFERENCIA",
+        for (String clave : List.of("CPP_CUENTA_POR_PAGAR",
                 "DIFERENCIAL_CAMBIARIO_INGRESO", "DIFERENCIAL_CAMBIARIO_GASTO")) {
             CuentaContable c = new CuentaContable();
             c.setIdCuenta(id++);
@@ -108,6 +111,23 @@ class PagoProveedorMultimonedaTest {
             p.setCuentaContable(c);
             when(parametroContableRepository.findByClave(clave)).thenReturn(Optional.of(p));
         }
+        // ADR-018: TRANSFERENCIA acredita la hoja de la cuenta bancaria de origen (sin clave CPP_BANCO_*)
+        CuentaContable hojaBanco = new CuentaContable();
+        hojaBanco.setIdCuenta(id);
+        hojaBanco.setCodigo("1.1.01.002.001");
+        hojaBanco.setNombre("Banco de prueba");
+        hojaBanco.setActiva(true);
+        hojaBanco.setAceptaMovimientos(true);
+        cuentas.put("BANCO", hojaBanco);
+        when(cuentaBancariaService.resolverParaPago(any(), any(), anyString())).thenAnswer(inv -> {
+            CuentaBancaria banco = new CuentaBancaria();
+            banco.setIdCuentaBancaria(1);
+            banco.setEntidad("Banco de prueba");
+            banco.setMoneda(((MonedaFE) inv.getArgument(1)).getCodigo());
+            banco.setActiva(true);
+            banco.setCuentaContable(hojaBanco);
+            return banco;
+        });
         when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
         when(pagoRepository.findUltimoConsecutivo(anyInt())).thenReturn(null);
@@ -143,7 +163,7 @@ class PagoProveedorMultimonedaTest {
         assertThat(asiento.getTipo()).isEqualTo(TipoAsiento.AUTOMATICO_GASTO);
         assertThat(debe(asiento, "CPP_CUENTA_POR_PAGAR")).isEqualByComparingTo("56500.00");
         assertThat(debe(asiento, "DIFERENCIAL_CAMBIARIO_GASTO")).isEqualByComparingTo("1130.00");
-        assertThat(haber(asiento, "CPP_BANCO_TRANSFERENCIA")).isEqualByComparingTo("57630.00");
+        assertThat(haber(asiento, "BANCO")).isEqualByComparingTo("57630.00");
         assertThat(haber(asiento, "DIFERENCIAL_CAMBIARIO_INGRESO")).isEqualByComparingTo("0");
         assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
         assertThat(cpp.getSaldoPendiente()).isEqualByComparingTo("0");
@@ -160,7 +180,7 @@ class PagoProveedorMultimonedaTest {
 
         AsientoContable asiento = ultimoAsiento();
         assertThat(debe(asiento, "CPP_CUENTA_POR_PAGAR")).isEqualByComparingTo("56500.00");
-        assertThat(haber(asiento, "CPP_BANCO_TRANSFERENCIA")).isEqualByComparingTo("55370.00");
+        assertThat(haber(asiento, "BANCO")).isEqualByComparingTo("55370.00");
         assertThat(haber(asiento, "DIFERENCIAL_CAMBIARIO_INGRESO")).isEqualByComparingTo("1130.00");
         assertThat(debe(asiento, "DIFERENCIAL_CAMBIARIO_GASTO")).isEqualByComparingTo("0");
         assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
@@ -181,7 +201,7 @@ class PagoProveedorMultimonedaTest {
         assertThat(cpp.getSaldoPendiente()).isEqualByComparingTo("56.50");
         AsientoContable asiento = ultimoAsiento();
         assertThat(debe(asiento, "CPP_CUENTA_POR_PAGAR")).isEqualByComparingTo("28250.00");
-        assertThat(haber(asiento, "CPP_BANCO_TRANSFERENCIA")).isEqualByComparingTo("28815.00");
+        assertThat(haber(asiento, "BANCO")).isEqualByComparingTo("28815.00");
         assertThat(debe(asiento, "DIFERENCIAL_CAMBIARIO_GASTO")).isEqualByComparingTo("565.00");
     }
 
@@ -196,7 +216,7 @@ class PagoProveedorMultimonedaTest {
         AsientoContable asiento = ultimoAsiento();
         assertThat(asiento.getDetalles()).hasSize(2);
         assertThat(debe(asiento, "CPP_CUENTA_POR_PAGAR")).isEqualByComparingTo("50.00");
-        assertThat(haber(asiento, "CPP_BANCO_TRANSFERENCIA")).isEqualByComparingTo("50.00");
+        assertThat(haber(asiento, "BANCO")).isEqualByComparingTo("50.00");
     }
 
     @Test
@@ -262,7 +282,7 @@ class PagoProveedorMultimonedaTest {
         assertThat(reversion.getConcepto()).contains("ASI-2026-0800");
         assertThat(haber(reversion, "CPP_CUENTA_POR_PAGAR")).isEqualByComparingTo("56500.00");
         assertThat(haber(reversion, "DIFERENCIAL_CAMBIARIO_GASTO")).isEqualByComparingTo("1130.00");
-        assertThat(debe(reversion, "CPP_BANCO_TRANSFERENCIA")).isEqualByComparingTo("57630.00");
+        assertThat(debe(reversion, "BANCO")).isEqualByComparingTo("57630.00");
         assertThat(reversion.getTotalDebe()).isEqualByComparingTo(reversion.getTotalHaber());
         for (String clave : cuentas.keySet()) {
             BigDecimal saldo = debe(original, clave).subtract(haber(original, clave))
@@ -321,6 +341,7 @@ class PagoProveedorMultimonedaTest {
                 .moneda(moneda)
                 .tipoCambio(tipoCambio != null ? new BigDecimal(tipoCambio) : null)
                 .metodoPago(MetodoPagoProveedor.TRANSFERENCIA)
+                .idCuentaBancariaOrigen(1)
                 .fecha(LocalDate.of(2026, 10, 11))
                 .build();
     }

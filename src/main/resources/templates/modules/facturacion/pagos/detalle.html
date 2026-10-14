@@ -127,16 +127,21 @@
                                 </div>
                                 
                                 <!-- Información Bancaria -->
+                                <!-- ADR-018: cuenta propia de la empresa en la que entró el cobro -->
+                                <div class="col-md-12" th:if="${pago.cuentaBancariaDestinoDescripcion != null}">
+                                    <label class="text-muted small mb-1">Cuenta bancaria de destino</label>
+                                    <div th:text="${pago.cuentaBancariaDestinoDescripcion}">Banco Nacional - Colones</div>
+                                </div>
                                 <div class="col-md-12" th:if="${pago.banco != null or pago.cuentaBancaria != null}">
                                     <hr class="my-2">
                                     <h6 class="text-muted mb-2"><i class="fas fa-university me-1"></i>Información Bancaria</h6>
                                 </div>
                                 <div class="col-md-6" th:if="${pago.banco != null}">
-                                    <label class="text-muted small mb-1">Banco</label>
+                                    <label class="text-muted small mb-1">Banco del cliente</label>
                                     <div th:text="${pago.banco}">Banco Nacional</div>
                                 </div>
                                 <div class="col-md-6" th:if="${pago.cuentaBancaria != null}">
-                                    <label class="text-muted small mb-1">Cuenta Bancaria</label>
+                                    <label class="text-muted small mb-1">Cuenta bancaria del cliente</label>
                                     <div th:text="${pago.cuentaBancaria}">****1234</div>
                                 </div>
                                 

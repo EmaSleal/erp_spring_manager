@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.model;
 
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -67,6 +68,15 @@ public class CuentaBancaria implements Serializable {
 
     @Column(name = "orden")
     private Integer orden = 0;
+
+    /**
+     * Hoja contable propia de la cuenta bancaria bajo 1.1.01.002 Bancos (ADR-018).
+     * Se crea, renombra, desactiva y elimina junto con la cuenta bancaria (CuentaBancariaService).
+     * Los cobros por transferencia la debitan y los pagos bancarios a proveedor la acreditan.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuenta_contable_id", nullable = false, unique = true)
+    private CuentaContable cuentaContable;
 
     @CreatedDate
     @Column(name = "create_date", updatable = false)
