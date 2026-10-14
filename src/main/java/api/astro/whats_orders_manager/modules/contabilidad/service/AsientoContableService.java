@@ -33,7 +33,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Servicio para la gestión de asientos contables.
@@ -1120,27 +1122,57 @@ public class AsientoContableService {
     /**
      * Generates a balanced payroll journal entry for a Nomina in APROBADA state.
      *
-     * Entry structure:
-     *   DR NOMINA_GASTO_SUELDOS        — nomina.totalBruto
-     *   DR NOMINA_CCSS_PATRONAL_POR_PAGAR — nomina.totalCcssPatronal
-     *   CR NOMINA_CCSS_POR_PAGAR       — sum(detalles.ccssObrero)
-     *   CR NOMINA_INS_POR_PAGAR        — sum(detalles.ins)
-     *   CR NOMINA_RENTA_POR_PAGAR      — sum(detalles.impuestoRenta)
-     *   CR NOMINA_SALARIOS_POR_PAGAR   — nomina.totalNeto
+     * Entry structure (lines with amount 0 are omitted):
+     *   DR NOMINA_GASTO_SUELDOS                  — nomina.totalBruto
+     *   DR NOMINA_GASTO_SUELDOS                  — nomina.totalCcssPatronal (employer CCSS cost)
+     *   DR NOMINA_APORTE_PATRONAL_ASE_GASTO      — sum(detalles.aportePatronalSolidarista) (ADR-013)
+     *   CR NOMINA_CCSS_POR_PAGAR                 — sum(detalles.ccssObrero)
+     *   CR NOMINA_INS_POR_PAGAR                  — sum(detalles.ins)
+     *   CR NOMINA_RENTA_POR_PAGAR                — sum(detalles.impuestoRenta)
+     *   CR NOMINA_SOLIDARISTA_POR_PAGAR          — sum(detalles.solidarista) (ADR-013)
+     *   CR NOMINA_PENSION_ALIMENTARIA_POR_PAGAR  — sum(detalles.pensionAlimentaria) (ADR-013)
+     *   CR NOMINA_SALARIOS_POR_PAGAR             — nomina.totalNeto
+     *   CR NOMINA_CCSS_PATRONAL_POR_PAGAR        — nomina.totalCcssPatronal
+     *   CR NOMINA_APORTE_PATRONAL_ASE_POR_PAGAR  — sum(detalles.aportePatronalSolidarista) (ADR-013)
+     *
+     * Balance: totalBruto = ccssObrero + ins + renta + solidarista + pension + totalNeto; the
+     * employer CCSS and ASE contributions are posted as DR expense / CR liability pairs.
+     *
+     * The six base keys are always required. The solidarista, pensión and ASE keys are resolved
+     * only when the corresponding total is greater than zero.
      *
      * @param nomina the approved Nomina to post
      * @return the posted AsientoContable
-     * @throws IllegalStateException if any NOMINA_* key is not configured, or entry does not balance
+     * @throws IllegalStateException if a required NOMINA_* key is not configured, or the entry does
+     *         not balance (the message includes Debe, Haber and the difference)
      */
     @Transactional
     public AsientoContable generarAsientoNomina(Nomina nomina) {
-        // Resolve all 6 accounts — fail fast if any missing
+        // Resolve the 6 base accounts — fail fast if any missing
         CuentaContable cuentaGastoSueldos  = resolverCuenta("NOMINA_GASTO_SUELDOS");
         CuentaContable cuentaCcssPatronal  = resolverCuenta("NOMINA_CCSS_PATRONAL_POR_PAGAR");
         CuentaContable cuentaCcssObrero    = resolverCuenta("NOMINA_CCSS_POR_PAGAR");
         CuentaContable cuentaIns           = resolverCuenta("NOMINA_INS_POR_PAGAR");
         CuentaContable cuentaRenta         = resolverCuenta("NOMINA_RENTA_POR_PAGAR");
         CuentaContable cuentaSalarios      = resolverCuenta("NOMINA_SALARIOS_POR_PAGAR");
+
+        List<DetalleNomina> lineasNomina = nomina.getDetalles() != null ? nomina.getDetalles() : List.of();
+        BigDecimal totalCcssObrero  = sumarDetallesNomina(lineasNomina, DetalleNomina::getCcssObrero);
+        BigDecimal totalIns         = sumarDetallesNomina(lineasNomina, DetalleNomina::getIns);
+        BigDecimal totalRenta       = sumarDetallesNomina(lineasNomina, DetalleNomina::getImpuestoRenta);
+        BigDecimal totalSolidarista = sumarDetallesNomina(lineasNomina, DetalleNomina::getSolidarista);
+        BigDecimal totalPension     = sumarDetallesNomina(lineasNomina, DetalleNomina::getPensionAlimentaria);
+        BigDecimal totalAporteAse   = sumarDetallesNomina(lineasNomina, DetalleNomina::getAportePatronalSolidarista);
+
+        // Optional accounts (ADR-013) — resolved only when they will be used
+        CuentaContable cuentaSolidarista = totalSolidarista.signum() > 0
+                ? resolverCuenta("NOMINA_SOLIDARISTA_POR_PAGAR") : null;
+        CuentaContable cuentaPension = totalPension.signum() > 0
+                ? resolverCuenta("NOMINA_PENSION_ALIMENTARIA_POR_PAGAR") : null;
+        CuentaContable cuentaAseGasto = totalAporteAse.signum() > 0
+                ? resolverCuenta("NOMINA_APORTE_PATRONAL_ASE_GASTO") : null;
+        CuentaContable cuentaAsePorPagar = totalAporteAse.signum() > 0
+                ? resolverCuenta("NOMINA_APORTE_PATRONAL_ASE_POR_PAGAR") : null;
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
@@ -1152,92 +1184,42 @@ public class AsientoContableService {
         asiento.setNomina(nomina);
 
         List<DetalleAsiento> detalles = new ArrayList<>();
+        String numero = nomina.getNumero();
 
-        // DR 1: Gasto Sueldos (totalBruto)
-        if (nomina.getTotalBruto().compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento drSueldos = new DetalleAsiento();
-            drSueldos.setCuenta(cuentaGastoSueldos);
-            drSueldos.setDebe(nomina.getTotalBruto());
-            drSueldos.setDescripcion("Sueldos brutos — " + nomina.getNumero());
-            drSueldos.setAsiento(asiento);
-            detalles.add(drSueldos);
-        }
+        // Debits
+        agregarLineaNomina(detalles, asiento, cuentaGastoSueldos, nomina.getTotalBruto(), true,
+                "Sueldos brutos — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaGastoSueldos, nomina.getTotalCcssPatronal(), true,
+                "Carga patronal CCSS — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaAseGasto, totalAporteAse, true,
+                "Aporte patronal asociación solidarista — " + numero);
 
-        // DR 2: Patronal CCSS cost — expense on the same gasto account, separate line for ledger clarity
-        if (nomina.getTotalCcssPatronal().compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento drCcssPatronal = new DetalleAsiento();
-            drCcssPatronal.setCuenta(cuentaGastoSueldos);
-            drCcssPatronal.setDebe(nomina.getTotalCcssPatronal());
-            drCcssPatronal.setDescripcion("Carga patronal CCSS — " + nomina.getNumero());
-            drCcssPatronal.setAsiento(asiento);
-            detalles.add(drCcssPatronal);
-        }
-
-        // CR 1: CCSS Obrero por pagar — sum across detalles
-        BigDecimal totalCcssObrero = nomina.getDetalles().stream()
-                .map(DetalleNomina::getCcssObrero)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (totalCcssObrero.compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento crCcss = new DetalleAsiento();
-            crCcss.setCuenta(cuentaCcssObrero);
-            crCcss.setHaber(totalCcssObrero);
-            crCcss.setDescripcion("CCSS obrero por pagar — " + nomina.getNumero());
-            crCcss.setAsiento(asiento);
-            detalles.add(crCcss);
-        }
-
-        // CR 2: INS por pagar — sum across detalles
-        BigDecimal totalIns = nomina.getDetalles().stream()
-                .map(DetalleNomina::getIns)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (totalIns.compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento crIns = new DetalleAsiento();
-            crIns.setCuenta(cuentaIns);
-            crIns.setHaber(totalIns);
-            crIns.setDescripcion("INS por pagar — " + nomina.getNumero());
-            crIns.setAsiento(asiento);
-            detalles.add(crIns);
-        }
-
-        // CR 3: Renta por pagar — sum across detalles (only when > 0)
-        BigDecimal totalRenta = nomina.getDetalles().stream()
-                .map(DetalleNomina::getImpuestoRenta)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (totalRenta.compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento crRenta = new DetalleAsiento();
-            crRenta.setCuenta(cuentaRenta);
-            crRenta.setHaber(totalRenta);
-            crRenta.setDescripcion("Impuesto renta por pagar — " + nomina.getNumero());
-            crRenta.setAsiento(asiento);
-            detalles.add(crRenta);
-        }
-
-        // CR 4: Salarios netos por pagar (totalNeto)
-        if (nomina.getTotalNeto().compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento crSalarios = new DetalleAsiento();
-            crSalarios.setCuenta(cuentaSalarios);
-            crSalarios.setHaber(nomina.getTotalNeto());
-            crSalarios.setDescripcion("Salarios netos por pagar — " + nomina.getNumero());
-            crSalarios.setAsiento(asiento);
-            detalles.add(crSalarios);
-        }
-
-        // CR 5: CCSS Patronal liability (balances DR 2)
-        if (nomina.getTotalCcssPatronal().compareTo(BigDecimal.ZERO) > 0) {
-            DetalleAsiento crCcssPatronal = new DetalleAsiento();
-            crCcssPatronal.setCuenta(cuentaCcssPatronal);
-            crCcssPatronal.setHaber(nomina.getTotalCcssPatronal());
-            crCcssPatronal.setDescripcion("CCSS patronal por pagar — " + nomina.getNumero());
-            crCcssPatronal.setAsiento(asiento);
-            detalles.add(crCcssPatronal);
-        }
+        // Credits
+        agregarLineaNomina(detalles, asiento, cuentaCcssObrero, totalCcssObrero, false,
+                "CCSS obrero por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaIns, totalIns, false,
+                "INS por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaRenta, totalRenta, false,
+                "Impuesto renta por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaSolidarista, totalSolidarista, false,
+                "Ahorro obrero solidarista por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaPension, totalPension, false,
+                "Pensiones alimentarias por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaSalarios, nomina.getTotalNeto(), false,
+                "Salarios netos por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaCcssPatronal, nomina.getTotalCcssPatronal(), false,
+                "CCSS patronal por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaAsePorPagar, totalAporteAse, false,
+                "Aporte patronal asociación solidarista por pagar — " + numero);
 
         asiento.setDetalles(detalles);
 
         if (!asiento.estaCuadrado()) {
-            throw new IllegalStateException(
-                    String.format("Asiento de nómina no cuadra — debe: %s, haber: %s",
-                            asiento.getTotalDebe(), asiento.getTotalHaber()));
+            BigDecimal debe = asiento.getTotalDebe();
+            BigDecimal haber = asiento.getTotalHaber();
+            throw new IllegalStateException(String.format(
+                    "Asiento de nómina %s no cuadra — Debe: %s, Haber: %s, diferencia: %s",
+                    numero, debe, haber, debe.subtract(haber)));
         }
 
         AsientoContable guardado = asientoRepository.save(asiento);
@@ -1247,6 +1229,34 @@ public class AsientoContableService {
         log.info("Asiento de nómina {} generado y contabilizado: {}",
                 nomina.getNumero(), guardado.getNumero());
         return guardado;
+    }
+
+    /** Sums one amount across the payroll lines, treating null as zero. */
+    private static BigDecimal sumarDetallesNomina(List<DetalleNomina> lineas,
+                                                  Function<DetalleNomina, BigDecimal> campo) {
+        return lineas.stream()
+                .map(campo)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** Adds a debit or credit line to the payroll entry; amounts null or &lt;= 0 are skipped. */
+    private static void agregarLineaNomina(List<DetalleAsiento> detalles, AsientoContable asiento,
+                                           CuentaContable cuenta, BigDecimal monto, boolean debe,
+                                           String descripcion) {
+        if (monto == null || monto.signum() <= 0) {
+            return;
+        }
+        DetalleAsiento linea = new DetalleAsiento();
+        linea.setCuenta(cuenta);
+        if (debe) {
+            linea.setDebe(monto);
+        } else {
+            linea.setHaber(monto);
+        }
+        linea.setDescripcion(descripcion);
+        linea.setAsiento(asiento);
+        detalles.add(linea);
     }
 
     /**
