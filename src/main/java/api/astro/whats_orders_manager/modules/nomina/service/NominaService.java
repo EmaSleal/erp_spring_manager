@@ -53,6 +53,7 @@ public class NominaService {
 
     private static final String[] NOMINA_KEYS = {
             "NOMINA_GASTO_SUELDOS",
+            "NOMINA_GASTO_CARGAS_SOCIALES",
             "NOMINA_CCSS_PATRONAL_POR_PAGAR",
             "NOMINA_CCSS_POR_PAGAR",
             "NOMINA_INS_POR_PAGAR",
@@ -267,9 +268,10 @@ public class NominaService {
     /**
      * Validates parametros_contables and transitions nomina from APROBADA to CONTABILIZADA.
      *
-     * <p>Posts the payroll entry through AsientoContableService.generarAsientoNomina. The six base
-     * NOMINA_* keys are validated here; the solidarista, pensión and ASE keys (ADR-013) are
-     * resolved by generarAsientoNomina only when the payroll has those amounts, before any save.
+     * <p>Posts the payroll entry through AsientoContableService.generarAsientoNomina. The seven base
+     * NOMINA_* keys (including NOMINA_GASTO_CARGAS_SOCIALES, ADR-017) are validated here; the
+     * solidarista, pensión and ASE keys (ADR-013) are resolved by generarAsientoNomina only when the
+     * payroll has those amounts, before any save.
      *
      * @throws IllegalStateException if estado is not APROBADA
      * @throws IllegalStateException if any required NOMINA_* parametro_contable key is missing
@@ -284,7 +286,7 @@ public class NominaService {
                     "Estado actual no permite contabilizar: " + nomina.getEstado());
         }
 
-        // Validate all 6 NOMINA_* accounting parameters exist before any side-effect
+        // Validate all 7 base NOMINA_* accounting parameters exist before any side-effect
         for (String clave : NOMINA_KEYS) {
             parametroContableRepository.findByClave(clave)
                     .orElseThrow(() -> new IllegalStateException(

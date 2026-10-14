@@ -33,10 +33,12 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -1038,15 +1040,17 @@ public class AsientoContableService {
     }
 
     /**
-     * Cuentas elegibles como contrapartida de una CxP manual (ADR-016), ordenadas por código: activas,
-     * que aceptan movimientos, de tipo EGRESO o ACTIVO y que no estén configuradas en
-     * parametros_contables como banco/caja, cuentas por cobrar, cuentas por pagar ni IVA crédito
-     * fiscal (ver {@link #esClaveExcluidaDeContrapartida(String)}).
+     * Cuentas elegibles como contrapartida de una CxP manual (ADR-016), ordenadas por código: hojas
+     * (activas, que aceptan movimientos y sin subcuentas, ADR-017), de tipo EGRESO o ACTIVO y que no
+     * estén configuradas en parametros_contables como banco/caja, cuentas por cobrar, cuentas por
+     * pagar ni IVA crédito fiscal (ver {@link #esClaveExcluidaDeContrapartida(String)}).
      */
     public List<CuentaContable> obtenerCuentasContrapartidaCxpManual() {
         Map<Long, String> excluidas = cuentasExcluidasDeContrapartida();
+        Set<Long> agrupadoras = new HashSet<>(cuentaRepository.findIdsCuentasConSubcuentas());
         return cuentaRepository.findByAceptaMovimientosAndActiva(true, true).stream()
             .filter(c -> c.getTipo() == TipoCuenta.EGRESO || c.getTipo() == TipoCuenta.ACTIVO)
+            .filter(c -> !agrupadoras.contains(c.getIdCuenta()))
             .filter(c -> !excluidas.containsKey(c.getIdCuenta()))
             .sorted(Comparator.comparing(CuentaContable::getCodigo))
             .toList();
@@ -1063,8 +1067,9 @@ public class AsientoContableService {
      * {@link #obtenerCuentasContrapartidaCxpManual()}.
      * @param cuentaId id de la cuenta elegida
      * @return la cuenta validada
-     * @throws IllegalArgumentException si falta, no existe, está inactiva, no acepta movimientos, no es de
-     *                                  tipo EGRESO o ACTIVO, o está configurada como banco/caja, CxC, CxP o IVA
+     * @throws IllegalArgumentException si falta, no existe, está inactiva, no acepta movimientos, tiene
+     *                                  subcuentas, no es de tipo EGRESO o ACTIVO, o está configurada como
+     *                                  banco/caja, CxC, CxP o IVA
      */
     public CuentaContable validarContrapartidaCxpManual(Long cuentaId) {
         if (cuentaId == null) {
@@ -1078,6 +1083,10 @@ public class AsientoContableService {
         }
         if (!Boolean.TRUE.equals(cuenta.getAceptaMovimientos())) {
             throw new IllegalArgumentException("La cuenta " + etiqueta + " no acepta movimientos");
+        }
+        if (tieneSubcuentas(cuenta)) {
+            throw new IllegalArgumentException("La cuenta " + etiqueta
+                + " tiene subcuentas (es agrupadora); la contrapartida de una CxP manual debe ser una cuenta hoja");
         }
         if (cuenta.getTipo() != TipoCuenta.EGRESO && cuenta.getTipo() != TipoCuenta.ACTIVO) {
             throw new IllegalArgumentException("La cuenta " + etiqueta + " es de tipo "
@@ -1259,7 +1268,7 @@ public class AsientoContableService {
      *
      * Entry structure (lines with amount 0 are omitted):
      *   DR NOMINA_GASTO_SUELDOS                  — nomina.totalBruto
-     *   DR NOMINA_GASTO_SUELDOS                  — nomina.totalCcssPatronal (employer CCSS cost)
+     *   DR NOMINA_GASTO_CARGAS_SOCIALES          — nomina.totalCcssPatronal (employer CCSS cost, ADR-017)
      *   DR NOMINA_APORTE_PATRONAL_ASE_GASTO      — sum(detalles.aportePatronalSolidarista) (ADR-013)
      *   CR NOMINA_CCSS_POR_PAGAR                 — sum(detalles.ccssObrero)
      *   CR NOMINA_INS_POR_PAGAR                  — sum(detalles.ins)
@@ -1273,8 +1282,13 @@ public class AsientoContableService {
      * Balance: totalBruto = ccssObrero + ins + renta + solidarista + pension + totalNeto; the
      * employer CCSS and ASE contributions are posted as DR expense / CR liability pairs.
      *
-     * The six base keys are always required. The solidarista, pensión and ASE keys are resolved
-     * only when the corresponding total is greater than zero.
+     * The employer CCSS contribution is an expense of its own (5.1.02.003 Cargas Sociales Patronales,
+     * ADR-017), no longer debited to the salaries expense. INS is an employee deduction included in
+     * totalBruto, so there is no employer INS portion in this entry.
+     *
+     * The seven base keys (including NOMINA_GASTO_CARGAS_SOCIALES) are always required. The
+     * solidarista, pensión and ASE keys are resolved only when the corresponding total is greater
+     * than zero. Every key must point to a leaf account (see {@link #resolverCuenta(String)}).
      *
      * Date (ADR-014): the entry is dated with nomina.periodoFin (accrual date, the same date used to
      * resolve the CCSS, income tax and ASE rates), never with the system date. nomina.fechaPago is
@@ -1289,8 +1303,9 @@ public class AsientoContableService {
     public AsientoContable generarAsientoNomina(Nomina nomina) {
         LocalDate fecha = fechaEconomica(nomina.getPeriodoFin(), "La nómina " + nomina.getNumero(), "periodoFin");
 
-        // Resolve the 6 base accounts — fail fast if any missing
+        // Resolve the 7 base accounts — fail fast if any missing
         CuentaContable cuentaGastoSueldos  = resolverCuenta("NOMINA_GASTO_SUELDOS");
+        CuentaContable cuentaCargasSociales = resolverCuenta("NOMINA_GASTO_CARGAS_SOCIALES");
         CuentaContable cuentaCcssPatronal  = resolverCuenta("NOMINA_CCSS_PATRONAL_POR_PAGAR");
         CuentaContable cuentaCcssObrero    = resolverCuenta("NOMINA_CCSS_POR_PAGAR");
         CuentaContable cuentaIns           = resolverCuenta("NOMINA_INS_POR_PAGAR");
@@ -1330,7 +1345,7 @@ public class AsientoContableService {
         // Debits
         agregarLineaNomina(detalles, asiento, cuentaGastoSueldos, nomina.getTotalBruto(), true,
                 "Sueldos brutos — " + numero);
-        agregarLineaNomina(detalles, asiento, cuentaGastoSueldos, nomina.getTotalCcssPatronal(), true,
+        agregarLineaNomina(detalles, asiento, cuentaCargasSociales, nomina.getTotalCcssPatronal(), true,
                 "Carga patronal CCSS — " + numero);
         agregarLineaNomina(detalles, asiento, cuentaAseGasto, totalAporteAse, true,
                 "Aporte patronal asociación solidarista — " + numero);
@@ -1420,16 +1435,44 @@ public class AsientoContableService {
     }
 
     /**
-     * Resolves the CuentaContable mapped to the given accounting-event key.
+     * Resolves the CuentaContable mapped to the given accounting-event key. Applies to every
+     * automatic entry (ADR-017 R1): the account must be a leaf — active, accepting movements and
+     * without subaccounts (detected through the cuenta_padre_id FK).
      *
      * @param clave accounting event key (e.g. "CPP_CUENTA_COMPRAS")
      * @return the associated CuentaContable
-     * @throws IllegalStateException if the key is not configured in parametros_contables
+     * @throws IllegalStateException if the key is not configured in parametros_contables, or its
+     *         account is inactive, does not accept movements or has subaccounts (the message names
+     *         the key and the account code)
      */
     private CuentaContable resolverCuenta(String clave) {
-        return parametroContableRepository.findByClave(clave)
+        CuentaContable cuenta = parametroContableRepository.findByClave(clave)
             .map(ParametroContable::getCuentaContable)
             .orElseThrow(() -> new IllegalStateException("Parámetro contable no configurado: " + clave));
+        String motivo = null;
+        if (!Boolean.TRUE.equals(cuenta.getActiva())) {
+            motivo = "está inactiva";
+        } else if (!Boolean.TRUE.equals(cuenta.getAceptaMovimientos())) {
+            motivo = "no acepta movimientos";
+        } else if (tieneSubcuentas(cuenta)) {
+            motivo = "tiene subcuentas (es agrupadora)";
+        }
+        if (motivo != null) {
+            throw new IllegalStateException(String.format(
+                "El parámetro contable %s apunta a la cuenta %s, que %s; solo una cuenta hoja activa "
+                    + "que acepta movimientos puede recibir asientos automáticos (ADR-017)",
+                clave, cuenta.getCodigo(), motivo));
+        }
+        return cuenta;
+    }
+
+    /** True si la cuenta tiene al menos una subcuenta por la FK cuenta_padre_id. */
+    private boolean tieneSubcuentas(CuentaContable cuenta) {
+        if (cuenta.getIdCuenta() == null) {
+            return cuenta.esCuentaDeAgrupacion();
+        }
+        Long subcuentas = cuentaRepository.countSubcuentas(cuenta.getIdCuenta());
+        return subcuentas != null && subcuentas > 0;
     }
 
     // ==================== UTILITIES ====================

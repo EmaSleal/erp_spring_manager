@@ -48,11 +48,14 @@ class AsientoNominaFechaLibrosJpaTest {
     @Autowired private TestEntityManager em;
 
     private CuentaContable gastoSueldos;
+    private CuentaContable cargasSociales;
 
     @BeforeEach
     void setUp() {
         gastoSueldos = cuenta("5.1.01.001", TipoCuenta.EGRESO);
         param("NOMINA_GASTO_SUELDOS", gastoSueldos);
+        cargasSociales = cuenta("5.1.02.003", TipoCuenta.EGRESO);
+        param("NOMINA_GASTO_CARGAS_SOCIALES", cargasSociales);
         param("NOMINA_CCSS_PATRONAL_POR_PAGAR", cuenta("2.1.01.002", TipoCuenta.PASIVO));
         param("NOMINA_CCSS_POR_PAGAR", cuenta("2.1.01.003", TipoCuenta.PASIVO));
         param("NOMINA_INS_POR_PAGAR", cuenta("2.1.01.004", TipoCuenta.PASIVO));
@@ -82,19 +85,24 @@ class AsientoNominaFechaLibrosJpaTest {
         assertThat(diarioSeptiembre.get(0).getFecha()).isEqualTo(SEPT_FIN);
         assertThat(diarioMesActual).extracting(AsientoContable::getNumero).doesNotContain(asiento.getNumero());
 
-        // Libro mayor (sueldos: bruto 1 000 000 + CCSS patronal 268 300)
+        // Libro mayor (sueldos: bruto 1 000 000; cargas sociales: CCSS patronal 268 300, ADR-017)
         List<CalculoContableService.MovimientoCuenta> mayorSeptiembre =
                 calculoService.obtenerLibroMayor(gastoSueldos.getIdCuenta(), SEPT_INICIO, SEPT_FIN);
         List<CalculoContableService.MovimientoCuenta> mayorMesActual =
                 calculoService.obtenerLibroMayor(gastoSueldos.getIdCuenta(), inicioMesActual, finMesActual);
-        assertThat(mayorSeptiembre).hasSize(2)
+        assertThat(mayorSeptiembre).hasSize(1)
                 .allSatisfy(m -> {
                     assertThat(m.getAsientoNumero()).isEqualTo(asiento.getNumero());
                     assertThat(m.getFecha()).isEqualTo(SEPT_FIN);
                 });
-        assertThat(mayorSeptiembre.get(1).getSaldo()).isEqualByComparingTo("1268300.00");
+        assertThat(mayorSeptiembre.get(0).getSaldo()).isEqualByComparingTo("1000000.00");
         assertThat(mayorMesActual)
                 .noneMatch(m -> asiento.getNumero().equals(m.getAsientoNumero()));
+        List<CalculoContableService.MovimientoCuenta> mayorCargas =
+                calculoService.obtenerLibroMayor(cargasSociales.getIdCuenta(), SEPT_INICIO, SEPT_FIN);
+        assertThat(mayorCargas).hasSize(1);
+        assertThat(mayorCargas.get(0).getSaldo()).isEqualByComparingTo("268300.00");
+        assertThat(mayorCargas.get(0).getFecha()).isEqualTo(SEPT_FIN);
     }
 
     private Nomina nominaSeptiembre() {

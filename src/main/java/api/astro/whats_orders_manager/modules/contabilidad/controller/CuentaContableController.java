@@ -177,6 +177,19 @@ public class CuentaContableController {
     }
     
     /**
+     * Obtiene las cuentas hoja elegibles (activas, que aceptan movimientos y sin subcuentas, ADR-017).
+     * Las usa el selector de parámetros contables.
+     */
+    @GetMapping("/api/hojas")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_VER')")
+    @ResponseBody
+    public ResponseEntity<List<CuentaContableDTO>> obtenerHojas(Authentication authentication) {
+        log.debug("API: Obteniendo cuentas hoja elegibles");
+        List<CuentaContable> cuentas = cuentaService.obtenerHojasElegibles();
+        return ResponseEntity.ok(cuentaMapper.toDTOList(cuentas));
+    }
+
+    /**
      * Busca cuentas por código o nombre.
      */
     @GetMapping("/api/buscar")

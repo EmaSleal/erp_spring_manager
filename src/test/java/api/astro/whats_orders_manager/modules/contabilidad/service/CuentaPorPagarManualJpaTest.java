@@ -117,6 +117,9 @@ class CuentaPorPagarManualJpaTest {
     @AfterEach
     void limpiar() {
         tx.executeWithoutResult(s -> {
+            // Self-referencing FK (cuenta_padre_id): unlink children before the batch delete
+            cuentaRepository.findAll().forEach(c -> c.setCuentaPadre(null));
+            cuentaRepository.flush();
             detalleRepository.deleteAllInBatch();
             asientoRepository.deleteAllInBatch();
             pagoRepository.deleteAllInBatch();
@@ -307,9 +310,63 @@ class CuentaPorPagarManualJpaTest {
         assertThat(idCompras).contains(compras.getIdCuenta());
     }
 
+    @Test
+    @DisplayName("T-014 cuentas elegibles: excluyen las agrupadoras (con subcuentas por FK); 5.1.01 hoja sigue preseleccionada")
+    void cuentasElegibles_excluyenAgrupadoras() {
+        // Same shape as the EGRESO branch after V29: 5 > 5.1 > {5.1.01 (hoja), 5.1.02 > 5.1.02.003}.
+        // 5.1.02 is deliberately left with aceptaMovimientos = true: the hierarchy (FK) excludes it anyway.
+        CuentaContable[] arbol = tx.execute(s -> {
+            CuentaContable c5 = cuenta("5", TipoCuenta.EGRESO, true, false);
+            CuentaContable c51 = hija("5.1", c5, false);
+            CuentaContable c5101 = hija("5.1.01", c51, true);
+            CuentaContable c5102 = hija("5.1.02", c51, true);
+            CuentaContable c5102003 = hija("5.1.02.003", c5102, true);
+            ParametroContable p = parametroRepository.findByClave("CPP_CUENTA_COMPRAS").orElseThrow();
+            p.setCuentaContable(c5101);
+            parametroRepository.save(p);
+            return new CuentaContable[] {c5, c51, c5101, c5102, c5102003};
+        });
+
+        List<CuentaContable> elegibles = tx.execute(s -> asientoService.obtenerCuentasContrapartidaCxpManual());
+
+        assertThat(elegibles).extracting(CuentaContable::getCodigo)
+                .contains("5.1.01", "5.1.02.003")
+                .doesNotContain("5", "5.1", "5.1.02");
+        Optional<Long> idCompras = tx.execute(s -> asientoService.obtenerIdCuentaComprasCpp());
+        assertThat(idCompras).contains(arbol[2].getIdCuenta());
+
+        // Same rule for the parametros contables selector (/contabilidad/cuentas/api/hojas)
+        List<CuentaContable> hojas = tx.execute(s -> cuentaRepository.findHojasActivasConMovimientos());
+        assertThat(hojas).extracting(CuentaContable::getCodigo)
+                .contains("5.1.01", "5.1.02.003")
+                .doesNotContain("5", "5.1", "5.1.02");
+    }
+
+    @Test
+    @DisplayName("T-014 rechazo: cuenta agrupadora (con subcuentas) aunque acepte movimientos")
+    void rechazo_cuentaAgrupadora() {
+        CuentaContable agrupadora = tx.execute(s -> {
+            CuentaContable padre = cuenta("5.1.08", TipoCuenta.EGRESO, true, true);
+            hija("5.1.08.001", padre, true);
+            return padre;
+        });
+        assertRechazoSinCambios(dto("100.00", "0.00", null, agrupadora.getIdCuenta()), "subcuentas");
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================
+
+    private CuentaContable hija(String codigo, CuentaContable padre, boolean aceptaMovimientos) {
+        CuentaContable c = new CuentaContable();
+        c.setCodigo(codigo);
+        c.setNombre("Cuenta " + codigo);
+        c.setTipo(padre.getTipo());
+        c.setActiva(true);
+        c.setAceptaMovimientos(aceptaMovimientos);
+        c.setCuentaPadre(padre);
+        return cuentaRepository.save(c);
+    }
 
     private void assertRechazoSinCambios(CuentaPorPagarDTO dto, String mensaje) {
         BigDecimal saldoAntes = saldoProveedor();

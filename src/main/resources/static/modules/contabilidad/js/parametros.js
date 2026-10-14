@@ -8,7 +8,7 @@ async function cargarCuentas(selectId) {
     select.innerHTML = '<option value="">Cargando...</option>';
     try {
         const result = await httpRequest({
-            url: '/contabilidad/cuentas/api/todas',
+            url: '/contabilidad/cuentas/api/hojas',  // solo hojas elegibles (ADR-017)
             method: 'GET',
             showLoading: false
         });

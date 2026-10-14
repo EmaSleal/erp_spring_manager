@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoCuenta;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.DetalleAsientoRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class CuentaContableService {
     
     private final CuentaContableRepository cuentaRepository;
     private final DetalleAsientoRepository detalleRepository;
+    private final ParametroContableRepository parametroRepository;
     
     /**
      * Obtiene todas las cuentas contables.
@@ -122,6 +124,16 @@ public class CuentaContableService {
         log.debug("Obteniendo cuentas operativas");
         return cuentaRepository.findByAceptaMovimientos(true);
     }
+
+    /**
+     * Obtiene las cuentas hoja elegibles para parámetros contables y movimientos (ADR-017 R1):
+     * activas, que aceptan movimientos y sin subcuentas.
+     * @return Lista de cuentas hoja ordenadas por código
+     */
+    public List<CuentaContable> obtenerHojasElegibles() {
+        log.debug("Obteniendo cuentas hoja elegibles");
+        return cuentaRepository.findHojasActivasConMovimientos();
+    }
     
     /**
      * Busca cuentas por código o nombre.
@@ -137,7 +149,9 @@ public class CuentaContableService {
      * Crea una nueva cuenta contable.
      * @param cuenta Cuenta a crear
      * @return Cuenta creada
-     * @throws IllegalArgumentException si el código ya existe o es inválido
+     * @throws IllegalArgumentException si el código ya existe o es inválido, si el código no empieza
+     *                                  con el código del padre seguido de un punto, o si el padre tiene
+     *                                  movimientos contables (ADR-017)
      */
     @Transactional
     public CuentaContable crear(CuentaContable cuenta) {
@@ -153,10 +167,19 @@ public class CuentaContableService {
             CuentaContable padre = cuentaRepository.findById(cuenta.getCuentaPadre().getIdCuenta())
                 .orElseThrow(() -> new IllegalArgumentException("Cuenta padre no encontrada"));
             
-            // Validar que el código sea consistente con la jerarquía
-            if (!cuenta.getCodigo().startsWith(padre.getCodigo())) {
+            // Validar que el código sea consistente con la jerarquía (prefijo del padre + ".")
+            if (cuenta.getCodigo() == null || !cuenta.getCodigo().startsWith(padre.getCodigo() + ".")) {
                 throw new IllegalArgumentException(
-                    "El código de la subcuenta debe comenzar con el código de la cuenta padre"
+                    "El código de la subcuenta debe comenzar con el código de la cuenta padre seguido de un punto ("
+                        + padre.getCodigo() + ".)"
+                );
+            }
+            
+            // Una cuenta con movimientos no puede pasar a ser agrupadora (ADR-017 R1)
+            if (tieneMovimientos(padre.getIdCuenta())) {
+                throw new IllegalArgumentException(
+                    "No se puede crear una subcuenta bajo la cuenta " + padre.getCodigo()
+                        + " porque tiene movimientos contables"
                 );
             }
             
@@ -174,7 +197,9 @@ public class CuentaContableService {
      * @param id ID de la cuenta
      * @param cuentaActualizada Datos actualizados
      * @return Cuenta actualizada
-     * @throws IllegalArgumentException si la cuenta no existe o tiene movimientos
+     * @throws IllegalArgumentException si la cuenta no existe o tiene movimientos, si se marca como
+     *                                  "acepta movimientos" una cuenta con subcuentas, o si se desactiva
+     *                                  una cuenta usada por un parámetro contable (ADR-017)
      */
     @Transactional
     public CuentaContable actualizar(Long id, CuentaContable cuentaActualizada) {
@@ -199,6 +224,18 @@ public class CuentaContableService {
             }
         }
         
+        // Una cuenta con subcuentas es agrupadora: no acepta movimientos (ADR-017 R1)
+        if (Boolean.TRUE.equals(cuentaActualizada.getAceptaMovimientos()) && tieneSubcuentas(id)) {
+            throw new IllegalArgumentException(
+                "La cuenta " + cuenta.getCodigo() + " tiene subcuentas: es agrupadora y no puede aceptar movimientos"
+            );
+        }
+        
+        // No desactivar una cuenta usada por un parámetro contable
+        if (Boolean.FALSE.equals(cuentaActualizada.getActiva())) {
+            validarNoUsadaPorParametros(cuenta);
+        }
+        
         // Actualizar campos permitidos
         cuenta.setNombre(cuentaActualizada.getNombre());
         cuenta.setDescripcion(cuentaActualizada.getDescripcion());
@@ -216,6 +253,7 @@ public class CuentaContableService {
      * @param id ID de la cuenta
      * @param activa True para activar, false para desactivar
      * @return Cuenta actualizada
+     * @throws IllegalArgumentException si se desactiva una cuenta usada por un parámetro contable
      */
     @Transactional
     public CuentaContable cambiarEstado(Long id, boolean activa) {
@@ -223,6 +261,10 @@ public class CuentaContableService {
         
         CuentaContable cuenta = cuentaRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada"));
+        
+        if (!activa) {
+            validarNoUsadaPorParametros(cuenta);
+        }
         
         cuenta.setActiva(activa);
         
@@ -259,8 +301,46 @@ public class CuentaContableService {
             );
         }
         
+        // Si era la última subcuenta, el padre vuelve a ser hoja y acepta movimientos
+        CuentaContable padre = cuenta.getCuentaPadre();
+        if (padre != null) {
+            // Contar por la FK antes de desvincular (la cuenta a eliminar todavía cuenta como hija)
+            boolean eraLaUltimaHija = !(cuentaRepository.countSubcuentas(padre.getIdCuenta()) > 1);
+            padre.getSubcuentas().remove(cuenta);
+            cuenta.setCuentaPadre(null);
+            if (eraLaUltimaHija) {
+                padre.setAceptaMovimientos(true);
+            }
+            cuentaRepository.save(padre);
+        }
+        
         cuentaRepository.delete(cuenta);
         log.info("Cuenta eliminada: {}", cuenta.getCodigo());
+    }
+    
+    /**
+     * Verifica si una cuenta tiene subcuentas (por la FK cuenta_padre_id).
+     * @param cuentaId ID de la cuenta
+     * @return true si tiene al menos una subcuenta
+     */
+    public boolean tieneSubcuentas(Long cuentaId) {
+        Long subcuentas = cuentaRepository.countSubcuentas(cuentaId);
+        return subcuentas != null && subcuentas > 0;
+    }
+    
+    /**
+     * Rechaza la desactivación de una cuenta configurada en parametros_contables.
+     * @param cuenta Cuenta a desactivar
+     * @throws IllegalArgumentException si alguna clave apunta a la cuenta (el mensaje las nombra)
+     */
+    private void validarNoUsadaPorParametros(CuentaContable cuenta) {
+        List<String> claves = parametroRepository.findClavesByCuentaId(cuenta.getIdCuenta());
+        if (!claves.isEmpty()) {
+            throw new IllegalArgumentException(
+                "No se puede desactivar la cuenta " + cuenta.getCodigo()
+                    + " porque la usan los parámetros contables: " + String.join(", ", claves)
+            );
+        }
     }
     
     /**
