@@ -416,6 +416,7 @@ class NominaServiceTest {
 
         // Accounts as seeded by V16 + V27 (ASE liability = solidarista liability)
         mapear("NOMINA_GASTO_SUELDOS", 1L, "5.1.01.001");
+        mapear("NOMINA_GASTO_CARGAS_SOCIALES", 10L, "5.1.02.003");
         mapear("NOMINA_SALARIOS_POR_PAGAR", 2L, "2.1.01.001");
         mapear("NOMINA_CCSS_PATRONAL_POR_PAGAR", 3L, "2.1.01.002");
         mapear("NOMINA_CCSS_POR_PAGAR", 4L, "2.1.01.003");
@@ -468,7 +469,94 @@ class NominaServiceTest {
                 .anyMatch(d -> d.startsWith("Aporte patronal asociación solidarista —"));
     }
 
+    // =========================================================================
+    // T-014 (ADR-017) — employer CCSS charge goes to NOMINA_GASTO_CARGAS_SOCIALES
+    // =========================================================================
+
+    @Test
+    @DisplayName("T-014 bruto 1 000 000.00: DR cargas sociales = carga patronal calculada, DR sueldos = bruto, asiento cuadrado")
+    void contabilizar_bruto1M_cargaPatronalACargasSociales() {
+        AsientoContableRepository asientoRepository = mock(AsientoContableRepository.class);
+        AsientoContableService asientoReal = new AsientoContableService(asientoRepository,
+                mock(DetalleAsientoRepository.class), mock(CuentaContableRepository.class), parametroContableRepository);
+        NominaService servicioReal = new NominaService(nominaRepository, detalleNominaRepository,
+                empleadoRepository, contratoEmpleadoRepository, ausenciaRepository, parametroCCSSRepository,
+                parametroNominaEmpresaRepository, tramoImpuestoSalarioRepository, parametroContableRepository,
+                calculosNominaService, asientoReal, new NominaMapper(new DetalleNominaMapper()));
+
+        // Accounts as left by V29 (ADR-017)
+        mapear("NOMINA_GASTO_SUELDOS", 6L, "5.1.02.002");
+        mapear("NOMINA_GASTO_CARGAS_SOCIALES", 48L, "5.1.02.003");
+        mapear("NOMINA_SALARIOS_POR_PAGAR", 7L, "2.1.04.003");
+        mapear("NOMINA_CCSS_PATRONAL_POR_PAGAR", 8L, "2.1.04.004");
+        mapear("NOMINA_CCSS_POR_PAGAR", 9L, "2.1.04.005");
+        mapear("NOMINA_INS_POR_PAGAR", 10L, "2.1.04.006");
+        mapear("NOMINA_RENTA_POR_PAGAR", 11L, "2.1.02.002");
+        when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
+        ArgumentCaptor<AsientoContable> captor = ArgumentCaptor.forClass(AsientoContable.class);
+        when(asientoRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        CalculosNominaService calculos = new CalculosNominaService();
+        ResultadoCalculoNomina r = calculos.calcular(new BigDecimal("1000000.00"),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, buildCcss(),
+                BigDecimal.ZERO, buildTramos(), 0, false);
+        BigDecimal cargaPatronal = calculos.calcularCargaPatronalCcss(new BigDecimal("1000000.00"), buildCcss());
+        DetalleNomina detalle = new DetalleNomina();
+        detalle.setBrutoProrrateado(r.brutoProrrateado());
+        detalle.setCcssObrero(r.ccssObrero());
+        detalle.setIns(r.ins());
+        detalle.setImpuestoRenta(r.impuestoRenta());
+        detalle.setTotalDeducciones(r.totalDeducciones());
+        detalle.setSalarioNeto(r.salarioNeto());
+        detalle.setCcssPatronal(r.ccssPatronal());
+        Nomina aprobada = Nomina.builder().id(41L).numero("NOM-2026-0041")
+                .periodoInicio(INICIO).periodoFin(FIN).fechaPago(PAGO)
+                .tipo(TipoNomina.MENSUAL).estado(EstadoNomina.APROBADA)
+                .totalBruto(r.brutoProrrateado()).totalDeducciones(r.totalDeducciones())
+                .totalNeto(r.salarioNeto()).totalCcssPatronal(r.ccssPatronal())
+                .build();
+        detalle.setNomina(aprobada);
+        aprobada.setDetalles(new ArrayList<>(List.of(detalle)));
+        when(nominaRepository.findById(41L)).thenReturn(Optional.of(aprobada));
+        when(nominaRepository.save(any(Nomina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        servicioReal.contabilizar(41L);
+
+        AsientoContable asiento = captor.getValue();
+        assertThat(cargaPatronal).isEqualByComparingTo("268300.00");
+        assertThat(debePorCuenta(asiento, 48L)).isEqualByComparingTo(cargaPatronal);
+        assertThat(debePorCuenta(asiento, 6L)).isEqualByComparingTo("1000000.00");
+        assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+        assertThat(asiento.getTotalDebe()).isEqualByComparingTo("1268300.00");
+    }
+
+    @Test
+    @DisplayName("T-014 contabilizar() without NOMINA_GASTO_CARGAS_SOCIALES fails in the pre-validation naming the key")
+    void contabilizar_sinClaveCargasSociales_fallaEnValidacionPrevia() {
+        Nomina aprobada = Nomina.builder().id(42L).numero("NOM-2026-0042")
+                .periodoInicio(INICIO).periodoFin(FIN).fechaPago(PAGO)
+                .tipo(TipoNomina.MENSUAL).estado(EstadoNomina.APROBADA)
+                .build();
+        when(nominaRepository.findById(42L)).thenReturn(Optional.of(aprobada));
+        mapear("NOMINA_GASTO_SUELDOS", 6L, "5.1.02.002");
+        when(parametroContableRepository.findByClave("NOMINA_GASTO_CARGAS_SOCIALES")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.contabilizar(42L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NOMINA_GASTO_CARGAS_SOCIALES");
+
+        verify(asientoContableService, never()).generarAsientoNomina(any());
+        verify(nominaRepository, never()).save(any());
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private static BigDecimal debePorCuenta(AsientoContable asiento, Long idCuenta) {
+        return asiento.getDetalles().stream()
+                .filter(d -> d.getCuenta().getIdCuenta().equals(idCuenta))
+                .map(DetalleAsiento::getDebe)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
     private void mapear(String clave, Long idCuenta, String codigo) {
         CuentaContable c = new CuentaContable();

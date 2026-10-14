@@ -5,6 +5,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -56,6 +58,27 @@ public class CuentaPorPagar {
     @Column(name = "saldo_pendiente", nullable = false, precision = 19, scale = 2)
     private BigDecimal saldoPendiente;
 
+    /**
+     * Desglose de una CxP manual (ADR-016): monto antes de IVA, en {@link #moneda}.
+     * Null en las CxP con orden de compra (el desglose sale de la OC) y en las anteriores a V28.
+     */
+    @Column(precision = 15, scale = 2)
+    private BigDecimal subtotal;
+
+    /** IVA (crédito fiscal) de una CxP manual (ADR-016), en {@link #moneda}; 0 si es exenta. */
+    @Column(precision = 15, scale = 2)
+    private BigDecimal impuesto;
+
+    /**
+     * Contrapartida elegida por el usuario para una CxP manual (ADR-016): cuenta de gasto o de
+     * activo que se debita en el asiento de compra. Null en las CxP con orden de compra.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuenta_gasto_id")
+    @ToString.Exclude
+    @JsonIgnore
+    private CuentaContable cuentaGasto;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
     @Builder.Default
@@ -105,6 +128,11 @@ public class CuentaPorPagar {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @JsonProperty("cuentaGastoId")
+    public Long getCuentaGastoId() {
+        return cuentaGasto != null ? cuentaGasto.getIdCuenta() : null;
     }
 
     public boolean isVencida() {

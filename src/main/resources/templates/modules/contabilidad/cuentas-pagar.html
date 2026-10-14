@@ -24,6 +24,11 @@
             <div class="page-header mb-4">
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-invoice-dollar', 'text-module-contabilidad', 'Gestión de', 'Cuentas por Pagar', 'Control y seguimiento de obligaciones con proveedores')}"></div>
                 <div class="page-header-actions">
+                    <button type="button" class="btn btn-primary me-2" id="btnNuevaCpp"
+                            data-bs-toggle="modal" data-bs-target="#modalNuevaCpp"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
+                        <i class="fas fa-plus me-1"></i>Nueva cuenta por pagar
+                    </button>
                     <a th:replace="~{shared/fragments/back-button :: backButton('/contabilidad', 'Volver a Contabilidad', 'Volver a Contabilidad')}"></a>
                 </div>
             </div>
@@ -163,6 +168,96 @@
         </div>
     </main>
 
+    <!-- Modal: New manual CxP (ADR-015 / ADR-016) -->
+    <div class="modal fade" id="modalNuevaCpp" tabindex="-1" aria-labelledby="modalNuevaCppLabel" aria-hidden="true"
+         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalNuevaCppLabel">
+                        <i class="fas fa-file-invoice-dollar me-2 text-module-contabilidad"></i>Nueva cuenta por pagar
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNuevaCpp" novalidate>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="cppProveedor" class="form-label">Proveedor <span class="text-danger">*</span></label>
+                                <select id="cppProveedor" class="form-select" required>
+                                    <option value="">— Seleccionar —</option>
+                                    <option th:each="p : ${proveedores}"
+                                            th:value="${p.id}"
+                                            th:text="${p.nombre}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="cppDescripcion" class="form-label">Descripción <span class="text-danger">*</span></label>
+                                <input type="text" id="cppDescripcion" class="form-control" maxlength="300" required
+                                       placeholder="Ej: Factura 00123 de servicios" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label for="cppFechaEmision" class="form-label">Fecha de emisión <span class="text-danger">*</span></label>
+                                <input type="date" id="cppFechaEmision" class="form-control" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cppFechaVencimiento" class="form-label">Fecha de vencimiento</label>
+                                <input type="date" id="cppFechaVencimiento" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cppMoneda" class="form-label">Moneda</label>
+                                <select id="cppMoneda" class="form-select">
+                                    <option th:each="m : ${monedas}" th:value="${m}" th:text="${m}"></option>
+                                </select>
+                            </div>
+                            <!-- ADR-011: tipo de cambio de la cuenta, solo en moneda extranjera -->
+                            <div class="col-md-3" id="cppTipoCambioGroup" style="display: none;">
+                                <label for="cppTipoCambio" class="form-label">Tipo de Cambio</label>
+                                <input type="number" id="cppTipoCambio" class="form-control"
+                                       step="0.00001" min="0.00001" placeholder="Ej: 510.00000" />
+                                <div class="form-text" id="cppTipoCambioAyuda">Tasa de venta del día; puede editarla</div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label for="cppSubtotal" class="form-label">Subtotal <span class="text-danger">*</span></label>
+                                <input type="number" id="cppSubtotal" class="form-control" step="0.01" min="0" required
+                                       placeholder="0.00" />
+                            </div>
+                            <div class="col-md-4">
+                                <label for="cppImpuesto" class="form-label">Impuesto (IVA) <span class="text-danger">*</span></label>
+                                <input type="number" id="cppImpuesto" class="form-control" step="0.01" min="0" required
+                                       value="0.00" />
+                            </div>
+                            <div class="col-md-4">
+                                <label for="cppTotal" class="form-label">Total</label>
+                                <input type="text" id="cppTotal" class="form-control fw-bold" readonly value="0.00" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="cppCuentaGasto" class="form-label">Contrapartida <span class="text-danger">*</span></label>
+                            <select id="cppCuentaGasto" class="form-select" required>
+                                <option value="">Cargando cuentas...</option>
+                            </select>
+                            <div class="form-text">Cuenta de gasto o de activo que se debita en el asiento de compra.</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarCpp" onclick="guardarNuevaCpp()">
+                        <i class="fas fa-save me-1"></i>Crear cuenta por pagar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Register Payment -->
     <div class="modal fade" id="modalPago" tabindex="-1" aria-labelledby="modalPagoLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -289,6 +384,9 @@
     <!-- Scripts base -->
     <th:block th:replace="~{shared/layout :: scripts}"></th:block>
 
+    <!-- ADR-011: selector de tipo de cambio compartido con ordenes-compra.html -->
+    <script th:src="@{/shared/js/tipo-cambio-documento.js}"></script>
+
     <script th:inline="javascript">
     /*<![CDATA[*/
 
@@ -303,6 +401,124 @@
                 fila.style.display = 'none';
             }
         });
+    }
+
+    // ── New manual CxP modal (ADR-015 / ADR-016) ─────────────────────────────
+    const modalNuevaCpp = document.getElementById('modalNuevaCpp');
+    if (modalNuevaCpp) {
+        modalNuevaCpp.addEventListener('show.bs.modal', () => {
+            document.getElementById('formNuevaCpp').reset();
+            document.getElementById('cppFechaEmision').value = new Date().toISOString().split('T')[0];
+            document.getElementById('cppImpuesto').value = '0.00';
+            actualizarTotalCpp();
+            actualizarTipoCambioCpp();
+            cargarCuentasContrapartida();
+        });
+        document.getElementById('cppMoneda').addEventListener('change', actualizarTipoCambioCpp);
+        document.getElementById('cppFechaEmision').addEventListener('change', actualizarTipoCambioCpp);
+        document.getElementById('cppSubtotal').addEventListener('input', actualizarTotalCpp);
+        document.getElementById('cppImpuesto').addEventListener('input', actualizarTotalCpp);
+    }
+
+    // ADR-011: tasa de venta de la fecha de emisión para la moneda de la cuenta (editable)
+    function actualizarTipoCambioCpp() {
+        actualizarTipoCambioDocumento({
+            moneda: document.getElementById('cppMoneda').value,
+            fila: document.getElementById('cppTipoCambioGroup'),
+            input: document.getElementById('cppTipoCambio'),
+            ayuda: document.getElementById('cppTipoCambioAyuda'),
+            fecha: document.getElementById('cppFechaEmision').value
+        });
+    }
+
+    function totalCpp() {
+        const subtotal = parseFloat(document.getElementById('cppSubtotal').value) || 0;
+        const impuesto = parseFloat(document.getElementById('cppImpuesto').value) || 0;
+        return Number((subtotal + impuesto).toFixed(2));
+    }
+
+    function actualizarTotalCpp() {
+        document.getElementById('cppTotal').value = totalCpp().toFixed(2);
+    }
+
+    async function cargarCuentasContrapartida() {
+        const sel = document.getElementById('cppCuentaGasto');
+        sel.innerHTML = '<option value="">Cargando cuentas...</option>';
+        try {
+            const resp = await fetch('/api/cuentas-pagar/cuentas-contrapartida');
+            const json = resp.ok ? await resp.json() : null;
+            const cuentas = json?.data?.cuentas ?? [];
+            sel.innerHTML = '<option value="">— Seleccionar —</option>';
+            cuentas.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.codigo} - ${c.nombre} (${c.tipo})`;
+                if (c.predeterminada) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            if (!cuentas.length) {
+                mostrarToast((json && json.message && !json.success) ? json.message
+                    : 'No hay cuentas disponibles como contrapartida.', 'warning');
+            }
+        } catch (e) {
+            sel.innerHTML = '<option value="">— Seleccionar —</option>';
+            mostrarToast('Error al cargar las cuentas de contrapartida.', 'danger');
+        }
+    }
+
+    async function guardarNuevaCpp() {
+        const proveedorId = document.getElementById('cppProveedor').value;
+        const descripcion = document.getElementById('cppDescripcion').value.trim();
+        const fechaEmision = document.getElementById('cppFechaEmision').value;
+        const subtotal = document.getElementById('cppSubtotal').value;
+        const impuesto = document.getElementById('cppImpuesto').value;
+        const cuentaGastoId = document.getElementById('cppCuentaGasto').value;
+        const moneda = document.getElementById('cppMoneda').value;
+        const tipoCambio = document.getElementById('cppTipoCambio').value;
+
+        if (!proveedorId || !descripcion || !fechaEmision || subtotal === '' || impuesto === '' || !cuentaGastoId) {
+            mostrarToast('Por favor complete los campos requeridos.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnGuardarCpp');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Guardando...';
+
+        try {
+            const resp = await fetch('/api/cuentas-pagar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+                },
+                body: JSON.stringify({
+                    proveedorId:      parseInt(proveedorId),
+                    descripcion:      descripcion,
+                    fechaEmision:     fechaEmision,
+                    fechaVencimiento: document.getElementById('cppFechaVencimiento').value || null,
+                    moneda:           moneda,
+                    tipoCambio:       moneda !== 'CRC' && tipoCambio ? parseFloat(tipoCambio) : null,
+                    subtotal:         parseFloat(subtotal),
+                    impuesto:         parseFloat(impuesto),
+                    monto:            totalCpp(),
+                    cuentaGastoId:    parseInt(cuentaGastoId)
+                })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data.success) {
+                bootstrap.Modal.getInstance(modalNuevaCpp).hide();
+                mostrarToast(data.message || 'Cuenta por pagar creada.', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                mostrarToast(data.message || 'Error al crear la cuenta por pagar.', 'danger');
+            }
+        } catch (e) {
+            mostrarToast('Error de conexión. Intente nuevamente.', 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-1"></i>Crear cuenta por pagar';
+        }
     }
 
     // ── Payment modal ────────────────────────────────────────────────────────

@@ -126,7 +126,23 @@ public interface CuentaContableRepository extends JpaRepository<CuentaContable, 
      */
     @Query("SELECT COUNT(c) FROM CuentaContable c WHERE c.cuentaPadre.idCuenta = :cuentaPadreId")
     Long countSubcuentas(@Param("cuentaPadreId") Long cuentaPadreId);
-    
+
+    /**
+     * Ids de las cuentas que tienen al menos una subcuenta (por la FK cuenta_padre_id).
+     * @return Ids de las cuentas agrupadoras de hecho
+     */
+    @Query("SELECT DISTINCT c.cuentaPadre.idCuenta FROM CuentaContable c WHERE c.cuentaPadre IS NOT NULL")
+    List<Long> findIdsCuentasConSubcuentas();
+
+    /**
+     * Cuentas hoja elegibles para recibir movimientos (ADR-017 R1): activas, que aceptan movimientos
+     * y sin subcuentas.
+     * @return Cuentas hoja ordenadas por código
+     */
+    @Query("SELECT c FROM CuentaContable c WHERE c.activa = true AND c.aceptaMovimientos = true " +
+           "AND NOT EXISTS (SELECT h FROM CuentaContable h WHERE h.cuentaPadre = c) ORDER BY c.codigo")
+    List<CuentaContable> findHojasActivasConMovimientos();
+
     /**
      * Verifica si una cuenta tiene movimientos contables.
      * @param cuentaId ID de la cuenta

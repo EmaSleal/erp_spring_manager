@@ -98,11 +98,13 @@ class AsientoNominaIntegrationTest {
     @Test
     @DisplayName("4.2.1 generarAsientoNomina throws IllegalStateException when NOMINA_SALARIOS_POR_PAGAR is not configured")
     void generarAsientoNomina_missingSalariosPorPagarKey_throwsIllegalState() {
-        // GIVEN: first 5 keys are present, NOMINA_SALARIOS_POR_PAGAR is absent
+        // GIVEN: the other 6 base keys are present, NOMINA_SALARIOS_POR_PAGAR is absent
         CuentaContable cuenta = buildCuenta(1L, "1.1.01");
 
         when(parametroContableRepository.findByClave("NOMINA_GASTO_SUELDOS"))
                 .thenReturn(Optional.of(buildParam("NOMINA_GASTO_SUELDOS", cuenta)));
+        when(parametroContableRepository.findByClave("NOMINA_GASTO_CARGAS_SOCIALES"))
+                .thenReturn(Optional.of(buildParam("NOMINA_GASTO_CARGAS_SOCIALES", cuenta)));
         when(parametroContableRepository.findByClave("NOMINA_CCSS_PATRONAL_POR_PAGAR"))
                 .thenReturn(Optional.of(buildParam("NOMINA_CCSS_PATRONAL_POR_PAGAR", cuenta)));
         when(parametroContableRepository.findByClave("NOMINA_CCSS_POR_PAGAR"))
@@ -291,7 +293,9 @@ class AsientoNominaIntegrationTest {
 
         AsientoContable result = service.generarAsientoNomina(nomina);
 
-        assertThat(debe(result, C_GASTO_SUELDOS)).isEqualByComparingTo("3931730.00"); // 3_100_000 + 831_730
+        // ADR-017: the employer CCSS charge (831_730) is no longer debited to salaries
+        assertThat(debe(result, C_GASTO_SUELDOS)).isEqualByComparingTo("3100000.00");
+        assertThat(debe(result, C_CARGAS_SOCIALES)).isEqualByComparingTo("831730.00");
         assertThat(debe(result, C_ASE_GASTO)).isEqualByComparingTo("133250.00");      // 53_300 + 79_950
         assertThat(lineas(result, C_SOLIDARISTA, false)).extracting(DetalleAsiento::getHaber)
                 .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
@@ -397,6 +401,7 @@ class AsientoNominaIntegrationTest {
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private static final CuentaContable C_GASTO_SUELDOS = cuenta(10L, "5.1.01.001");
+    private static final CuentaContable C_CARGAS_SOCIALES = cuenta(19L, "5.1.02.003");
     private static final CuentaContable C_CCSS_PATRONAL = cuenta(11L, "2.1.01.002");
     private static final CuentaContable C_SALARIOS      = cuenta(15L, "2.1.01.001");
     private static final CuentaContable C_SOLIDARISTA   = cuenta(16L, "2.1.04.001");
@@ -509,7 +514,7 @@ class AsientoNominaIntegrationTest {
         when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
     }
 
-    /** The six base NOMINA_* keys, without the entry-number stub (for tests that fail before numbering). */
+    /** The seven base NOMINA_* keys, without the entry-number stub (for tests that fail before numbering). */
     private void seedBaseKeys() {
         // Each key gets its own distinct account (different id/codigo to avoid confusion)
         CuentaContable cGastoSueldos       = C_GASTO_SUELDOS;
@@ -521,6 +526,8 @@ class AsientoNominaIntegrationTest {
 
         when(parametroContableRepository.findByClave("NOMINA_GASTO_SUELDOS"))
                 .thenReturn(Optional.of(buildParam("NOMINA_GASTO_SUELDOS", cGastoSueldos)));
+        when(parametroContableRepository.findByClave("NOMINA_GASTO_CARGAS_SOCIALES"))
+                .thenReturn(Optional.of(buildParam("NOMINA_GASTO_CARGAS_SOCIALES", C_CARGAS_SOCIALES)));
         when(parametroContableRepository.findByClave("NOMINA_CCSS_PATRONAL_POR_PAGAR"))
                 .thenReturn(Optional.of(buildParam("NOMINA_CCSS_PATRONAL_POR_PAGAR", cCcssPatronal)));
         when(parametroContableRepository.findByClave("NOMINA_CCSS_POR_PAGAR"))

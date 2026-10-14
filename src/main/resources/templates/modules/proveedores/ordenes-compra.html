@@ -274,6 +274,9 @@
         </div>
     </div>
 
+    <!-- ADR-011: selector de tipo de cambio compartido con cuentas-pagar.html -->
+    <script th:src="@{/shared/js/tipo-cambio-documento.js}"></script>
+
     <!-- OC detail data for reception modal -->
     <script th:inline="javascript">
     /*<![CDATA[*/
@@ -445,29 +448,12 @@
     document.getElementById('btnAgregarLineaOC').addEventListener('click', agregarLineaOC);
     // ADR-011: precarga la tasa de venta del día para la moneda de la orden (editable)
     function actualizarTipoCambioOC() {
-        const moneda = document.getElementById('oc-moneda').value;
-        const fila = document.getElementById('oc-tc-row');
-        const input = document.getElementById('oc-tipo-cambio');
-        const ayuda = document.getElementById('oc-tc-ayuda');
-        if (!moneda || moneda === 'CRC') {
-            fila.style.display = 'none';
-            input.value = '';
-            return;
-        }
-        fila.style.display = '';
-        const hoy = new Date().toISOString().substring(0, 10);
-        fetch(`/api/tipos-cambio/venta?moneda=${moneda}&fecha=${hoy}`)
-            .then(async r => ({ ok: r.ok, data: await r.json().catch(() => null) }))
-            .then(({ ok, data }) => {
-                if (ok && data && data.tasaVenta) {
-                    input.value = data.tasaVenta;
-                    ayuda.textContent = `Tasa de venta de ${moneda} al ${hoy}; puede editarla`;
-                } else {
-                    input.value = '';
-                    ayuda.textContent = (data && data.message) || `No hay tipo de cambio de ${moneda}; ingréselo`;
-                }
-            })
-            .catch(() => { /* el usuario puede digitarlo */ });
+        actualizarTipoCambioDocumento({
+            moneda: document.getElementById('oc-moneda').value,
+            fila: document.getElementById('oc-tc-row'),
+            input: document.getElementById('oc-tipo-cambio'),
+            ayuda: document.getElementById('oc-tc-ayuda')
+        });
     }
     document.getElementById('oc-moneda').addEventListener('change', actualizarTipoCambioOC);
 
