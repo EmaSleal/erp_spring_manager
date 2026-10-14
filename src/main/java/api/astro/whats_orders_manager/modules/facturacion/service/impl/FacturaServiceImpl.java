@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -8,13 +10,17 @@ import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFac
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +69,18 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Autowired
     private MovimientoInventarioService movimientoInventarioService;
+
+    @Autowired
+    private AsientoContableService asientoContableService;
+
+    @Autowired
+    private CalculadoraImpuestoService calculadoraImpuestoService;
+
+    @Autowired
+    private ProductoRepository productoRepository;
+
+    @Autowired
+    private TipoCambioService tipoCambioService;
 
     @Override
     @Transactional(readOnly = true)
@@ -131,37 +149,55 @@ public class FacturaServiceImpl implements FacturaService {
         if (factura.getMonedaFE() == null || factura.getMonedaFE() == MonedaFE.CRC) {
             factura.setMonedaFE(MonedaFE.CRC);
             factura.setTipoCambio(BigDecimal.ONE);
-        } else if (factura.getTipoCambio() == null || factura.getTipoCambio().compareTo(BigDecimal.ZERO) <= 0) {
+        } else if (factura.getTipoCambio() == null) {
+            // ADR-011: sin tipo de cambio indicado se toma la tasa de venta registrada para la fecha
+            // de la factura; si no hay tasa registrada falla con un mensaje claro
+            LocalDate fechaFactura = factura.getFechaEmision() != null ? factura.getFechaEmision() : LocalDate.now();
+            factura.setTipoCambio(tipoCambioService.obtenerTasaVenta(factura.getMonedaFE(), fechaFactura));
+            log.info("Tipo de cambio de {} sugerido para la factura: {}", factura.getMonedaFE(), factura.getTipoCambio());
+        } else if (factura.getTipoCambio().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
-                "tipoCambio es obligatorio y debe ser mayor a 0 para facturas en " + factura.getMonedaFE().getCodigo()
+                "tipoCambio debe ser mayor a 0 para facturas en " + factura.getMonedaFE().getCodigo()
             );
         }
 
-        // Calcular IGV y total si no están establecidos
-        if (factura.getSubtotal() != null && factura.getSubtotal().compareTo(BigDecimal.ZERO) > 0) {
-            
-            // Si el IGV no está calculado, calcularlo
-            if (factura.getIgv() == null || factura.getIgv().compareTo(BigDecimal.ZERO) == 0) {
-                BigDecimal igvCalculado = config.calcularIgv(factura.getSubtotal());
-                factura.setIgv(igvCalculado);
-                log.debug("IGV calculado: {} ({}%)", igvCalculado, config.getIgv());
-            }
-            
-            // Si el total no está calculado, calcularlo
-            if (factura.getTotal() == null || factura.getTotal().compareTo(BigDecimal.ZERO) == 0) {
-                BigDecimal totalCalculado = config.calcularTotal(factura.getSubtotal());
-                factura.setTotal(totalCalculado);
-                log.debug("Total calculado: {}", totalCalculado);
-            }
-        }
-        
+        // ADR-009: los totales de una factura con líneas vienen del desglose por línea
+        // (CalculadoraImpuestoService). Sin líneas no hay producto del que resolver tarifa
+        // ni precioIncluyeIva: no se calcula IVA y se respetan los montos recibidos.
+        aplicarTotalesDesdeLineas(factura);
+
         // Capture isNew before save — after save() the ID is always assigned
         boolean isNew = factura.getIdFactura() == null;
+
+        // Anulación: nunca se recibe del cliente; una factura anulada no se edita
+        if (isNew) {
+            factura.setAnulada(false);
+            factura.setFechaAnulacion(null);
+            factura.setMotivoAnulacion(null);
+        } else {
+            facturaRepository.findById(factura.getIdFactura()).ifPresent(existente -> {
+                if (existente.estaAnulada()) {
+                    throw new IllegalStateException("No se puede editar una factura anulada");
+                }
+                factura.setAnulada(existente.getAnulada());
+                factura.setFechaAnulacion(existente.getFechaAnulacion());
+                factura.setMotivoAnulacion(existente.getMotivoAnulacion());
+            });
+        }
 
         // Guardar la factura
         Factura facturaGuardada = facturaRepository.save(factura);
         log.info("Factura guardada exitosamente con ID: {} y número: {}",
                 facturaGuardada.getIdFactura(), facturaGuardada.getNumeroFactura());
+
+        // ADR-008: asiento de venta en la misma transacción. Si falla, la excepción
+        // se propaga y la transacción hace rollback (la factura no queda persistida).
+        if (isNew) {
+            asientoContableService.generarAsientoVenta(facturaGuardada);
+        } else {
+            // Edición de montos de una factura contabilizada: reversión + asiento nuevo
+            asientoContableService.sincronizarAsientoVenta(facturaGuardada);
+        }
 
         // Incrementar el contador solo al crear (no en updates)
         if (isNew) {
@@ -183,10 +219,48 @@ public class FacturaServiceImpl implements FacturaService {
         return facturaGuardada;
     }
 
+    /**
+     * ADR-009: si la factura trae líneas, subtotal = Σ bases, igv = Σ impuestos y
+     * total = Σ importes, desglosados por CalculadoraImpuestoService. Sin líneas no se
+     * calcula IVA (el flujo de la UI guarda la factura en cero y luego sus líneas,
+     * cuyos totales fija LineaFacturaServiceImpl.updateLineas con el mismo componente);
+     * solo se completa un total ausente como subtotal + igv recibidos.
+     */
+    private void aplicarTotalesDesdeLineas(Factura factura) {
+        List<LineaFactura> lineas = factura.getLineas();
+        if (lineas != null && !lineas.isEmpty()) {
+            DesgloseImpuesto desglose = DesgloseImpuesto.CERO;
+            for (LineaFactura linea : lineas) {
+                Producto producto = resolverProducto(linea.getProducto());
+                desglose = desglose.sumar(calculadoraImpuestoService.desglosarLinea(producto, linea.getSubtotal()));
+            }
+            factura.setSubtotal(desglose.base());
+            factura.setIgv(desglose.impuesto());
+            factura.setTotal(desglose.total());
+            log.debug("Totales desde líneas (ADR-009): subtotal={}, igv={}, total={}",
+                    desglose.base(), desglose.impuesto(), desglose.total());
+            return;
+        }
+        boolean sinTotal = factura.getTotal() == null || factura.getTotal().signum() == 0;
+        if (sinTotal && factura.getSubtotal() != null && factura.getSubtotal().signum() > 0) {
+            BigDecimal igv = factura.getIgv() != null ? factura.getIgv() : BigDecimal.ZERO;
+            factura.setTotal(factura.getSubtotal().add(igv));
+        }
+    }
+
+    /** Producto completo (gravado/tarifa/precioIncluyeIva); el recibido puede traer solo el id. */
+    private Producto resolverProducto(Producto producto) {
+        if (producto == null || producto.getIdProducto() == null) {
+            return producto;
+        }
+        return productoRepository.findById(producto.getIdProducto()).orElse(producto);
+    }
+
     @Override
     @Transactional
     public void deleteById(Integer id) { 
         log.debug("Eliminando factura con ID: {}", id);
+        validarSinAsientoContabilizado(id);
         facturaRepository.deleteById(id); 
         log.info("Factura eliminada exitosamente con ID: {}", id);
     }
@@ -311,6 +385,7 @@ public class FacturaServiceImpl implements FacturaService {
     public void eliminarConValidacion(Integer id) {
         Factura factura = facturaRepository.findById(id)
             .orElseThrow(() -> new NoSuchElementException("La factura no existe"));
+        validarSinAsientoContabilizado(id);
         if (!pagoService.findByFacturaId(id).isEmpty())
             throw new IllegalStateException("No se puede eliminar: la factura tiene pagos registrados");
         if (Boolean.TRUE.equals(factura.getEntregado()))
@@ -319,6 +394,44 @@ public class FacturaServiceImpl implements FacturaService {
         if (lineas != null) lineas.forEach(l -> lineaFacturaService.deleteById(l.getIdLineaFactura()));
         facturaRepository.deleteById(id);
         log.info("Factura eliminada con validación, ID: {}", id);
+    }
+
+    @Override
+    @Transactional
+    public Factura anular(Integer id, String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new IllegalArgumentException("El motivo de anulación es obligatorio");
+        }
+        Factura factura = facturaRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("La factura no existe"));
+        if (factura.estaAnulada()) {
+            throw new IllegalStateException("La factura " + factura.getNumeroFactura() + " ya está anulada");
+        }
+        if (!pagoService.findPagosValidosByFacturaId(id).isEmpty()) {
+            throw new IllegalStateException(
+                "No se puede anular: la factura tiene pagos confirmados o conciliados. Anule primero los pagos");
+        }
+
+        // ADR-008: el asiento de venta no se edita ni se borra; se revierte con líneas espejo
+        asientoContableService.revertirAsientoVenta(factura,
+            "Anulación de factura " + factura.getNumeroFactura() + ": " + motivo.trim());
+
+        factura.setAnulada(true);
+        factura.setFechaAnulacion(LocalDateTime.now());
+        factura.setMotivoAnulacion(motivo.trim().length() > 500 ? motivo.trim().substring(0, 500) : motivo.trim());
+        Factura anulada = facturaRepository.save(factura); // direct repo save — avoids side effects in service.save()
+        log.info("Factura {} anulada. Motivo: {}", factura.getNumeroFactura(), motivo);
+        return anulada;
+    }
+
+    /**
+     * Rechaza el borrado físico de una factura con asientos contabilizados (ADR-008).
+     */
+    private void validarSinAsientoContabilizado(Integer id) {
+        if (asientoContableService.tieneAsientoContabilizadoFactura(id)) {
+            throw new IllegalStateException(
+                "No se puede eliminar: la factura tiene asientos contables contabilizados. Anúlela en su lugar");
+        }
     }
 
     @Override

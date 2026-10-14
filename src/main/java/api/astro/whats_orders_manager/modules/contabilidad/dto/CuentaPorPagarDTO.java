@@ -18,6 +18,8 @@ public class CuentaPorPagarDTO {
     private String descripcion;
     private BigDecimal monto;
     private MonedaFE moneda;
+    /** Tipo de cambio (ADR-011). Null → tasa de venta registrada para la fecha de emisión. */
+    private BigDecimal tipoCambio;
     private LocalDate fechaEmision;
     private LocalDate fechaVencimiento;
     private String notas;

@@ -83,3 +83,6 @@ uploads/
 
 docs/proyecto_guia/.
 docs/proyecto_guia/erpnext-develop/
+
+# CodeGraph local index
+.codegraph/

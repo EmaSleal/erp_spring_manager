@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionE
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +42,9 @@ class XmlGeneratorServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new XmlGeneratorServiceImpl();
+        // T-006: el generador usa el componente único de desglose de IVA (ADR-009).
+        // Sin ParametroSistemaService la tarifa general es el respaldo de 13 %.
+        service = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null));
 
         empresa = ConfiguracionEmpresa.builder()
                 .razonSocial("Empresa Test SA")
@@ -161,7 +164,7 @@ class XmlGeneratorServiceImplTest {
         // Act
         String xml = assertDoesNotThrow(() -> service.generarXmlTiquete(comprobante));
 
-        // Assert — exento code "10" used (0% VAT rate), not "07" (13%)
+        // Assert — exento code "10" used (0% VAT rate), not "08" (13% tarifa general, Hacienda v4.4)
         assertTrue(xml.contains("<CodigoTarifaIVA>10</CodigoTarifaIVA>"),
                 "Exento code '10' must be emitted when master.gravado=false, regardless of Producto.gravado");
     }

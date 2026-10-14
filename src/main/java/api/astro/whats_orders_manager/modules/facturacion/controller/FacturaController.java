@@ -231,6 +231,32 @@ public class FacturaController {
     }
 
     /**
+     * Anula una factura (ADR-008): revierte su asiento de venta y la marca como anulada.
+     * No se permite si la factura tiene pagos confirmados o conciliados.
+     */
+    @PostMapping("/anular/{id}")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ANULAR')")
+    public String anularFactura(
+            @PathVariable Integer id,
+            @RequestParam(required = false) String motivo,
+            RedirectAttributes redirectAttributes,
+            Authentication authentication
+    ) {
+        log.info("Intentando anular factura ID: {}", id);
+        try {
+            facturaService.anular(id, motivo);
+            redirectAttributes.addFlashAttribute("success", "Factura anulada exitosamente");
+        } catch (NoSuchElementException | IllegalStateException | IllegalArgumentException e) {
+            log.warn("No se pudo anular factura {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        } catch (Exception e) {
+            log.error("Error al anular factura: {}", e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", "Error al anular la factura");
+        }
+        return "redirect:/facturas";
+    }
+
+    /**
      * Muestra el formulario para editar una factura existente
      */
     @GetMapping("/editar/{idFactura}")

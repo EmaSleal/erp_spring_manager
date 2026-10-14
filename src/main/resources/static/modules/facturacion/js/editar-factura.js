@@ -166,17 +166,15 @@ function actualizarResumenTotales() {
         }
     });
     
-    // IGV es 0% por ahora (puedes cambiarlo a 18% si es necesario)
-    const igv = 0; // subtotal * 0.18 para 18%
-    const total = subtotal + igv;
+    // Los precios incluyen IVA (ADR-009): el total es la suma de las líneas y el
+    // desglose base/IVA por línea lo calcula el servidor (CalculadoraImpuestoService).
+    const total = subtotal;
     
     // Actualizar elementos en el DOM
     const elementoSubtotal = document.getElementById('resumen-subtotal');
-    const elementoIgv = document.getElementById('resumen-igv');
     const elementoTotal = document.getElementById('resumen-total');
     
     if (elementoSubtotal) elementoSubtotal.textContent = `$${subtotal.toFixed(2)}`;
-    if (elementoIgv) elementoIgv.textContent = `$${igv.toFixed(2)}`;
     if (elementoTotal) elementoTotal.textContent = `$${total.toFixed(2)}`;
 }
 

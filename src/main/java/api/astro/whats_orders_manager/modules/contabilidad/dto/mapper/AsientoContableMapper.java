@@ -51,7 +51,8 @@ public class AsientoContableMapper {
         
         // Información de factura
         if (asiento.getFactura() != null) {
-            dto.setFacturaId(Long.getLong( asiento.getFactura().getIdFactura().toString()));
+            dto.setFacturaId(asiento.getFactura().getIdFactura() != null
+                    ? asiento.getFactura().getIdFactura().longValue() : null);
             dto.setFacturaNumero(asiento.getFactura().getNumeroFactura());
         }
         

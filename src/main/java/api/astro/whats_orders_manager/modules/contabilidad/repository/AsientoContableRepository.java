@@ -170,22 +170,84 @@ public interface AsientoContableRepository extends JpaRepository<AsientoContable
                                                       @Param("fechaFin") LocalDate fechaFin);
     
     /**
-     * Verifica si existe un asiento automático para una factura.
+     * Verifica si existe un asiento de venta vigente para una factura.
+     * Vigente: no es una reversión y no ha sido revertido por otro asiento.
      * @param facturaId ID de la factura
      * @return true si existe
      */
     @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END " +
-           "FROM AsientoContable a WHERE a.factura.idFactura = :facturaId AND a.tipo = 'AUTOMATICO_VENTA'")
+           "FROM AsientoContable a WHERE a.factura.idFactura = :facturaId AND a.tipo = 'AUTOMATICO_VENTA' " +
+           "AND a.asientoRevertido IS NULL " +
+           "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
     boolean existeAsientoVentaParaFactura(@Param("facturaId") Long facturaId);
     
     /**
-     * Verifica si existe un asiento automático para un pago.
+     * Verifica si existe un asiento de cobro vigente para un pago.
+     * Vigente: no es una reversión y no ha sido revertido por otro asiento.
      * @param pagoId ID del pago
      * @return true si existe
      */
     @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END " +
-           "FROM AsientoContable a WHERE a.pago.idPago = :pagoId AND a.tipo = 'AUTOMATICO_PAGO'")
+           "FROM AsientoContable a WHERE a.pago.idPago = :pagoId AND a.tipo = 'AUTOMATICO_PAGO' " +
+           "AND a.asientoRevertido IS NULL " +
+           "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
     boolean existeAsientoPagoParaPago(@Param("pagoId") Long pagoId);
+
+    /**
+     * Obtiene los asientos de venta vigentes (contabilizados, no revertidos) de una factura.
+     * @param facturaId ID de la factura
+     * @return Lista de asientos vigentes (normalmente uno)
+     */
+    @Query("SELECT a FROM AsientoContable a WHERE a.factura.idFactura = :facturaId AND a.tipo = 'AUTOMATICO_VENTA' " +
+           "AND a.estado = 'CONTABILIZADO' AND a.asientoRevertido IS NULL " +
+           "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
+    List<AsientoContable> findAsientosVentaVigentes(@Param("facturaId") Long facturaId);
+
+    /**
+     * Obtiene los asientos de cobro vigentes (contabilizados, no revertidos) de un pago.
+     * @param pagoId ID del pago
+     * @return Lista de asientos vigentes (normalmente uno)
+     */
+    @Query("SELECT a FROM AsientoContable a WHERE a.pago.idPago = :pagoId AND a.tipo = 'AUTOMATICO_PAGO' " +
+           "AND a.estado = 'CONTABILIZADO' AND a.asientoRevertido IS NULL " +
+           "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
+    List<AsientoContable> findAsientosPagoVigentes(@Param("pagoId") Long pagoId);
+
+    /**
+     * Asientos vigentes (contabilizados, no reversiones y no revertidos) de un pago a proveedor (ADR-011).
+     * @param pagoProveedorId ID del pago a proveedor
+     * @return Lista de asientos vigentes (normalmente uno)
+     */
+    @Query("SELECT a FROM AsientoContable a WHERE a.pagoProveedor.id = :pagoProveedorId " +
+           "AND a.tipo = 'AUTOMATICO_GASTO' " +
+           "AND a.estado = 'CONTABILIZADO' AND a.asientoRevertido IS NULL " +
+           "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
+    List<AsientoContable> findAsientosPagoProveedorVigentes(@Param("pagoProveedorId") Long pagoProveedorId);
+
+    /**
+     * Verifica si un asiento ya fue revertido por otro asiento.
+     * @param idAsiento ID del asiento original
+     * @return true si existe un asiento de reversión que lo referencia
+     */
+    boolean existsByAsientoRevertidoIdAsiento(Long idAsiento);
+
+    /**
+     * Verifica si una factura tiene algún asiento contabilizado vinculado.
+     * @param facturaId ID de la factura
+     * @return true si existe al menos uno
+     */
+    @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END " +
+           "FROM AsientoContable a WHERE a.factura.idFactura = :facturaId AND a.estado = 'CONTABILIZADO'")
+    boolean existeAsientoContabilizadoParaFactura(@Param("facturaId") Long facturaId);
+
+    /**
+     * Verifica si un pago tiene algún asiento contabilizado vinculado.
+     * @param pagoId ID del pago
+     * @return true si existe al menos uno
+     */
+    @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END " +
+           "FROM AsientoContable a WHERE a.pago.idPago = :pagoId AND a.estado = 'CONTABILIZADO'")
+    boolean existeAsientoContabilizadoParaPago(@Param("pagoId") Long pagoId);
     
     /**
      * Busca asientos borradores antiguos (para limpieza).

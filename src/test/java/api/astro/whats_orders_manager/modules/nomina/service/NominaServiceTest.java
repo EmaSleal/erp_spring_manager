@@ -13,12 +13,22 @@ import api.astro.whats_orders_manager.modules.rrhh.model.Ausencia;
 import api.astro.whats_orders_manager.modules.rrhh.model.ContratoEmpleado;
 import api.astro.whats_orders_manager.modules.rrhh.model.Empleado;
 import api.astro.whats_orders_manager.modules.rrhh.model.ParametroCCSS;
+import api.astro.whats_orders_manager.modules.rrhh.model.ParametroNominaEmpresa;
 import api.astro.whats_orders_manager.modules.rrhh.model.TramoImpuestoSalario;
 import api.astro.whats_orders_manager.modules.rrhh.repository.AusenciaRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.ContratoEmpleadoRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.EmpleadoRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.ParametroCCSSRepository;
+import api.astro.whats_orders_manager.modules.rrhh.repository.ParametroNominaEmpresaRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.TramoImpuestoSalarioRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
+import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
+import api.astro.whats_orders_manager.modules.contabilidad.model.DetalleAsiento;
+import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoContableRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaContableRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.DetalleAsientoRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.nomina.service.dto.ResultadoCalculoNomina;
@@ -26,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -77,6 +88,9 @@ class NominaServiceTest {
     private ParametroCCSSRepository parametroCCSSRepository;
 
     @Mock
+    private ParametroNominaEmpresaRepository parametroNominaEmpresaRepository;
+
+    @Mock
     private TramoImpuestoSalarioRepository tramoImpuestoSalarioRepository;
 
     @Mock
@@ -106,6 +120,7 @@ class NominaServiceTest {
                 contratoEmpleadoRepository,
                 ausenciaRepository,
                 parametroCCSSRepository,
+                parametroNominaEmpresaRepository,
                 tramoImpuestoSalarioRepository,
                 parametroContableRepository,
                 calculosNominaService,
@@ -205,6 +220,8 @@ class NominaServiceTest {
         // CCSS params
         ParametroCCSS ccss = buildCcss();
         when(parametroCCSSRepository.findVigenteByFecha(FIN)).thenReturn(Optional.of(ccss));
+        when(parametroNominaEmpresaRepository.findVigenteByFecha(FIN))
+                .thenReturn(Optional.of(buildParametroEmpresa("0.0533", LocalDate.of(2026, 1, 1), null)));
         when(tramoImpuestoSalarioRepository.findByAnioVigenciaOrderByLimiteInferiorAsc(2026))
                 .thenReturn(buildTramos());
 
@@ -226,7 +243,7 @@ class NominaServiceTest {
                 eq(10L), any(), any())).thenReturn(List.of());
 
         ResultadoCalculoNomina resultado = buildResultado();
-        when(calculosNominaService.calcular(any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
+        when(calculosNominaService.calcular(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
                 .thenReturn(resultado);
 
         // WHEN
@@ -252,6 +269,8 @@ class NominaServiceTest {
 
         ParametroCCSS ccss = buildCcss();
         when(parametroCCSSRepository.findVigenteByFecha(FIN)).thenReturn(Optional.of(ccss));
+        when(parametroNominaEmpresaRepository.findVigenteByFecha(FIN))
+                .thenReturn(Optional.of(buildParametroEmpresa("0.0533", LocalDate.of(2026, 1, 1), null)));
         when(tramoImpuestoSalarioRepository.findByAnioVigenciaOrderByLimiteInferiorAsc(2026))
                 .thenReturn(buildTramos());
 
@@ -272,7 +291,7 @@ class NominaServiceTest {
         // Capture what horasAusentes value is passed to CalculosNominaService
         ResultadoCalculoNomina resultado = buildResultado();
         when(calculosNominaService.calcular(
-                any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
+                any(), any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
                 .thenReturn(resultado);
 
         // WHEN
@@ -282,7 +301,7 @@ class NominaServiceTest {
         verify(calculosNominaService).calcular(
                 eq(new BigDecimal("1000000")),
                 eq(new BigDecimal("8")),
-                any(), any(), any(), any(), anyInt(), anyBoolean()
+                any(), any(), any(), any(), any(), anyInt(), anyBoolean()
         );
     }
 
@@ -312,8 +331,163 @@ class NominaServiceTest {
         verify(nominaRepository, never()).save(any());
     }
 
+    // =========================================================================
+    // T-010 — ASE employer rate resolved by period date; contabilizar with solidarista + pensión
+    // =========================================================================
+
+    @Test
+    @DisplayName("T-010 calcular() fails like CCSS when no company payroll parameters are vigente")
+    void calcular_sinParametroEmpresaVigente_lanzaIllegalState() {
+        Nomina borrador = buildBorradorNomina(7L);
+        when(nominaRepository.findById(7L)).thenReturn(Optional.of(borrador));
+        when(parametroCCSSRepository.findVigenteByFecha(FIN)).thenReturn(Optional.of(buildCcss()));
+        when(parametroNominaEmpresaRepository.findVigenteByFecha(FIN)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.calcular(7L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("parámetros de nómina de la empresa");
+
+        verify(nominaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("T-010 vigencia: June payroll uses 0.0533 and July payroll uses 0.0400; aporte persisted and totalled")
+    void calcular_tasaAseSegunFechaDelPeriodo() {
+        // Real calculation engine to check the persisted contribution
+        CalculosNominaService calculosReales = new CalculosNominaService();
+        NominaService servicioReal = new NominaService(nominaRepository, detalleNominaRepository,
+                empleadoRepository, contratoEmpleadoRepository, ausenciaRepository, parametroCCSSRepository,
+                parametroNominaEmpresaRepository, tramoImpuestoSalarioRepository, parametroContableRepository,
+                calculosReales, asientoContableService, new NominaMapper(new DetalleNominaMapper()));
+
+        LocalDate finJunio = LocalDate.of(2026, 6, 30);
+        Nomina junio = Nomina.builder().id(20L).numero("NOM-2026-0020")
+                .periodoInicio(LocalDate.of(2026, 6, 1)).periodoFin(finJunio).fechaPago(finJunio)
+                .tipo(TipoNomina.MENSUAL).estado(EstadoNomina.BORRADOR).build();
+        junio.setDetalles(new ArrayList<>());
+        Nomina julio = buildBorradorNomina(21L);
+
+        when(nominaRepository.findById(20L)).thenReturn(Optional.of(junio));
+        when(nominaRepository.findById(21L)).thenReturn(Optional.of(julio));
+        when(nominaRepository.save(any(Nomina.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(parametroCCSSRepository.findVigenteByFecha(any())).thenReturn(Optional.of(buildCcss()));
+        when(parametroNominaEmpresaRepository.findVigenteByFecha(finJunio))
+                .thenReturn(Optional.of(buildParametroEmpresa("0.0533", LocalDate.of(2026, 1, 1), finJunio)));
+        when(parametroNominaEmpresaRepository.findVigenteByFecha(FIN))
+                .thenReturn(Optional.of(buildParametroEmpresa("0.0400", LocalDate.of(2026, 7, 1), null)));
+        when(tramoImpuestoSalarioRepository.findByAnioVigenciaOrderByLimiteInferiorAsc(2026))
+                .thenReturn(buildTramos());
+
+        Empleado afiliado = buildEmpleado(30L, "Laura", "Mena");
+        afiliado.setPorcentajeSolidarista(new BigDecimal("0.0300"));
+        Empleado noAfiliado = buildEmpleado(31L, "José", "Arias");
+        when(empleadoRepository.findByActivoTrue()).thenReturn(List.of(afiliado, noAfiliado));
+        ContratoEmpleado contrato = new ContratoEmpleado();
+        contrato.setSalarioBruto(new BigDecimal("1000000"));
+        when(contratoEmpleadoRepository.findByEmpleadoIdAndActivoTrue(anyLong())).thenReturn(Optional.of(contrato));
+        when(ausenciaRepository.findByEmpleadoIdAndAprobadaTrueAndFechaInicioBetween(anyLong(), any(), any()))
+                .thenReturn(List.of());
+
+        servicioReal.calcular(20L);
+        servicioReal.calcular(21L);
+
+        assertThat(junio.getDetalles()).extracting(DetalleNomina::getAportePatronalSolidarista)
+                .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .containsExactly(new BigDecimal("53300.00"), BigDecimal.ZERO);
+        assertThat(junio.getTotalAportePatronalSolidarista()).isEqualByComparingTo("53300.00");
+        assertThat(julio.getDetalles()).extracting(DetalleNomina::getAportePatronalSolidarista)
+                .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .containsExactly(new BigDecimal("40000.00"), BigDecimal.ZERO);
+        assertThat(julio.getTotalAportePatronalSolidarista()).isEqualByComparingTo("40000.00");
+        // The ASE contribution does not reduce the net: 1 000 000 − 108 300 − 10 000 − 30 000 = 851 700
+        assertThat(julio.getDetalles().get(0).getSalarioNeto()).isEqualByComparingTo("851700.00");
+    }
+
+    @Test
+    @DisplayName("T-010 contabilizar() of a payroll with solidarista and pensión completes without exception (balanced entry)")
+    void contabilizar_conSolidaristaYPension_completaSinExcepcion() {
+        AsientoContableRepository asientoRepository = mock(AsientoContableRepository.class);
+        AsientoContableService asientoReal = new AsientoContableService(asientoRepository,
+                mock(DetalleAsientoRepository.class), mock(CuentaContableRepository.class), parametroContableRepository);
+        NominaService servicioReal = new NominaService(nominaRepository, detalleNominaRepository,
+                empleadoRepository, contratoEmpleadoRepository, ausenciaRepository, parametroCCSSRepository,
+                parametroNominaEmpresaRepository, tramoImpuestoSalarioRepository, parametroContableRepository,
+                calculosNominaService, asientoReal, new NominaMapper(new DetalleNominaMapper()));
+
+        // Accounts as seeded by V16 + V27 (ASE liability = solidarista liability)
+        mapear("NOMINA_GASTO_SUELDOS", 1L, "5.1.01.001");
+        mapear("NOMINA_SALARIOS_POR_PAGAR", 2L, "2.1.01.001");
+        mapear("NOMINA_CCSS_PATRONAL_POR_PAGAR", 3L, "2.1.01.002");
+        mapear("NOMINA_CCSS_POR_PAGAR", 4L, "2.1.01.003");
+        mapear("NOMINA_INS_POR_PAGAR", 5L, "2.1.01.004");
+        mapear("NOMINA_RENTA_POR_PAGAR", 6L, "2.1.01.005");
+        mapear("NOMINA_SOLIDARISTA_POR_PAGAR", 7L, "2.1.04.001");
+        mapear("NOMINA_PENSION_ALIMENTARIA_POR_PAGAR", 8L, "2.1.04.002");
+        mapear("NOMINA_APORTE_PATRONAL_ASE_GASTO", 9L, "5.1.02.001");
+        mapear("NOMINA_APORTE_PATRONAL_ASE_POR_PAGAR", 7L, "2.1.04.001");
+        when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
+        ArgumentCaptor<AsientoContable> captor = ArgumentCaptor.forClass(AsientoContable.class);
+        when(asientoRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        // Payroll computed by the real engine: solidarista 3 % + pensión 50 000, ASE 5.33 %
+        ResultadoCalculoNomina r = new CalculosNominaService().calcular(new BigDecimal("1000000"),
+                BigDecimal.ZERO, new BigDecimal("0.03"), new BigDecimal("50000"), buildCcss(),
+                new BigDecimal("0.0533"), buildTramos(), 0, false);
+        DetalleNomina detalle = new DetalleNomina();
+        detalle.setBrutoProrrateado(r.brutoProrrateado());
+        detalle.setCcssObrero(r.ccssObrero());
+        detalle.setIns(r.ins());
+        detalle.setImpuestoRenta(r.impuestoRenta());
+        detalle.setSolidarista(r.solidarista());
+        detalle.setPensionAlimentaria(r.pensionAlimentaria());
+        detalle.setTotalDeducciones(r.totalDeducciones());
+        detalle.setSalarioNeto(r.salarioNeto());
+        detalle.setCcssPatronal(r.ccssPatronal());
+        detalle.setAportePatronalSolidarista(r.aportePatronalSolidarista());
+        Nomina aprobada = Nomina.builder().id(40L).numero("NOM-2026-0040")
+                .periodoInicio(INICIO).periodoFin(FIN).fechaPago(PAGO)
+                .tipo(TipoNomina.MENSUAL).estado(EstadoNomina.APROBADA)
+                .totalBruto(r.brutoProrrateado()).totalDeducciones(r.totalDeducciones())
+                .totalNeto(r.salarioNeto()).totalCcssPatronal(r.ccssPatronal())
+                .totalAportePatronalSolidarista(r.aportePatronalSolidarista())
+                .build();
+        detalle.setNomina(aprobada);
+        aprobada.setDetalles(new ArrayList<>(List.of(detalle)));
+        when(nominaRepository.findById(40L)).thenReturn(Optional.of(aprobada));
+        when(nominaRepository.save(any(Nomina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        NominaDTO dto = servicioReal.contabilizar(40L);
+
+        assertThat(dto.getEstado()).isEqualTo(EstadoNomina.CONTABILIZADA);
+        AsientoContable asiento = captor.getValue();
+        assertThat(asiento.getEstado()).isEqualTo(EstadoAsiento.CONTABILIZADO);
+        assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+        assertThat(asiento.getDetalles()).extracting(DetalleAsiento::getDescripcion)
+                .anyMatch(d -> d.startsWith("Ahorro obrero solidarista por pagar"))
+                .anyMatch(d -> d.startsWith("Pensiones alimentarias por pagar"))
+                .anyMatch(d -> d.startsWith("Aporte patronal asociación solidarista —"));
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
+    private void mapear(String clave, Long idCuenta, String codigo) {
+        CuentaContable c = new CuentaContable();
+        c.setIdCuenta(idCuenta);
+        c.setCodigo(codigo);
+        c.setNombre("Cuenta " + codigo);
+        c.setActiva(true);
+        c.setAceptaMovimientos(true);
+        when(parametroContableRepository.findByClave(clave))
+                .thenReturn(Optional.of(ParametroContable.builder().clave(clave).cuentaContable(c).build()));
+    }
+
+    private ParametroNominaEmpresa buildParametroEmpresa(String tasa, LocalDate desde, LocalDate hasta) {
+        ParametroNominaEmpresa p = new ParametroNominaEmpresa();
+        p.setPorcentajeAportePatronalAse(new BigDecimal(tasa));
+        p.setVigenciaDesde(desde);
+        p.setVigenciaHasta(hasta);
+        return p;
+    }
     private Nomina buildBorradorNomina(Long id) {
         Nomina n = Nomina.builder()
                 .id(id)
@@ -369,6 +543,7 @@ class NominaServiceTest {
                 BigDecimal.ZERO,              // solidarista
                 BigDecimal.ZERO,              // pensionAlimentaria
                 new BigDecimal("241470.00"),  // ccssPatronal
+                BigDecimal.ZERO,              // aportePatronalSolidarista
                 new BigDecimal("106470.00"),  // totalDeducciones
                 new BigDecimal("793530.00")   // salarioNeto
         );

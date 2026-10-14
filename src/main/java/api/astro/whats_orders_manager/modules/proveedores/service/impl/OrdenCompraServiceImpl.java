@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
 import api.astro.whats_orders_manager.modules.inventario.model.LoteProducto;
 import api.astro.whats_orders_manager.modules.inventario.service.LoteProductoService;
@@ -38,6 +39,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
     private final ProductoRepository productoRepository;
     private final MovimientoInventarioService movimientoService;
     private final LoteProductoService loteService;
+    private final TipoCambioService tipoCambioService;
 
     @Override
     @Transactional
@@ -49,11 +51,18 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
             throw new IllegalArgumentException("El proveedor no está activo: " + proveedor.getNombre());
         }
 
+        // ADR-011: tipo de cambio propio de la orden (tasa de venta del día por defecto, editable; CRC = 1)
+        MonedaFE moneda = dto.getMoneda() != null ? dto.getMoneda() : MonedaFE.CRC;
+        LocalDate fecha = LocalDate.now();
+        BigDecimal tipoCambio = tipoCambioService.resolverTipoCambioOperacion(moneda, moneda, dto.getTipoCambio(), fecha);
+
         OrdenCompra oc = OrdenCompra.builder()
             .numero(generarNumero())
             .proveedor(proveedor)
+            .fecha(fecha)
             .fechaEntregaEsperada(dto.getFechaEntregaEsperada())
-            .moneda(dto.getMoneda() != null ? dto.getMoneda() : MonedaFE.CRC)
+            .moneda(moneda)
+            .tipoCambio(tipoCambio)
             .impuesto(dto.getImpuesto() != null ? dto.getImpuesto() : BigDecimal.ZERO)
             .notas(dto.getNotas())
             .creadoPor(usuario)

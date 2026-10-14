@@ -61,6 +61,14 @@ public class CuentaPorPagar {
     @Builder.Default
     private MonedaFE moneda = MonedaFE.CRC;
 
+    /**
+     * Tipo de cambio de la cuenta (ADR-011): tasa de venta, en CRC por unidad, de {@link #moneda}.
+     * Hereda el de la orden de compra; si se crea manualmente se toma de la tabla tipos_cambio
+     * para la fecha de emisión (editable). CRC = 1.
+     */
+    @Column(name = "tipo_cambio", precision = 18, scale = 5)
+    private BigDecimal tipoCambio;
+
     @Column(name = "fecha_emision", nullable = false)
     private LocalDate fechaEmision;
 

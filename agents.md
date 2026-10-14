@@ -1,10 +1,18 @@
-# Agents context para el proyecto "whats_orders_manager"
+# Agents context para el proyecto "erp_spring_manager"
 
 ## Propósito
 Este archivo ofrece al agente (Copilot / subagentes) un resumen conciso del proyecto, su estructura de carpetas, documentación relevante y comandos útiles para entender y actuar sobre el código sin necesidad de adivinar dónde están los recursos.
 
+   ## Memoria del proyecto (leer primero)
+   Este repositorio usa el MCP `memoria-proyectos` con el proyecto `erp_spring_manager`. Antes de trabajar, llama
+   `obtener_contexto("erp_spring_manager")`. Solo las decisiones **acordadas** son reglas; las propuestas no se implementan
+   sin confirmación del usuario. Las tareas de código se ejecutan con `/tarea T-NNN`.
+   Si usas otra memoria de agente (p. ej. engram de gentle-ai), úsala solo para aprendizajes técnicos; decisiones,
+   pendientes y tareas viven en `memoria-proyectos`, y ante una contradicción gana la decisión acordada.
+   Comando de pruebas (desde la raíz del repositorio): `./mvnw test`
+
 ## Resumen del proyecto
-- Nombre: whats_orders_manager
+- Nombre: erp_spring_manager
 - Tipo: Aplicación Java Spring Boot (Maven)
 - Ubicación del proyecto: raíz del workspace
 - Entradas principales: `pom.xml`, `mvnw`, `mvnw.cmd`
@@ -65,7 +73,7 @@ Comandos de desarrollo y despliegue (rápida guía):
 
 Docker / Entorno:
 
-- Construir imagen Docker: `docker build -t whats_orders_manager .`
+- Construir imagen Docker: `docker build -t erp_spring_manager .`
 - Levantar con Docker Compose (recrear): `docker-compose up --build --force-recreate`
 
 Notas:

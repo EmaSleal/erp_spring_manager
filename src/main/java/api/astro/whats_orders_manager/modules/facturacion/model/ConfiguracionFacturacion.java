@@ -1,7 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -14,8 +13,6 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 /**
@@ -69,13 +66,8 @@ public class ConfiguracionFacturacion implements Serializable {
     @Column(name = "prefijo_factura", length = 10)
     private String prefijoFactura;
 
-    /**
-     * Porcentaje de IGV/IVA aplicable
-     */
-    @NotNull(message = "El IGV es obligatorio")
-    @DecimalMin(value = "0.0", message = "El IGV no puede ser negativo")
-    @Column(name = "igv", precision = 5, scale = 2, nullable = false)
-    private BigDecimal igv = new BigDecimal("18.00");
+    // ADR-009 (T-006): sin campo "igv" (heredado del IGV peruano, 18 %). La tarifa
+    // general de IVA es el parámetro FACTURA_IVA_PORCENTAJE; la columna se eliminó en V24.
 
     /**
      * Código de moneda (ISO 4217: PEN, USD, EUR, etc.)
@@ -190,48 +182,8 @@ public class ConfiguracionFacturacion implements Serializable {
         }
     }
 
-    /**
-     * Calcula el IGV de un monto
-     * 
-     * @param subtotal Monto base
-     * @return Monto de IGV
-     */
-    public BigDecimal calcularIgv(BigDecimal subtotal) {
-        if (subtotal == null || igv == null) {
-            return BigDecimal.ZERO;
-        }
-        
-        if (incluirIgvEnPrecio) {
-            // Si el precio incluye IGV, extraer el IGV del total
-            BigDecimal divisor = BigDecimal.ONE.add(igv.divide(new BigDecimal("100"), decimales, RoundingMode.HALF_UP));
-            BigDecimal base = subtotal.divide(divisor, decimales, RoundingMode.HALF_UP);
-            return subtotal.subtract(base);
-        } else {
-            // Si el precio no incluye IGV, calcular el IGV sobre el subtotal
-            return subtotal.multiply(igv).divide(new BigDecimal("100"), decimales, RoundingMode.HALF_UP);
-        }
-    }
-
-    /**
-     * Calcula el total con IGV
-     * 
-     * @param subtotal Monto base
-     * @return Total con IGV
-     */
-    public BigDecimal calcularTotal(BigDecimal subtotal) {
-        if (subtotal == null) {
-            return BigDecimal.ZERO;
-        }
-        
-        if (incluirIgvEnPrecio) {
-            // El precio ya incluye IGV
-            return subtotal;
-        } else {
-            // Sumar IGV al subtotal
-            BigDecimal montoIgv = calcularIgv(subtotal);
-            return subtotal.add(montoIgv);
-        }
-    }
+    // ADR-009 (T-006): el cálculo de IVA de ventas vive solo en CalculadoraImpuestoService.
+    // Se eliminaron calcularIgv/calcularTotal, que sumaban el IGV sobre el subtotal.
 
     /**
      * Método helper para verificar si tiene términos y condiciones
@@ -256,7 +208,6 @@ public class ConfiguracionFacturacion implements Serializable {
                 "id=" + id +
                 ", serieFactura='" + serieFactura + '\'' +
                 ", numeroActual=" + numeroActual +
-                ", igv=" + igv +
                 ", moneda='" + moneda + '\'' +
                 ", activo=" + activo +
                 '}';

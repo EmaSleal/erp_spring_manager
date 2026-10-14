@@ -393,6 +393,23 @@ async function confirmarEliminacion(event) {
     return false;
 }
 
+// Anula una factura (ADR-008): solicita el motivo y envía el formulario POST
+function confirmarAnulacion(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const motivo = window.prompt('Motivo de la anulación (se revertirá el asiento contable de la venta):');
+    if (motivo === null) {
+        return false;
+    }
+    if (motivo.trim() === '') {
+        window.alert('El motivo de anulación es obligatorio');
+        return false;
+    }
+    form.querySelector('input[name="motivo"]').value = motivo.trim();
+    form.submit();
+    return false;
+}
+
 // ========================================
 // Funciones de Filtros
 // ========================================

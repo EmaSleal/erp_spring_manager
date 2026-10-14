@@ -10,7 +10,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 /**
@@ -235,18 +234,6 @@ public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFactura
             log.error("Número actual ({}) menor que número inicial ({})", 
                     configuracion.getNumeroActual(), configuracion.getNumeroInicial());
             throw new IllegalArgumentException("El número actual no puede ser menor que el número inicial");
-        }
-        
-        // Validar IGV
-        if (configuracion.getIgv() == null) {
-            log.error("IGV es requerido");
-            throw new IllegalArgumentException("El porcentaje de IGV es requerido");
-        }
-        
-        if (configuracion.getIgv().compareTo(BigDecimal.ZERO) < 0 || 
-            configuracion.getIgv().compareTo(new BigDecimal("100")) > 0) {
-            log.error("IGV fuera de rango: {}", configuracion.getIgv());
-            throw new IllegalArgumentException("El IGV debe estar entre 0 y 100");
         }
         
         // Validar moneda

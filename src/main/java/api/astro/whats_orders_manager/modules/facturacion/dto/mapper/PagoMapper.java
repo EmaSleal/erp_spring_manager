@@ -35,6 +35,9 @@ public class PagoMapper {
             .idFactura(pago.getFactura() != null ? pago.getFactura().getIdFactura() : null)
             .tipoPago(pago.getTipoPago())
             .monto(pago.getMonto())
+            .moneda(pago.getMoneda())
+            .tipoCambio(pago.getTipoCambio())
+            .montoAplicado(pago.getMontoAplicado())
             .metodoPago(pago.getMetodoPago())
             .fechaPago(pago.getFechaPago())
             .referenciaBancaria(pago.getReferenciaBancaria())
@@ -63,6 +66,7 @@ public class PagoMapper {
         if (pago.getFactura() != null) {
             dto.setNumeroFactura(pago.getFactura().getNumeroFactura());
             dto.setTotalFactura(pago.getFactura().getTotal());
+            dto.setMonedaFactura(pago.getFactura().getMonedaFE());
             dto.setSaldoPendiente(pago.getFactura().calcularSaldoPendiente());
             
             if (pago.getFactura().getCliente() != null) {
@@ -102,6 +106,9 @@ public class PagoMapper {
         pago.setNumeroPago(dto.getNumeroPago());
         pago.setTipoPago(dto.getTipoPago());
         pago.setMonto(dto.getMonto());
+        // ADR-011: moneda y tipo de cambio opcionales; montoAplicado lo calcula el servicio
+        pago.setMoneda(dto.getMoneda());
+        pago.setTipoCambio(dto.getTipoCambio());
         pago.setMetodoPago(dto.getMetodoPago());
         pago.setFechaPago(dto.getFechaPago());
         pago.setReferenciaBancaria(dto.getReferenciaBancaria());

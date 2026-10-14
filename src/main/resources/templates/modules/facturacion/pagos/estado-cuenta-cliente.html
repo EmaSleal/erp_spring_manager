@@ -196,7 +196,7 @@
                                 <tr th:each="pago : ${estadoCuenta.pagos}">
                                     <td class="fw-semibold" th:text="${pago.numeroPago}">PAG-001</td>
                                     <td th:text="${pago.numeroFactura ?: '—'}">F001-00001</td>
-                                    <td class="text-end" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto ?: 0, 1, 2)}">₡ 0.00</td>
+                                    <td class="text-end" th:text="${(pago.moneda != null ? pago.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.monto ?: 0, 1, 2)}">CRC 0.00</td>
                                     <td class="text-center">
                                         <span class="badge bg-light text-dark" th:text="${pago.metodoPagoDescripcion ?: pago.metodoPago}">Efectivo</span>
                                     </td>

@@ -9,6 +9,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
@@ -155,7 +156,9 @@ public class PagoController {
                 pagoDTO.setNumeroFactura(factura.getNumeroFactura());
                 pagoDTO.setTotalFactura(factura.getTotal());
                 pagoDTO.setSaldoPendiente(factura.calcularSaldoPendiente());
-                
+                // ADR-011: total y saldo se muestran en la moneda de la factura
+                pagoDTO.setMonedaFactura(factura.getMonedaFE() != null ? factura.getMonedaFE() : MonedaFE.CRC);
+
                 // Asignar cliente desde factura si no se especificó
                 if (idCliente == null && factura.getCliente() != null) {
                     pagoDTO.setIdCliente(factura.getCliente().getIdCliente());
@@ -170,6 +173,7 @@ public class PagoController {
         model.addAttribute("metodosPago", MetodoPago.values());
         model.addAttribute("estadosPago", EstadoPago.values());
         model.addAttribute("tiposPago", TipoPago.values());
+        model.addAttribute("monedas", MonedaFE.values());
         
         return "modules/facturacion/pagos/form";
     }
@@ -475,9 +479,10 @@ public class PagoController {
             List<PagoDTO> pagosDTOs = pagoMapper.toDTOList(pagosPendientes);
             
             model.addAttribute("pagos", pagosDTOs);
+            // ADR-011: total en CRC; cada pago se convierte con su propio tipo de cambio
             model.addAttribute("totalPendiente", 
                 pagosPendientes.stream()
-                    .map(Pago::getMonto)
+                    .map(Pago::getMontoEnCrc)
                     .reduce(BigDecimal.ZERO, BigDecimal::add));
             
             return "modules/facturacion/pagos/conciliacion";

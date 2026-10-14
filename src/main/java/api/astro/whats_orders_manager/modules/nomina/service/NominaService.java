@@ -16,11 +16,13 @@ import api.astro.whats_orders_manager.modules.rrhh.model.Ausencia;
 import api.astro.whats_orders_manager.modules.rrhh.model.ContratoEmpleado;
 import api.astro.whats_orders_manager.modules.rrhh.model.Empleado;
 import api.astro.whats_orders_manager.modules.rrhh.model.ParametroCCSS;
+import api.astro.whats_orders_manager.modules.rrhh.model.ParametroNominaEmpresa;
 import api.astro.whats_orders_manager.modules.rrhh.model.TramoImpuestoSalario;
 import api.astro.whats_orders_manager.modules.rrhh.repository.AusenciaRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.ContratoEmpleadoRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.EmpleadoRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.ParametroCCSSRepository;
+import api.astro.whats_orders_manager.modules.rrhh.repository.ParametroNominaEmpresaRepository;
 import api.astro.whats_orders_manager.modules.rrhh.repository.TramoImpuestoSalarioRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +66,7 @@ public class NominaService {
     private final ContratoEmpleadoRepository contratoEmpleadoRepository;
     private final AusenciaRepository ausenciaRepository;
     private final ParametroCCSSRepository parametroCCSSRepository;
+    private final ParametroNominaEmpresaRepository parametroNominaEmpresaRepository;
     private final TramoImpuestoSalarioRepository tramoImpuestoSalarioRepository;
     private final ParametroContableRepository parametroContableRepository;
     private final CalculosNominaService calculosNominaService;
@@ -101,6 +104,7 @@ public class NominaService {
                 .totalDeducciones(BigDecimal.ZERO)
                 .totalNeto(BigDecimal.ZERO)
                 .totalCcssPatronal(BigDecimal.ZERO)
+                .totalAportePatronalSolidarista(BigDecimal.ZERO)
                 .detalles(new ArrayList<>())
                 .build();
 
@@ -119,6 +123,7 @@ public class NominaService {
      *
      * @throws IllegalStateException if estado is not BORRADOR
      * @throws IllegalStateException if no CCSS parameters exist for periodoFin
+     * @throws IllegalStateException if no company payroll parameters (ASE rate) exist for periodoFin
      */
     @Transactional
     public NominaDTO calcular(Long nominaId) {
@@ -134,6 +139,13 @@ public class NominaService {
                 .orElseThrow(() -> new IllegalStateException(
                         "No hay parámetros CCSS vigentes para la fecha: " + nomina.getPeriodoFin()));
 
+        // Company payroll parameters (ADR-013): ASE employer rate vigente on the period date
+        ParametroNominaEmpresa parametroEmpresa = parametroNominaEmpresaRepository
+                .findVigenteByFecha(nomina.getPeriodoFin())
+                .orElseThrow(() -> new IllegalStateException(
+                        "No hay parámetros de nómina de la empresa vigentes para la fecha: "
+                                + nomina.getPeriodoFin()));
+
         List<TramoImpuestoSalario> tramos = tramoImpuestoSalarioRepository
                 .findByAnioVigenciaOrderByLimiteInferiorAsc(nomina.getPeriodoFin().getYear());
 
@@ -147,6 +159,7 @@ public class NominaService {
         BigDecimal totalDeducciones = BigDecimal.ZERO;
         BigDecimal totalNeto = BigDecimal.ZERO;
         BigDecimal totalCcssPatronal = BigDecimal.ZERO;
+        BigDecimal totalAportePatronalSolidarista = BigDecimal.ZERO;
 
         for (Empleado empleado : empleados) {
             Optional<ContratoEmpleado> contratoOpt =
@@ -180,6 +193,7 @@ public class NominaService {
                     empleado.getPorcentajeSolidarista(),
                     empleado.getMontoPensionAlimentaria(),
                     ccss,
+                    parametroEmpresa.getPorcentajeAportePatronalAse(),
                     tramos,
                     empleado.getHijosCargaFamiliar() != null ? empleado.getHijosCargaFamiliar() : 0,
                     Boolean.TRUE.equals(empleado.getConyugeCargaFamiliar())
@@ -201,6 +215,7 @@ public class NominaService {
             detalle.setTotalDeducciones(resultado.totalDeducciones());
             detalle.setSalarioNeto(resultado.salarioNeto());
             detalle.setCcssPatronal(resultado.ccssPatronal());
+            detalle.setAportePatronalSolidarista(resultado.aportePatronalSolidarista());
 
             nomina.getDetalles().add(detalle);
 
@@ -209,12 +224,14 @@ public class NominaService {
             totalDeducciones = totalDeducciones.add(resultado.totalDeducciones());
             totalNeto = totalNeto.add(resultado.salarioNeto());
             totalCcssPatronal = totalCcssPatronal.add(resultado.ccssPatronal());
+            totalAportePatronalSolidarista = totalAportePatronalSolidarista.add(resultado.aportePatronalSolidarista());
         }
 
         nomina.setTotalBruto(totalBruto);
         nomina.setTotalDeducciones(totalDeducciones);
         nomina.setTotalNeto(totalNeto);
         nomina.setTotalCcssPatronal(totalCcssPatronal);
+        nomina.setTotalAportePatronalSolidarista(totalAportePatronalSolidarista);
         nomina.setEstado(EstadoNomina.CALCULADA);
 
         Nomina saved = nominaRepository.save(nomina);
@@ -250,11 +267,13 @@ public class NominaService {
     /**
      * Validates parametros_contables and transitions nomina from APROBADA to CONTABILIZADA.
      *
-     * <p>In PR3 the accounting entry generation (AsientoContableService.generarAsientoNomina)
-     * is intentionally left out — it will be added in PR4 with a single line insertion here.
+     * <p>Posts the payroll entry through AsientoContableService.generarAsientoNomina. The six base
+     * NOMINA_* keys are validated here; the solidarista, pensión and ASE keys (ADR-013) are
+     * resolved by generarAsientoNomina only when the payroll has those amounts, before any save.
      *
      * @throws IllegalStateException if estado is not APROBADA
      * @throws IllegalStateException if any required NOMINA_* parametro_contable key is missing
+     * @throws IllegalStateException if the generated entry does not balance
      */
     @Transactional
     public NominaDTO contabilizar(Long nominaId) {

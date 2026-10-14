@@ -99,7 +99,16 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="text-muted small mb-1">Monto Pagado</label>
-                                    <div class="fw-bold h4 mb-0" th:text="'₡ ' + ${#numbers.formatDecimal(pago.monto, 1, 2)}">₡ 0.00</div>
+                                    <div class="fw-bold h4 mb-0" th:text="${(pago.moneda != null ? pago.moneda.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.monto, 1, 2)}">CRC 0.00</div>
+                                </div>
+                                <!-- ADR-011: tipo de cambio y monto aplicado en la moneda de la factura -->
+                                <div class="col-md-6" th:if="${pago.tipoCambio != null and pago.tipoCambio.compareTo(T(java.math.BigDecimal).ONE) != 0}">
+                                    <label class="text-muted small mb-1">Tipo de Cambio</label>
+                                    <div class="fw-semibold" th:text="${#numbers.formatDecimal(pago.tipoCambio, 1, 'COMMA', 5, 'POINT')}">0.00000</div>
+                                </div>
+                                <div class="col-md-6" th:if="${pago.montoAplicado != null and pago.idFactura != null}">
+                                    <label class="text-muted small mb-1">Monto Aplicado a la Factura</label>
+                                    <div class="fw-semibold" th:text="${(pago.monedaFactura != null ? pago.monedaFactura.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.montoAplicado, 1, 2)}">CRC 0.00</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="text-muted small mb-1">Método de Pago</label>
@@ -184,13 +193,13 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="text-muted small mb-1">Total Factura</label>
-                                    <div class="fw-bold" th:text="'₡ ' + ${#numbers.formatDecimal(pago.totalFactura, 1, 2)}">₡ 0.00</div>
+                                    <div class="fw-bold" th:text="${(pago.monedaFactura != null ? pago.monedaFactura.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.totalFactura, 1, 2)}">CRC 0.00</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="text-muted small mb-1">Saldo Pendiente</label>
                                     <div class="fw-bold" 
                                          th:classappend="${pago.saldoPendiente > 0} ? 'text-danger' : 'text-success'"
-                                         th:text="'₡ ' + ${#numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">₡ 0.00</div>
+                                         th:text="${(pago.monedaFactura != null ? pago.monedaFactura.name() : 'CRC') + ' ' + #numbers.formatDecimal(pago.saldoPendiente, 1, 2)}">CRC 0.00</div>
                                 </div>
                             </div>
                         </div>

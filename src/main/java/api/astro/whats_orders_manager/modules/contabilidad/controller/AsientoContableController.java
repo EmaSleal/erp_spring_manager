@@ -310,49 +310,6 @@ public class AsientoContableController {
     }
     
     /**
-     * Genera asiento automático desde una factura.
-     */
-    @PostMapping("/api/generar-venta")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_CREAR')")
-    @ResponseBody
-    public ResponseEntity<AsientoContableDTO> generarAsientoVenta(
-            Authentication authentication,
-            @RequestParam Long facturaId,
-            @RequestParam Long cuentaClienteId,
-            @RequestParam Long cuentaVentaId,
-            @RequestParam Long cuentaIvaId) {
-        log.info("API: Generando asiento de venta para factura ID: {}", facturaId);
-        
-        // Obtener factura del servicio correspondiente
-        // AsientoContable asiento = asientoService.generarAsientoVenta(factura, cuentaClienteId, cuentaVentaId, cuentaIvaId);
-        
-        // Por ahora retornamos error indicando que se debe implementar
-        return ResponseEntity.badRequest()
-            .body(null);
-    }
-    
-    /**
-     * Genera asiento automático desde un pago.
-     */
-    @PostMapping("/api/generar-pago")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_CREAR')")
-    @ResponseBody
-    public ResponseEntity<AsientoContableDTO> generarAsientoPago(
-            Authentication authentication,
-            @RequestParam Long pagoId,
-            @RequestParam Long cuentaClienteId,
-            @RequestParam Long cuentaCajaId) {
-        log.info("API: Generando asiento de pago para pago ID: {}", pagoId);
-        
-        // Obtener pago del servicio correspondiente
-        // AsientoContable asiento = asientoService.generarAsientoPago(pago, cuentaClienteId, cuentaCajaId);
-        
-        // Por ahora retornamos error indicando que se debe implementar
-        return ResponseEntity.badRequest()
-            .body(null);
-    }
-    
-    /**
      * Manejo de excepciones.
      */
     @ExceptionHandler(IllegalArgumentException.class)

@@ -103,4 +103,9 @@ public class DetalleNomina {
     @Column(name = "ccss_patronal", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal ccssPatronal = BigDecimal.ZERO;
+
+    /** Aporte patronal a la Asociación Solidarista (ADR-013); no se deduce del empleado. */
+    @Column(name = "aporte_patronal_solidarista", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal aportePatronalSolidarista = BigDecimal.ZERO;
 }

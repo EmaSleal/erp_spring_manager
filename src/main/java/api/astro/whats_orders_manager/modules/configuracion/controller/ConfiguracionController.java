@@ -381,8 +381,7 @@ public class ConfiguracionController {
             BindingResult result,
             RedirectAttributes redirectAttributes) {
         
-        log.info("Guardando configuración de facturación: Serie={}, IGV={}%", 
-                configuracion.getSerieFactura(), configuracion.getIgv());
+        log.info("Guardando configuración de facturación: Serie={}", configuracion.getSerieFactura());
         
         if (result.hasErrors()) {
             log.error("Errores de validación al guardar configuración de facturación");

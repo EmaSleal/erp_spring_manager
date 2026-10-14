@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.rrhh.controller;
 
 import api.astro.whats_orders_manager.modules.rrhh.service.ParametroCCSSService;
+import api.astro.whats_orders_manager.modules.rrhh.service.ParametroNominaEmpresaService;
 import api.astro.whats_orders_manager.modules.rrhh.service.SalarioMinimoService;
 import api.astro.whats_orders_manager.modules.rrhh.service.TramoImpuestoSalarioService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.time.LocalDate;
 public class CatalogoRegulatorioViewController {
 
     private final ParametroCCSSService parametroCCSSService;
+    private final ParametroNominaEmpresaService parametroNominaEmpresaService;
     private final TramoImpuestoSalarioService tramoImpuestoSalarioService;
     private final SalarioMinimoService salarioMinimoService;
 
@@ -36,6 +38,13 @@ public class CatalogoRegulatorioViewController {
             model.addAttribute("parametroCcss", null);
         }
         model.addAttribute("historial", parametroCCSSService.findAll());
+        try {
+            model.addAttribute("parametroNominaEmpresa",
+                    parametroNominaEmpresaService.findVigenteByFecha(LocalDate.now()));
+        } catch (Exception e) {
+            model.addAttribute("parametroNominaEmpresa", null);
+        }
+        model.addAttribute("historialNominaEmpresa", parametroNominaEmpresaService.findAll());
         model.addAttribute("tramosActuales",
                 tramoImpuestoSalarioService.findByAnioVigencia(LocalDate.now().getYear()));
         return "modules/rrhh/catalogos/parametros-ccss";

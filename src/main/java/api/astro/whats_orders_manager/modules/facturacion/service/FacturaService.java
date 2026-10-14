@@ -43,6 +43,15 @@ public interface FacturaService {
     void eliminarConValidacion(Integer id);
 
     /**
+     * Cancels a factura (ADR-008): reverses its posted sales entry and marks it as anulada.
+     *
+     * @throws NoSuchElementException   when the factura does not exist
+     * @throws IllegalArgumentException when motivo is blank
+     * @throws IllegalStateException    when already cancelled or it has valid (CONFIRMADO/CONCILIADO) pagos
+     */
+    Factura anular(Integer id, String motivo);
+
+    /**
      * Updates the delivery state of a factura, persisting via the repository directly
      * to avoid side effects from {@link #save(Factura)}.
      */

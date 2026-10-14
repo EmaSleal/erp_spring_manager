@@ -17,6 +17,8 @@ public class OrdenCompraDTO {
     private Long proveedorId;
     private LocalDate fechaEntregaEsperada;
     private MonedaFE moneda;
+    /** Tipo de cambio (ADR-011). Null → tasa de venta registrada para la fecha de la orden. */
+    private BigDecimal tipoCambio;
     private BigDecimal impuesto;
     private String notas;
     private List<DetalleOrdenCompraDTO> detalles;

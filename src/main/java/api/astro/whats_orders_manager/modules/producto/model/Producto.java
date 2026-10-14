@@ -108,6 +108,13 @@ public class Producto {
     @Column(name = "aplica_otro_impuesto")
     private Boolean aplicaOtroImpuesto;
 
+    /**
+     * ADR-009: el precio de venta del producto ya incluye el IVA (valor por defecto true).
+     * Lo usa CalculadoraImpuestoService para desglosar base e impuesto de cada línea.
+     */
+    @Column(name = "precio_incluye_iva", nullable = false)
+    private Boolean precioIncluyeIva = Boolean.TRUE;
+
     // ========== FIN CAMPOS FACTURACIÓN ELECTRÓNICA ==========
 
     // ========== INVENTORY CONTROL FIELDS ==========
@@ -152,6 +159,15 @@ public class Producto {
     }
 
     // ========== END INVENTORY CONTROL FIELDS ==========
+
+    /** Columna NOT NULL: un valor ausente (formulario/JSON) se guarda con el valor por defecto true. */
+    @PrePersist
+    @PreUpdate
+    void normalizarPrecioIncluyeIva() {
+        if (precioIncluyeIva == null) {
+            precioIncluyeIva = Boolean.TRUE;
+        }
+    }
 
     @CreatedDate
     @Column(name = "createDate", updatable = false)

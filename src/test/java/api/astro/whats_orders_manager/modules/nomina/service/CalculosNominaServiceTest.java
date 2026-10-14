@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.nomina.service;
 
+import api.astro.whats_orders_manager.modules.nomina.service.dto.ResultadoCalculoNomina;
 import api.astro.whats_orders_manager.modules.rrhh.model.ParametroCCSS;
 import api.astro.whats_orders_manager.modules.rrhh.model.TramoImpuestoSalario;
 import org.junit.jupiter.api.BeforeEach;
@@ -198,5 +199,86 @@ class CalculosNominaServiceTest {
 
         // 1000000 × 0.2683 = 268300.00
         assertEquals(new BigDecimal("268300.00"), result);
+    }
+    // =========================================================================
+    // T-010 — aporte patronal ASE (ADR-013)
+    // =========================================================================
+
+    private static final BigDecimal TASA_ASE_2026 = new BigDecimal("0.0533");
+
+    private ResultadoCalculoNomina calcular(String porcentajeSolidarista, String pension, BigDecimal tasaAse) {
+        return service.calcular(
+                new BigDecimal("1000000"),
+                BigDecimal.ZERO,
+                porcentajeSolidarista != null ? new BigDecimal(porcentajeSolidarista) : null,
+                pension != null ? new BigDecimal(pension) : null,
+                ccss2026,
+                tasaAse,
+                tramos2026,
+                0,
+                false);
+    }
+
+    @Test
+    @DisplayName("T-010 aporte ASE = 0 when porcentajeSolidarista is null (not affiliated)")
+    void calcular_solidaristaNull_aporteCero() {
+        ResultadoCalculoNomina r = calcular(null, null, TASA_ASE_2026);
+        assertEquals(new BigDecimal("0.00"), r.aportePatronalSolidarista());
+    }
+
+    @Test
+    @DisplayName("T-010 aporte ASE = 0 when porcentajeSolidarista is 0 (not affiliated)")
+    void calcular_solidaristaCero_aporteCero() {
+        ResultadoCalculoNomina r = calcular("0.0000", null, TASA_ASE_2026);
+        assertEquals(new BigDecimal("0.00"), r.aportePatronalSolidarista());
+    }
+
+    @Test
+    @DisplayName("T-010 aporte ASE = 0 when the ASE rate is 0 % (allowed by ADR-013)")
+    void calcular_tasaAseCero_aporteCero() {
+        ResultadoCalculoNomina r = calcular("0.03", null, new BigDecimal("0.0000"));
+        assertEquals(new BigDecimal("0.00"), r.aportePatronalSolidarista());
+    }
+
+    @Test
+    @DisplayName("T-010 affiliated employee: aporte ASE = bruto × tasa (1 000 000 × 0.0533 = 53 300.00)")
+    void calcular_afiliado_aporteBrutoPorTasa() {
+        ResultadoCalculoNomina r = calcular("0.03", null, TASA_ASE_2026);
+        assertEquals(new BigDecimal("53300.00"), r.aportePatronalSolidarista());
+        assertEquals(new BigDecimal("30000.00"), r.solidarista());
+    }
+
+    @Test
+    @DisplayName("T-010 aporte ASE uses the bruto prorrateado (2 absent hours → 990 000 × 0.0533)")
+    void calcular_afiliadoConAusencias_aporteSobreBrutoProrrateado() {
+        ResultadoCalculoNomina r = service.calcular(new BigDecimal("1000000"), new BigDecimal("2"),
+                new BigDecimal("0.03"), null, ccss2026, TASA_ASE_2026, tramos2026, 0, false);
+        assertEquals(new BigDecimal("990000.00"), r.brutoProrrateado());
+        assertEquals(new BigDecimal("52767.00"), r.aportePatronalSolidarista());
+    }
+
+    @Test
+    @DisplayName("T-010 salarioNeto and totalDeducciones unchanged by the ASE contribution")
+    void calcular_aporteAse_noAlteraNetoNiDeducciones() {
+        // 1 000 000: ccssObrero 108 300 + ins 10 000 + renta 0 (base 881 700 is exempt)
+        //            + solidarista 30 000 + pensión 50 000 = 198 300 → neto 801 700
+        ResultadoCalculoNomina conAse = calcular("0.03", "50000", TASA_ASE_2026);
+        ResultadoCalculoNomina sinAse = calcular("0.03", "50000", BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("198300.00"), conAse.totalDeducciones());
+        assertEquals(new BigDecimal("801700.00"), conAse.salarioNeto());
+        assertEquals(sinAse.totalDeducciones(), conAse.totalDeducciones());
+        assertEquals(sinAse.salarioNeto(), conAse.salarioNeto());
+        assertEquals(new BigDecimal("268300.00"), conAse.ccssPatronal());
+        assertEquals(new BigDecimal("53300.00"), conAse.aportePatronalSolidarista());
+    }
+
+    @Test
+    @DisplayName("T-010 vigencia: June rate 0.0533 → 53 300.00; July rate 0.0400 → 40 000.00")
+    void calcular_tasaPorVigencia_juniOYJulio() {
+        assertEquals(new BigDecimal("53300.00"),
+                calcular("0.03", null, new BigDecimal("0.0533")).aportePatronalSolidarista());
+        assertEquals(new BigDecimal("40000.00"),
+                calcular("0.03", null, new BigDecimal("0.0400")).aportePatronalSolidarista());
     }
 }

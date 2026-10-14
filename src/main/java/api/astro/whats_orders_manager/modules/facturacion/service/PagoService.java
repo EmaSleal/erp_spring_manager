@@ -225,8 +225,8 @@ public interface PagoService {
     // ==================== REPORTES Y ESTADÍSTICAS ====================
     
     /**
-     * Obtiene el total de ingresos del día actual.
-     * @return Total de ingresos del día
+     * Obtiene el total de ingresos del día actual, en CRC (ADR-011).
+     * @return Total de ingresos del día en CRC
      */
     BigDecimal sumIngresosDiaActual();
     
@@ -247,8 +247,8 @@ public interface PagoService {
      * Útil para reportes de caja.
      * @param metodoPago Método de pago
      * @param fechaInicio Fecha inicial
-     * @param fechaFin Fecha final
-     * @return Total de pagos
+     * @param fechaFin Fecha final (inclusive)
+     * @return Total de pagos en CRC (ADR-011)
      */
     BigDecimal sumByMetodoPagoAndFecha(MetodoPago metodoPago, LocalDateTime fechaInicio, LocalDateTime fechaFin);
     

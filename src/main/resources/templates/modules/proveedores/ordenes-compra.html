@@ -188,6 +188,16 @@
                         </div>
                     </div>
 
+                    <!-- ADR-011: tipo de cambio de la orden, solo en moneda extranjera -->
+                    <div class="row g-3 mb-3" id="oc-tc-row" style="display: none;">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Tipo de Cambio</label>
+                            <input type="number" id="oc-tipo-cambio" class="form-control"
+                                   step="0.00001" min="0.00001" placeholder="Ej: 510.00000">
+                            <small class="text-muted" id="oc-tc-ayuda">Tasa de venta del día; puede editarla</small>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Líneas de la orden</h6>
                         <button type="button" class="btn btn-sm btn-primary" id="btnAgregarLineaOC">
@@ -433,6 +443,34 @@
     });
 
     document.getElementById('btnAgregarLineaOC').addEventListener('click', agregarLineaOC);
+    // ADR-011: precarga la tasa de venta del día para la moneda de la orden (editable)
+    function actualizarTipoCambioOC() {
+        const moneda = document.getElementById('oc-moneda').value;
+        const fila = document.getElementById('oc-tc-row');
+        const input = document.getElementById('oc-tipo-cambio');
+        const ayuda = document.getElementById('oc-tc-ayuda');
+        if (!moneda || moneda === 'CRC') {
+            fila.style.display = 'none';
+            input.value = '';
+            return;
+        }
+        fila.style.display = '';
+        const hoy = new Date().toISOString().substring(0, 10);
+        fetch(`/api/tipos-cambio/venta?moneda=${moneda}&fecha=${hoy}`)
+            .then(async r => ({ ok: r.ok, data: await r.json().catch(() => null) }))
+            .then(({ ok, data }) => {
+                if (ok && data && data.tasaVenta) {
+                    input.value = data.tasaVenta;
+                    ayuda.textContent = `Tasa de venta de ${moneda} al ${hoy}; puede editarla`;
+                } else {
+                    input.value = '';
+                    ayuda.textContent = (data && data.message) || `No hay tipo de cambio de ${moneda}; ingréselo`;
+                }
+            })
+            .catch(() => { /* el usuario puede digitarlo */ });
+    }
+    document.getElementById('oc-moneda').addEventListener('change', actualizarTipoCambioOC);
+
     document.getElementById('modalNuevaOC').addEventListener('show.bs.modal', async () => {
         document.getElementById('lineasBodyOC').innerHTML = '';
         document.getElementById('oc-categoria').value = '';
@@ -467,6 +505,8 @@
             proveedorId,
             fechaEntregaEsperada: entrega,
             moneda: document.getElementById('oc-moneda').value,
+            tipoCambio: document.getElementById('oc-moneda').value !== 'CRC' && document.getElementById('oc-tipo-cambio').value
+                ? parseFloat(document.getElementById('oc-tipo-cambio').value) : null,
             notas: document.getElementById('oc-notas').value.trim() || null,
             detalles
         };

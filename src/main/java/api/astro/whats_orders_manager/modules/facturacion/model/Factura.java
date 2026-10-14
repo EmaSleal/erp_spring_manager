@@ -151,6 +151,27 @@ public class Factura {
     @Column(name = "fechaVencimiento")
     private Date fechaVencimiento;
 
+    // ========== ANULACIÓN (ADR-008) ==========
+
+    /**
+     * Indica si la factura fue anulada. Una factura con asiento contabilizado
+     * no se borra: se anula y su asiento de venta se revierte.
+     */
+    @Column(name = "anulada", nullable = false)
+    private Boolean anulada = false;
+
+    /**
+     * Fecha y hora de la anulación.
+     */
+    @Column(name = "fecha_anulacion")
+    private LocalDateTime fechaAnulacion;
+
+    /**
+     * Motivo de la anulación.
+     */
+    @Column(name = "motivo_anulacion", length = 500)
+    private String motivoAnulacion;
+
     @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @ToString.Exclude
     private List<LineaFactura> lineas = new ArrayList<>();
@@ -169,9 +190,10 @@ public class Factura {
             return BigDecimal.ZERO;
         }
         
+        // ADR-011: cada pago se aplica en la moneda de la factura (montoAplicado)
         return pagos.stream()
             .filter(Pago::esValido)
-            .map(Pago::getMonto)
+            .map(Pago::getMontoAplicadoEfectivo)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     
@@ -288,6 +310,15 @@ public class Factura {
     //metodo getImpuesto
     public BigDecimal getImpuesto() {
         return this.igv;
+    }
+
+    /**
+     * Verifica si la factura está anulada.
+     * @return true si fue anulada
+     */
+    @Transient
+    public boolean estaAnulada() {
+        return Boolean.TRUE.equals(anulada);
     }
 
     public void marcarComoPagada() {

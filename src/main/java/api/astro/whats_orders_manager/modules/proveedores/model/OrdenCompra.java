@@ -58,6 +58,14 @@ public class OrdenCompra {
     @Builder.Default
     private MonedaFE moneda = MonedaFE.CRC;
 
+    /**
+     * Tipo de cambio de la orden (ADR-011): tasa de venta, en CRC por unidad, de {@link #moneda}
+     * en la fecha de la orden. Por defecto se toma de la tabla tipos_cambio y es editable; CRC = 1.
+     * La cuenta por pagar generada desde la orden hereda este valor.
+     */
+    @Column(name = "tipo_cambio", precision = 18, scale = 5)
+    private BigDecimal tipoCambio;
+
     @Column(precision = 19, scale = 2)
     @Builder.Default
     private BigDecimal subtotal = BigDecimal.ZERO;

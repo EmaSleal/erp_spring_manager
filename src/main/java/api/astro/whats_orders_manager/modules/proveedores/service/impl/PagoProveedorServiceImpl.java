@@ -5,6 +5,9 @@ import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
+import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
+import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
@@ -31,6 +34,7 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
     private final CuentaPorPagarRepository cuentaRepository;
     private final CuentaPorPagarService cuentaService;
     private final AsientoContableService asientoService;
+    private final TipoCambioService tipoCambioService;
 
     @Override
     @Transactional
@@ -43,40 +47,51 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
             throw new IllegalStateException("La cuenta por pagar ya está " + cuenta.getEstado());
         }
 
-        if (dto.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
+        if (dto.getMonto() == null || dto.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El monto del pago debe ser mayor a 0");
         }
 
-        if (dto.getMonto().compareTo(cuenta.getSaldoPendiente()) > 0) {
+        // ADR-011: moneda y tipo de cambio propios; montoAplicado en la moneda de la CxP
+        LocalDate fecha = dto.getFecha() != null ? dto.getFecha() : LocalDate.now();
+        MonedaFE monedaCuenta = ConversionMoneda.oCrc(cuenta.getMoneda());
+        MonedaFE monedaPago = dto.getMoneda() != null ? dto.getMoneda() : monedaCuenta;
+        BigDecimal tipoCambio = tipoCambioService.resolverTipoCambioOperacion(
+            monedaPago, monedaCuenta, dto.getTipoCambio(), fecha);
+        BigDecimal montoAplicado = ConversionMoneda.montoAplicado(dto.getMonto(), monedaPago, monedaCuenta, tipoCambio);
+
+        if (montoAplicado.compareTo(cuenta.getSaldoPendiente()) > 0) {
             throw new IllegalArgumentException(
-                "El monto del pago (" + dto.getMonto() + ") supera el saldo pendiente (" + cuenta.getSaldoPendiente() + ")");
+                "El monto del pago (" + montoAplicado + " " + monedaCuenta.getCodigo()
+                    + ") supera el saldo pendiente (" + cuenta.getSaldoPendiente() + " " + monedaCuenta.getCodigo() + ")");
         }
 
         PagoProveedor pago = PagoProveedor.builder()
             .numero(generarNumero())
             .cuentaPorPagar(cuenta)
             .monto(dto.getMonto())
+            .moneda(monedaPago)
+            .tipoCambio(tipoCambio)
+            .montoAplicado(montoAplicado)
             .metodoPago(dto.getMetodoPago())
             .referencia(dto.getReferencia())
-            .fecha(dto.getFecha() != null ? dto.getFecha() : LocalDate.now())
+            .fecha(fecha)
             .notas(dto.getNotas())
             .registradoPor(usuario)
             .estado(EstadoPagoProveedor.CONFIRMADO)
             .build();
 
         PagoProveedor guardado = pagoRepository.save(pago);
-        cuentaService.aplicarPago(cuenta, dto.getMonto());
+        cuentaService.aplicarPago(cuenta, montoAplicado);
         asientoService.generarAsientoPagoProveedor(guardado);
 
-        log.info("Pago {} de {} registrado para CPP {} por {}",
-            guardado.getNumero(), dto.getMonto(), cuenta.getNumero(), usuario.getNombre());
+        log.info("Pago {} de {} {} registrado para CPP {} por {}",
+            guardado.getNumero(), dto.getMonto(), monedaPago, cuenta.getNumero(), usuario.getNombre());
         return guardado;
     }
 
     @Override
     @Transactional
     public void anularPago(Long pagoId, Usuario usuario) {
-        // TODO: reversing entry on anularPago — out of scope, see proposal
         PagoProveedor pago = findById(pagoId);
 
         if (pago.getEstado() == EstadoPagoProveedor.ANULADO) {
@@ -90,9 +105,14 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
 
         pago.setEstado(EstadoPagoProveedor.ANULADO);
         pagoRepository.save(pago);
-        cuentaService.revertirPago(cuenta, pago.getMonto());
+        // ADR-011: se restituye el saldo en la moneda de la CxP (montoAplicado)
+        cuentaService.revertirPago(cuenta, pago.getMontoAplicado() != null ? pago.getMontoAplicado() : pago.getMonto());
+        // ADR-008 regla 4: el asiento del pago no se edita ni se borra; se revierte con líneas espejo
+        asientoService.revertirAsientoPagoProveedor(pago,
+            "Anulación de pago a proveedor " + pago.getNumero()
+                + (usuario != null && usuario.getNombre() != null ? " por " + usuario.getNombre() : ""));
 
-        log.info("Pago {} anulado por {}", pago.getNumero(), usuario.getNombre());
+        log.info("Pago {} anulado por {}", pago.getNumero(), usuario != null ? usuario.getNombre() : "N/A");
     }
 
     @Override
