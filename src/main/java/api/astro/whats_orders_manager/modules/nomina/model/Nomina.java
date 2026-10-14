@@ -84,6 +84,10 @@ public class Nomina {
     @Builder.Default
     private BigDecimal totalCcssPatronal = BigDecimal.ZERO;
 
+    @Column(name = "total_aporte_patronal_solidarista", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal totalAportePatronalSolidarista = BigDecimal.ZERO;
+
     @Column(name = "motivo_anulacion", columnDefinition = "TEXT")
     private String motivoAnulacion;
 

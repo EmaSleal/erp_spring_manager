@@ -19,6 +19,8 @@ import java.util.List;
  *   - CCSS: obrero 10.83 %, patronal 26.83 % (CCSS SICERE rates)
  *   - INS: occupational-risk tariff hardcoded at 1.00 % (not DB-modeled)
  *   - Income tax: marginal brackets from TramoImpuestoSalario, credits from exento row
+ *   - Aporte patronal ASE: company agreement rate from ParametroNominaEmpresa (ADR-013),
+ *     only for employees affiliated to the Asociación Solidarista
  */
 @Service
 public class CalculosNominaService {
@@ -142,6 +144,30 @@ public class CalculosNominaService {
     }
 
     /**
+     * Calculates the employer contribution to the Asociación Solidarista (ADR-013).
+     *
+     * <p>Only affiliated employees (porcentajeSolidarista &gt; 0) generate the contribution.
+     * It is an employer cost: it is not deducted from the employee.
+     *
+     * @param bruto                 gross prorated salary
+     * @param porcentajeSolidarista employee solidarista pct (decimal); null or 0 = not affiliated
+     * @param tasaAportePatronalAse employer ASE rate vigente for the period (decimal, e.g. 0.0533); null = 0
+     * @return bruto × tasaAportePatronalAse when affiliated; 0.00 otherwise
+     */
+    public BigDecimal calcularAportePatronalSolidarista(
+            BigDecimal bruto,
+            BigDecimal porcentajeSolidarista,
+            BigDecimal tasaAportePatronalAse) {
+        boolean afiliado = porcentajeSolidarista != null && porcentajeSolidarista.signum() > 0;
+        if (!afiliado || tasaAportePatronalAse == null || tasaAportePatronalAse.signum() <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return bruto
+                .multiply(tasaAportePatronalAse)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
      * Full gross-to-net calculation for one employee in one pay period.
      *
      * <p>Deduction order:
@@ -154,6 +180,8 @@ public class CalculosNominaService {
      *   <li>totalDeducciones = ccssObrero + ins + impuestoRenta + solidarista + pensionAlimentaria.</li>
      *   <li>salarioNeto = brutoProrrateado - totalDeducciones.</li>
      *   <li>ccssPatronal (employer cost, not deducted from employee).</li>
+     *   <li>aportePatronalSolidarista = brutoProrrateado × tasaAportePatronalAse, only when
+     *       porcentajeSolidarista &gt; 0 (employer cost, not deducted from employee).</li>
      * </ol>
      *
      * @param salarioBase          monthly agreed salary
@@ -161,6 +189,7 @@ public class CalculosNominaService {
      * @param porcentajeSolidarista optional solidarista pct (decimal, e.g. 0.03); null = no deduction
      * @param pensionAlimentaria    optional fixed alimony deduction; null = no deduction
      * @param ccss                 current CCSS parameters
+     * @param tasaAportePatronalAse employer ASE rate vigente for the period (decimal, e.g. 0.0533)
      * @param tramos               income-tax brackets ordered by limiteInferior ASC
      * @param hijos                number of dependent children for tax credits
      * @param conyuge              whether the employee has a registered spouse credit
@@ -172,6 +201,7 @@ public class CalculosNominaService {
             BigDecimal porcentajeSolidarista,
             BigDecimal pensionAlimentaria,
             ParametroCCSS ccss,
+            BigDecimal tasaAportePatronalAse,
             List<TramoImpuestoSalario> tramos,
             int hijos,
             boolean conyuge) {
@@ -229,6 +259,10 @@ public class CalculosNominaService {
         // 8. Employer cost (not deducted from employee)
         BigDecimal ccssPatronal = calcularCargaPatronalCcss(brutoProrrateado, ccss);
 
+        // 9. Employer ASE contribution (not deducted from employee)
+        BigDecimal aportePatronalSolidarista = calcularAportePatronalSolidarista(
+                brutoProrrateado, porcentajeSolidarista, tasaAportePatronalAse);
+
         return new ResultadoCalculoNomina(
                 brutoProrrateado,
                 ccssObrero,
@@ -239,6 +273,7 @@ public class CalculosNominaService {
                 solidarista,
                 pension,
                 ccssPatronal,
+                aportePatronalSolidarista,
                 totalDeducciones,
                 salarioNeto
         );
