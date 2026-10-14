@@ -2,6 +2,8 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
+import api.astro.whats_orders_manager.modules.configuracion.service.CuentaBancariaService;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
@@ -46,6 +48,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
@@ -84,6 +87,7 @@ class PagoServiceAsientoTest {
     @Mock private CuentaContableRepository cuentaRepository;
     @Mock private ParametroContableRepository parametroContableRepository;
     @Mock private TipoCambioRepository tipoCambioRepository;
+    @Mock private CuentaBancariaService cuentaBancariaService;
 
     private PagoServiceImpl service;
     private final Map<String, CuentaContable> cuentas = new HashMap<>();
@@ -102,10 +106,11 @@ class PagoServiceAsientoTest {
         ReflectionTestUtils.setField(service, "facturaMapper", facturaMapper);
         ReflectionTestUtils.setField(service, "asientoContableService", asientoService);
         ReflectionTestUtils.setField(service, "tipoCambioService", new TipoCambioService(tipoCambioRepository));
+        ReflectionTestUtils.setField(service, "cuentaBancariaService", cuentaBancariaService);
 
         long id = 1;
         for (String clave : List.of("VENTA_CXC_CLIENTES", "COBRO_ANTICIPOS_CLIENTES",
-                "COBRO_CAJA_EFECTIVO", "COBRO_CAJA_TRANSFERENCIA",
+                "COBRO_CAJA_EFECTIVO",
                 "DIFERENCIAL_CAMBIARIO_INGRESO", "DIFERENCIAL_CAMBIARIO_GASTO")) {
             CuentaContable c = new CuentaContable();
             c.setIdCuenta(id++);
@@ -119,6 +124,21 @@ class PagoServiceAsientoTest {
             p.setCuentaContable(c);
             when(parametroContableRepository.findByClave(clave)).thenReturn(Optional.of(p));
         }
+        // ADR-018: TRANSFERENCIA debita la hoja de la cuenta bancaria de destino (sin clave)
+        CuentaContable hojaBanco = new CuentaContable();
+        hojaBanco.setIdCuenta(id);
+        hojaBanco.setCodigo("1.1.01.002.001");
+        hojaBanco.setNombre("Banco Nacional - Colones CRC");
+        hojaBanco.setActiva(true);
+        hojaBanco.setAceptaMovimientos(true);
+        cuentas.put("BANCO", hojaBanco);
+        CuentaBancaria banco = new CuentaBancaria();
+        banco.setIdCuentaBancaria(1);
+        banco.setEntidad("Banco Nacional - Colones");
+        banco.setMoneda("CRC");
+        banco.setActiva(true);
+        banco.setCuentaContable(hojaBanco);
+        when(cuentaBancariaService.resolverParaPago(eq(1), any(), anyString())).thenReturn(banco);
         when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -177,6 +197,9 @@ class PagoServiceAsientoTest {
         when(facturaRepository.findById(5)).thenReturn(Optional.of(factura));
         Pago pago = nuevoPago("10000.00", MetodoPago.TRANSFERENCIA, EstadoPago.PENDIENTE, factura);
         pago.setReferenciaBancaria("TRX-1");
+        CuentaBancaria destino = new CuentaBancaria();
+        destino.setIdCuentaBancaria(1);
+        pago.setCuentaBancariaDestino(destino);
 
         Pago registrado = service.registrarPago(pago);
         verify(asientoRepository, never()).save(any());
@@ -185,7 +208,7 @@ class PagoServiceAsientoTest {
         service.confirmarPago(77L);
 
         AsientoContable asiento = ultimoAsiento();
-        assertThat(monto(asiento, "COBRO_CAJA_TRANSFERENCIA", true)).isEqualByComparingTo("10000.00");
+        assertThat(monto(asiento, "BANCO", true)).isEqualByComparingTo("10000.00");
         assertThat(monto(asiento, "VENTA_CXC_CLIENTES", false)).isEqualByComparingTo("10000.00");
     }
 

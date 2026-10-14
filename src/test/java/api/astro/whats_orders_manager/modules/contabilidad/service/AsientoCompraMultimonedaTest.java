@@ -78,7 +78,7 @@ class AsientoCompraMultimonedaTest {
                 parametroContableRepository);
         long id = 1;
         for (String clave : List.of("CPP_CUENTA_COMPRAS", "CPP_IVA_CREDITO_FISCAL", "CPP_CUENTA_POR_PAGAR",
-                "CPP_BANCO_TRANSFERENCIA")) {
+                "CPP_BANCO_EFECTIVO")) {
             CuentaContable c = new CuentaContable();
             c.setIdCuenta(id++);
             c.setCodigo(clave);
@@ -249,7 +249,8 @@ class AsientoCompraMultimonedaTest {
                 .numero("PP-2026-00001")
                 .cuentaPorPagar(cpp)
                 .monto(new BigDecimal("50000.00"))
-                .metodoPago(MetodoPagoProveedor.TRANSFERENCIA)
+                // EFECTIVO: CPP_BANCO_EFECTIVO; los medios bancarios usan la hoja de su cuenta bancaria (ADR-018)
+                .metodoPago(MetodoPagoProveedor.EFECTIVO)
                 .fecha(LocalDate.of(2026, 9, 25))
                 .build();
     }

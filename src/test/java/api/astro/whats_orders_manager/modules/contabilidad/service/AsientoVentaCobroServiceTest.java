@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
@@ -70,7 +71,7 @@ class AsientoVentaCobroServiceTest {
     private static final List<String> CLAVES = List.of(
             "VENTA_CXC_CLIENTES", "VENTA_INGRESOS", "VENTA_IVA_POR_PAGAR", "COBRO_ANTICIPOS_CLIENTES",
             "COBRO_CAJA_EFECTIVO", "COBRO_CAJA_TARJETA", "COBRO_CAJA_CHEQUE",
-            "COBRO_CAJA_TRANSFERENCIA", "COBRO_CAJA_RECAUDADO", "COBRO_CAJA_OTROS",
+            "COBRO_CAJA_RECAUDADO", "COBRO_CAJA_OTROS",
             "DIFERENCIAL_CAMBIARIO_INGRESO", "DIFERENCIAL_CAMBIARIO_GASTO");
 
     @BeforeEach
@@ -87,6 +88,8 @@ class AsientoVentaCobroServiceTest {
             param.setCuentaContable(cuenta);
             when(parametroContableRepository.findByClave(clave)).thenReturn(Optional.of(param));
         }
+        // ADR-018: TRANSFERENCIA debita la hoja de la cuenta bancaria de destino (sin clave)
+        cuentas.put("BANCO", cuenta(id, "1.1.01.002.001"));
         when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -211,13 +214,14 @@ class AsientoVentaCobroServiceTest {
         void cobroConFactura() {
             Factura factura = factura(5, "100000.00", "13000.00", "113000.00", MonedaFE.CRC, BigDecimal.ONE);
             Pago pago = pago(9L, "50000.00", MetodoPago.TRANSFERENCIA, EstadoPago.CONFIRMADO, factura);
+            pago.setCuentaBancariaDestino(banco());
 
             AsientoContable asiento = service.generarAsientoPago(pago);
 
             assertThat(asiento.getTipo()).isEqualTo(TipoAsiento.AUTOMATICO_PAGO);
             assertThat(asiento.getEstado()).isEqualTo(EstadoAsiento.CONTABILIZADO);
             assertThat(asiento.getPago()).isSameAs(pago);
-            assertThat(debe(asiento, "COBRO_CAJA_TRANSFERENCIA")).isEqualByComparingTo("50000.00");
+            assertThat(debe(asiento, "BANCO")).isEqualByComparingTo("50000.00");
             assertThat(haber(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("50000.00");
             assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
         }
@@ -235,13 +239,17 @@ class AsientoVentaCobroServiceTest {
         }
 
         @Test
-        @DisplayName("cada MetodoPago resuelve su propia clave COBRO_CAJA_<método>")
+        @DisplayName("cada MetodoPago resuelve su propia clave COBRO_CAJA_<método>; TRANSFERENCIA usa la hoja de su cuenta bancaria (ADR-018)")
         void cadaMetodoUsaSuClave() {
             long id = 100;
             for (MetodoPago metodo : MetodoPago.values()) {
                 Pago pago = pago(id++, "10.00", metodo, EstadoPago.CONFIRMADO, null);
+                if (metodo.requiereCuentaBancaria()) {
+                    pago.setCuentaBancariaDestino(banco());
+                }
                 AsientoContable asiento = service.generarAsientoPago(pago);
-                assertThat(debe(asiento, "COBRO_CAJA_" + metodo.name())).isEqualByComparingTo("10.00");
+                String cuenta = metodo.requiereCuentaBancaria() ? "BANCO" : "COBRO_CAJA_" + metodo.name();
+                assertThat(debe(asiento, cuenta)).as(metodo.name()).isEqualByComparingTo("10.00");
             }
         }
 
@@ -735,5 +743,16 @@ class AsientoVentaCobroServiceTest {
             saldos.merge(d.getCuenta().getIdCuenta(), d.getDebe().subtract(d.getHaber()), BigDecimal::add);
         }
         return saldos;
+    }
+
+    /** Cuenta bancaria CRC cuya hoja es la cuenta "BANCO" (ADR-018). */
+    private CuentaBancaria banco() {
+        CuentaBancaria banco = new CuentaBancaria();
+        banco.setIdCuentaBancaria(1);
+        banco.setEntidad("Banco Nacional - Colones");
+        banco.setMoneda("CRC");
+        banco.setActiva(true);
+        banco.setCuentaContable(cuentas.get("BANCO"));
+        return banco;
     }
 }

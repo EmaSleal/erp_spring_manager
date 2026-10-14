@@ -201,8 +201,24 @@
                                         <option th:each="metodo : ${metodosPago}"
                                                 th:value="${metodo.name()}"
                                                 th:text="${metodo.codigo + ' - ' + metodo.descripcion}"
-                                                th:attr="data-requiere-ref=${metodo.requiereReferencia()}"></option>
+                                                th:attr="data-requiere-ref=${metodo.requiereReferencia()},data-requiere-cuenta-bancaria=${metodo.requiereCuentaBancaria()}"></option>
                                     </select>
+                                </div>
+
+                                <!-- Cuenta bancaria propia de destino (ADR-018): visible y obligatoria solo con TRANSFERENCIA -->
+                                <div class="mb-3" id="cuentaBancariaDestinoGroup" style="display: none;">
+                                    <label for="idCuentaBancariaDestino" class="form-label">
+                                        <i class="fas fa-landmark text-secondary me-1"></i>
+                                        Cuenta bancaria de destino <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select"
+                                            id="idCuentaBancariaDestino"
+                                            name="idCuentaBancariaDestino">
+                                        <option value="">Seleccione la cuenta bancaria...</option>
+                                    </select>
+                                    <div class="form-text" id="cuentaBancariaDestinoAyuda">
+                                        Cuenta de la empresa en la que entra la transferencia. Solo cuentas activas en la moneda del pago.
+                                    </div>
                                 </div>
 
                                 <!-- Referencia Bancaria (Condicional) -->
@@ -227,7 +243,7 @@
                                     <div class="col-md-6 mb-3">
                                         <label for="banco" class="form-label">
                                             <i class="fas fa-university text-secondary me-1"></i>
-                                            Banco
+                                            Banco del cliente
                                         </label>
                                         <input type="text" 
                                                class="form-control" 
@@ -240,7 +256,7 @@
                                     <div class="col-md-6 mb-3">
                                         <label for="cuentaBancaria" class="form-label">
                                             <i class="fas fa-credit-card text-secondary me-1"></i>
-                                            Cuenta Bancaria
+                                            Cuenta bancaria del cliente
                                         </label>
                                         <input type="text" 
                                                class="form-control" 

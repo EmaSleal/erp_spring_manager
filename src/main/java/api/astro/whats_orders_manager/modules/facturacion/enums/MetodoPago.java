@@ -63,6 +63,16 @@ public enum MetodoPago {
     public boolean requiereReferencia() {
         return this == CHEQUE || this == TRANSFERENCIA;
     }
+
+    /**
+     * Verifica si el cobro entra a una cuenta bancaria propia (ADR-018): la cuenta bancaria de
+     * destino es obligatoria y el asiento debita su hoja contable. Los demás medios usan la clave
+     * COBRO_CAJA_&lt;MetodoPago&gt;.
+     * @return true solo para TRANSFERENCIA
+     */
+    public boolean requiereCuentaBancaria() {
+        return this == TRANSFERENCIA;
+    }
     
     @Override
     public String toString() {

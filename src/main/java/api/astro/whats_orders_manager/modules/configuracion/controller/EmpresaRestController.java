@@ -2,8 +2,9 @@ package api.astro.whats_orders_manager.modules.configuracion.controller;
 
 import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
-import api.astro.whats_orders_manager.modules.configuracion.repository.CuentaBancariaRepository;
+import api.astro.whats_orders_manager.modules.configuracion.service.CuentaBancariaService;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,7 +39,7 @@ public class EmpresaRestController {
 
     private final EmpresaService empresaService;
     private final UsuarioService usuarioService;
-    private final CuentaBancariaRepository cuentaBancariaRepository;
+    private final CuentaBancariaService cuentaBancariaService;
 
     @Value("${app.sellos.directorio:/app/sellos}")
     private String sellosDir;
@@ -160,15 +162,14 @@ public class EmpresaRestController {
     // ==================== CUENTAS BANCARIAS ====================
 
     /**
-     * GET /api/empresa/cuentas-bancarias
-     * Returns active bank accounts for the main empresa.
+     * GET /api/empresa/cuentas-bancarias[?incluirInactivas=true]
+     * Bank accounts of the main empresa (active only by default) with their accounting leaf (ADR-018).
      */
     @GetMapping("/cuentas-bancarias")
-    public ResponseEntity<?> getCuentasBancarias() {
+    public ResponseEntity<?> getCuentasBancarias(
+            @RequestParam(name = "incluirInactivas", defaultValue = "false") boolean incluirInactivas) {
         try {
-            Empresa empresa = empresaService.getEmpresaPrincipal();
-            List<Map<String, Object>> cuentas = cuentaBancariaRepository
-                .findByEmpresaIdEmpresaAndActivaTrue(empresa.getIdEmpresa())
+            List<Map<String, Object>> cuentas = cuentaBancariaService.listar(incluirInactivas)
                 .stream()
                 .map(this::cuentaToMap)
                 .collect(Collectors.toList());
@@ -177,99 +178,111 @@ public class EmpresaRestController {
         } catch (Exception e) {
             log.error("Error al obtener cuentas bancarias", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                .body(Map.of("success", false, "message", mensaje(e)));
         }
     }
 
     /**
      * POST /api/empresa/cuentas-bancarias
      * Body: { entidad, cuentaIban, cuentaBanco, moneda }
+     * Creates the bank account and its accounting leaf under 1.1.01.002 in one transaction (ADR-018).
      */
     @PostMapping("/cuentas-bancarias")
     public ResponseEntity<?> crearCuenta(@RequestBody Map<String, String> body,
                                          Authentication authentication) {
         try {
-            Empresa empresa = empresaService.getEmpresaPrincipal();
-
-            CuentaBancaria cuenta = new CuentaBancaria();
-            cuenta.setEmpresa(empresa);
-            cuenta.setEntidad(body.get("entidad"));
-            cuenta.setCuentaIban(body.get("cuentaIban"));
-            cuenta.setCuentaBanco(body.get("cuentaBanco"));
-            cuenta.setMoneda(body.get("moneda"));
-            cuenta.setActiva(true);
-            cuenta.setOrden(0);
-
-            CuentaBancaria guardada = cuentaBancariaRepository.save(cuenta);
+            CuentaBancaria guardada = cuentaBancariaService.crear(
+                body.get("entidad"), body.get("cuentaIban"), body.get("cuentaBanco"), body.get("moneda"));
 
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Bank account created successfully",
+                "message", "Cuenta bancaria creada con su cuenta contable "
+                    + guardada.getCuentaContable().getCodigo(),
                 "data", cuentaToMap(guardada)
             ));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return rechazo(e);
         } catch (Exception e) {
             log.error("Error al crear cuenta bancaria", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                .body(Map.of("success", false, "message", mensaje(e)));
         }
     }
 
     /**
      * PUT /api/empresa/cuentas-bancarias/{id}
      * Body: { entidad, cuentaIban, cuentaBanco, moneda }
+     * Renames the accounting leaf; a currency change is rejected if the leaf has movements (ADR-018).
      */
     @PutMapping("/cuentas-bancarias/{id}")
     public ResponseEntity<?> actualizarCuenta(@PathVariable Integer id,
                                               @RequestBody Map<String, String> body,
                                               Authentication authentication) {
         try {
-            CuentaBancaria cuenta = cuentaBancariaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Bank account not found: " + id));
-
-            cuenta.setEntidad(body.get("entidad"));
-            cuenta.setCuentaIban(body.get("cuentaIban"));
-            cuenta.setCuentaBanco(body.get("cuentaBanco"));
-            cuenta.setMoneda(body.get("moneda"));
-
-            CuentaBancaria guardada = cuentaBancariaRepository.save(cuenta);
+            CuentaBancaria guardada = cuentaBancariaService.actualizar(id,
+                body.get("entidad"), body.get("cuentaIban"), body.get("cuentaBanco"), body.get("moneda"));
 
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Bank account updated successfully",
+                "message", "Cuenta bancaria actualizada",
                 "data", cuentaToMap(guardada)
             ));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return rechazo(e);
         } catch (Exception e) {
             log.error("Error al actualizar cuenta bancaria {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                .body(Map.of("success", false, "message", mensaje(e)));
+        }
+    }
+
+    /**
+     * PATCH /api/empresa/cuentas-bancarias/{id}/estado
+     * Body: { activa: true|false }
+     * Activates/deactivates the bank account together with its accounting leaf (ADR-018).
+     */
+    @PatchMapping("/cuentas-bancarias/{id}/estado")
+    public ResponseEntity<?> cambiarEstadoCuenta(@PathVariable Integer id,
+                                                 @RequestBody Map<String, Object> body,
+                                                 Authentication authentication) {
+        try {
+            Object activa = body.get("activa");
+            if (activa == null) {
+                throw new IllegalArgumentException("Indique 'activa' (true o false)");
+            }
+            boolean nuevaActiva = Boolean.parseBoolean(activa.toString());
+            CuentaBancaria guardada = cuentaBancariaService.cambiarEstado(id, nuevaActiva);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", nuevaActiva ? "Cuenta bancaria activada" : "Cuenta bancaria desactivada",
+                "data", cuentaToMap(guardada)
+            ));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return rechazo(e);
+        } catch (Exception e) {
+            log.error("Error al cambiar estado de cuenta bancaria {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("success", false, "message", mensaje(e)));
         }
     }
 
     /**
      * DELETE /api/empresa/cuentas-bancarias/{id}
-     * Logical delete (activa = false).
+     * Deletes the bank account and its accounting leaf. Rejected (400) if a cobro or pago a proveedor
+     * uses it or its leaf has movements: it must be deactivated instead (ADR-018).
      */
     @DeleteMapping("/cuentas-bancarias/{id}")
     public ResponseEntity<?> eliminarCuenta(@PathVariable Integer id,
                                             Authentication authentication) {
         try {
-            CuentaBancaria cuenta = cuentaBancariaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Bank account not found: " + id));
-
-            cuenta.setActiva(false);
-            cuentaBancariaRepository.save(cuenta);
-
-            return ResponseEntity.ok(Map.of("success", true, "message", "Bank account removed successfully"));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+            cuentaBancariaService.eliminar(id);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Cuenta bancaria eliminada"));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return rechazo(e);
         } catch (Exception e) {
             log.error("Error al eliminar cuenta bancaria {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                .body(Map.of("success", false, "message", mensaje(e)));
         }
     }
 
@@ -313,15 +326,28 @@ public class EmpresaRestController {
     }
 
     private Map<String, Object> cuentaToMap(CuentaBancaria c) {
-        return Map.of(
-            "idCuentaBancaria", c.getIdCuentaBancaria(),
-            "entidad",          c.getEntidad()     != null ? c.getEntidad()     : "",
-            "cuentaIban",       c.getCuentaIban()  != null ? c.getCuentaIban()  : "",
-            "cuentaBanco",      c.getCuentaBanco() != null ? c.getCuentaBanco() : "",
-            "moneda",           c.getMoneda()      != null ? c.getMoneda()      : "",
-            "activa",           c.getActiva()      != null ? c.getActiva()      : true,
-            "orden",            c.getOrden()       != null ? c.getOrden()       : 0
-        );
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("idCuentaBancaria", c.getIdCuentaBancaria());
+        m.put("entidad",          c.getEntidad()     != null ? c.getEntidad()     : "");
+        m.put("cuentaIban",       c.getCuentaIban()  != null ? c.getCuentaIban()  : "");
+        m.put("cuentaBanco",      c.getCuentaBanco() != null ? c.getCuentaBanco() : "");
+        m.put("moneda",           c.getMoneda()      != null ? c.getMoneda()      : "");
+        m.put("activa",           c.getActiva()      != null ? c.getActiva()      : true);
+        m.put("orden",            c.getOrden()       != null ? c.getOrden()       : 0);
+        CuentaContable hoja = c.getCuentaContable();
+        m.put("codigoCuentaContable", hoja != null ? hoja.getCodigo() : "");
+        m.put("nombreCuentaContable", hoja != null ? hoja.getNombre() : "");
+        return m;
+    }
+
+    private ResponseEntity<?> rechazo(RuntimeException e) {
+        log.warn("Cuenta bancaria rechazada: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Map.of("success", false, "message", mensaje(e)));
+    }
+
+    private static String mensaje(Exception e) {
+        return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
     }
 
     private void validarArchivo(MultipartFile file) {

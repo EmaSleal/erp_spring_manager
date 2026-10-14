@@ -1,10 +1,12 @@
 package api.astro.whats_orders_manager.modules.proveedores.model;
 
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.enums.MetodoPagoProveedor;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -67,6 +69,16 @@ public class PagoProveedor {
     @Enumerated(EnumType.STRING)
     @Column(name = "metodo_pago", nullable = false, length = 20)
     private MetodoPagoProveedor metodoPago;
+
+    /**
+     * Cuenta bancaria propia de la que sale el pago (ADR-018). Obligatoria para TRANSFERENCIA,
+     * CHEQUE, SINPE y DEPOSITO: el asiento acredita su hoja contable. Null en EFECTIVO.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuenta_bancaria_id")
+    @ToString.Exclude
+    @JsonIgnore
+    private CuentaBancaria cuentaBancariaOrigen;
 
     // Check number, transfer confirmation, SINPE reference, etc.
     @Column(length = 100)

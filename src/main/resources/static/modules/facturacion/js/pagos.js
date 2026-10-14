@@ -34,6 +34,60 @@ function toggleReferencia() {
     }
 }
 
+let cuentasBancariasFetch = null;
+
+/**
+ * ADR-018: la cuenta bancaria de destino solo aplica a los métodos que la requieren
+ * (data-requiere-cuenta-bancaria, hoy TRANSFERENCIA). Se muestra, se vuelve obligatoria y se
+ * llena con las cuentas activas de la empresa en la moneda del pago.
+ */
+function actualizarCuentaBancariaDestino() {
+    const metodoPago = document.getElementById('metodoPago');
+    const grupo = document.getElementById('cuentaBancariaDestinoGroup');
+    const select = document.getElementById('idCuentaBancariaDestino');
+    const ayuda = document.getElementById('cuentaBancariaDestinoAyuda');
+    if (!metodoPago || !grupo || !select) return;
+
+    const opcion = metodoPago.selectedIndex > 0 ? metodoPago.options[metodoPago.selectedIndex] : null;
+    const requiere = opcion && opcion.getAttribute('data-requiere-cuenta-bancaria') === 'true';
+    if (!requiere) {
+        grupo.style.display = 'none';
+        select.required = false;
+        select.value = '';
+        return;
+    }
+
+    grupo.style.display = 'block';
+    select.required = true;
+    const moneda = document.getElementById('monedaPago')?.value || 'CRC';
+    const anterior = select.value;
+    if (cuentasBancariasFetch) cuentasBancariasFetch.abort();
+    cuentasBancariasFetch = new AbortController();
+    fetch(`/api/cuentas-bancarias/activas?moneda=${encodeURIComponent(moneda)}`, { signal: cuentasBancariasFetch.signal })
+        .then(async r => ({ ok: r.ok, data: await r.json().catch(() => null) }))
+        .then(({ ok, data }) => {
+            select.innerHTML = '<option value="">Seleccione la cuenta bancaria...</option>';
+            const cuentas = ok && data && Array.isArray(data.data) ? data.data : [];
+            cuentas.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.idCuentaBancaria;
+                option.textContent = `${c.entidad} (${c.moneda})${c.cuentaBanco ? ' - ' + c.cuentaBanco : ''}`;
+                select.appendChild(option);
+            });
+            if (cuentas.some(c => String(c.idCuentaBancaria) === anterior)) {
+                select.value = anterior;
+            }
+            if (ayuda) {
+                ayuda.textContent = !ok
+                    ? ((data && data.message) || 'No se pudieron cargar las cuentas bancarias')
+                    : (cuentas.length
+                        ? 'Cuenta de la empresa en la que entra la transferencia. Solo cuentas activas en ' + moneda + '.'
+                        : 'No hay cuentas bancarias activas en ' + moneda + '. Configúrelas en Configuración → Empresa.');
+            }
+        })
+        .catch(err => { if (err.name !== 'AbortError') console.error('Error al cargar cuentas bancarias:', err); });
+}
+
 /**
  * Toggle del campo factura según tipo de pago
  */
@@ -125,6 +179,7 @@ function mostrarInfoFactura() {
         monedaPago.value = selectedOption.value ? (selectedOption.dataset.monedaFe || 'CRC') : 'CRC';
     }
     actualizarTipoCambioPago();
+    actualizarCuentaBancariaDestino();
 
     // Si no hay factura seleccionada, limpiar
     if (!selectedOption.value) {
@@ -392,12 +447,15 @@ function initPagoForm() {
     const metodoPagoSelect = document.getElementById('metodoPago');
     if (metodoPagoSelect) {
         metodoPagoSelect.addEventListener('change', toggleReferencia);
+        metodoPagoSelect.addEventListener('change', actualizarCuentaBancariaDestino);
     }
 
     // ADR-011: moneda y tipo de cambio del pago
     const monedaPagoSelect = document.getElementById('monedaPago');
     if (monedaPagoSelect) {
         monedaPagoSelect.addEventListener('change', actualizarTipoCambioPago);
+        // ADR-018: la cuenta bancaria de destino debe estar en la moneda del pago
+        monedaPagoSelect.addEventListener('change', actualizarCuentaBancariaDestino);
     }
     const fechaPagoInput = document.getElementById('fechaPago');
     if (fechaPagoInput) {
@@ -409,6 +467,7 @@ function initPagoForm() {
     // Inicializar toggles
     toggleReferencia();
     toggleFacturaField();
+    actualizarCuentaBancariaDestino();
     
     // Manejo del envío del formulario
     pagoForm.addEventListener('submit', async function(e) {
@@ -427,6 +486,10 @@ function initPagoForm() {
             referenciaBancaria: formData.get('referenciaBancaria'),
             banco: formData.get('banco'),
             cuentaBancaria: formData.get('cuentaBancaria'),
+            // ADR-018: cuenta bancaria propia de destino (solo se envía si el método la requiere)
+            idCuentaBancariaDestino: (document.getElementById('idCuentaBancariaDestino')?.required
+                && formData.get('idCuentaBancariaDestino'))
+                ? parseInt(formData.get('idCuentaBancariaDestino')) : null,
             comprobanteUrl: formData.get('comprobanteUrl'),
             estado: formData.get('estado'),
             observaciones: formData.get('observaciones'),
@@ -436,6 +499,13 @@ function initPagoForm() {
         // Validar datos
         if (!pagoData.idCliente || !pagoData.tipoPago || !pagoData.monto || !pagoData.metodoPago || !pagoData.fechaPago || !pagoData.estado) {
             showToast('error', 'Por favor complete todos los campos obligatorios');
+            return;
+        }
+        
+        // ADR-018: con TRANSFERENCIA la cuenta bancaria de destino es obligatoria
+        const cuentaDestino = document.getElementById('idCuentaBancariaDestino');
+        if (cuentaDestino && cuentaDestino.required && !pagoData.idCuentaBancariaDestino) {
+            showToast('error', 'Seleccione la cuenta bancaria de destino');
             return;
         }
         
