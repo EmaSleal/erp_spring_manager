@@ -1,0 +1,4 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+api.astro.whats_orders_manager.config.startup.RequiredConfigurationEnvironmentPostProcessor
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+api.astro.whats_orders_manager.config.startup.StartupConfigurationFailureAnalyzer

@@ -33,11 +33,15 @@ public class ConfiguracionHaciendaDTO {
     @NotBlank(message = "El usuario de Hacienda es obligatorio")
     private String usuarioHacienda;
     
+    /** En respuestas siempre "********"; en un PUT, "********" conserva el valor guardado. */
     @NotBlank(message = "La contraseña es obligatoria")
+    @ToString.Exclude
     private String passwordHacienda;
     
     private String rutaCertificado;
     
+    /** En respuestas "********" (o null si no hay PIN); en un PUT, "********" o null conserva el valor guardado. */
+    @ToString.Exclude
     private String pinCertificado;
     
     private Boolean activa;
@@ -46,7 +50,8 @@ public class ConfiguracionHaciendaDTO {
     
     private LocalDateTime tokenExpira;
     
-    private String accessToken;
+    /** Hay un access token guardado (el token nunca sale en el DTO; T-021). */
+    private Boolean tieneToken;
     
     private Long consecutivoFactura;
     
