@@ -226,11 +226,52 @@ public class AsientoContable {
     }
     
     /**
-     * Verifica si el asiento puede ser anulado.
-     * @return true si está CONTABILIZADO
+     * Motivo por el que este asiento no se puede revertir desde Contabilidad (ADR-023), o null si se
+     * puede: debe estar CONTABILIZADO, no ser una reversión, no tener documento de origen vinculado
+     * (factura, pago, CxP, pago a proveedor o planilla) y no ser de tipo automático. Un asiento con
+     * documento de origen se revierte anulando ese documento.
+     * No comprueba si ya fue revertido: eso requiere consultar la base de datos.
+     * @return mensaje para el usuario, o null si es reversible
      */
-    public boolean puedeAnularse() {
-        return estado == EstadoAsiento.CONTABILIZADO;
+    public String motivoNoReversibleDesdeContabilidad() {
+        if (estado != EstadoAsiento.CONTABILIZADO) {
+            return "Solo se revierten asientos contabilizados. Estado actual: " + estado;
+        }
+        if (asientoRevertido != null) {
+            return "El asiento " + numero + " es una reversión y no puede revertirse";
+        }
+        String[] documento = documentoOrigen();
+        if (documento != null) {
+            String destino = documento[0].startsWith("el ") ? "al " + documento[0].substring(3) : "a " + documento[0];
+            return "Este asiento pertenece " + destino + " " + documento[1]
+                + "; anule " + documento[0] + " para revertirlo";
+        }
+        if (tipo != null && tipo.esAutomatico()) {
+            return "Asiento automático sin documento de origen; no se puede revertir desde Contabilidad";
+        }
+        return null;
+    }
+    
+    /**
+     * Documento de origen vinculado: {nombre con artículo, número}, o null si no tiene.
+     */
+    private String[] documentoOrigen() {
+        if (factura != null) {
+            return new String[] {"la factura", factura.getNumeroFactura()};
+        }
+        if (pago != null) {
+            return new String[] {"el pago", pago.getNumeroPago()};
+        }
+        if (cuentaPorPagar != null) {
+            return new String[] {"la cuenta por pagar", cuentaPorPagar.getNumero()};
+        }
+        if (pagoProveedor != null) {
+            return new String[] {"el pago a proveedor", pagoProveedor.getNumero()};
+        }
+        if (nomina != null) {
+            return new String[] {"la planilla", nomina.getNumero()};
+        }
+        return null;
     }
     
     /**
@@ -267,18 +308,5 @@ public class AsientoContable {
             throw new IllegalStateException("El asiento no puede ser contabilizado. Verifique que esté cuadrado y tenga al menos 2 líneas.");
         }
         this.estado = EstadoAsiento.CONTABILIZADO;
-    }
-    
-    /**
-     * Anula el asiento (cambia estado a ANULADO).
-     * @throws IllegalStateException si no puede anularse
-     */
-    public void anular(String motivo, Integer usuario) {
-        if (!puedeAnularse()) {
-            throw new IllegalStateException("El asiento no puede ser anulado. Solo los asientos contabilizados pueden anularse.");
-        }
-        this.estado = EstadoAsiento.ANULADO;
-        this.modificadoPor = usuario;
-        this.motivoAnulacion = motivo;
     }
 }

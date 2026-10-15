@@ -51,14 +51,21 @@ function showToast(type, message) {
  * Mostrar confirmación antes de una acción
  * @param {string} title - Título del modal
  * @param {string} text - Texto descriptivo
- * @param {string} confirmButtonText - Texto del botón confirmar
+ * @param {string} confirmButtonText - Texto del botón confirmar. Si es un nombre de ícono
+ *        ('warning', 'error', ...), se usa como ícono y el botón conserva el texto por defecto.
  * @returns {Promise<boolean>} - true si confirma, false si cancela
  */
 async function showConfirmDialog(title, text, confirmButtonText = 'Sí, confirmar') {
+    // Algunos llamadores pasan el ícono de SweetAlert2 como tercer argumento
+    let icon = 'warning';
+    if (['warning', 'error', 'success', 'info', 'question'].includes(confirmButtonText)) {
+        icon = confirmButtonText;
+        confirmButtonText = 'Sí, confirmar';
+    }
     const result = await Swal.fire({
         title: title,
         text: text,
-        icon: 'warning',
+        icon: icon,
         showCancelButton: true,
         confirmButtonColor: '#008040',
         cancelButtonColor: '#F44336',
@@ -67,6 +74,23 @@ async function showConfirmDialog(title, text, confirmButtonText = 'Sí, confirma
     });
 
     return result.isConfirmed;
+}
+
+/**
+ * Escapa un valor para insertarlo en HTML (contenido o atributo entre comillas).
+ * @param {*} value - Valor a escapar; null/undefined se convierten en cadena vacía
+ * @returns {string} - Texto con & < > " ' escapados
+ */
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 /**

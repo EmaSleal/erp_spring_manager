@@ -52,10 +52,10 @@
                         <i class="fas fa-check"></i> Contabilizar
                     </button>
                     <button type="button" class="btn btn-danger" 
-                            th:if="${asiento.estado.name() == 'CONTABILIZADO'}"
-                            onclick="anularAsiento()"
+                            th:if="${asiento.puedeRevertirse}"
+                            onclick="revertirAsiento(asientoId)"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_ANULAR')">
-                        <i class="fas fa-ban"></i> Anular
+                        <i class="fas fa-undo"></i> Revertir
                     </button>
                 </div>
             </div>
@@ -114,6 +114,20 @@
                                                    th:text="${asiento.pagoReferencia}">PAG-001</a>
                                             </td>
                                         </tr>
+                                        <tr th:if="${asiento.revertidoPorId != null}">
+                                            <th class="text-muted">Revertido por:</th>
+                                            <td>
+                                                <a th:href="@{/contabilidad/asientos/{id}(id=${asiento.revertidoPorId})}"
+                                                   th:text="${asiento.revertidoPorNumero}">ASI-002</a>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${asiento.reversionDeId != null}">
+                                            <th class="text-muted">Reversión de:</th>
+                                            <td>
+                                                <a th:href="@{/contabilidad/asientos/{id}(id=${asiento.reversionDeId})}"
+                                                   th:text="${asiento.reversionDeNumero}">ASI-001</a>
+                                            </td>
+                                        </tr>
                                         <tr>
                                             <th class="text-muted">Cuadrado:</th>
                                             <td>
@@ -144,21 +158,21 @@
                                     <th class="text-muted">Total Debe:</th>
                                     <td class="text-end">
                                         <span class="fs-5 fw-bold"
-                                              th:text="${#numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                              th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">₡0.00</span>
                                     </td>
                                 </tr>
                                 <tr>
                                     <th class="text-muted">Total Haber:</th>
                                     <td class="text-end">
                                         <span class="fs-5 fw-bold"
-                                              th:text="${#numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                              th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">₡0.00</span>
                                     </td>
                                 </tr>
                                 <tr th:if="${asiento.diferencia != 0}" class="border-top">
                                     <th class="text-muted">Diferencia:</th>
                                     <td class="text-end">
                                         <span class="fs-5 fw-bold text-danger" 
-                                              th:text="${#numbers.formatDecimal(asiento.diferencia, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                              th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(asiento.diferencia, 1, 'COMMA', 2, 'POINT')}">₡0.00</span>
                                     </td>
                                 </tr>
                             </table>
@@ -196,13 +210,13 @@
                                             <td class="text-end">
                                                 <span th:if="${detalle.debe != null && detalle.debe > 0}"
                                                       class="fw-semibold"
-                                                      th:text="'$' + ${#numbers.formatDecimal(detalle.debe, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                                      th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(detalle.debe, 1, 'COMMA', 2, 'POINT')}">₡0.00</span>
                                                 <span th:unless="${detalle.debe != null && detalle.debe > 0}" class="text-muted">-</span>
                                             </td>
                                             <td class="text-end">
                                                 <span th:if="${detalle.haber != null && detalle.haber > 0}"
                                                       class="fw-semibold"
-                                                      th:text="'$' + ${#numbers.formatDecimal(detalle.haber, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                                      th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(detalle.haber, 1, 'COMMA', 2, 'POINT')}">₡0.00</span>
                                                 <span th:unless="${detalle.haber != null && detalle.haber > 0}" class="text-muted">-</span>
                                             </td>
                                         </tr>
@@ -211,9 +225,9 @@
                                         <tr class="fw-bold">
                                             <td colspan="3" class="text-end">TOTALES:</td>
                                             <td class="text-end"
-                                                th:text="'$' + ${#numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                                th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(asiento.totalDebe, 1, 'COMMA', 2, 'POINT')}">₡0.00</td>
                                             <td class="text-end"
-                                                th:text="'$' + ${#numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                                th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(asiento.totalHaber, 1, 'COMMA', 2, 'POINT')}">₡0.00</td>
                                         </tr>
                                     </tfoot>
                                 </table>

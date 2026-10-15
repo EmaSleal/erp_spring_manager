@@ -69,6 +69,7 @@ async function cargarAsientos(pagina = 0) {
 function renderizarAsientos(asientos) {
     const tbody = document.getElementById('bodyAsientos');
     tbody.innerHTML = '';
+    const simbolo = escapeHtml(tbody.dataset.simbolo || '₡');
     
     asientos.forEach(asiento => {
         const tr = document.createElement('tr');
@@ -107,36 +108,38 @@ function renderizarAsientos(asientos) {
                 break;
         }
         
+        const id = Number(asiento.idAsiento);
+        const concepto = escapeHtml(asiento.concepto);
         tr.innerHTML = `
-            <td><strong>${asiento.numero || '-'}</strong></td>
-            <td>${formatearFecha(asiento.fecha)}</td>
-            <td>${tipoBadge}</td>
-            <td class="text-truncate cell-truncate" title="${asiento.concepto}">${asiento.concepto}</td>
-            <td class="text-end fw-semibold">$${formatearNumero(asiento.totalDebe)}</td>
-            <td class="text-end fw-semibold">$${formatearNumero(asiento.totalHaber)}</td>
+            <td><strong>${escapeHtml(asiento.numero || '-')}</strong></td>
+            <td>${escapeHtml(formatearFecha(asiento.fecha))}</td>
+            <td>${tipoBadge || `<span class="badge bg-secondary">${escapeHtml(asiento.tipo)}</span>`}</td>
+            <td class="text-truncate cell-truncate" title="${concepto}">${concepto}</td>
+            <td class="text-end fw-semibold">${simbolo}${formatearNumero(asiento.totalDebe)}</td>
+            <td class="text-end fw-semibold">${simbolo}${formatearNumero(asiento.totalHaber)}</td>
             <td class="text-center">${estadoBadge}</td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
-                    <a href="/contabilidad/asientos/${asiento.idAsiento}"
+                    <a href="/contabilidad/asientos/${id}"
                        class="btn btn-outline-secondary" title="Ver detalle">
                         <i class="fas fa-eye"></i>
                     </a>
                     ${asiento.puedeModificarse ? `
-                    <a href="/contabilidad/asientos/${asiento.idAsiento}/editar"
+                    <a href="/contabilidad/asientos/${id}/editar"
                        class="btn btn-module-contabilidad" title="Editar">
                         <i class="fas fa-edit"></i>
                     </a>` : ''}
                     ${asiento.puedeContabilizarse ? `
                     <button type="button" class="btn btn-outline-success" 
-                            onclick="contabilizarAsientoDesdeListado(${asiento.idAsiento})"
+                            onclick="contabilizarAsientoDesdeListado(${id})"
                             title="Contabilizar">
                         <i class="fas fa-check"></i>
                     </button>` : ''}
-                    ${asiento.estado === 'CONTABILIZADO' ? `
+                    ${asiento.puedeRevertirse ? `
                     <button type="button" class="btn btn-outline-danger" 
-                            onclick="anularAsientoDesdeListado(${asiento.idAsiento})"
-                            title="Anular">
-                        <i class="fas fa-ban"></i>
+                            onclick="revertirAsiento(${id})"
+                            title="Revertir">
+                        <i class="fas fa-undo"></i>
                     </button>` : ''}
                 </div>
             </td>
@@ -147,8 +150,8 @@ function renderizarAsientos(asientos) {
 }
 
 function actualizarPaginacion(pageData) {
-    paginaActual = pageData.number;
-    totalPaginas = pageData.totalPages;
+    paginaActual = Number(pageData.number) || 0;
+    totalPaginas = Number(pageData.totalPages) || 0;
     
     const paginaInfo = document.getElementById('paginaInfo');
     const inicio = pageData.number * pageData.size + 1;
@@ -303,25 +306,25 @@ function renderizarDetalles() {
                 <select class="form-select form-select-sm" id="selCuenta${detalle.id}" required onchange="seleccionarCuenta(${detalle.id})">
                     <option value="">Seleccione cuenta...</option>
                     ${cuentasDisponibles.map(c => `
-                        <option value="${c.idCuenta}" ${c.idCuenta === detalle.cuentaId ? 'selected' : ''}>
-                            ${c.codigo} - ${c.nombre}
+                        <option value="${Number(c.idCuenta)}" ${c.idCuenta === detalle.cuentaId ? 'selected' : ''}>
+                            ${escapeHtml(c.codigo)} - ${escapeHtml(c.nombre)}
                         </option>
                     `).join('')}
                 </select>
             </td>
             <td>
                 <input type="text" class="form-control form-control-sm" id="txtConceptoDet${detalle.id}" 
-                       value="${detalle.descripcion}" maxlength="500" 
+                       value="${escapeHtml(detalle.descripcion)}" maxlength="500" 
                        onchange="actualizarDetalleDescripcion(${detalle.id}, this.value)">
             </td>
             <td>
                 <input type="number" class="form-control form-control-sm text-end" id="txtDebe${detalle.id}" 
-                       value="${detalle.debe}" min="0" step="0.01" 
+                       value="${Number(detalle.debe) || 0}" min="0" step="0.01" 
                        oninput="actualizarDetalleDebe(${detalle.id}, this.value)">
             </td>
             <td>
                 <input type="number" class="form-control form-control-sm text-end" id="txtHaber${detalle.id}" 
-                       value="${detalle.haber}" min="0" step="0.01" 
+                       value="${Number(detalle.haber) || 0}" min="0" step="0.01" 
                        oninput="actualizarDetalleHaber(${detalle.id}, this.value)">
             </td>
             <td class="text-center">
@@ -388,7 +391,7 @@ function calcularTotales() {
     const diferencia = Math.abs(totalDebe - totalHaber);
     
     // Obtener símbolo de moneda del elemento (ya renderizado por Thymeleaf)
-    const simboloMoneda = document.querySelector('#totalDebe span')?.textContent || '$';
+    const simboloMoneda = escapeHtml(document.querySelector('#totalDebe span')?.textContent || '₡');
     
     document.getElementById('totalDebe').innerHTML = `<span>${simboloMoneda}</span>${formatearNumero(totalDebe)}`;
     document.getElementById('totalHaber').innerHTML = `<span>${simboloMoneda}</span>${formatearNumero(totalHaber)}`;
@@ -479,7 +482,7 @@ async function contabilizarAsiento() {
     const confirmar = await showConfirmDialog(
         '¿Está seguro de contabilizar este asiento?',
         'Una vez contabilizado, no podrá modificarlo.',
-        'warning'
+        'Sí, contabilizar'
     );
     
     if (confirmar) {
@@ -493,23 +496,38 @@ async function contabilizarAsiento() {
     }
 }
 
-async function anularAsiento() {
-    if (typeof asientoId === 'undefined') return;
-    
-    const confirmar = await showConfirmDialog(
-        '¿Está seguro de anular este asiento?',
-        'Esta acción no se puede deshacer.',
-        'error'
-    );
-    
-    if (confirmar) {
-        try {
-            await httpPost(`/contabilidad/asientos/api/${asientoId}/anular`);
-            showToast('success', 'Asiento anulado exitosamente');
-            setTimeout(() => location.reload(), 1500);
-        } catch (error) {
-            // El error ya se muestra en common.js
-        }
+/**
+ * Revierte un asiento contabilizado (ADR-023): pide un motivo obligatorio, crea la reversión y
+ * navega a ella. El original queda contabilizado y enlazado con su reversión.
+ * @param {number} id - ID del asiento a revertir
+ */
+async function revertirAsiento(id) {
+    const { value: motivo, isConfirmed } = await Swal.fire({
+        title: '¿Revertir este asiento?',
+        text: 'Se creará un asiento de reversión con las líneas invertidas, fechado hoy. El asiento original no se modifica.',
+        icon: 'warning',
+        input: 'textarea',
+        inputLabel: 'Motivo de la reversión',
+        inputPlaceholder: 'Indique el motivo (obligatorio)',
+        inputAttributes: { maxlength: '400' },
+        showCancelButton: true,
+        confirmButtonColor: '#008040',
+        cancelButtonColor: '#F44336',
+        confirmButtonText: 'Sí, revertir',
+        cancelButtonText: 'Cancelar',
+        inputValidator: (valor) => (!valor || !valor.trim()) ? 'El motivo de la reversión es obligatorio' : undefined
+    });
+
+    if (!isConfirmed) {
+        return;
+    }
+
+    try {
+        const reversion = await httpPost(`/contabilidad/asientos/api/${Number(id)}/revertir`, { motivo: motivo.trim() });
+        showToast('success', `Asiento revertido: se creó ${reversion.numero}`);
+        setTimeout(() => window.location.href = `/contabilidad/asientos/${Number(reversion.idAsiento)}`, 1500);
+    } catch (error) {
+        // El error ya se muestra en common.js
     }
 }
 
@@ -517,31 +535,13 @@ async function contabilizarAsientoDesdeListado(id) {
     const confirmar = await showConfirmDialog(
         '¿Está seguro de contabilizar este asiento?',
         'Una vez contabilizado, no podrá modificarlo.',
-        'warning'
+        'Sí, contabilizar'
     );
     
     if (confirmar) {
         try {
             await httpPost(`/contabilidad/asientos/api/${id}/contabilizar`);
             showToast('success', 'Asiento contabilizado exitosamente');
-            await cargarAsientos(paginaActual);
-        } catch (error) {
-            // El error ya se muestra en common.js
-        }
-    }
-}
-
-async function anularAsientoDesdeListado(id) {
-    const confirmar = await showConfirmDialog(
-        '¿Está seguro de anular este asiento?',
-        'Esta acción no se puede deshacer.',
-        'error'
-    );
-    
-    if (confirmar) {
-        try {
-            await httpPost(`/contabilidad/asientos/api/${id}/anular`);
-            showToast('success', 'Asiento anulado exitosamente');
             await cargarAsientos(paginaActual);
         } catch (error) {
             // El error ya se muestra en common.js

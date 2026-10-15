@@ -50,6 +50,7 @@ public class AsientoContableController {
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_VER')")
     public String listar(Authentication authentication, Model model) {
         log.info("Accediendo a la vista de asientos contables");
+        model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
         return "modules/contabilidad/asientos/listar";
     }
     
@@ -104,6 +105,7 @@ public class AsientoContableController {
             .orElseThrow(() -> new IllegalArgumentException("Asiento no encontrado"));
         
         model.addAttribute("asiento", asientoMapper.toDTO(asiento));
+        model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
         
         return "modules/contabilidad/asientos/detalle";
     }
@@ -279,19 +281,23 @@ public class AsientoContableController {
     }
     
     /**
-     * Anula un asiento contabilizado.
+     * Revierte un asiento contabilizado (ADR-023): crea su reversión y deja el original intacto.
+     * El motivo es obligatorio y llega en el cuerpo ({"motivo": "..."}) o como parámetro.
+     * Responde con la reversión creada.
      */
-    @PostMapping("/api/{id}/anular")
+    @PostMapping("/api/{id}/revertir")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CONTABILIDAD_ANULAR')")
     @ResponseBody
-    public ResponseEntity<AsientoContableDTO> anular(
+    public ResponseEntity<AsientoContableDTO> revertir(
             Authentication authentication,
             @PathVariable Long id,
-            @RequestParam(required = false) String motivo) {
-        log.info("API: Anulando asiento ID: {}", id);
+            @RequestParam(required = false) String motivo,
+            @RequestBody(required = false) Map<String, String> cuerpo) {
+        log.info("API: Revirtiendo asiento ID: {}", id);
         
-        AsientoContable asiento = asientoService.anular(id, motivo);
-        return ResponseEntity.ok(asientoMapper.toDTO(asiento));
+        String motivoReversion = motivo != null ? motivo : (cuerpo != null ? cuerpo.get("motivo") : null);
+        AsientoContable reversion = asientoService.revertirManual(id, motivoReversion);
+        return ResponseEntity.ok(asientoMapper.toDTO(reversion));
     }
     
     /**
@@ -316,6 +322,14 @@ public class AsientoContableController {
     @ResponseBody
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException e) {
         log.error("Error de validación: {}", e.getMessage());
+        return ResponseEntity.badRequest()
+            .body(Map.of("error", e.getMessage()));
+    }
+    
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException e) {
+        log.error("Operación no permitida: {}", e.getMessage());
         return ResponseEntity.badRequest()
             .body(Map.of("error", e.getMessage()));
     }

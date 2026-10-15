@@ -232,6 +232,13 @@ public interface AsientoContableRepository extends JpaRepository<AsientoContable
     boolean existsByAsientoRevertidoIdAsiento(Long idAsiento);
 
     /**
+     * Asiento de reversión que referencia a otro asiento (ADR-023: como máximo uno).
+     * @param idAsiento ID del asiento original
+     * @return la reversión, si existe
+     */
+    Optional<AsientoContable> findFirstByAsientoRevertidoIdAsiento(Long idAsiento);
+
+    /**
      * Verifica si una factura tiene algún asiento contabilizado vinculado.
      * @param facturaId ID de la factura
      * @return true si existe al menos uno

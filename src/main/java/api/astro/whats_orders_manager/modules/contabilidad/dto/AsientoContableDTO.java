@@ -39,6 +39,12 @@ public class AsientoContableDTO {
     private Long pagoId;
     private String pagoReferencia;
     
+    // Reversión (ADR-023)
+    private Long revertidoPorId;
+    private String revertidoPorNumero;
+    private Long reversionDeId;
+    private String reversionDeNumero;
+    
     // Detalles del asiento
     @Builder.Default
     private List<DetalleAsientoDTO> detalles = new ArrayList<>();
@@ -58,6 +64,7 @@ public class AsientoContableDTO {
     // Información de estado
     private Boolean puedeModificarse;
     private Boolean puedeContabilizarse;
+    private Boolean puedeRevertirse;
     private Boolean esAutomatico;
     private Boolean esEditable;
 }
