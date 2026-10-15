@@ -43,6 +43,12 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         
         ConfiguracionEmpresa empresa = configuracionEmpresaRepository.findById(dto.getEmpresaId().intValue())
             .orElseThrow(() -> new IllegalArgumentException("ConfiguracionEmpresa no encontrada"));
+
+        // ADR-021: una configuración nueva marcada como activa desactiva las demás en la misma transacción
+        boolean activa = Boolean.TRUE.equals(dto.getActiva());
+        if (activa) {
+            desactivarOtras(null);
+        }
         
         ConfiguracionHacienda configuracion = ConfiguracionHacienda.builder()
             .empresa(empresa)
@@ -51,7 +57,7 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
             .passwordHacienda(dto.getPasswordHacienda()) // TODO: Encriptar
             .rutaCertificado(dto.getRutaCertificado())
             .pinCertificado(dto.getPinCertificado()) // TODO: Encriptar
-            .activa(false) // Inicia desactivada
+            .activa(activa)
             .consecutivoFactura(1L)
             .consecutivoTiquete(1L)
             .consecutivoNotaCredito(1L)
@@ -99,14 +105,17 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     
     @Override
     @Transactional(readOnly = true)
-    public Optional<ConfiguracionHacienda> obtenerConfiguracionActivaGlobal() {
-        return repository.findFirstByActivaTrue();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<ConfiguracionHacienda> obtenerActivaPorEmpresa(Integer empresaId) {
-        return repository.findActivaByEmpresaId(empresaId);
+    public ConfiguracionHacienda obtenerConfiguracionActiva() {
+        List<ConfiguracionHacienda> activas = repository.findByActivaTrueOrderByIdAsc();
+        if (activas.isEmpty()) {
+            throw new IllegalStateException("No hay ninguna configuración de Hacienda activa; active una en "
+                    + "Facturación → Configuración de Hacienda.");
+        }
+        if (activas.size() > 1) {
+            throw new IllegalStateException("Debe haber exactamente una configuración de Hacienda activa y hay "
+                    + activas.size() + " (ids " + idsDe(activas) + ").");
+        }
+        return activas.get(0);
     }
 
     @Override
@@ -132,14 +141,8 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         ConfiguracionHacienda configuracion = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
         
-        // Desactivar otras configuraciones de la misma empresa
-        Integer empresaId = configuracion.getEmpresa().getIdEmpresa();
-        repository.findAllByEmpresaId(empresaId).forEach(config -> {
-            if (!config.getId().equals(id)) {
-                config.setActiva(false);
-                repository.save(config);
-            }
-        });
+        // ADR-021: exactamente una activa; se desactivan las demás en la misma transacción
+        desactivarOtras(id);
         
         // Activar esta configuración
         configuracion.setActiva(true);
@@ -237,5 +240,22 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     @Override
     public Optional<ConfiguracionHaciendaDTO> obtenerConfiguracionActiva(Integer empresaId) {
         return repository.findActivaByEmpresaId(empresaId).map(mapper::toDTO);
+    }
+
+    /**
+     * Desactiva todas las configuraciones activas salvo la indicada (null: todas).
+     */
+    private void desactivarOtras(Long idQueQuedaActiva) {
+        repository.findByActivaTrueOrderByIdAsc().forEach(config -> {
+            if (!config.getId().equals(idQueQuedaActiva)) {
+                config.setActiva(false);
+                repository.save(config);
+                log.info("Configuración de Hacienda {} desactivada", config.getId());
+            }
+        });
+    }
+
+    private static String idsDe(List<ConfiguracionHacienda> configuraciones) {
+        return configuraciones.stream().map(c -> String.valueOf(c.getId())).collect(Collectors.joining(", "));
     }
 }
