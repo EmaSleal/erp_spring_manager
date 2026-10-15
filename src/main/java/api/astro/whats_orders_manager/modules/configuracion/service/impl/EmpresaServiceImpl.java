@@ -17,8 +17,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Implementación del servicio de Empresa
@@ -58,6 +60,11 @@ public class EmpresaServiceImpl implements EmpresaService {
      */
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024;
 
+    /**
+     * Nombre de la empresa creada por defecto en una instalación nueva
+     */
+    static final String NOMBRE_EMPRESA_POR_DEFECTO = "Mi Empresa S.A.C.";
+
     @Override
     @Transactional(readOnly = true)
     public Optional<Empresa> findById(Integer id) {
@@ -69,27 +76,40 @@ public class EmpresaServiceImpl implements EmpresaService {
     @Transactional(readOnly = true)
     public Optional<Empresa> findEmpresaActiva() {
         log.debug("Buscando empresa activa");
-        return empresaRepository.findEmpresaActiva();
+        List<Empresa> activas = empresaRepository.findEmpresasActivas();
+        if (activas.size() > 1) {
+            throw new IllegalStateException(mensajeVariasActivas(activas));
+        }
+        return activas.stream().findFirst();
     }
 
+    /**
+     * ADR-019: la empresa solo se crea por defecto en una instalación nueva (tabla vacía).
+     * Con filas pero ninguna activa, o con varias activas, falla de forma explícita.
+     * Las excepciones no quedan en la caché: @Cacheable solo guarda retornos normales.
+     */
     @Override
     @Cacheable(value = "empresa", key = "'principal'")
     public Empresa getEmpresaPrincipal() {
         log.debug("Obteniendo empresa principal (sin caché)");
-        
+
         Optional<Empresa> empresaOpt = findEmpresaActiva();
-        
         if (empresaOpt.isPresent()) {
             return empresaOpt.get();
         }
-        
-        // Si no existe, crear una por defecto
-        log.info("No existe empresa activa, creando una por defecto");
+
+        long total = empresaRepository.count();
+        if (total > 0) {
+            throw new IllegalStateException("No hay una empresa activa configurada: la tabla empresa tiene "
+                    + total + " fila(s) y ninguna está activa. Corrija los datos; no se crea una empresa nueva.");
+        }
+
+        log.warn("La tabla empresa está vacía (instalación nueva): se crea la empresa por defecto");
         Empresa empresaDefault = new Empresa();
-        empresaDefault.setNombreEmpresa("Mi Empresa S.A.C.");
+        empresaDefault.setNombreEmpresa(NOMBRE_EMPRESA_POR_DEFECTO);
         empresaDefault.setNombreComercial("Mi Empresa");
         empresaDefault.setActivo(true);
-        
+
         return empresaRepository.save(empresaDefault);
     }
 
@@ -103,16 +123,12 @@ public class EmpresaServiceImpl implements EmpresaService {
             throw new IllegalArgumentException("Los datos de la empresa no son válidos");
         }
         
-        // Si ya existe una empresa activa y esta es nueva, desactivar la anterior
-        if (empresa.getIdEmpresa() == null && existeEmpresaActiva()) {
-            log.warn("Ya existe una empresa activa. Se desactivará la anterior.");
-            Optional<Empresa> empresaActivaOpt = findEmpresaActiva();
-            empresaActivaOpt.ifPresent(empresaActiva -> {
-                empresaActiva.setActivo(false);
-                empresaRepository.save(empresaActiva);
-            });
+        // ADR-019: empresa única. No se crea una segunda empresa ni se desactiva la existente.
+        if (empresaRepository.count() > 0) {
+            throw new IllegalStateException("Ya existe una empresa registrada; el sistema opera con una sola empresa. "
+                    + "Actualice la existente en lugar de crear otra.");
         }
-        
+
         empresa.setActivo(true);
 
         if (usuarioId != null) {
@@ -140,6 +156,9 @@ public class EmpresaServiceImpl implements EmpresaService {
             throw new IllegalArgumentException("Los datos de la empresa no son válidos");
         }
         
+        // ADR-019: el flag activo nunca se toma del objeto recibido
+        empresa.setActivo(empresaExistente.getActivo());
+
         // Preservar archivos si no se proporcionaron nuevos
         if (empresa.getLogo() == null) {
             empresa.setLogo(empresaExistente.getLogo());
@@ -283,6 +302,12 @@ public class EmpresaServiceImpl implements EmpresaService {
     }
 
     // ==================== MÉTODOS PRIVADOS ====================
+
+    private String mensajeVariasActivas(List<Empresa> activas) {
+        return "Hay " + activas.size() + " empresas activas (ids "
+                + activas.stream().map(e -> String.valueOf(e.getIdEmpresa())).collect(Collectors.joining(", "))
+                + "); debe haber exactamente una.";
+    }
 
     /**
      * Valida que el archivo sea válido (tamaño y extensión)
