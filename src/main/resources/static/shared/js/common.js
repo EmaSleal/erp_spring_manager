@@ -356,8 +356,9 @@ async function httpRequest(config) {
             return result;
         }
     } catch (error) {
-        // Ocultar loading en caso de error
-        if (shouldShowLoading) {
+        // Ocultar loading en caso de error. Si el error ya se mostró (handled), el loading ya se
+        // ocultó: volver a llamar a Swal.close() cerraría la alerta con el mensaje del servidor.
+        if (shouldShowLoading && !error.handled) {
             hideLoading();
         }
 
