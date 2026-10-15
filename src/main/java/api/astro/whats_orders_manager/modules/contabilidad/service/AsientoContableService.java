@@ -314,35 +314,44 @@ public class AsientoContableService {
     }
     
     /**
-     * Anula un asiento contabilizado.
-     * @param id ID del asiento
-     * @param motivo Motivo de la anulación
-     * @return Asiento anulado
+     * Revierte un asiento contabilizado desde Contabilidad (ADR-023): genera su reversión con
+     * {@link #generarAsientoReversion(AsientoContable, String)} (espejo fechado hoy, contabilizado y
+     * enlazado) y deja el original CONTABILIZADO. Un asiento contabilizado nunca pasa a ANULADO.
+     *
+     * Solo se revierten asientos de tipo no automático y sin documento de origen vinculado; los demás
+     * se revierten anulando su documento (factura, pago, CxP, pago a proveedor o planilla).
+     *
+     * @param id     ID del asiento a revertir
+     * @param motivo motivo de la reversión (obligatorio)
+     * @return el asiento de reversión
+     * @throws IllegalArgumentException si falta el motivo o el asiento no existe
+     * @throws IllegalStateException    si el asiento no es reversible desde Contabilidad, es una
+     *                                  reversión o ya fue revertido
      */
     @Transactional
-    public AsientoContable anular(Long id, String motivo) {
-        log.info("Anulando asiento ID: {}", id);
-        
+    public AsientoContable revertirManual(Long id, String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new IllegalArgumentException("El motivo de la reversión es obligatorio");
+        }
         AsientoContable asiento = asientoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Asiento no encontrado"));
-        
-        if (asiento.getEstado() != EstadoAsiento.CONTABILIZADO) {
-            throw new IllegalArgumentException(
-                "Solo se pueden anular asientos contabilizados. Estado actual: " + asiento.getEstado()
-            );
+
+        String motivoRechazo = asiento.motivoNoReversibleDesdeContabilidad();
+        if (motivoRechazo != null) {
+            throw new IllegalStateException(motivoRechazo);
         }
-        
-        asiento.anular(motivo, null);
-        
-        // Agregar motivo al concepto
-        if (motivo != null && !motivo.isEmpty()) {
-            asiento.setConcepto(asiento.getConcepto() + " [ANULADO: " + motivo + "]");
-        }
-        
-        AsientoContable guardado = asientoRepository.save(asiento);
-        log.info("Asiento anulado: {}", guardado.getNumero());
-        
-        return guardado;
+
+        log.info("Revirtiendo asiento {} desde Contabilidad", asiento.getNumero());
+        return generarAsientoReversion(asiento, motivo.trim());
+    }
+
+    /**
+     * Asiento de reversión de otro asiento, si fue revertido.
+     * @param idAsiento ID del asiento original
+     * @return la reversión, si existe
+     */
+    public Optional<AsientoContable> obtenerReversionDe(Long idAsiento) {
+        return asientoRepository.findFirstByAsientoRevertidoIdAsiento(idAsiento);
     }
     
     /**

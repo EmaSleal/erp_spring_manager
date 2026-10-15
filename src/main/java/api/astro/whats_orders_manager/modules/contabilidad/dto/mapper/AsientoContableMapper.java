@@ -3,12 +3,14 @@ package api.astro.whats_orders_manager.modules.contabilidad.dto.mapper;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.AsientoContableDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.DetalleAsientoDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoContableRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.PagoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -25,6 +27,7 @@ public class AsientoContableMapper {
     private final DetalleAsientoMapper detalleMapper;
     private final FacturaRepository facturaRepository;
     private final PagoRepository pagoRepository;
+    private final AsientoContableRepository asientoRepository;
     
     /**
      * Convierte una entidad AsientoContable a DTO.
@@ -77,6 +80,7 @@ public class AsientoContableMapper {
         // Información de estado
         dto.setPuedeModificarse(asiento.puedeModificarse());
         dto.setPuedeContabilizarse(asiento.puedeContabilizarse());
+        aplicarReversion(asiento, dto);
         dto.setEsAutomatico(asiento.getTipo().esAutomatico());
         dto.setEsEditable(asiento.getTipo().esEditable());
         
@@ -155,7 +159,31 @@ public class AsientoContableMapper {
             dto.setPagoReferencia(asiento.getPago().getReferenciaBancaria());
         }
         
+        // Acciones disponibles en el listado
+        dto.setPuedeModificarse(asiento.puedeModificarse());
+        dto.setPuedeContabilizarse(asiento.puedeContabilizarse());
+        aplicarReversion(asiento, dto);
+        
         return dto;
+    }
+    
+    /**
+     * Enlaces de reversión (ADR-023) y puedeRevertirse: el asiento que lo revirtió, el asiento del que
+     * es reversión, y si se puede revertir desde Contabilidad (reversible y aún no revertido).
+     */
+    private void aplicarReversion(AsientoContable asiento, AsientoContableDTO dto) {
+        if (asiento.getAsientoRevertido() != null) {
+            dto.setReversionDeId(asiento.getAsientoRevertido().getIdAsiento());
+            dto.setReversionDeNumero(asiento.getAsientoRevertido().getNumero());
+        }
+        Optional<AsientoContable> reversion = asiento.getIdAsiento() != null
+            ? asientoRepository.findFirstByAsientoRevertidoIdAsiento(asiento.getIdAsiento())
+            : Optional.empty();
+        reversion.ifPresent(r -> {
+            dto.setRevertidoPorId(r.getIdAsiento());
+            dto.setRevertidoPorNumero(r.getNumero());
+        });
+        dto.setPuedeRevertirse(reversion.isEmpty() && asiento.motivoNoReversibleDesdeContabilidad() == null);
     }
     
     /**
