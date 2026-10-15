@@ -239,7 +239,7 @@ const Configuracion = {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw await errorDesdeRespuesta(response);
             }
 
             return await response.json();
@@ -271,7 +271,7 @@ const Configuracion = {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw await errorDesdeRespuesta(response);
             }
 
             return await response.json();
@@ -303,7 +303,7 @@ const Configuracion = {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw await errorDesdeRespuesta(response);
             }
 
             return await response.json();
@@ -335,7 +335,7 @@ const Configuracion = {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw await errorDesdeRespuesta(response);
             }
 
             return await response.json();
@@ -366,7 +366,7 @@ const Configuracion = {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw await errorDesdeRespuesta(response);
             }
 
             return await response.json();
