@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
+import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.HaciendaCallbackDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -59,6 +60,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final FacturaRepository facturaRepository;
     private final LineaFacturaRepository lineaFacturaRepository;
     private final ConfiguracionHaciendaService configuracionService;
+    private final ConfiguracionEmpresaService configuracionEmpresaService;
     private final XmlGeneratorService xmlGenerator;
     private final FirmaDigitalService firmaDigital;
     private final HaciendaApiService haciendaApi;
@@ -164,10 +166,11 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         Factura factura = facturaRepository.findById(facturaId.intValue())
             .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada"));
 
-        ConfiguracionHacienda config = configuracionService.obtenerConfiguracionActivaGlobal()
-            .orElseThrow(() -> new IllegalStateException("No hay configuración activa de Hacienda"));
-
-        ConfiguracionEmpresa empresa = config.getEmpresa();
+        // ADR-021: la configuración activa (exactamente una) de la empresa única
+        ConfiguracionEmpresa empresa = configuracionEmpresaService.obtenerConfiguracion()
+            .orElseThrow(() -> new IllegalStateException(
+                "No hay configuración de empresa; complétela en Configuración → Empresa."));
+        ConfiguracionHacienda config = configuracionActivaDe(empresa);
 
         if (empresa.getRuc() == null || empresa.getRuc().isBlank()) {
             throw new IllegalStateException(
@@ -269,9 +272,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
         
-        ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa()
-        ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
+        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
         
         try {
             String xmlFirmado = firmaDigital.firmarXml(
@@ -316,9 +317,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             throw new IllegalStateException("Comprobante no está listo para enviar");
         }
         
-        ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa()
-        ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
+        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
         
         // Verificar y renovar token si es necesario
         configuracionService.verificarYRenovarToken(config.getId());
@@ -391,9 +390,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
         
-        ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa()
-        ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
+        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
         
         try {
             var respuesta = haciendaApi.consultarComprobante(
@@ -425,9 +422,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         ComprobanteElectronico comprobante = repository.findById(comprobanteId)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
         
-        ConfiguracionHacienda config = configuracionService.obtenerActivaPorEmpresa(
-            comprobante.getEmpresa().getIdEmpresa()
-        ).orElseThrow(() -> new IllegalStateException("No hay configuración activa"));
+        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
         
         try {
             var respuesta = haciendaApi.consultarComprobante(
@@ -927,5 +922,20 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         // TODO: Integrar con EmailService cuando esté implementado
         log.info("📧 Email de notificación pendiente para comprobante: {} - Estado: {}", 
             comprobante.getId(), comprobante.getEstado());
+    }
+
+    /**
+     * ADR-021: la única configuración de Hacienda activa, que debe pertenecer a la empresa indicada
+     * (la empresa única al emitir; la del comprobante en los pasos posteriores).
+     */
+    private ConfiguracionHacienda configuracionActivaDe(ConfiguracionEmpresa empresa) {
+        ConfiguracionHacienda config = configuracionService.obtenerConfiguracionActiva();
+        Integer empresaDeLaConfiguracion = config.getEmpresa().getIdConfiguracion();
+        if (!empresaDeLaConfiguracion.equals(empresa.getIdConfiguracion())) {
+            throw new IllegalStateException("La configuración de Hacienda activa (id " + config.getId()
+                + ") pertenece a la empresa " + empresaDeLaConfiguracion + ", no a la empresa "
+                + empresa.getIdConfiguracion() + ".");
+        }
+        return config;
     }
 }

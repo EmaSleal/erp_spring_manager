@@ -65,6 +65,12 @@ public class ConfiguracionEmpresaServiceImpl implements ConfiguracionEmpresaServ
         if (configuracion.getRazonSocial() == null || configuracion.getRazonSocial().trim().isEmpty()) {
             throw new IllegalArgumentException("La razón social es obligatoria");
         }
+
+        // ADR-021: identidad fiscal única; no se crea una segunda fila
+        if (esNueva(configuracion) && configuracionRepository.count() > 0) {
+            throw new IllegalStateException("Ya existe una configuración de empresa; el sistema opera con una "
+                    + "sola identidad fiscal. Actualice la existente en lugar de crear otra.");
+        }
         
         ConfiguracionEmpresa guardada = configuracionRepository.save(configuracion);
         log.info("Configuración de empresa guardada correctamente con ID: {}", guardada.getIdConfiguracion());
@@ -202,5 +208,10 @@ public class ConfiguracionEmpresaServiceImpl implements ConfiguracionEmpresaServ
     @Override
     public ConfiguracionEmpresa saveOrUpdate(ConfiguracionEmpresa configuracion) {
         return actualizarConfiguracion(configuracion);
+    }
+
+    private boolean esNueva(ConfiguracionEmpresa configuracion) {
+        return configuracion.getIdConfiguracion() == null
+                || !configuracionRepository.existsById(configuracion.getIdConfiguracion());
     }
 }

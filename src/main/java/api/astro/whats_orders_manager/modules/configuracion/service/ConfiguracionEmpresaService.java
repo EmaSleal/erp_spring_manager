@@ -25,6 +25,7 @@ public interface ConfiguracionEmpresaService {
      * Guarda o actualiza la configuración de la empresa
      * @param configuracion Configuración a guardar
      * @return Configuración guardada
+     * @throws IllegalStateException si es una fila nueva y ya existe una configuración (ADR-021)
      */
     ConfiguracionEmpresa guardarConfiguracion(ConfiguracionEmpresa configuracion);
     

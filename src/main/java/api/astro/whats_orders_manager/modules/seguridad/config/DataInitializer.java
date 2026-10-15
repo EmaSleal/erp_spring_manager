@@ -132,7 +132,8 @@ public class DataInitializer implements ApplicationRunner {
             productoRepository.save(p);
         }
 
-        ConfiguracionEmpresa config = configRepository.findById(1).orElseGet(() -> {
+        // ADR-021: a single fiscal identity; only a fresh install (empty table) gets the default row
+        if (configRepository.count() == 0) {
             log.info("DataInitializer: creating default ConfiguracionEmpresa");
             ConfiguracionEmpresa c = new ConfiguracionEmpresa();
             c.setNombreComercial("Empresa Genérica");
@@ -140,8 +141,8 @@ public class DataInitializer implements ApplicationRunner {
             c.setTelefono("1234567890");
             c.setEmail("empresa@ejemplo.com");
             c.setRazonSocial(c.getNombreComercial());
-            return configRepository.save(c);
-        });
+            configRepository.save(c);
+        }
 
         sincronizarPermisosYRoles();
     }

@@ -49,5 +49,8 @@ public interface ConfiguracionHaciendaRepository extends JpaRepository<Configura
     /**
      * Encuentra la primera configuración activa (independiente de empresa).
      */
-    Optional<ConfiguracionHacienda> findFirstByActivaTrue();
+    /**
+     * Configuraciones activas de cualquier empresa, ordenadas por id (ADR-021: debe haber exactamente una).
+     */
+    java.util.List<ConfiguracionHacienda> findByActivaTrueOrderByIdAsc();
 }

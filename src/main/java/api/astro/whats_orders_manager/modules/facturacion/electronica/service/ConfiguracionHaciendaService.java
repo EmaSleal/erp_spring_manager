@@ -32,14 +32,11 @@ public interface ConfiguracionHaciendaService {
     Optional<ConfiguracionHaciendaDTO> obtenerPorId(Long id);
     
     /**
-     * Obtiene la primera configuración activa disponible (sin filtrar por empresa).
+     * Obtiene la única configuración de Hacienda activa (ADR-021).
+     *
+     * @throws IllegalStateException si no hay ninguna activa o hay más de una (indica cuántas y sus ids)
      */
-    Optional<ConfiguracionHacienda> obtenerConfiguracionActivaGlobal();
-
-    /**
-     * Obtiene la configuración activa de una empresa.
-     */
-    Optional<ConfiguracionHacienda> obtenerActivaPorEmpresa(Integer empresaId);
+    ConfiguracionHacienda obtenerConfiguracionActiva();
     
     /**
      * Obtiene la configuración activa de una empresa como DTO.
