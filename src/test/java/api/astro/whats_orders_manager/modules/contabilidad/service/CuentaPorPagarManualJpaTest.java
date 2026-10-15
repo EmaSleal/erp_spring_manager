@@ -355,6 +355,80 @@ class CuentaPorPagarManualJpaTest {
         assertRechazoSinCambios(dto("100.00", "0.00", null, agrupadora.getIdCuenta()), "subcuentas");
     }
 
+    // ── T-019 (ADR-022): cuentas asignadas a parámetros contables ────────────
+
+    @Test
+    @DisplayName("T-019 cuentas elegibles: excluyen toda cuenta de parametros_contables salvo CPP_CUENTA_COMPRAS")
+    void cuentasElegibles_excluyenCuentasParametrizadasSalvoCompras() {
+        tx.executeWithoutResult(s -> {
+            param("NOMINA_GASTO_SUELDOS", cuenta("5.1.02.001", TipoCuenta.EGRESO, true, true));
+            param("NOMINA_GASTO_CARGAS_SOCIALES", cuenta("5.1.02.002", TipoCuenta.EGRESO, true, true));
+            param("NOMINA_GASTO_APORTE_ASE", cuenta("5.1.02.003", TipoCuenta.EGRESO, true, true));
+            param("DIFERENCIAL_CAMBIARIO_GASTO", cuenta("5.2.01.001", TipoCuenta.EGRESO, true, true));
+        });
+
+        List<CuentaContable> elegibles = tx.execute(s -> asientoService.obtenerCuentasContrapartidaCxpManual());
+
+        List<Long> parametrizadas = tx.execute(s -> parametroRepository.findAllWithCuentas().stream()
+                .filter(p -> !p.getClave().equals("CPP_CUENTA_COMPRAS"))
+                .map(p -> p.getCuentaContable().getIdCuenta())
+                .toList());
+        assertThat(elegibles).extracting(CuentaContable::getIdCuenta).doesNotContainAnyElementsOf(parametrizadas);
+        assertThat(elegibles).extracting(CuentaContable::getCodigo)
+                .containsExactly("5.1.03.001", "5.1.04.001")
+                .doesNotContain("5.1.02.001", "5.1.02.002", "5.1.02.003", "5.2.01.001");
+        Optional<Long> idCompras = tx.execute(s -> asientoService.obtenerIdCuentaComprasCpp());
+        assertThat(idCompras).contains(compras.getIdCuenta());
+    }
+
+    @Test
+    @DisplayName("T-019 la cuenta de Compras sigue elegible aunque otra clave también la use")
+    void cuentasElegibles_comprasCompartidaSigueElegible() {
+        tx.executeWithoutResult(s -> param("OC_CUENTA_COMPRAS_ALTERNA", compras));
+
+        List<CuentaContable> elegibles = tx.execute(s -> asientoService.obtenerCuentasContrapartidaCxpManual());
+
+        assertThat(elegibles).extracting(CuentaContable::getCodigo).contains("5.1.04.001");
+    }
+
+    @Test
+    @DisplayName("T-019 rechazo: CxP manual contra la cuenta de gasto de sueldos, con un mensaje que nombra la cuenta")
+    void rechazo_cuentaDeSueldos() {
+        CuentaContable sueldos = tx.execute(s -> {
+            CuentaContable c = cuenta("5.1.02.001", TipoCuenta.EGRESO, true, true);
+            param("NOMINA_GASTO_SUELDOS", c);
+            return c;
+        });
+
+        assertRechazoSinCambios(dto("100000.00", "13000.00", null, sueldos.getIdCuenta()),
+                "La cuenta 5.1.02.001 - Cuenta 5.1.02.001 está configurada como NOMINA_GASTO_SUELDOS");
+    }
+
+    @Test
+    @DisplayName("T-019 aceptación: CxP manual contra la cuenta de Compras (CPP_CUENTA_COMPRAS)")
+    void acepta_cuentaDeCompras() {
+        CuentaPorPagar cpp = cxpService.crear(dto("100000.00", "13000.00", null, compras.getIdCuenta()));
+
+        assertThat(cpp.getId()).isNotNull();
+        assertThat(cxpRepository.count()).isEqualTo(1);
+        Map<Long, BigDecimal> saldos = tx.execute(s -> saldosPorCuenta());
+        assertThat(saldos.get(compras.getIdCuenta())).isEqualByComparingTo("100000.00");
+    }
+
+    @Test
+    @DisplayName("T-019 una clave nueva en parametros_contables apuntando a una hoja de gasto la excluye, sin cambiar código")
+    void claveNueva_excluyeLaHoja() {
+        List<CuentaContable> antes = tx.execute(s -> asientoService.obtenerCuentasContrapartidaCxpManual());
+        assertThat(antes).extracting(CuentaContable::getCodigo).contains("5.1.03.001");
+
+        tx.executeWithoutResult(s -> param("CLAVE_NUEVA_DE_PRUEBA", gastoServicios));
+
+        List<CuentaContable> despues = tx.execute(s -> asientoService.obtenerCuentasContrapartidaCxpManual());
+        assertThat(despues).extracting(CuentaContable::getCodigo).doesNotContain("5.1.03.001");
+        assertRechazoSinCambios(dto("100.00", "0.00", null, gastoServicios.getIdCuenta()),
+                "configurada como CLAVE_NUEVA_DE_PRUEBA");
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================

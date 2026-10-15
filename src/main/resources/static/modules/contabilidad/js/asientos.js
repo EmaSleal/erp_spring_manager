@@ -260,7 +260,7 @@ async function cargarAsiento(id) {
                 cuentaId: d.cuentaId,
                 cuentaCodigo: d.cuentaCodigo,
                 cuentaNombre: d.cuentaNombre,
-                concepto: d.concepto,
+                descripcion: d.descripcion ?? '',
                 debe: d.debe,
                 haber: d.haber
             }));
@@ -278,7 +278,7 @@ function agregarDetalle() {
         cuentaId: null,
         cuentaCodigo: '',
         cuentaNombre: '',
-        concepto: '',
+        descripcion: '',
         debe: 0,
         haber: 0
     };
@@ -311,8 +311,8 @@ function renderizarDetalles() {
             </td>
             <td>
                 <input type="text" class="form-control form-control-sm" id="txtConceptoDet${detalle.id}" 
-                       value="${detalle.concepto}" maxlength="500" 
-                       onchange="actualizarDetalleConcepto(${detalle.id}, this.value)">
+                       value="${detalle.descripcion}" maxlength="500" 
+                       onchange="actualizarDetalleDescripcion(${detalle.id}, this.value)">
             </td>
             <td>
                 <input type="number" class="form-control form-control-sm text-end" id="txtDebe${detalle.id}" 
@@ -351,10 +351,10 @@ function seleccionarCuenta(detalleId) {
     }
 }
 
-function actualizarDetalleConcepto(detalleId, concepto) {
+function actualizarDetalleDescripcion(detalleId, descripcion) {
     const detalle = detallesAsiento.find(d => d.id === detalleId);
     if (detalle) {
-        detalle.concepto = concepto;
+        detalle.descripcion = descripcion;
     }
 }
 
@@ -436,7 +436,7 @@ async function guardarAsiento(contabilizar = false) {
         concepto: document.getElementById('txtConcepto').value,
         detalles: detallesValidos.map(d => ({
             cuentaId: d.cuentaId,
-            concepto: d.concepto,
+            descripcion: d.descripcion,
             debe: d.debe,
             haber: d.haber
         }))
