@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
@@ -141,7 +142,8 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
             }
         }
         col1.add(new Paragraph(safe(configuracion.getNombreEmpresa())).setBold().setFontSize(13));
-        col1.add(new Paragraph("Cédula Jurídica: " + safe(configuracion.getRuc())).setFontSize(9));
+        col1.add(new Paragraph(etiquetaIdentificacion(configuracion.getTipoIdentificacion()) + ": "
+                + safe(configuracion.getRuc())).setFontSize(9));
         if (configuracion.getDireccion() != null) {
             col1.add(new Paragraph(configuracion.getDireccion()).setFontSize(9));
         }
@@ -465,5 +467,13 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
             case EUR -> "€";
             default -> "¢";
         };
+    }
+
+    /**
+     * ADR-021: la etiqueta de la identificación del emisor sale de su tipo (Cédula Física, Cédula Jurídica,
+     * DIMEX, NITE); sin tipo configurado, "Identificación".
+     */
+    static String etiquetaIdentificacion(TipoIdentificacion tipo) {
+        return tipo != null ? tipo.getDescripcion() : "Identificación";
     }
 }

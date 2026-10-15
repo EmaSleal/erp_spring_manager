@@ -512,13 +512,16 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         return "";
     }
 
-    private String obtenerActividadEconomica(ComprobanteElectronico comprobante) {
+    /**
+     * ADR-021: el código de actividad se envía tal como está registrado (CIIU 4 de Hacienda, p. ej. 4773.0);
+     * sin código, la emisión falla en lugar de usar un valor por defecto.
+     */
+    String obtenerActividadEconomica(ComprobanteElectronico comprobante) {
         var empresa = comprobante.getEmpresa();
-        if (empresa != null && empresa.getCodigoActividad() != null) {
-            return empresa.getCodigoActividad();
+        if (empresa == null || empresa.getCodigoActividad() == null || empresa.getCodigoActividad().isBlank()) {
+            throw new IllegalStateException("La empresa no tiene código de actividad económica configurado");
         }
-        log.warn("Empresa sin código de actividad económica. Usando genérico.");
-        return "620100";
+        return empresa.getCodigoActividad();
     }
 
     private String determinarTipoIdentificacion(String identificacion) {
