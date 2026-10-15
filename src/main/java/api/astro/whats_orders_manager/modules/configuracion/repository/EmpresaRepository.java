@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -19,13 +20,15 @@ import java.util.Optional;
 public interface EmpresaRepository extends JpaRepository<Empresa, Integer> {
 
     /**
-     * Busca la empresa activa (principal)
-     * Solo debe existir un registro con activo = true
-     * 
-     * @return Optional con la empresa activa si existe
+     * Lista las empresas activas.
+     * Solo debe existir un registro con activo = true (ADR-019); se devuelve una lista para que
+     * quien la consume detecte con un mensaje claro cuando hay más de una, en lugar de un
+     * NonUniqueResultException.
+     *
+     * @return empresas activas, ordenadas por id
      */
-    @Query("SELECT e FROM Empresa e WHERE e.activo = true")
-    Optional<Empresa> findEmpresaActiva();
+    @Query("SELECT e FROM Empresa e WHERE e.activo = true ORDER BY e.idEmpresa")
+    List<Empresa> findEmpresasActivas();
 
     /**
      * Verifica si existe una empresa activa
