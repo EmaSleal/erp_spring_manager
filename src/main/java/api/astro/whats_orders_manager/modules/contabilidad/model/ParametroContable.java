@@ -21,9 +21,11 @@ import lombok.Setter;
  * Decouples journal-entry generation from hardcoded account IDs.
  *
  * Required keys (must be configured before CPP/pago hooks fire):
- *   CPP_CUENTA_COMPRAS, CPP_CUENTA_POR_PAGAR, CPP_IVA_CREDITO_FISCAL,
- *   CPP_BANCO_TRANSFERENCIA, CPP_BANCO_CHEQUE, CPP_BANCO_EFECTIVO,
- *   CPP_BANCO_SINPE, CPP_BANCO_DEPOSITO
+ *   CPP_CUENTA_COMPRAS, CPP_CUENTA_POR_PAGAR, CPP_IVA_CREDITO_FISCAL, CPP_BANCO_EFECTIVO
+ *
+ * Bank media (supplier payments by TRANSFERENCIA, CHEQUE, SINPE, DEPOSITO and customer receipts by
+ * TRANSFERENCIA) have no key since ADR-018 / V30: they post to the leaf account of the bank account
+ * chosen on the payment (cuenta_bancaria.cuenta_contable_id).
  */
 @Entity
 @Table(name = "parametros_contables", indexes = {

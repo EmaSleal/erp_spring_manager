@@ -29,28 +29,32 @@ public interface EmpresaService {
      * Solo debe existir una empresa activa en el sistema
      * 
      * @return Optional con la empresa activa, o vacío si no existe
+     * @throws IllegalStateException si hay más de una empresa activa
      */
     Optional<Empresa> findEmpresaActiva();
 
     /**
-     * Obtiene la empresa activa, o crea una por defecto si no existe
-     * 
+     * Obtiene la empresa activa (ADR-019).
+     * Solo crea la empresa por defecto cuando la tabla está vacía (instalación nueva).
+     *
      * @return La empresa activa del sistema
+     * @throws IllegalStateException si hay filas pero ninguna activa, o si hay más de una activa
      */
     Empresa getEmpresaPrincipal();
 
     /**
-     * Guarda o actualiza una empresa
-     * Si es una actualización, preserva los archivos existentes
+     * Crea la empresa del sistema (empresa única, ADR-019)
      * 
      * @param empresa La empresa a guardar
      * @param usuarioId ID del usuario que realiza la operación
      * @return La empresa guardada
+     * @throws IllegalStateException si ya existe alguna empresa
      */
     Empresa save(Empresa empresa, Integer usuarioId);
 
     /**
-     * Actualiza los datos de la empresa
+     * Actualiza los datos de la empresa.
+     * Conserva el flag activo de la base de datos e ignora el del objeto recibido.
      * 
      * @param empresa La empresa con los datos actualizados
      * @param usuarioId ID del usuario que realiza la operación
@@ -103,6 +107,7 @@ public interface EmpresaService {
     /**
      * Saves a new empresa or updates an existing one, and assigns the appropriate audit field.
      * Decides create vs. update based on whether {@code empresa.getIdEmpresa()} is non-null and &gt; 0.
+     * The stored {@code activo} flag is always kept; creating a second empresa is rejected (ADR-019).
      *
      * @param empresa    the empresa to persist
      * @param usuarioId  ID of the user performing the operation; may be {@code null} (audit fields are skipped)

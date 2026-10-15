@@ -255,7 +255,10 @@ async function httpRequest(config) {
                 await onError(result);
             }
 
-            throw new Error(errorMsg);
+            // Ya se mostró el mensaje del servidor: el catch no debe taparlo con el genérico
+            const serverError = new Error(errorMsg);
+            serverError.handled = true;
+            throw serverError;
         }
 
         // Verificar si la respuesta fue exitosa (success=true o no tiene error)
@@ -301,11 +304,13 @@ async function httpRequest(config) {
         }
 
         console.error('HTTP Request error:', error);
-        const errorMsg = errorMessage || 'Error al comunicarse con el servidor';
-        showToast('error', errorMsg);
+        if (!error.handled) {
+            const errorMsg = errorMessage || 'Error al comunicarse con el servidor';
+            showToast('error', errorMsg);
 
-        if (onError) {
-            await onError(error);
+            if (onError) {
+                await onError(error);
+            }
         }
 
         throw error;

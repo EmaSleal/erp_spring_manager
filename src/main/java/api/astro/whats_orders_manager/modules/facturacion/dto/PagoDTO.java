@@ -86,6 +86,15 @@ public class PagoDTO {
     private String banco;
     
     private String cuentaBancaria;
+
+    /**
+     * Cuenta bancaria propia de destino (ADR-018): obligatoria con TRANSFERENCIA, ignorada en los
+     * demás métodos. Debe estar activa y en la moneda del pago.
+     */
+    private Integer idCuentaBancariaDestino;
+
+    /** Entidad de la cuenta bancaria de destino (solo lectura, para vistas). */
+    private String cuentaBancariaDestinoDescripcion;
     
     private String comprobanteUrl;
     

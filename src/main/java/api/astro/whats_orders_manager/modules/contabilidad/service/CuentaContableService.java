@@ -231,9 +231,12 @@ public class CuentaContableService {
             );
         }
         
-        // No desactivar una cuenta usada por un parámetro contable
+        // No desactivar una cuenta usada por un parámetro contable ni la hoja de una cuenta bancaria
         if (Boolean.FALSE.equals(cuentaActualizada.getActiva())) {
             validarNoUsadaPorParametros(cuenta);
+            if (Boolean.TRUE.equals(cuenta.getActiva())) {
+                validarNoEsHojaDeCuentaBancaria(cuenta, "desactivar");
+            }
         }
         
         // Actualizar campos permitidos
@@ -264,6 +267,7 @@ public class CuentaContableService {
         
         if (!activa) {
             validarNoUsadaPorParametros(cuenta);
+            validarNoEsHojaDeCuentaBancaria(cuenta, "desactivar");
         }
         
         cuenta.setActiva(activa);
@@ -285,6 +289,9 @@ public class CuentaContableService {
         
         CuentaContable cuenta = cuentaRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada"));
+        
+        // La hoja de una cuenta bancaria se elimina junto con ella (ADR-018)
+        validarNoEsHojaDeCuentaBancaria(cuenta, "eliminar");
         
         // Validar que no tenga subcuentas
         Long subcuentas = cuentaRepository.countSubcuentas(id);
@@ -339,6 +346,25 @@ public class CuentaContableService {
             throw new IllegalArgumentException(
                 "No se puede desactivar la cuenta " + cuenta.getCodigo()
                     + " porque la usan los parámetros contables: " + String.join(", ", claves)
+            );
+        }
+    }
+    
+    /**
+     * Rechaza desactivar o eliminar desde el plan de cuentas la hoja de una cuenta bancaria
+     * (ADR-018): se gestiona junto con su cuenta bancaria en Configuración → Empresa.
+     * @param cuenta Cuenta a modificar
+     * @param accion "desactivar" o "eliminar", para el mensaje
+     * @throws IllegalArgumentException si la cuenta es la hoja de una cuenta bancaria
+     */
+    private void validarNoEsHojaDeCuentaBancaria(CuentaContable cuenta, String accion) {
+        Optional<String> entidad = cuenta.getIdCuenta() != null
+            ? cuentaRepository.findEntidadCuentaBancariaPorCuenta(cuenta.getIdCuenta())
+            : Optional.empty();
+        if (entidad != null && entidad.isPresent()) {
+            throw new IllegalArgumentException(
+                "La cuenta " + cuenta.getCodigo() + " es la hoja contable de la cuenta bancaria "
+                    + entidad.get() + "; para " + accion + "la use Configuración → Empresa → Cuentas Bancarias"
             );
         }
     }

@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
+import api.astro.whats_orders_manager.modules.configuracion.service.CuentaBancariaService;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
@@ -35,6 +37,7 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
     private final CuentaPorPagarService cuentaService;
     private final AsientoContableService asientoService;
     private final TipoCambioService tipoCambioService;
+    private final CuentaBancariaService cuentaBancariaService;
 
     @Override
     @Transactional
@@ -49,6 +52,9 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
 
         if (dto.getMonto() == null || dto.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El monto del pago debe ser mayor a 0");
+        }
+        if (dto.getMetodoPago() == null) {
+            throw new IllegalArgumentException("El método de pago es obligatorio");
         }
 
         // ADR-011: moneda y tipo de cambio propios; montoAplicado en la moneda de la CxP
@@ -65,6 +71,13 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
                     + ") supera el saldo pendiente (" + cuenta.getSaldoPendiente() + " " + monedaCuenta.getCodigo() + ")");
         }
 
+        // ADR-018: cuenta bancaria de origen para medios bancarios (activa y en la moneda del pago)
+        CuentaBancaria origen = null;
+        if (dto.getMetodoPago().requiereCuentaBancaria()) {
+            origen = cuentaBancariaService.resolverParaPago(dto.getIdCuentaBancariaOrigen(), monedaPago,
+                "El pago a proveedor por " + dto.getMetodoPago() + " requiere la cuenta bancaria de origen");
+        }
+
         PagoProveedor pago = PagoProveedor.builder()
             .numero(generarNumero())
             .cuentaPorPagar(cuenta)
@@ -73,6 +86,7 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
             .tipoCambio(tipoCambio)
             .montoAplicado(montoAplicado)
             .metodoPago(dto.getMetodoPago())
+            .cuentaBancariaOrigen(origen)
             .referencia(dto.getReferencia())
             .fecha(fecha)
             .notas(dto.getNotas())

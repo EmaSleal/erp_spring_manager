@@ -2,6 +2,8 @@ package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
+import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
+import api.astro.whats_orders_manager.modules.configuracion.service.CuentaBancariaService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.facturacion.dto.EstadoCuentaClienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
@@ -73,6 +75,9 @@ public class PagoServiceImpl implements PagoService {
 
     @Autowired
     private TipoCambioService tipoCambioService;
+
+    @Autowired
+    private CuentaBancariaService cuentaBancariaService;
 
     // ==================== OPERACIONES CRUD ====================
     
@@ -211,6 +216,9 @@ public class PagoServiceImpl implements PagoService {
         
         // Validar referencia si es obligatoria
         pago.validarReferencia();
+
+        // ADR-018: cuenta bancaria de destino (obligatoria con TRANSFERENCIA, activa y en la moneda del pago)
+        asignarCuentaBancariaDestino(pago);
         
         // Validar duplicidad de referencia
         if (pago.getReferenciaBancaria() != null && !pago.getReferenciaBancaria().trim().isEmpty()) {
@@ -458,6 +466,26 @@ public class PagoServiceImpl implements PagoService {
             pago.getMoneda(), referencia, pago.getTipoCambio(), pago.getFechaPago().toLocalDate());
         pago.setTipoCambio(tipoCambio);
         pago.setMontoAplicado(ConversionMoneda.montoAplicado(pago.getMonto(), pago.getMoneda(), referencia, tipoCambio));
+    }
+
+    /**
+     * Cuenta bancaria de destino del cobro (ADR-018). Con TRANSFERENCIA es obligatoria y debe estar
+     * activa y en la moneda del pago; con los demás métodos se ignora (queda null), porque el asiento
+     * usa la clave COBRO_CAJA_&lt;método&gt;.
+     *
+     * @throws IllegalArgumentException si falta, no existe, está inactiva o su moneda no es la del pago
+     */
+    private void asignarCuentaBancariaDestino(Pago pago) {
+        if (pago.getMetodoPago() == null || !pago.getMetodoPago().requiereCuentaBancaria()) {
+            pago.setCuentaBancariaDestino(null);
+            return;
+        }
+        Integer idCuenta = pago.getCuentaBancariaDestino() != null
+            ? pago.getCuentaBancariaDestino().getIdCuentaBancaria() : null;
+        CuentaBancaria destino = cuentaBancariaService.resolverParaPago(idCuenta, pago.getMoneda(),
+            "El cobro por " + pago.getMetodoPago().getDescripcion()
+                + " requiere la cuenta bancaria de destino");
+        pago.setCuentaBancariaDestino(destino);
     }
 
     private static MonedaFE monedaFactura(Factura factura) {

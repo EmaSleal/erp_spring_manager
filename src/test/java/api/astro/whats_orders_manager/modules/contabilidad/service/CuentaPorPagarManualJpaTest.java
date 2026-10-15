@@ -103,6 +103,7 @@ class CuentaPorPagarManualJpaTest {
             param("CPP_CUENTA_POR_PAGAR", cuentaPorPagar);
             param("CPP_IVA_CREDITO_FISCAL", ivaCredito);
             param("CPP_BANCO_TRANSFERENCIA", banco);
+            param("CPP_BANCO_EFECTIVO", caja);
             param("COBRO_CAJA_EFECTIVO", caja);
             param("VENTA_CXC_CLIENTES", cxcClientes);
             proveedor = proveedorRepository.save(Proveedor.builder()
@@ -170,7 +171,8 @@ class CuentaPorPagarManualJpaTest {
                 .moneda(MonedaFE.CRC)
                 .tipoCambio(BigDecimal.ONE)
                 .montoAplicado(new BigDecimal("113000.00"))
-                .metodoPago(MetodoPagoProveedor.TRANSFERENCIA)
+                // EFECTIVO → CPP_BANCO_EFECTIVO; los medios bancarios usan la hoja de su cuenta bancaria (ADR-018)
+                .metodoPago(MetodoPagoProveedor.EFECTIVO)
                 .fecha(EMISION.plusDays(10))
                 .build());
 
@@ -181,7 +183,7 @@ class CuentaPorPagarManualJpaTest {
             assertThat(saldos.get(cuentaPorPagar.getIdCuenta())).isEqualByComparingTo("0.00");
             assertThat(saldos.get(gastoServicios.getIdCuenta())).isEqualByComparingTo("100000.00");
             assertThat(saldos.get(ivaCredito.getIdCuenta())).isEqualByComparingTo("13000.00");
-            assertThat(saldos.get(banco.getIdCuenta())).isEqualByComparingTo("-113000.00");
+            assertThat(saldos.get(caja.getIdCuenta())).isEqualByComparingTo("-113000.00");
         });
     }
 

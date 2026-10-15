@@ -252,6 +252,12 @@ public class PagoController {
             return ResponseEntity.badRequest()
                 .body(ResponseDTO.error(e.getMessage()));
                 
+        } catch (IllegalStateException e) {
+            // Reglas contables (ADR-014/017/018): p. ej. la hoja de la cuenta bancaria está inactiva
+            log.warn("Pago rechazado por una regla contable: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(ResponseDTO.error(e.getMessage()));
+                
         } catch (Exception e) {
             log.error("Error al registrar pago: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
@@ -280,6 +286,12 @@ public class PagoController {
                 
         } catch (IllegalArgumentException e) {
             log.warn("Error al confirmar pago: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(ResponseDTO.error(e.getMessage()));
+                
+        } catch (IllegalStateException e) {
+            // p. ej. un cobro por transferencia sin cuenta bancaria de destino no se contabiliza (ADR-018)
+            log.warn("Pago no confirmado por una regla contable: {}", e.getMessage());
             return ResponseEntity.badRequest()
                 .body(ResponseDTO.error(e.getMessage()));
                 
