@@ -160,6 +160,42 @@ function debounce(func, wait = 300) {
 }
 
 /**
+ * Mensaje legible de una respuesta de error de la API (ADR-020).
+ * Prioridad: body.message; si no, el campo error estándar de Spring con el status; si no, "HTTP <status>".
+ * @param {number} status - Status HTTP
+ * @param {object|null} body - Cuerpo JSON de la respuesta, si lo hay
+ * @returns {string}
+ */
+function mensajeErrorHttp(status, body) {
+    if (body && typeof body.message === 'string' && body.message.trim()) {
+        return body.message;
+    }
+    if (body && typeof body.error === 'string' && body.error.trim()) {
+        return `${body.error} (${status})`;
+    }
+    return `HTTP ${status}`;
+}
+
+/**
+ * Construye un Error a partir de una respuesta que no es OK, leyendo su cuerpo JSON si existe.
+ * El Error conserva el status y el cuerpo (error.status, error.body) para quien los necesite.
+ * @param {Response} response - Respuesta de fetch con response.ok === false
+ * @returns {Promise<Error>}
+ */
+async function errorDesdeRespuesta(response) {
+    let body = null;
+    try {
+        body = await response.json();
+    } catch (e) {
+        body = null;
+    }
+    const error = new Error(mensajeErrorHttp(response.status, body));
+    error.status = response.status;
+    error.body = body;
+    return error;
+}
+
+/**
  * Hacer petición fetch con manejo de errores y CSRF
  * @param {string} url - URL del endpoint
  * @param {object} options - Opciones de fetch
@@ -178,13 +214,13 @@ async function fetchWithCsrf(url, options = {}) {
         const response = await fetch(url, defaultOptions);
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw await errorDesdeRespuesta(response);
         }
         
         return await response.json();
     } catch (error) {
         console.error('Fetch error:', error);
-        showToast('error', 'Error al comunicarse con el servidor');
+        showToast('error', error.status ? error.message : 'Error al comunicarse con el servidor');
         throw error;
     }
 }
@@ -238,6 +274,28 @@ async function httpRequest(config) {
         }
 
         const response = await fetch(url, options);
+
+        // Error HTTP: mostrar el mensaje del servidor (body.message, o error + status)
+        if (!response.ok) {
+            const httpError = await errorDesdeRespuesta(response);
+
+            if (shouldShowLoading) {
+                hideLoading();
+            }
+
+            const errorMsg = errorMessage || httpError.message;
+            showToast('error', errorMsg);
+
+            if (onError) {
+                await onError(httpError.body || { success: false, message: errorMsg, status: httpError.status });
+            }
+
+            // Ya se mostró el mensaje del servidor: el catch no debe taparlo con el genérico
+            httpError.message = errorMsg;
+            httpError.handled = true;
+            throw httpError;
+        }
+
         const result = await response.json();
 
         // Ocultar loading
@@ -245,8 +303,8 @@ async function httpRequest(config) {
             hideLoading();
         }
 
-        // Verificar si hay un error HTTP o un campo 'error' en la respuesta
-        if (!response.ok || result.error) {
+        // Verificar si hay un campo 'error' en una respuesta OK
+        if (result.error) {
             // Manejar error del servidor
             const errorMsg = errorMessage || result.error || result.message || 'Error en la operación';
             showToast('error', errorMsg);
@@ -570,6 +628,8 @@ window.AppUtils = {
     isValidPhone,
     debounce,
     fetchWithCsrf,
+    mensajeErrorHttp,
+    errorDesdeRespuesta,
     initFormValidation,
     resetFormValidation,
     initTableSearch,

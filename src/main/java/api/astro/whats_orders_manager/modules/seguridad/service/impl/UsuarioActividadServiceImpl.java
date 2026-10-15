@@ -9,7 +9,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -244,44 +248,78 @@ public class UsuarioActividadServiceImpl implements UsuarioActividadService {
         }
     }
 
+    /**
+     * Registra un cambio de configuración a nombre del usuario autenticado.
+     * Corre fuera de la transacción del llamador (NOT_SUPPORTED): si el registro falla, se informa en el
+     * log y la operación del llamador no se revierte ni termina en UnexpectedRollbackException.
+     */
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void registrarCambioConfiguracion(String clave, String descripcion) {
         try {
-            UsuarioActividad actividad = UsuarioActividad.builder()
-                    .tipoActividad("CONFIG_CHANGE")
-                    .descripcion("Cambio de configuración [" + clave + "]: " + descripcion)
-                    .nivel("WARNING")
-                    .resultado("SUCCESS")
-                    .ipAddress(obtenerIPActual())
-                    .userAgent(obtenerUserAgentActual())
-                    .build();
-
-            actividadRepository.save(actividad);
-            log.info("Cambio de configuración registrado: clave={}", clave);
+            if (guardarCambioDelUsuarioActual("CONFIG_CHANGE", "WARNING",
+                    "Cambio de configuración [" + clave + "]: " + descripcion)) {
+                log.info("Cambio de configuración registrado: clave={}", clave);
+            }
         } catch (Exception e) {
             log.error("Error al registrar cambio de configuración: {}", e.getMessage());
         }
     }
 
+    /**
+     * Registra un cambio de permiso a nombre del usuario autenticado.
+     * Corre fuera de la transacción del llamador, igual que {@link #registrarCambioConfiguracion}.
+     */
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void registrarCambioPermiso(String permisoCodigo, String descripcion) {
         try {
-            UsuarioActividad actividad = UsuarioActividad.builder()
-                    .tipoActividad("PERMISSION_CHANGE")
-                    .descripcion("Cambio de permiso [" + permisoCodigo + "]: " + descripcion)
-                    .nivel("CRITICAL")
-                    .resultado("SUCCESS")
-                    .ipAddress(obtenerIPActual())
-                    .userAgent(obtenerUserAgentActual())
-                    .build();
-
-            actividadRepository.save(actividad);
-            log.warn("Cambio de permiso registrado: codigo={}", permisoCodigo);
+            if (guardarCambioDelUsuarioActual("PERMISSION_CHANGE", "CRITICAL",
+                    "Cambio de permiso [" + permisoCodigo + "]: " + descripcion)) {
+                log.warn("Cambio de permiso registrado: codigo={}", permisoCodigo);
+            }
         } catch (Exception e) {
             log.error("Error al registrar cambio de permiso: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Guarda una actividad del usuario autenticado (usuario_actividad.id_usuario es obligatorio).
+     *
+     * @return false si no hay un usuario autenticado que se pueda resolver; en ese caso no guarda nada
+     */
+    private boolean guardarCambioDelUsuarioActual(String tipoActividad, String nivel, String descripcion) {
+        Optional<Usuario> usuario = usuarioAutenticado();
+        if (usuario.isEmpty()) {
+            log.warn("No hay un usuario autenticado; no se registra la actividad: {}", descripcion);
+            return false;
+        }
+
+        UsuarioActividad actividad = UsuarioActividad.builder()
+                .usuario(usuario.get())
+                .tipoActividad(tipoActividad)
+                .descripcion(descripcion)
+                .nivel(nivel)
+                .resultado("SUCCESS")
+                .ipAddress(obtenerIPActual())
+                .userAgent(obtenerUserAgentActual())
+                .build();
+
+        actividadRepository.save(actividad);
+        return true;
+    }
+
+    /**
+     * Usuario autenticado en el contexto de seguridad. El nombre del principal es el email
+     * (UserDetailsServiceImpl).
+     */
+    private Optional<Usuario> usuarioAutenticado() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return Optional.empty();
+        }
+        return usuarioRepository.findByEmail(authentication.getName());
     }
 
     // ==================== BÚSQUEDAS ====================

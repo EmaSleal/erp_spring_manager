@@ -79,9 +79,6 @@ const ConfiguracionEmpresa = {
                 
                 // Branding
                 document.getElementById('logoUrl').value = datos.logoUrl || '';
-                if (document.getElementById('faviconUrl')) {
-                    document.getElementById('faviconUrl').value = datos.faviconUrl || '';
-                }
 
                 // Logo uploaded as file
                 if (datos.tieneLogoCargado && datos.logoPath) {
@@ -335,7 +332,6 @@ const ConfiguracionEmpresa = {
                 email: document.getElementById('email').value || null,
                 sitioWeb: document.getElementById('sitioWeb').value || null,
                 logoUrl: document.getElementById('logoUrl').value || null,
-                faviconUrl: document.getElementById('faviconUrl') ? document.getElementById('faviconUrl').value || null : null,
                 colorPrimario: document.getElementById('colorPrimario').value || '#007bff',
                 colorSecundario: document.getElementById('colorSecundario').value || '#6c757d',
                 // Facturación Electrónica Costa Rica
@@ -389,7 +385,7 @@ const ConfiguracionEmpresa = {
         } catch (error) {
             console.error('❌ Error guardando configuración:', error);
             Configuracion.mostrarAlertaEn('alert-empresa-container', 'danger', 
-                'Error al guardar. Por favor intenta nuevamente.');
+                `Error al guardar: ${error.message}`);
         }
     }
 };
