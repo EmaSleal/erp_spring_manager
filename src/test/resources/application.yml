@@ -35,19 +35,6 @@ spring:
       ddl-auto: create-drop
     show-sql: false
 
-  mail:
-    host: 127.0.0.1
-    port: 2525
-    username: test@example.invalid
-    password: ""
-    properties:
-      mail:
-        smtp:
-          auth: false
-          connectiontimeout: 1000
-          timeout: 1000
-    default-encoding: UTF-8
-
 meta:
   webhook:
     verify-token: test-verify-token

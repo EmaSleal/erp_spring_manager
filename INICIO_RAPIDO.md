@@ -16,8 +16,9 @@ notepad .env.local
 
 Completa los valores:
 - **DB_URL**, **DB_USERNAME**, **DB_PASSWORD** - Credenciales de MySQL
-- **EMAIL_USERNAME**, **EMAIL_PASSWORD** - Credenciales de Gmail (usa App Password)
 - **META_WHATSAPP_*** - Credenciales de WhatsApp Business API
+
+El SMTP no va en variables de entorno: se configura en **Configuración → Email** (host, usuario, contraseña de aplicación), se prueba con el botón de prueba y luego se activa el envío.
 
 ### 3. Verificar que `.env.local` no se commitee
 
@@ -80,9 +81,6 @@ java -jar target\whats-orders-manager.jar
 ```powershell
 # Base de datos
 Get-ChildItem Env: | Where-Object { $_.Name -like "DB_*" }
-
-# Email
-Get-ChildItem Env: | Where-Object { $_.Name -like "EMAIL_*" }
 
 # WhatsApp
 Get-ChildItem Env: | Where-Object { $_.Name -like "META_*" }
@@ -161,7 +159,7 @@ Verifica en `.env.local`:
 Para Gmail:
 1. Ve a https://myaccount.google.com/apppasswords
 2. Genera una "Contraseña de aplicación"
-3. Usa esa contraseña en `EMAIL_PASSWORD` (no tu contraseña normal)
+3. Guárdala en **Configuración → Email** (no tu contraseña normal) y ejecuta la prueba de envío
 
 ---
 

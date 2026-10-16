@@ -165,10 +165,6 @@ Puedes crear un archivo `.env` en la raíz para personalizar la configuración:
 # Base de Datos
 DB_PASSWORD=mi_password_seguro
 
-# Email
-EMAIL_USERNAME=tu_email@gmail.com
-EMAIL_PASSWORD=tu_app_password
-
 # WhatsApp
 WHATSAPP_API_URL=https://graph.facebook.com/v17.0
 WHATSAPP_PHONE_NUMBER_ID=123456789

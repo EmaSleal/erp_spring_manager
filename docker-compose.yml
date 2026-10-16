@@ -50,11 +50,6 @@ services:
       BOOTSTRAP_ADMIN_TELEFONO: ${BOOTSTRAP_ADMIN_TELEFONO:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
 
-      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
-      EMAIL_PORT: ${EMAIL_PORT:-587}
-      EMAIL_USERNAME: ${EMAIL_USERNAME:-}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
-      
       # Configuración de WhatsApp (ajustar según necesidad)
       WHATSAPP_API_URL: ${WHATSAPP_API_URL:-https://graph.facebook.com/v17.0}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}

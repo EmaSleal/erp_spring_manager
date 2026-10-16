@@ -42,24 +42,10 @@ spring:
         use_sql_comments: false
   
   # ========================================
-  # CONFIGURACIÓN DE EMAIL
+  # EMAIL
   # ========================================
-  mail:
-    host: ${EMAIL_HOST:smtp.gmail.com}
-    port: ${EMAIL_PORT:587}
-    username: ${EMAIL_USERNAME:}
-    password: ${EMAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          ssl:
-            trust: ${EMAIL_HOST:smtp.gmail.com}
-        debug: false
-    default-encoding: UTF-8
+  # Sin propiedades de correo de Spring Boot (T-022, ADR-027): el SMTP se configura en Configuración → Email (fila única de
+  # configuracion_email); EmailServiceImpl arma el JavaMailSender con SmtpMailSenderFactory.
 
 # ========================================
 # CONFIGURACIÓN DE WHATSAPP WEBHOOK
