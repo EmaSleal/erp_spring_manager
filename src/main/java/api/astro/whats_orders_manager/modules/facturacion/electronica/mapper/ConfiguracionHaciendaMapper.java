@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ConfiguracionHaciendaMapper {
+
+    /** Valor enmascarado que se devuelve en lugar de la contraseña y el PIN (T-021). */
+    public static final String MASK = "********";
     
     /**
      * Convierte entidad a DTO.
@@ -28,12 +31,13 @@ public class ConfiguracionHaciendaMapper {
             .empresaNombre(entity.getEmpresa().getNombreDisplay())
             .ambiente(entity.getAmbiente())
             .usuarioHacienda(entity.getUsuarioHacienda())
-            .passwordHacienda("********") // No exponer contraseña
+            .passwordHacienda(MASK) // No exponer contraseña
             .rutaCertificado(entity.getRutaCertificado())
-            .pinCertificado(entity.getPinCertificado() != null ? "********" : null)
+            .pinCertificado(entity.getPinCertificado() != null ? MASK : null)
             .activa(entity.getActiva())
             .tokenValido(entity.isTokenValido())
             .tokenExpira(entity.getTokenExpira())
+            .tieneToken(entity.getAccessToken() != null)
             .consecutivoFactura(entity.getConsecutivoFactura())
             .consecutivoTiquete(entity.getConsecutivoTiquete())
             .consecutivoNotaCredito(entity.getConsecutivoNotaCredito())

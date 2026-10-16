@@ -1,0 +1,133 @@
+# ============================================================================
+# T-021 — Configuración de pruebas.
+#
+# Este archivo SOMBREA a src/main/resources/application.yml en el classpath de
+# pruebas (mismo nombre, test-classes va primero). Es deliberado:
+#   - no hay spring.config.import, así que ninguna prueba lee el .env del repo;
+#   - la base es H2 en memoria y todos los destinos externos apuntan a 127.0.0.1.
+# Ningún valor de este archivo es un secreto real.
+# ============================================================================
+server:
+  port: 0
+
+spring:
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+
+  main:
+    allow-bean-definition-overriding: true
+    web-application-type: servlet
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;NON_KEYWORDS=VALUE,YEAR,MONTH,DAY
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  flyway:
+    enabled: false
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  mail:
+    host: 127.0.0.1
+    port: 2525
+    username: test@example.invalid
+    password: ""
+    properties:
+      mail:
+        smtp:
+          auth: false
+          connectiontimeout: 1000
+          timeout: 1000
+    default-encoding: UTF-8
+
+meta:
+  webhook:
+    verify-token: test-verify-token
+
+whatsapp:
+  api:
+    url: http://127.0.0.1:9
+    version: v0.0
+  phone-number-id: test-phone-number-id
+  access-token: test-access-token
+
+smtp:
+  encryption:
+    key: ""
+
+app:
+  base-url: http://127.0.0.1:15808
+  certificados:
+    directorio: target/test-data/certificados
+  sellos:
+    directorio: target/test-data/sellos
+  uploads:
+    directorio: target/test-data/uploads
+  upload:
+    dir: target/test-data/uploads
+
+hacienda:
+  api:
+    url: http://127.0.0.1:9/fe/ae
+    cabys:
+      url: http://127.0.0.1:9/fe/cabys
+    timeout: 1
+  crypto:
+    # Clave SOLO para pruebas (openssl rand -base64 32). No se usa en ningún ambiente real.
+    key: +ZlFksttcVdzYn4RKGUND0VxPfiUBB7zwjMgrX1iTTE=
+
+facturacion:
+  comprobantes:
+    directorio-base: target/test-data/comprobantes
+  hacienda:
+    webhook:
+      token: ""
+      url: http://127.0.0.1:9/api/hacienda/callback
+
+tipo-cambio:
+  sync:
+    enabled: false
+    cron: "0 15 6 * * *"
+    zone: America/Costa_Rica
+    monedas: USD
+  hacienda:
+    url-base: http://127.0.0.1:9/indicadores/tc
+    timeout-segundos: 1
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      haciendaAPI:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        slowCallDurationThreshold: 5000
+        slowCallRateThreshold: 50
+  retry:
+    instances:
+      haciendaAPI:
+        maxAttempts: 3
+        waitDuration: 2000
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+
+management:
+  health:
+    mail:
+      enabled: false

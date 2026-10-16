@@ -1,0 +1,2 @@
+org.springframework.test.context.ContextCustomizerFactory=\
+api.astro.whats_orders_manager.config.testguard.TestDataSourceGuardContextCustomizerFactory

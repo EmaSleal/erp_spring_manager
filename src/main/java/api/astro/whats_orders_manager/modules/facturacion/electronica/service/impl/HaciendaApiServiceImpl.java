@@ -195,9 +195,8 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             );
             // Log de request completo para depuración
             log.info("URL consulta: {}", urlRecepcion);
-  log.info("Auth header: {}", headers.getFirst("Authorization") != null
-      ? "Bearer " + headers.getFirst("Authorization").substring(7, 27) + "..."
-      : "No Authorization header");
+            // T-021: nunca registrar el token, ni siquiera parcial
+            log.info("Auth header presente: {}", headers.getFirst(HttpHeaders.AUTHORIZATION) != null);
 
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
@@ -267,8 +266,8 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // Log de request completo para depuración
-            log.debug("Consultando comprobante en Hacienda - URL: {} - Headers: {}", 
-                urlConsulta.toString(), headers.toString());
+            // T-021: sin headers en el log (llevan el Bearer token)
+            log.debug("Consultando comprobante en Hacienda - URL: {}", urlConsulta);
             
             HttpEntity<?> request = new HttpEntity<>(headers);
             

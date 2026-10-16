@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.model;
 
+import api.astro.whats_orders_manager.config.crypto.CredencialCifradaConverter;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import jakarta.persistence.*;
@@ -37,6 +38,7 @@ public class ConfiguracionHacienda {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empresa_id", nullable = false)
     @NotNull(message = "La empresa es obligatoria")
+    @ToString.Exclude // LAZY: toString() fuera de sesión no debe inicializarla
     private ConfiguracionEmpresa empresa;
     
     /**
@@ -56,10 +58,12 @@ public class ConfiguracionHacienda {
     private String usuarioHacienda;
     
     /**
-     * Contraseña OAuth2 (encriptada).
+     * Contraseña OAuth2. Cifrada en reposo con AES-256-GCM (T-021); en la entidad, texto plano.
      */
-    @Column(name = "password_hacienda", nullable = false, length = 255)
+    @Column(name = "password_hacienda", nullable = false, columnDefinition = "TEXT")
+    @Convert(converter = CredencialCifradaConverter.class)
     @NotBlank(message = "La contraseña es obligatoria")
+    @ToString.Exclude
     private String passwordHacienda;
     
     /**
@@ -69,15 +73,19 @@ public class ConfiguracionHacienda {
     private String rutaCertificado;
     
     /**
-     * PIN del certificado digital (encriptado).
+     * PIN del certificado digital. Cifrado en reposo con AES-256-GCM (T-021).
      */
-    @Column(name = "pin_certificado", length = 255)
+    @Column(name = "pin_certificado", columnDefinition = "TEXT")
+    @Convert(converter = CredencialCifradaConverter.class)
+    @ToString.Exclude
     private String pinCertificado;
     
     /**
-     * Token OAuth2 actual (se renueva automáticamente).
+     * Token OAuth2 actual (se renueva automáticamente). Cifrado en reposo (T-021).
      */
     @Column(name = "access_token", columnDefinition = "TEXT")
+    @Convert(converter = CredencialCifradaConverter.class)
+    @ToString.Exclude
     private String accessToken;
     
     /**
@@ -87,9 +95,11 @@ public class ConfiguracionHacienda {
     private LocalDateTime tokenExpira;
     
     /**
-     * Refresh token para renovar el access token.
+     * Refresh token para renovar el access token. Cifrado en reposo (T-021).
      */
     @Column(name = "refresh_token", columnDefinition = "TEXT")
+    @Convert(converter = CredencialCifradaConverter.class)
+    @ToString.Exclude
     private String refreshToken;
     
     /**

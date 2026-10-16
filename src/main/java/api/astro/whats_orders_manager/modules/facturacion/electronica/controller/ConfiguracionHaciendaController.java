@@ -2,7 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.controlle
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ConfiguracionHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ConfiguracionHaciendaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +35,7 @@ import java.util.Map;
 public class ConfiguracionHaciendaController {
     
     private final ConfiguracionHaciendaService configuracionService;
+    private final ConfiguracionHaciendaMapper mapper;
 
     @Value("${app.certificados.directorio:/app/certificados}")
     private String certificadosDir;
@@ -73,27 +74,11 @@ public class ConfiguracionHaciendaController {
             @PathVariable Integer empresaId,
             @PathVariable AmbienteHacienda ambiente) {
         log.info("Obteniendo configuración {} para empresa {}", ambiente, empresaId);
-        ConfiguracionHacienda config = configuracionService.obtenerPorEmpresaYAmbiente(empresaId, ambiente)
-                .orElse(null);
-        if (config == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ConfiguracionHaciendaDTO.builder()
-                .id(config.getId())
-                .empresaId(config.getEmpresa().getIdEmpresa().longValue())
-                .ambiente(config.getAmbiente())
-                .usuarioHacienda(config.getUsuarioHacienda())
-                .passwordHacienda(config.getPasswordHacienda())
-                .rutaCertificado(config.getRutaCertificado())
-                .pinCertificado(config.getPinCertificado())
-                .activa(config.getActiva())
-                .consecutivoFactura(config.getConsecutivoFactura())
-                .consecutivoTiquete(config.getConsecutivoTiquete())
-                .consecutivoNotaCredito(config.getConsecutivoNotaCredito())
-                .consecutivoNotaDebito(config.getConsecutivoNotaDebito())
-                .accessToken(config.getAccessToken())
-                .tokenExpira(config.getTokenExpira())
-                .build());
+        // T-021: el mapper enmascara contraseña y PIN y nunca incluye los tokens
+        return configuracionService.obtenerPorEmpresaYAmbiente(empresaId, ambiente)
+                .map(mapper::toDTO)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
     
     /**
@@ -175,7 +160,8 @@ public class ConfiguracionHaciendaController {
         log.info("Verificando estado del token para configuración {}", id);
         Map<String, Object> payload = configuracionService.obtenerPorId(id)
         .<Map<String, Object>>map(cfg -> {
-            boolean valido = cfg.getAccessToken() != null
+            boolean tieneToken = Boolean.TRUE.equals(cfg.getTieneToken());
+            boolean valido = tieneToken
                     && cfg.getTokenExpira() != null
                     && cfg.getTokenExpira().isAfter(LocalDateTime.now());
 
@@ -183,7 +169,7 @@ public class ConfiguracionHaciendaController {
                 "id", cfg.getId(),
                 "tokenValido", valido,
                 "expira", (cfg.getTokenExpira() != null) ? cfg.getTokenExpira().toString() : "N/A",
-                "tieneToken", cfg.getAccessToken() != null
+                "tieneToken", tieneToken
             );
         })
         .orElseGet(() -> Map.<String, Object>of(
