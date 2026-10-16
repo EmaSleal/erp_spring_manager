@@ -12,7 +12,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * T-021 — Cifrado de credenciales en reposo con AES-256-GCM.
+ * T-021 — Cifrado de credenciales en reposo con AES-256-GCM (credenciales de Hacienda y, desde T-022, la
+ * contraseña SMTP de configuracion_email).
  *
  * <p>Formato almacenado: {@code "enc:v1:" + base64(iv(12 bytes) || ciphertext + tag(128 bits))}, con un IV
  * aleatorio por valor. La clave viene de {@code HACIENDA_CRYPTO_KEY} (propiedad {@code hacienda.crypto.key}):
@@ -109,8 +110,8 @@ public final class CredencialCipher {
 
     private void requireKey(String operacion) {
         if (key == null) {
-            throw new IllegalStateException("No se puede " + operacion + " credenciales de Hacienda: falta la "
-                    + "variable de entorno " + KEY_ENV_VAR + ". Nunca se guardan en texto plano.");
+            throw new IllegalStateException("No se puede " + operacion + " credenciales (Hacienda, SMTP): falta "
+                    + "la variable de entorno " + KEY_ENV_VAR + ". Nunca se guardan en texto plano.");
         }
     }
 

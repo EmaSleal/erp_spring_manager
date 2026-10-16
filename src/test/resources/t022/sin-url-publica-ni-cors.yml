@@ -1,0 +1,17 @@
+# T-022 — Base de datos y token definidos (valores de prueba); APP_BASE_URL y CORS_ALLOWED_ORIGINS sin definir,
+# con las mismas expresiones que src/main/resources/application.yml.
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+  datasource:
+    url: jdbc:h2:mem:t022-sin-url;MODE=MySQL
+    username: sa
+    password: ""
+meta:
+  webhook:
+    verify-token: t022-token-de-prueba
+app:
+  base-url: ${T022_UNSET_APP_BASE_URL}
+  cors:
+    allowed-origins: ${T022_UNSET_CORS_ALLOWED_ORIGINS}

@@ -31,6 +31,8 @@ class RequiredConfigurationEnvironmentPostProcessorTest {
                 .withProperty("spring.datasource.username", "${DB_USERNAME}")
                 .withProperty("spring.datasource.password", "${DB_PASSWORD}")
                 .withProperty("meta.webhook.verify-token", "${META_WEBHOOK_VERIFY_TOKEN}")
+                .withProperty("app.base-url", "${APP_BASE_URL}")
+                .withProperty("app.cors.allowed-origins", "${CORS_ALLOWED_ORIGINS}")
                 .withProperty("hacienda.crypto.key", "${HACIENDA_CRYPTO_KEY:}");
     }
 
@@ -43,17 +45,20 @@ class RequiredConfigurationEnvironmentPostProcessorTest {
         environment.withProperty("DB_URL", "jdbc:mysql://127.0.0.1:3306/t021")
                 .withProperty("DB_USERNAME", "app")
                 .withProperty("DB_PASSWORD", "x")
-                .withProperty("META_WEBHOOK_VERIFY_TOKEN", "token");
+                .withProperty("META_WEBHOOK_VERIFY_TOKEN", "token")
+                .withProperty("APP_BASE_URL", "https://erp.example.invalid")
+                .withProperty("CORS_ALLOWED_ORIGINS", "https://erp.example.invalid");
     }
 
     @Test
-    @DisplayName("Nada definido → falla nombrando las cuatro variables")
+    @DisplayName("Nada definido → falla nombrando todas las variables")
     void nadaDefinido_nombraTodas() {
         StartupConfigurationException e = fallo();
 
         assertThat(e).isNotNull();
         assertThat(e.getDescription())
-                .contains("DB_URL", "DB_USERNAME", "DB_PASSWORD", "META_WEBHOOK_VERIFY_TOKEN");
+                .contains("DB_URL", "DB_USERNAME", "DB_PASSWORD", "META_WEBHOOK_VERIFY_TOKEN",
+                        "APP_BASE_URL", "CORS_ALLOWED_ORIGINS");
         assertThat(e.getAction()).contains("DB_URL").contains(".env");
     }
 
@@ -68,6 +73,33 @@ class RequiredConfigurationEnvironmentPostProcessorTest {
         assertThat(e).isNotNull();
         assertThat(e.getDescription()).contains("DB_URL")
                 .doesNotContain("DB_USERNAME").doesNotContain("DB_PASSWORD").doesNotContain("META_WEBHOOK");
+    }
+
+    @Test
+    @DisplayName("T-022: sin APP_BASE_URL ni CORS_ALLOWED_ORIGINS → falla nombrando solo esas dos")
+    void sinUrlPublicaNiCors_falla() {
+        environment = new MockEnvironment()
+                .withProperty("spring.datasource.url", "jdbc:mysql://127.0.0.1:3306/t022")
+                .withProperty("spring.datasource.username", "app")
+                .withProperty("spring.datasource.password", "x")
+                .withProperty("meta.webhook.verify-token", "token")
+                .withProperty("app.base-url", "${APP_BASE_URL}")
+                .withProperty("app.cors.allowed-origins", "${CORS_ALLOWED_ORIGINS}");
+
+        StartupConfigurationException e = fallo();
+
+        assertThat(e).isNotNull();
+        assertThat(e.getDescription()).contains("APP_BASE_URL", "CORS_ALLOWED_ORIGINS")
+                .doesNotContain("DB_URL").doesNotContain("META_WEBHOOK");
+    }
+
+    @Test
+    @DisplayName("T-022: APP_BASE_URL en blanco → falla nombrando APP_BASE_URL")
+    void urlPublicaEnBlanco_falla() {
+        conTodo();
+        environment.setProperty("APP_BASE_URL", "  ");
+
+        assertThat(fallo().getDescription()).contains("APP_BASE_URL").doesNotContain("CORS_ALLOWED_ORIGINS");
     }
 
     @Test
@@ -96,7 +128,9 @@ class RequiredConfigurationEnvironmentPostProcessorTest {
                 .withProperty("spring.datasource.url", "jdbc:h2:mem:x")
                 .withProperty("spring.datasource.username", "sa")
                 .withProperty("spring.datasource.password", "")
-                .withProperty("meta.webhook.verify-token", "t");
+                .withProperty("meta.webhook.verify-token", "t")
+                .withProperty("app.base-url", "http://127.0.0.1:15808")
+                .withProperty("app.cors.allowed-origins", "http://127.0.0.1:15808");
 
         assertThatCode(() -> processor.postProcessEnvironment(environment, new SpringApplication()))
                 .doesNotThrowAnyException();

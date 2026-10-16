@@ -35,8 +35,8 @@ Una vez levantados los servicios (toma ~60 segundos), accede a:
 **URL:** http://localhost:9090
 
 **Credenciales por defecto:**
-- Usuario: `admin`
-- Contraseña: (definida en datos iniciales)
+- Usuario: el email de `BOOTSTRAP_ADMIN_EMAIL` (se crea solo si no hay ningún ADMIN activo; ver `database/README.md`)
+- Contraseña: la de `BOOTSTRAP_ADMIN_PASSWORD` (mínimo 12 caracteres); se pide cambiarla al ingresar
 
 ---
 

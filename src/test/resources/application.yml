@@ -63,8 +63,17 @@ smtp:
   encryption:
     key: ""
 
+# T-022: la base H2 empieza sin usuarios; DataInitializer crea este ADMIN de bootstrap (valores de prueba).
+bootstrap:
+  admin:
+    email: admin.bootstrap@example.invalid
+    telefono: "50600000000"
+    password: solo-para-pruebas-123
+
 app:
   base-url: http://127.0.0.1:15808
+  cors:
+    allowed-origins: http://127.0.0.1:15808
   certificados:
     directorio: target/test-data/certificados
   sellos:
@@ -87,10 +96,6 @@ hacienda:
 facturacion:
   comprobantes:
     directorio-base: target/test-data/comprobantes
-  hacienda:
-    webhook:
-      token: ""
-      url: http://127.0.0.1:9/api/hacienda/callback
 
 tipo-cambio:
   sync:

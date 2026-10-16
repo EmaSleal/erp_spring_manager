@@ -36,7 +36,8 @@ public class SecurityConfig {
     @Autowired
     private DataSource dataSource;
 
-    @Value("${app.cors.allowed-origins:http://localhost:15808,http://localhost:8080}")
+    // Sin valor por defecto (T-022): CORS_ALLOWED_ORIGINS es obligatoria (RequiredConfigurationEnvironmentPostProcessor)
+    @Value("${app.cors.allowed-origins}")
     private String[] allowedOrigins;
 
     @Bean
@@ -211,8 +212,7 @@ public class SecurityConfig {
 
     /**
      * Explicit CORS configuration source — replaces any wildcard @CrossOrigin.
-     * Allowed origins are configurable via {@code app.cors.allowed-origins}
-     * (default: localhost:9090 and localhost:8080).
+     * Allowed origins come from {@code app.cors.allowed-origins} (CORS_ALLOWED_ORIGINS), which has no default.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

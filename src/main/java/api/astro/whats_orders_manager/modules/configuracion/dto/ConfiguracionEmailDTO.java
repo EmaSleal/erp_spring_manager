@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
@@ -44,9 +45,11 @@ public class ConfiguracionEmailDTO {
     private String smtpUsuario;
 
     /**
-     * Contraseña para autenticación SMTP (se envía encriptada)
+     * Contraseña para autenticación SMTP. Solo de entrada: nunca sale en el JSON ni en toString. Vacía o
+     * "********" al editar = conservar la guardada (ADR-027).
      */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @ToString.Exclude
     private String smtpPassword;
 
     /**

@@ -30,4 +30,17 @@ class MainApplicationYmlSinDestinosImplicitosTest {
                 .contains("password: ${DB_PASSWORD}")
                 .contains("verify-token: ${META_WEBHOOK_VERIFY_TOKEN}");
     }
+
+    @Test
+    void t022_sinUrlPublicaNiCorsPorDefecto_niWebhookDeHacienda() throws Exception {
+        String yml = Files.readString(Path.of("src/main/resources/application.yml"), StandardCharsets.UTF_8);
+
+        assertThat(yml)
+                .contains("base-url: ${APP_BASE_URL}")
+                .contains("allowed-origins: ${CORS_ALLOWED_ORIGINS}")
+                .doesNotContain("localhost")
+                .doesNotContain("callback")
+                .doesNotContain("HACIENDA_WEBHOOK")
+                .doesNotContain("webhook:\n      token");
+    }
 }

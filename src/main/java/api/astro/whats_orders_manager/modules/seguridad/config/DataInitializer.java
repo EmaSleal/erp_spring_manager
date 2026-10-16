@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,12 +35,12 @@ public class DataInitializer implements ApplicationRunner {
 
     private final RolRepository rolRepository;
     private final UsuarioRepository usuarioRepository;
-    private final PasswordEncoder passwordEncoder;
     private final PresentacionRepository presentacionRepository;
     private final ClienteRepository clienteRepository;
     private final ProductoRepository productoRepository;
     private final ConfiguracionEmpresaRepository configRepository;
     private final PermisoRepository permisoRepository;
+    private final BootstrapAdminInitializer bootstrapAdminInitializer;
 
     /**
      * Backfill placeholder emails for users that have no email set.
@@ -81,21 +80,8 @@ public class DataInitializer implements ApplicationRunner {
             return rolRepository.save(r);
         });
 
-        if (usuarioRepository.findByNombre("usuario prueba").isEmpty()) {
-            log.info("DataInitializer: creating test user");
-            Usuario u = new Usuario();
-            u.setNombre("usuario prueba");
-            u.setTelefono("50612345678");
-            u.setEmail("usuario.prueba@placeholder.local");
-            u.setPassword(passwordEncoder.encode("JhfKHZ2%mJMI"));
-            u.setRol("ADMIN");
-            u.setRolEntity(rolAdmin);
-            u.setActivo(true);
-            u.setBloqueado(false);
-            u.setIntentosFallidos(0);
-            u.setRequireCambioPassword(false);
-            usuarioRepository.save(u);
-        }
+        // T-022 (ADR-026): sin usuario de prueba; si no hay ningún ADMIN activo se crea uno con BOOTSTRAP_ADMIN_*
+        bootstrapAdminInitializer.crearSiNoHayAdminActivo(rolAdmin);
 
         Presentacion presentacionUnid = presentacionRepository.findAll().stream()
                 .filter(p -> "Unid".equals(p.getCodigoUnidadFE()))
