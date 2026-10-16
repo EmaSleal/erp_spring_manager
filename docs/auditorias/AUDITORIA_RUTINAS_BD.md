@@ -53,6 +53,7 @@ Abreviaturas de rutas (Java bajo `src/main/java/api/astro/whats_orders_manager/m
 ## Resumen
 
 - **Fuentes**: el repositorio define **33 procedimientos** y **2 triggers** (0 funciones). El código Java referencia **18 nombres** (15 `CALL` nativos y 2 `@Procedure`, más el comentario de una de ellas); **3 de esos nombres no existen** en ninguna fuente (`sp_obtener_top_clientes`, `sp_obtener_ventas_por_dia`, `sp_obtener_estadisticas_ventas`). Flyway solo crea y borra **procedimientos auxiliares temporales** (V19, V29–V32, V35); ninguna migración crea rutinas de la aplicación. El dump del 2026-10-11 contiene los **2 triggers** y **ningún procedimiento**.
+- **Producción** (resultado pegado por el usuario, §2.2): 33 procedimientos y 2 triggers, **todos idénticos por hash al repositorio**; las 3 rutinas que solo referencia Java tampoco existen allí. Los 33 procedimientos se crearon juntos el 2026-10-15 17:29:25 con `root@localhost`, fuera de Flyway.
 - **Vivas de verdad**: 11 rutinas llegan a ejecutarse desde una pantalla o endpoint (10 llamadas desde Java y `ActualizarTotalFactura`, que se llama desde otra rutina), más el trigger de alta de usuario, que llama a `sp_crear_preferencias_usuario`. Las demás son código muerto. Además, `sp_obtener_comprobante_por_clave` y `sp_obtener_comprobante_por_factura` **nunca se ejecutan**: Spring Data busca procedimientos llamados `findByClaveNumerica` y `findByFacturaId` y los endpoints responden 500 (§3.3, verificado).
 - **Rutinas rotas**: 7 procedimientos fallan al ejecutarse sobre el esquema actual (columnas inexistentes, argumentos incorrectos, `ONLY_FULL_GROUP_BY`, `NOT NULL`) y otros 2 devuelven resultados erróneos sin fallar (`InsertarPresentacion`, `SP_ESTADISTICAS_DASHBOARD`). Los 9 son código muerto.
 - **Ruta de factura**: (a) sí hay dos cálculos de total; (b) ninguna ruta persiste hoy un total de rutina, porque Java lo sobrescribe en la misma transacción, pero **se reprodujo** una factura cuyo total persistido no coincide con sus líneas (quitar una línea en la UI); (c) ninguna prueba ejecuta la rutina (se simula con mocks y H2).
@@ -176,9 +177,9 @@ Ninguna migración crea, modifica ni borra las 33 rutinas de `SP` ni los 2 trigg
 
 ### 1(d) Producción
 
-No se accedió a producción. Las consultas que debe ejecutar el usuario están en §2. Mientras no haya resultado, el estado de producción de cada rutina es «sin verificar».
+No se accedió a producción. El usuario ejecutó en producción las consultas de §2.1 el 2026-10-16 y pegó el resultado (§2.2): **33 procedimientos y 2 triggers, todos idénticos por hash al repositorio**; los 33 procedimientos tienen `DEFINER=root@localhost` y el mismo `LAST_ALTERED` (2026-10-15 17:29:25).
 
-Lo único observable de producción es el dump del 2026-10-11:
+Antes de ese resultado, lo único observable de producción era el dump del 2026-10-11:
 
 | Objeto en el dump | Cantidad | Detalle |
 |---|---|---|
@@ -204,13 +205,61 @@ SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE, ACTION_TIMING, SHA2
 
 No ejecutar `SHOW CREATE` de forma masiva ni consultar datos de tablas.
 
-### 2.2 Resultado de producción (pendiente de que el usuario lo pegue)
+### 2.2 Resultado de producción
 
-> **PEGAR AQUÍ** la salida de las dos consultas de 2.1 ejecutadas en producción, con la fecha y el usuario de BD que las ejecutó.
->
-> ```text
-> (sin resultado al cierre de T-023)
-> ```
+Ejecutado por el usuario en producción y pegado en la sesión del 2026-10-16. Solo metadatos (nombres, `DEFINER`, fechas y hashes). En el texto pegado, las consultas aparecen con dos erratas de transcripción (`WHER` e `information_schea`); los resultados corresponden a las consultas de §2.1 (33 y 2 filas, columnas y orden esperados).
+
+**Rutinas** (33 filas; 0 funciones):
+
+| ROUTINE_TYPE | ROUTINE_NAME | DEFINER | LAST_ALTERED | SHA2(ROUTINE_DEFINITION,256) |
+|---|---|---|---|---|
+| PROCEDURE | `ActualizarCliente` | `root@localhost` | 2026-10-15 17:29:25 | `39f2ce92dd83248f6e659a0cfb42bcd5ac6058504855ea53af02cbb0ffb9f395` |
+| PROCEDURE | `ActualizarTotalFactura` | `root@localhost` | 2026-10-15 17:29:25 | `759a88f51b10d446171a830f56568d38087de175b4ae9acb2130205cb6215510` |
+| PROCEDURE | `CrearFactura` | `root@localhost` | 2026-10-15 17:29:25 | `5e3ac341bdc00a4e284ae24a798ffbce7c0a45a94ebb4552a89f884fba1b57f2` |
+| PROCEDURE | `InsertarCliente` | `root@localhost` | 2026-10-15 17:29:25 | `c6c4641d14c4c8acd41889822caa22b91413f3135cf423a06af57bb70b853fc1` |
+| PROCEDURE | `InsertarLineaFactura` | `root@localhost` | 2026-10-15 17:29:25 | `598e84b4d85d7b9bbe9777757ff6f51670cc13c15f778c03938824f0c9e42abb` |
+| PROCEDURE | `InsertarPresentacion` | `root@localhost` | 2026-10-15 17:29:25 | `2379d2678182c722710a61a0a7536ca27b6fdf0ffda31958f161b062b7142ab6` |
+| PROCEDURE | `InsertarProducto` | `root@localhost` | 2026-10-15 17:29:25 | `6190d6bb4120414b7edbbf1230865e8af7896547efc15d10cd710cefafe77f9f` |
+| PROCEDURE | `InsertarUsuario` | `root@localhost` | 2026-10-15 17:29:25 | `34bf8f956260d42fd6587415da3cb057d26f62f8f903a2d71569406c4ee72f1c` |
+| PROCEDURE | `ObtenerClientes` | `root@localhost` | 2026-10-15 17:29:25 | `8669d8b7d78ee61faa10f61b4b2502f3a49938bb142ed7c2329a0d29b79b0905` |
+| PROCEDURE | `ObtenerFacturaCompleta` | `root@localhost` | 2026-10-15 17:29:25 | `9d0e23c19e6445f8e67e983661de47564d660c067d6206250c04ae58d75f80c6` |
+| PROCEDURE | `ObtenerHistorialMensajes` | `root@localhost` | 2026-10-15 17:29:25 | `961e8e133d4c23e89ec56d5bbe90a91befd24b9cb02713d5ca31f294cff6d8e2` |
+| PROCEDURE | `ObtenerProductos` | `root@localhost` | 2026-10-15 17:29:25 | `732cd7da67ee21267bb43784242e50aef7dfacb9cc3ee6fcff416d17773abfb8` |
+| PROCEDURE | `ObtenerReportePorArticulo` | `root@localhost` | 2026-10-15 17:29:25 | `2466c9295d045953a20d292bb3ae53f188c5ec30b83f83157b881e609c8e6c88` |
+| PROCEDURE | `RegistrarWebhook` | `root@localhost` | 2026-10-15 17:29:25 | `0df1a949ee5a03a357c8bacfdf0e054b4dab84651562d4aeda7d62c34584afc2` |
+| PROCEDURE | `sp_actualizar_linea_factura` | `root@localhost` | 2026-10-15 17:29:25 | `df70c082e1c58348df649ba89efcd543efcd12045bbcef4af6deed7231c7af53` |
+| PROCEDURE | `SP_CLIENTES_NUEVOS_POR_MES` | `root@localhost` | 2026-10-15 17:29:25 | `aa73c361420d28fc974ac99cd7931f45e6d2d18322e45596f6d2e9639f6c046c` |
+| PROCEDURE | `sp_contar_comprobantes_por_estado` | `root@localhost` | 2026-10-15 17:29:25 | `174009f32a3c7d234d44742111ffd877ca1c302c3d440c5f8b958a4adf054e41` |
+| PROCEDURE | `sp_crear_preferencias_usuario` | `root@localhost` | 2026-10-15 17:29:25 | `4f21e16883df0e629130a79dc1675d2a43c4adf4032260f05de54e2db426c682` |
+| PROCEDURE | `sp_desactivar_producto` | `root@localhost` | 2026-10-15 17:29:25 | `743fa94aae54b130e8756e8f1bc2096ca17849e2bc28cf44c55f4338efaaafc0` |
+| PROCEDURE | `SP_ESTADISTICAS_DASHBOARD` | `root@localhost` | 2026-10-15 17:29:25 | `3fcb5aa36729ec21860deaeded4f865f54405e89b7a7fe3fa090b1576cb6509d` |
+| PROCEDURE | `sp_get_lineas_factura` | `root@localhost` | 2026-10-15 17:29:25 | `53161a7fca80fddac34071401f09c9c650cb1a8935cc67c5ac81328a60e787d8` |
+| PROCEDURE | `sp_listar_comprobantes_pendientes` | `root@localhost` | 2026-10-15 17:29:25 | `2125f86962a885511b61559e7b90b9728cc69c256285d867eeb5687215454672` |
+| PROCEDURE | `sp_listar_comprobantes_por_empresa` | `root@localhost` | 2026-10-15 17:29:25 | `15aae6043f19109bfac58025d1121f541511ded57a6bf75a53bbe96cc6e65210` |
+| PROCEDURE | `sp_listar_comprobantes_por_estado` | `root@localhost` | 2026-10-15 17:29:25 | `7cbf6fa8f633d0cb4b31adbaae69bd96fb9cd8b1c67f6de627e508439c4042fb` |
+| PROCEDURE | `sp_listar_comprobantes_por_fechas` | `root@localhost` | 2026-10-15 17:29:25 | `6e7b08512ed03a76666d606cb70049fd4a44c721882b2bdf8fc11c80be4cc862` |
+| PROCEDURE | `sp_obtener_clientes_nuevos_por_mes` | `root@localhost` | 2026-10-15 17:29:25 | `a251492ad3e266c91db6aaad8227b7730ded4e7d59082f4346811b5663ea0038` |
+| PROCEDURE | `sp_obtener_comprobante_por_clave` | `root@localhost` | 2026-10-15 17:29:25 | `e2c135c5bd3c9eed65cb0cb75a8e2860bc832c0a94b854cfbb4bfa8d7b2ca628` |
+| PROCEDURE | `sp_obtener_comprobante_por_factura` | `root@localhost` | 2026-10-15 17:29:25 | `ebd9f8aafa8ccbfc991d15b4c1f0818a527c3a8414e8a2faed13d6e8b9d12945` |
+| PROCEDURE | `sp_obtener_productos_mas_vendidos` | `root@localhost` | 2026-10-15 17:29:25 | `e9c48d512873a63a83ab90a6d1e27a9fba8bd5ebf3c8a13eba3a986e4e8f2149` |
+| PROCEDURE | `sp_obtener_ventas_por_mes` | `root@localhost` | 2026-10-15 17:29:25 | `73df668a8889405c704fb1b0e1d23dbe93cd003d85d57b477eabc0c56428c969` |
+| PROCEDURE | `SP_PRODUCTOS_MAS_VENDIDOS` | `root@localhost` | 2026-10-15 17:29:25 | `883b589ec5c021fc88664185b1c8a966121710965aeab6a409b911372b97ace3` |
+| PROCEDURE | `sp_resumen_comprobantes_empresa` | `root@localhost` | 2026-10-15 17:29:25 | `adbb619129618e985c4239d3e3c3e58d882c55a4077ebbeaeea6f6709e014418` |
+| PROCEDURE | `SP_VENTAS_POR_CLIENTE_TOP` | `root@localhost` | 2026-10-15 17:29:25 | `c87e70ec254e38404b092d61dff874f47da2eb1d7bc5812aa2517fe23d19667d` |
+
+**Triggers** (2 filas):
+
+| TRIGGER_NAME | EVENT_MANIPULATION | EVENT_OBJECT_TABLE | ACTION_TIMING | SHA2(ACTION_STATEMENT,256) |
+|---|---|---|---|---|
+| `trg_after_insert_usuario` | INSERT | `usuario` | AFTER | `c0379306fb0a5921907c95e36d976bc44fcc53c0bbb25db72d00e1e8e8736dba` |
+| `trg_after_update_usuario` | UPDATE | `usuario` | AFTER | `0b80b4540e32dd153550407f20dbe6eb7dbeaeabac26d25c19fbe33edc155236` |
+
+**Lectura del resultado**
+
+- Los 35 objetos (33 procedimientos y 2 triggers) son **idénticos** por hash a `database/routines/*.sql` cargado en `t023-mysql`. No hay rutinas **distintas**, **solo repo** ni **solo prod**.
+- Las 3 rutinas referenciadas desde Java que no existen en el repositorio (`sp_obtener_top_clientes`, `sp_obtener_ventas_por_dia`, `sp_obtener_estadisticas_ventas`) **tampoco existen en producción**: invocarlas falla también allí (hoy no tienen llamador).
+- Los 33 procedimientos tienen el mismo `LAST_ALTERED` (2026-10-15 17:29:25) y `DEFINER=root@localhost`: se crearon o recrearon juntos, con `root`, después del dump del 2026-10-11 (que no tenía procedimientos). Indica una carga manual de `stored_procedures.sql` fuera de Flyway; no hay registro de ella en el repositorio (P-038, P-017).
+- Al ser idénticas, todo lo verificado en `t023-mysql` sobre el comportamiento de cada rutina (§3 y §4) aplica a producción.
 
 ### 2.3 Hashes locales y estado
 
@@ -218,44 +267,44 @@ Mismas consultas ejecutadas en `t023-mysql` después de cargar `SP` y `TRG` sobr
 
 | Rutina | Tipo | SHA-256 del cuerpo (repo cargado en `t023-mysql`) | Dump 2026-10-11 | Producción |
 |---|---|---|---|---|
-| `ActualizarCliente` | PROCEDURE | `39f2ce92dd83248f6e659a0cfb42bcd5ac6058504855ea53af02cbb0ffb9f395` | ausente | sin verificar |
-| `ActualizarTotalFactura` | PROCEDURE | `759a88f51b10d446171a830f56568d38087de175b4ae9acb2130205cb6215510` | ausente | sin verificar |
-| `CrearFactura` | PROCEDURE | `5e3ac341bdc00a4e284ae24a798ffbce7c0a45a94ebb4552a89f884fba1b57f2` | ausente | sin verificar |
-| `InsertarCliente` | PROCEDURE | `c6c4641d14c4c8acd41889822caa22b91413f3135cf423a06af57bb70b853fc1` | ausente | sin verificar |
-| `InsertarLineaFactura` | PROCEDURE | `598e84b4d85d7b9bbe9777757ff6f51670cc13c15f778c03938824f0c9e42abb` | ausente | sin verificar |
-| `InsertarPresentacion` | PROCEDURE | `2379d2678182c722710a61a0a7536ca27b6fdf0ffda31958f161b062b7142ab6` | ausente | sin verificar |
-| `InsertarProducto` | PROCEDURE | `6190d6bb4120414b7edbbf1230865e8af7896547efc15d10cd710cefafe77f9f` | ausente | sin verificar |
-| `InsertarUsuario` | PROCEDURE | `34bf8f956260d42fd6587415da3cb057d26f62f8f903a2d71569406c4ee72f1c` | ausente | sin verificar |
-| `ObtenerClientes` | PROCEDURE | `8669d8b7d78ee61faa10f61b4b2502f3a49938bb142ed7c2329a0d29b79b0905` | ausente | sin verificar |
-| `ObtenerFacturaCompleta` | PROCEDURE | `9d0e23c19e6445f8e67e983661de47564d660c067d6206250c04ae58d75f80c6` | ausente | sin verificar |
-| `ObtenerHistorialMensajes` | PROCEDURE | `961e8e133d4c23e89ec56d5bbe90a91befd24b9cb02713d5ca31f294cff6d8e2` | ausente | sin verificar |
-| `ObtenerProductos` | PROCEDURE | `732cd7da67ee21267bb43784242e50aef7dfacb9cc3ee6fcff416d17773abfb8` | ausente | sin verificar |
-| `ObtenerReportePorArticulo` | PROCEDURE | `2466c9295d045953a20d292bb3ae53f188c5ec30b83f83157b881e609c8e6c88` | ausente | sin verificar |
-| `RegistrarWebhook` | PROCEDURE | `0df1a949ee5a03a357c8bacfdf0e054b4dab84651562d4aeda7d62c34584afc2` | ausente | sin verificar |
-| `sp_actualizar_linea_factura` | PROCEDURE | `df70c082e1c58348df649ba89efcd543efcd12045bbcef4af6deed7231c7af53` | ausente | sin verificar |
-| `SP_CLIENTES_NUEVOS_POR_MES` | PROCEDURE | `aa73c361420d28fc974ac99cd7931f45e6d2d18322e45596f6d2e9639f6c046c` | ausente | sin verificar |
-| `sp_contar_comprobantes_por_estado` | PROCEDURE | `174009f32a3c7d234d44742111ffd877ca1c302c3d440c5f8b958a4adf054e41` | ausente | sin verificar |
-| `sp_crear_preferencias_usuario` | PROCEDURE | `4f21e16883df0e629130a79dc1675d2a43c4adf4032260f05de54e2db426c682` | ausente | sin verificar |
-| `sp_desactivar_producto` | PROCEDURE | `743fa94aae54b130e8756e8f1bc2096ca17849e2bc28cf44c55f4338efaaafc0` | ausente | sin verificar |
-| `SP_ESTADISTICAS_DASHBOARD` | PROCEDURE | `3fcb5aa36729ec21860deaeded4f865f54405e89b7a7fe3fa090b1576cb6509d` | ausente | sin verificar |
-| `sp_get_lineas_factura` | PROCEDURE | `53161a7fca80fddac34071401f09c9c650cb1a8935cc67c5ac81328a60e787d8` | ausente | sin verificar |
-| `sp_listar_comprobantes_pendientes` | PROCEDURE | `2125f86962a885511b61559e7b90b9728cc69c256285d867eeb5687215454672` | ausente | sin verificar |
-| `sp_listar_comprobantes_por_empresa` | PROCEDURE | `15aae6043f19109bfac58025d1121f541511ded57a6bf75a53bbe96cc6e65210` | ausente | sin verificar |
-| `sp_listar_comprobantes_por_estado` | PROCEDURE | `7cbf6fa8f633d0cb4b31adbaae69bd96fb9cd8b1c67f6de627e508439c4042fb` | ausente | sin verificar |
-| `sp_listar_comprobantes_por_fechas` | PROCEDURE | `6e7b08512ed03a76666d606cb70049fd4a44c721882b2bdf8fc11c80be4cc862` | ausente | sin verificar |
-| `sp_obtener_clientes_nuevos_por_mes` | PROCEDURE | `a251492ad3e266c91db6aaad8227b7730ded4e7d59082f4346811b5663ea0038` | ausente | sin verificar |
-| `sp_obtener_comprobante_por_clave` | PROCEDURE | `e2c135c5bd3c9eed65cb0cb75a8e2860bc832c0a94b854cfbb4bfa8d7b2ca628` | ausente | sin verificar |
-| `sp_obtener_comprobante_por_factura` | PROCEDURE | `ebd9f8aafa8ccbfc991d15b4c1f0818a527c3a8414e8a2faed13d6e8b9d12945` | ausente | sin verificar |
-| `sp_obtener_productos_mas_vendidos` | PROCEDURE | `e9c48d512873a63a83ab90a6d1e27a9fba8bd5ebf3c8a13eba3a986e4e8f2149` | ausente | sin verificar |
-| `sp_obtener_ventas_por_mes` | PROCEDURE | `73df668a8889405c704fb1b0e1d23dbe93cd003d85d57b477eabc0c56428c969` | ausente | sin verificar |
-| `SP_PRODUCTOS_MAS_VENDIDOS` | PROCEDURE | `883b589ec5c021fc88664185b1c8a966121710965aeab6a409b911372b97ace3` | ausente | sin verificar |
-| `sp_resumen_comprobantes_empresa` | PROCEDURE | `adbb619129618e985c4239d3e3c3e58d882c55a4077ebbeaeea6f6709e014418` | ausente | sin verificar |
-| `SP_VENTAS_POR_CLIENTE_TOP` | PROCEDURE | `c87e70ec254e38404b092d61dff874f47da2eb1d7bc5812aa2517fe23d19667d` | ausente | sin verificar |
-| `sp_obtener_top_clientes` | PROCEDURE (solo referenciada en Java) | no aplica (no existe en el repo) | ausente | sin verificar |
-| `sp_obtener_ventas_por_dia` | PROCEDURE (solo referenciada en Java) | no aplica (no existe en el repo) | ausente | sin verificar |
-| `sp_obtener_estadisticas_ventas` | PROCEDURE (solo referenciada en Java) | no aplica (no existe en el repo) | ausente | sin verificar |
-| `trg_after_insert_usuario` | TRIGGER AFTER INSERT `usuario` | `c0379306fb0a5921907c95e36d976bc44fcc53c0bbb25db72d00e1e8e8736dba` | **idéntica** (mismo hash, `DEFINER=root@%`) | sin verificar |
-| `trg_after_update_usuario` | TRIGGER AFTER UPDATE `usuario` | `0b80b4540e32dd153550407f20dbe6eb7dbeaeabac26d25c19fbe33edc155236` | **idéntica** (mismo hash, `DEFINER=root@%`) | sin verificar |
+| `ActualizarCliente` | PROCEDURE | `39f2ce92dd83248f6e659a0cfb42bcd5ac6058504855ea53af02cbb0ffb9f395` | ausente | **idéntica** |
+| `ActualizarTotalFactura` | PROCEDURE | `759a88f51b10d446171a830f56568d38087de175b4ae9acb2130205cb6215510` | ausente | **idéntica** |
+| `CrearFactura` | PROCEDURE | `5e3ac341bdc00a4e284ae24a798ffbce7c0a45a94ebb4552a89f884fba1b57f2` | ausente | **idéntica** |
+| `InsertarCliente` | PROCEDURE | `c6c4641d14c4c8acd41889822caa22b91413f3135cf423a06af57bb70b853fc1` | ausente | **idéntica** |
+| `InsertarLineaFactura` | PROCEDURE | `598e84b4d85d7b9bbe9777757ff6f51670cc13c15f778c03938824f0c9e42abb` | ausente | **idéntica** |
+| `InsertarPresentacion` | PROCEDURE | `2379d2678182c722710a61a0a7536ca27b6fdf0ffda31958f161b062b7142ab6` | ausente | **idéntica** |
+| `InsertarProducto` | PROCEDURE | `6190d6bb4120414b7edbbf1230865e8af7896547efc15d10cd710cefafe77f9f` | ausente | **idéntica** |
+| `InsertarUsuario` | PROCEDURE | `34bf8f956260d42fd6587415da3cb057d26f62f8f903a2d71569406c4ee72f1c` | ausente | **idéntica** |
+| `ObtenerClientes` | PROCEDURE | `8669d8b7d78ee61faa10f61b4b2502f3a49938bb142ed7c2329a0d29b79b0905` | ausente | **idéntica** |
+| `ObtenerFacturaCompleta` | PROCEDURE | `9d0e23c19e6445f8e67e983661de47564d660c067d6206250c04ae58d75f80c6` | ausente | **idéntica** |
+| `ObtenerHistorialMensajes` | PROCEDURE | `961e8e133d4c23e89ec56d5bbe90a91befd24b9cb02713d5ca31f294cff6d8e2` | ausente | **idéntica** |
+| `ObtenerProductos` | PROCEDURE | `732cd7da67ee21267bb43784242e50aef7dfacb9cc3ee6fcff416d17773abfb8` | ausente | **idéntica** |
+| `ObtenerReportePorArticulo` | PROCEDURE | `2466c9295d045953a20d292bb3ae53f188c5ec30b83f83157b881e609c8e6c88` | ausente | **idéntica** |
+| `RegistrarWebhook` | PROCEDURE | `0df1a949ee5a03a357c8bacfdf0e054b4dab84651562d4aeda7d62c34584afc2` | ausente | **idéntica** |
+| `sp_actualizar_linea_factura` | PROCEDURE | `df70c082e1c58348df649ba89efcd543efcd12045bbcef4af6deed7231c7af53` | ausente | **idéntica** |
+| `SP_CLIENTES_NUEVOS_POR_MES` | PROCEDURE | `aa73c361420d28fc974ac99cd7931f45e6d2d18322e45596f6d2e9639f6c046c` | ausente | **idéntica** |
+| `sp_contar_comprobantes_por_estado` | PROCEDURE | `174009f32a3c7d234d44742111ffd877ca1c302c3d440c5f8b958a4adf054e41` | ausente | **idéntica** |
+| `sp_crear_preferencias_usuario` | PROCEDURE | `4f21e16883df0e629130a79dc1675d2a43c4adf4032260f05de54e2db426c682` | ausente | **idéntica** |
+| `sp_desactivar_producto` | PROCEDURE | `743fa94aae54b130e8756e8f1bc2096ca17849e2bc28cf44c55f4338efaaafc0` | ausente | **idéntica** |
+| `SP_ESTADISTICAS_DASHBOARD` | PROCEDURE | `3fcb5aa36729ec21860deaeded4f865f54405e89b7a7fe3fa090b1576cb6509d` | ausente | **idéntica** |
+| `sp_get_lineas_factura` | PROCEDURE | `53161a7fca80fddac34071401f09c9c650cb1a8935cc67c5ac81328a60e787d8` | ausente | **idéntica** |
+| `sp_listar_comprobantes_pendientes` | PROCEDURE | `2125f86962a885511b61559e7b90b9728cc69c256285d867eeb5687215454672` | ausente | **idéntica** |
+| `sp_listar_comprobantes_por_empresa` | PROCEDURE | `15aae6043f19109bfac58025d1121f541511ded57a6bf75a53bbe96cc6e65210` | ausente | **idéntica** |
+| `sp_listar_comprobantes_por_estado` | PROCEDURE | `7cbf6fa8f633d0cb4b31adbaae69bd96fb9cd8b1c67f6de627e508439c4042fb` | ausente | **idéntica** |
+| `sp_listar_comprobantes_por_fechas` | PROCEDURE | `6e7b08512ed03a76666d606cb70049fd4a44c721882b2bdf8fc11c80be4cc862` | ausente | **idéntica** |
+| `sp_obtener_clientes_nuevos_por_mes` | PROCEDURE | `a251492ad3e266c91db6aaad8227b7730ded4e7d59082f4346811b5663ea0038` | ausente | **idéntica** |
+| `sp_obtener_comprobante_por_clave` | PROCEDURE | `e2c135c5bd3c9eed65cb0cb75a8e2860bc832c0a94b854cfbb4bfa8d7b2ca628` | ausente | **idéntica** |
+| `sp_obtener_comprobante_por_factura` | PROCEDURE | `ebd9f8aafa8ccbfc991d15b4c1f0818a527c3a8414e8a2faed13d6e8b9d12945` | ausente | **idéntica** |
+| `sp_obtener_productos_mas_vendidos` | PROCEDURE | `e9c48d512873a63a83ab90a6d1e27a9fba8bd5ebf3c8a13eba3a986e4e8f2149` | ausente | **idéntica** |
+| `sp_obtener_ventas_por_mes` | PROCEDURE | `73df668a8889405c704fb1b0e1d23dbe93cd003d85d57b477eabc0c56428c969` | ausente | **idéntica** |
+| `SP_PRODUCTOS_MAS_VENDIDOS` | PROCEDURE | `883b589ec5c021fc88664185b1c8a966121710965aeab6a409b911372b97ace3` | ausente | **idéntica** |
+| `sp_resumen_comprobantes_empresa` | PROCEDURE | `adbb619129618e985c4239d3e3c3e58d882c55a4077ebbeaeea6f6709e014418` | ausente | **idéntica** |
+| `SP_VENTAS_POR_CLIENTE_TOP` | PROCEDURE | `c87e70ec254e38404b092d61dff874f47da2eb1d7bc5812aa2517fe23d19667d` | ausente | **idéntica** |
+| `sp_obtener_top_clientes` | PROCEDURE (solo referenciada en Java) | no aplica (no existe en el repo) | ausente | ausente (solo referenciada en Java) |
+| `sp_obtener_ventas_por_dia` | PROCEDURE (solo referenciada en Java) | no aplica (no existe en el repo) | ausente | ausente (solo referenciada en Java) |
+| `sp_obtener_estadisticas_ventas` | PROCEDURE (solo referenciada en Java) | no aplica (no existe en el repo) | ausente | ausente (solo referenciada en Java) |
+| `trg_after_insert_usuario` | TRIGGER AFTER INSERT `usuario` | `c0379306fb0a5921907c95e36d976bc44fcc53c0bbb25db72d00e1e8e8736dba` | **idéntica** (mismo hash, `DEFINER=root@%`) | **idéntica** |
+| `trg_after_update_usuario` | TRIGGER AFTER UPDATE `usuario` | `0b80b4540e32dd153550407f20dbe6eb7dbeaeabac26d25c19fbe33edc155236` | **idéntica** (mismo hash, `DEFINER=root@%`) | **idéntica** |
 
 ---
 
@@ -370,7 +419,7 @@ Conteo: 21 de los 33 procedimientos de `SP` son código muerto o nunca se ejecut
 
 **(a) ¿Hay hoy dos cálculos de totales?** Sí. `ActualizarTotalFactura` (`SP:61-72`, invocada desde `SP:506`/`SP:532`) calcula `total = Σ subtotal` en SQL, y `LFS:96-122` calcula `subtotal`, `igv` y `total` en Java dentro de la misma transacción (`@Transactional`, `LFS:71`). Prevalece Java, que escribe después. En el log general de MySQL de la reproducción se ve `call sp_actualizar_linea_factura(13, 1, 4, 173, 1, 1130.0, 1130.0, 7)` seguido de `update factura set ...` emitido por Hibernate.
 
-**(b) ¿Alguna ruta en producción persiste totales calculados por una rutina que ignore IVA, tarifa o moneda?** Con el código actual, no: `factura.total` escrito por la rutina siempre lo sobrescribe Java en la misma transacción (`LFS:111-114`). Si Java lanza una excepción (por ejemplo, una factura anulada, `LFS:108-110`), se revierte también lo escrito por la rutina. La rutina nunca escribe `subtotal` ni `igv`. Producción: «sin verificar» (no se pudo comprobar qué versión de las rutinas tiene). Sí se reprodujo una **inconsistencia persistida** en esta ruta: no la causa la rutina, sino la combinación UI + Java (4.3, caso 2). Fuera de la ruta de escritura, `sp_obtener_ventas_por_mes` **muestra** montos que ignoran la moneda (4.4); no los persiste.
+**(b) ¿Alguna ruta en producción persiste totales calculados por una rutina que ignore IVA, tarifa o moneda?** Con el código actual, no: `factura.total` escrito por la rutina siempre lo sobrescribe Java en la misma transacción (`LFS:111-114`). Si Java lanza una excepción (por ejemplo, una factura anulada, `LFS:108-110`), se revierte también lo escrito por la rutina. La rutina nunca escribe `subtotal` ni `igv`. Producción tiene exactamente estas versiones de `sp_actualizar_linea_factura` y `ActualizarTotalFactura` (mismo hash, §2.2), así que este comportamiento aplica allí. Sí se reprodujo una **inconsistencia persistida** en esta ruta: no la causa la rutina, sino la combinación UI + Java (4.3, caso 2). Fuera de la ruta de escritura, `sp_obtener_ventas_por_mes` **muestra** montos que ignoran la moneda (4.4); no los persiste.
 
 **(c) ¿Qué pruebas cubren esa ruta?** Solo pruebas unitarias con Mockito: `LineaFacturaServiceAsientoTest` (`@ExtendWith(MockitoExtension.class)`, `LineaFacturaRepository` como `@Mock`, líneas 33-38) y `DesgloseIvaVentaTest` (`@Mock LineaFacturaRepository`, línea 80; `updateLineas` en las líneas 168-278). La configuración de pruebas usa H2 (`src/test/resources/application.yml:24`), donde las rutinas no existen. **Ninguna prueba ejecuta `sp_actualizar_linea_factura` ni `ActualizarTotalFactura`**, ni el caso de guardar menos líneas de las que hay en BD. De los 5 `*IT`, ninguno toca rutinas (`rg -i 'procedure|routines|stored' src/test` = 0 coincidencias).
 
@@ -480,7 +529,7 @@ Esfuerzo contado sobre el código actual. «Métodos» son métodos de repositor
 
 - **Contenido**: una `V36` (o `R__`) con las 33 rutinas y los 2 triggers de `database/routines/` sin cambios.
 - **Esfuerzo**: 1–2 archivos, sin cambios en Java.
-- **Riesgo**: alto. Exige SUPER o `log_bin_trust_function_creators=1` en producción por los triggers (§6). Versiona 8 rutinas rotas y 21 muertas. Mantiene el doble cálculo de totales, el reporte de ventas en monedas mezcladas (ADR-011) y los endpoints `clave`/`factura` rotos. Si producción tiene versiones distintas de las rutinas (pendiente de 2.2), la migración las sobrescribe.
+- **Riesgo**: alto. Exige SUPER o `log_bin_trust_function_creators=1` en producción por los triggers (§6). Versiona 8 rutinas rotas y 21 muertas. Mantiene el doble cálculo de totales, el reporte de ventas en monedas mezcladas (ADR-011) y los endpoints `clave`/`factura` rotos. Producción tiene hoy las mismas versiones que el repositorio (§2.2), así que la migración no cambiaría su comportamiento; sí exige que Flyway pueda reemplazar objetos creados por `root@localhost`.
 - **Impacto**: P-009 resuelto solo en cuanto a «rutinas fuera de Flyway», pero suma el requisito de SUPER. P-038 resuelto. P-017 avanza: un entorno nuevo tendría las rutinas.
 - **Orden sugerido**: (1) obtener la salida de 2.2 y conciliar hashes; (2) decidir el `DEFINER` y el privilegio para los triggers; (3) migración; (4) `*IT` que ejecuten las rutinas vivas.
 
