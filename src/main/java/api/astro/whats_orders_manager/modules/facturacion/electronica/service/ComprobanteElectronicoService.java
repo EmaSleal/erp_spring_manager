@@ -1,7 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.HaciendaCallbackDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 
@@ -140,24 +139,4 @@ public interface ComprobanteElectronicoService {
      * Cuenta comprobantes por estado.
      */
     long contarPorEstado(Integer empresaId, EstadoComprobante estado);
-    
-    /**
-     * Procesa un callback recibido de Hacienda.
-     * 
-     * <p>Este método se ejecuta cuando Hacienda envía una notificación asíncrona
-     * sobre el cambio de estado de un comprobante electrónico.</p>
-     * 
-     * <p><strong>Acciones realizadas:</strong></p>
-     * <ul>
-     *   <li>Busca el comprobante por clave numérica</li>
-     *   <li>Actualiza el estado según respuesta de Hacienda</li>
-     *   <li>Guarda el XML de respuesta</li>
-     *   <li>Notifica al usuario (WebSocket/Email)</li>
-     * </ul>
-     * 
-     * @param callback Datos del callback recibido de Hacienda
-     * @throws jakarta.persistence.EntityNotFoundException si no se encuentra el comprobante
-     * @throws IllegalArgumentException si los datos del callback son inválidos
-     */
-    void procesarCallbackHacienda(HaciendaCallbackDTO callback);
 }

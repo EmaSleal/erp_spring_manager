@@ -17,6 +17,7 @@ import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -88,6 +89,10 @@ public class UsuarioAdminController {
     @Autowired
     @Lazy
     private EmpleadoService empleadoService;
+
+    /** URL pública de la aplicación (APP_BASE_URL, sin valor por defecto — T-022). */
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     // ==================== VISTAS ====================
 
@@ -1228,7 +1233,7 @@ public class UsuarioAdminController {
             usuarioService.save(usuario);
             
             // Enviar credenciales por email
-            String urlLogin = "http://localhost:9090/auth/login"; // TODO: Mover a configuración
+            String urlLogin = baseUrl + "/auth/login";
             emailService.enviarCredencialesUsuario(usuario, nuevaPassword, urlLogin);
             
             log.info("✅ Credenciales reenviadas exitosamente a: {}", usuario.getEmail());

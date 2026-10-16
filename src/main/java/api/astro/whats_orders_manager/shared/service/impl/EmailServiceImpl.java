@@ -6,16 +6,18 @@ import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
 import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
+import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmail;
+import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmailService;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
+import api.astro.whats_orders_manager.modules.configuracion.service.SmtpMailSenderFactory;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
@@ -24,6 +26,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * ============================================================================
@@ -31,6 +34,8 @@ import java.util.Map;
  * ERP Orders Manager
  * ============================================================================
  * Implementación del servicio de correos electrónicos usando JavaMailSender.
+ * El servidor SMTP y el remitente salen de la configuración de email (fila única, ADR-027); con la
+ * configuración inactiva no se envía nada (T-022).
  * 
  * Características:
  * - Envío de emails simples y HTML
@@ -45,7 +50,7 @@ import java.util.Map;
 public class EmailServiceImpl implements EmailService {
 
     @Autowired
-    private JavaMailSender mailSender;
+    private ConfiguracionEmailService configuracionEmailService;
 
     @Autowired
     private SpringTemplateEngine templateEngine;
@@ -61,26 +66,47 @@ public class EmailServiceImpl implements EmailService {
 
 
 
-    @Value("${spring.mail.username}")
-    private String fromEmail;
-
     private static final String CHARSET = "UTF-8";
+
+    static final String ENVIO_DESHABILITADO = "El envío de correos está deshabilitado: la configuración de email "
+            + "no existe o está inactiva. Configúrela y actívela en Configuración > Email.";
+
+    /** Servidor SMTP y remitente de la configuración de email (fila única, ADR-027). */
+    private record Envio(JavaMailSenderImpl sender, String remitente) {
+    }
+
+    /**
+     * T-022 (ADR-027) — Lee la configuración de email con el único método de lectura y arma el envío.
+     * Si no existe o está inactiva ("activo" = envío habilitado), no se contacta al servidor SMTP: se registra
+     * un aviso sin datos sensibles (ni destinatario, ni servidor, ni credenciales) y se lanza MessagingException.
+     */
+    private Envio envioHabilitado() throws MessagingException {
+        Optional<ConfiguracionEmail> configuracion = configuracionEmailService.obtenerConfiguracion();
+        if (configuracion.isEmpty() || !Boolean.TRUE.equals(configuracion.get().getActivo())) {
+            log.warn("Envío de correo omitido: la configuración de email no existe o está inactiva; "
+                    + "no se contacta al servidor SMTP.");
+            throw new MessagingException(ENVIO_DESHABILITADO);
+        }
+        ConfiguracionEmail activa = configuracion.get();
+        return new Envio(SmtpMailSenderFactory.crear(activa), activa.getEmailRemitente());
+    }
 
     /**
      * Envía un email simple con texto plano
      */
     @Override
     public void enviarEmail(String to, String subject, String body) throws MessagingException {
+        Envio envio = envioHabilitado();
         log.info("Enviando email simple a: {}", to);
         
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
+            message.setFrom(envio.remitente());
             message.setTo(to);
             message.setSubject(subject);
             message.setText(body);
             
-            mailSender.send(message);
+            envio.sender().send(message);
             
             log.info("✅ Email enviado exitosamente a: {}", to);
         } catch (Exception e) {
@@ -94,18 +120,19 @@ public class EmailServiceImpl implements EmailService {
      */
     @Override
     public void enviarEmailHtml(String to, String subject, String htmlContent) throws MessagingException {
+        Envio envio = envioHabilitado();
         log.info("Enviando email HTML a: {}", to);
         
         try {
-            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessage message = envio.sender().createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false, CHARSET);
             
-            helper.setFrom(fromEmail);
+            helper.setFrom(envio.remitente());
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlContent, true); // true = HTML
             
-            mailSender.send(message);
+            envio.sender().send(message);
             
             log.info("✅ Email HTML enviado exitosamente a: {}", to);
         } catch (Exception e) {
@@ -120,13 +147,14 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void enviarEmailConAdjunto(String to, String subject, String body, byte[] archivo, String nombreArchivo) 
             throws MessagingException {
+        Envio envio = envioHabilitado();
         log.info("Enviando email con adjunto '{}' a: {}", nombreArchivo, to);
         
         try {
-            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessage message = envio.sender().createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, CHARSET); // true = multipart
             
-            helper.setFrom(fromEmail);
+            helper.setFrom(envio.remitente());
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(body);
@@ -134,7 +162,7 @@ public class EmailServiceImpl implements EmailService {
             // Agregar archivo adjunto
             helper.addAttachment(nombreArchivo, new ByteArrayResource(archivo));
             
-            mailSender.send(message);
+            envio.sender().send(message);
             
             log.info("✅ Email con adjunto enviado exitosamente a: {}", to);
         } catch (Exception e) {
@@ -149,13 +177,14 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void enviarEmailHtmlConAdjunto(String to, String subject, String htmlContent, byte[] archivo, String nombreArchivo) 
             throws MessagingException {
+        Envio envio = envioHabilitado();
         log.info("Enviando email HTML con adjunto '{}' a: {}", nombreArchivo, to);
         
         try {
-            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessage message = envio.sender().createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, CHARSET); // true = multipart
             
-            helper.setFrom(fromEmail);
+            helper.setFrom(envio.remitente());
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlContent, true); // true = HTML
@@ -163,7 +192,7 @@ public class EmailServiceImpl implements EmailService {
             // Agregar archivo adjunto
             helper.addAttachment(nombreArchivo, new ByteArrayResource(archivo));
             
-            mailSender.send(message);
+            envio.sender().send(message);
             
             log.info("✅ Email HTML con adjunto enviado exitosamente a: {}", to);
         } catch (Exception e) {
@@ -178,18 +207,19 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void enviarEmailConMultiplesAdjuntos(String to, String subject, String body,
             Map<String, byte[]> adjuntos) throws MessagingException {
+        Envio envio = envioHabilitado();
         log.info("Enviando email con {} adjunto(s) a: {}", adjuntos.size(), to);
         try {
-            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessage message = envio.sender().createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, CHARSET);
-            helper.setFrom(fromEmail);
+            helper.setFrom(envio.remitente());
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(body);
             for (Map.Entry<String, byte[]> entry : adjuntos.entrySet()) {
                 helper.addAttachment(entry.getKey(), new ByteArrayResource(entry.getValue()));
             }
-            mailSender.send(message);
+            envio.sender().send(message);
             log.info("✅ Email con adjuntos enviado exitosamente a: {}", to);
         } catch (Exception e) {
             log.error("❌ Error al enviar email con adjuntos a {}: {}", to, e.getMessage());

@@ -8,22 +8,18 @@ import java.util.Optional;
 
 /**
  * Repository para gestionar la configuración de email/SMTP
- * Solo debe existir un registro de configuración en el sistema
+ * La tabla tiene exactamente una fila (ADR-027)
  */
 @Repository
 public interface ConfiguracionEmailRepository extends JpaRepository<ConfiguracionEmail, Integer> {
     
     /**
-     * Obtiene la primera configuración de email (única en el sistema)
+     * La configuración de email (fila única, ADR-027). Único lector: solo lo usa
+     * ConfiguracionEmailService.obtenerConfiguracion(); el orden por id lo hace determinista aun si la
+     * restricción de fila única faltara.
      * @return Optional con la configuración si existe
      */
     Optional<ConfiguracionEmail> findFirstByOrderByIdConfiguracionAsc();
-    
-    /**
-     * Obtiene la configuración de email activa
-     * @return Optional con la configuración activa
-     */
-    Optional<ConfiguracionEmail> findFirstByActivoTrue();
     
     /**
      * Verifica si existe alguna configuración de email

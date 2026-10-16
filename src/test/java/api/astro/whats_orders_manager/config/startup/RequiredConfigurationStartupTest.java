@@ -37,4 +37,19 @@ class RequiredConfigurationStartupTest {
                 .contains("Faltan variables de entorno obligatorias")
                 .doesNotContain("HikariPool");
     }
+
+    @Test
+    @DisplayName("T-022: sin URL pública ni orígenes CORS → no arranca y nombra app.base-url/CORS (salida capturada)")
+    void sinUrlPublicaNiCors_fallaConMensajeClaro(CapturedOutput output) {
+        SpringApplication app = new SpringApplication(Empty.class);
+
+        assertThatThrownBy(() -> app.run("--spring.config.location=classpath:t022/sin-url-publica-ni-cors.yml"))
+                .isInstanceOf(StartupConfigurationException.class)
+                .hasMessageContaining("APP_BASE_URL")
+                .hasMessageContaining("CORS_ALLOWED_ORIGINS");
+
+        assertThat(output).contains("APPLICATION FAILED TO START")
+                .contains("Faltan variables de entorno obligatorias: APP_BASE_URL, CORS_ALLOWED_ORIGINS.")
+                .doesNotContain("t022-token-de-prueba");
+    }
 }

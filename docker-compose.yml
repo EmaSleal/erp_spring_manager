@@ -7,15 +7,17 @@ services:
     container_name: whats_orders_mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME:-facturas_monrachem}
+      MYSQL_DATABASE: ${DB_NAME:?DB_NAME is required}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - app-network
     # NO exponemos puerto al host (solo accesible internamente)
     command: --authentication_policy=mysql_native_password
+    # Sin credenciales (T-022): mysqladmin ping sale con 0 si el servidor responde, aun con "Access denied".
+    # 127.0.0.1 (TCP) y no el socket: el servidor temporal de la inicialización no escucha en TCP.
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -32,7 +34,7 @@ services:
         condition: service_healthy
     environment:
       # Configuración de Base de Datos (apunta al contenedor MySQL)
-      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-facturas_monrachem}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:?DB_NAME is required}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
 
@@ -40,19 +42,22 @@ services:
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:?META_WEBHOOK_VERIFY_TOKEN is required}
       # Base64 de 32 bytes; respaldar aparte de la base (sin ella no se descifran las credenciales)
       HACIENDA_CRYPTO_KEY: ${HACIENDA_CRYPTO_KEY:?HACIENDA_CRYPTO_KEY is required}
+      # Solo si configuracion_email.smtp_password está en el formato anterior "{enc}" (T-022); si no, vacía
+      SMTP_ENCRYPTION_KEY: ${SMTP_ENCRYPTION_KEY:-}
 
-      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
-      EMAIL_PORT: ${EMAIL_PORT:-587}
-      EMAIL_USERNAME: ${EMAIL_USERNAME:-}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
-      
+      # Admin de bootstrap (T-022): solo se usan si no hay ningún usuario ADMIN activo
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_TELEFONO: ${BOOTSTRAP_ADMIN_TELEFONO:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+
       # Configuración de WhatsApp (ajustar según necesidad)
       WHATSAPP_API_URL: ${WHATSAPP_API_URL:-https://graph.facebook.com/v17.0}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       
-      # URL pública (usada en links de WhatsApp y redirects)
-      APP_BASE_URL: https://erp-spring-dev.astro-solutions.net
+      # URL pública (links de WhatsApp, correos de credenciales) y orígenes CORS: obligatorias, sin default (T-022)
+      APP_BASE_URL: ${APP_BASE_URL:?APP_BASE_URL is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
       # Configuración de Java
       JAVA_OPTS: "-Xmx1024m -Xms512m"
       SPRING_PROFILES_ACTIVE: prod
@@ -76,35 +81,30 @@ services:
       retries: 3
       start_period: 300s
 
-      
+
+  # Carga de seeds (T-022): solo bajo demanda, nunca en cada "docker compose up":
+  #   docker compose --profile seed run --rm seed
+  # Usa database/scripts/seed.sh: pide escribir el nombre de la base, aborta si la base ya tiene datos de negocio
+  # y pasa la clave a mysql con --defaults-extra-file (archivo temporal 600), sin MYSQL_PWD ni línea de comandos.
   seed:
     image: mysql:8.0.32
     container_name: whats_orders_seed
+    profiles: ["seed"]
     depends_on:
       app:
         condition: service_healthy
     volumes:
-      - ./database/seeds:/seeds:ro
-      - ./database/routines:/routines:ro
+      - ./database:/database:ro
     environment:
-      MYSQL_PWD: ${DB_PASSWORD}
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_NAME: ${DB_NAME:?DB_NAME is required}
     networks:
       - app-network
-    command: >
-      bash -c "
-        echo 'Starting seed...';
-        for f in /seeds/*.sql; do
-          echo \"Running $$f\";
-          mysql -h mysql -u root facturas_monrachem < $$f || exit 1;
-        done;
-        echo 'Seeding complete.';
-        for f in /routines/*.sql; do
-          [ -e \"$$f\" ] || continue;
-          echo \"Applying routine $$f\";
-          sed 's/DEFINER=[^ ]*//g' \"$$f\" | mysql -h mysql -u root facturas_monrachem || exit 1;
-        done;
-        echo 'Routines applied.'
-      "
+    stdin_open: true
+    tty: true
+    entrypoint: ["bash", "/database/scripts/seed.sh"]
     restart: "no"
 
 networks:

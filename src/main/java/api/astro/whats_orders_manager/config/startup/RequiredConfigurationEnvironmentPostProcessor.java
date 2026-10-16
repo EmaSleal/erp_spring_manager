@@ -12,9 +12,11 @@ import java.util.List;
 /**
  * T-021 — Falla el arranque con un mensaje claro si falta la configuración sin la cual la aplicación apuntaría a
  * un destino implícito: base de datos y token del webhook ya no tienen valores por defecto en application.yml.
+ * T-022 agrega la URL pública y los orígenes CORS.
  *
  * <ul>
- *   <li>DB_URL, DB_USERNAME, META_WEBHOOK_VERIFY_TOKEN: deben resolver a un valor no vacío.</li>
+ *   <li>DB_URL, DB_USERNAME, META_WEBHOOK_VERIFY_TOKEN, APP_BASE_URL (app.base-url) y CORS_ALLOWED_ORIGINS
+ *       (app.cors.allowed-origins): deben resolver a un valor no vacío.</li>
  *   <li>DB_PASSWORD: debe estar definida; el valor vacío está permitido.</li>
  *   <li>HACIENDA_CRYPTO_KEY: opcional; si se define, debe ser Base64 de 32 bytes.</li>
  * </ul>
@@ -31,7 +33,9 @@ public class RequiredConfigurationEnvironmentPostProcessor implements Environmen
             new Required("spring.datasource.url", "DB_URL", false),
             new Required("spring.datasource.username", "DB_USERNAME", false),
             new Required("spring.datasource.password", "DB_PASSWORD", true),
-            new Required("meta.webhook.verify-token", "META_WEBHOOK_VERIFY_TOKEN", false));
+            new Required("meta.webhook.verify-token", "META_WEBHOOK_VERIFY_TOKEN", false),
+            new Required("app.base-url", "APP_BASE_URL", false),
+            new Required("app.cors.allowed-origins", "CORS_ALLOWED_ORIGINS", false));
 
     static final String CRYPTO_KEY_PROPERTY = "hacienda.crypto.key";
 

@@ -38,6 +38,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     long countByBloqueado(Boolean bloqueado);
     
     long countByRol(String rol);
+
+    /** T-022: ¿hay algún usuario activo con este rol? (admin de bootstrap) */
+    boolean existsByRolAndActivoTrue(String rol);
     
     /**
      * Consulta especial para usar en AuditorAware que evita el auto-flush
