@@ -39,7 +39,7 @@ services:
       # Webhook de WhatsApp y cifrado de credenciales de Hacienda (T-021)
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:?META_WEBHOOK_VERIFY_TOKEN is required}
       # Base64 de 32 bytes; respaldar aparte de la base (sin ella no se descifran las credenciales)
-      HACIENDA_CRYPTO_KEY: ${HACIENDA_CRYPTO_KEY}
+      HACIENDA_CRYPTO_KEY: ${HACIENDA_CRYPTO_KEY:?HACIENDA_CRYPTO_KEY is required}
 
       EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
       EMAIL_PORT: ${EMAIL_PORT:-587}
