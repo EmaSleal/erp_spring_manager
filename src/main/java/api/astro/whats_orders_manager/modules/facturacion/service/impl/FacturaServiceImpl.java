@@ -10,17 +10,15 @@ import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFac
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
-import api.astro.whats_orders_manager.modules.producto.model.Producto;
-import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
-import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
+import api.astro.whats_orders_manager.modules.facturacion.service.TotalesFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import lombok.extern.slf4j.Slf4j;
@@ -74,10 +72,7 @@ public class FacturaServiceImpl implements FacturaService {
     private AsientoContableService asientoContableService;
 
     @Autowired
-    private CalculadoraImpuestoService calculadoraImpuestoService;
-
-    @Autowired
-    private ProductoRepository productoRepository;
+    private TotalesFacturaService totalesFacturaService;
 
     @Autowired
     private TipoCambioService tipoCambioService;
@@ -220,23 +215,15 @@ public class FacturaServiceImpl implements FacturaService {
     }
 
     /**
-     * ADR-009: si la factura trae líneas, subtotal = Σ bases, igv = Σ impuestos y
-     * total = Σ importes, desglosados por CalculadoraImpuestoService. Sin líneas no se
-     * calcula IVA (el flujo de la UI guarda la factura en cero y luego sus líneas,
-     * cuyos totales fija LineaFacturaServiceImpl.updateLineas con el mismo componente);
-     * solo se completa un total ausente como subtotal + igv recibidos.
+     * ADR-009: si la factura trae líneas, su subtotal de línea y factura.subtotal/igv/total salen de
+     * TotalesFacturaService, el mismo cálculo que usa LineaFacturaServiceImpl.updateLineas (T-024). Sin líneas no
+     * se calcula IVA (el flujo de la UI guarda la factura en cero y luego sus líneas); solo se completa un total
+     * ausente como subtotal + igv recibidos.
      */
     private void aplicarTotalesDesdeLineas(Factura factura) {
         List<LineaFactura> lineas = factura.getLineas();
         if (lineas != null && !lineas.isEmpty()) {
-            DesgloseImpuesto desglose = DesgloseImpuesto.CERO;
-            for (LineaFactura linea : lineas) {
-                Producto producto = resolverProducto(linea.getProducto());
-                desglose = desglose.sumar(calculadoraImpuestoService.desglosarLinea(producto, linea.getSubtotal()));
-            }
-            factura.setSubtotal(desglose.base());
-            factura.setIgv(desglose.impuesto());
-            factura.setTotal(desglose.total());
+            DesgloseImpuesto desglose = totalesFacturaService.aplicarTotales(factura, lineas);
             log.debug("Totales desde líneas (ADR-009): subtotal={}, igv={}, total={}",
                     desglose.base(), desglose.impuesto(), desglose.total());
             return;
@@ -246,14 +233,6 @@ public class FacturaServiceImpl implements FacturaService {
             BigDecimal igv = factura.getIgv() != null ? factura.getIgv() : BigDecimal.ZERO;
             factura.setTotal(factura.getSubtotal().add(igv));
         }
-    }
-
-    /** Producto completo (gravado/tarifa/precioIncluyeIva); el recibido puede traer solo el id. */
-    private Producto resolverProducto(Producto producto) {
-        if (producto == null || producto.getIdProducto() == null) {
-            return producto;
-        }
-        return productoRepository.findById(producto.getIdProducto()).orElse(producto);
     }
 
     @Override

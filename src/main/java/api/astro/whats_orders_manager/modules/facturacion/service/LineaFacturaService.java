@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
+import api.astro.whats_orders_manager.modules.facturacion.dto.TotalesFacturaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,6 @@ public interface LineaFacturaService {
     LineaFactura save(LineaFactura lineaFactura);
     Boolean deleteById(Integer id);
     List<LineaFacturaR> findLineasByFacturaId(Integer idFactura);
-    Boolean updateLineas(List<LineaFacturaR> lineas);
-    Boolean existsByFacturaId(Integer id);
+    /** Sincroniza las líneas de una factura con el conjunto completo recibido y devuelve sus totales (T-024). */
+    TotalesFacturaDTO updateLineas(List<LineaFacturaR> lineas);
 }
