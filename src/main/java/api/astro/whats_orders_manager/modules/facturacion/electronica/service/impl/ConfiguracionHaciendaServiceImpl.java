@@ -54,9 +54,9 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
             .empresa(empresa)
             .ambiente(dto.getAmbiente())
             .usuarioHacienda(dto.getUsuarioHacienda())
-            .passwordHacienda(dto.getPasswordHacienda()) // TODO: Encriptar
+            .passwordHacienda(dto.getPasswordHacienda()) // cifrado en reposo por CredencialCifradaConverter
             .rutaCertificado(dto.getRutaCertificado())
-            .pinCertificado(dto.getPinCertificado()) // TODO: Encriptar
+            .pinCertificado(dto.getPinCertificado())
             .activa(activa)
             .consecutivoFactura(1L)
             .consecutivoTiquete(1L)
@@ -81,14 +81,15 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         configuracion.setAmbiente(dto.getAmbiente());
         configuracion.setUsuarioHacienda(dto.getUsuarioHacienda());
         
-        if (!dto.getPasswordHacienda().equals("********")) {
-            configuracion.setPasswordHacienda(dto.getPasswordHacienda()); // TODO: Encriptar
+        // "********" (la máscara que devuelve el mapper) conserva la credencial guardada
+        if (!ConfiguracionHaciendaMapper.MASK.equals(dto.getPasswordHacienda())) {
+            configuracion.setPasswordHacienda(dto.getPasswordHacienda());
         }
         
         configuracion.setRutaCertificado(dto.getRutaCertificado());
         
-        if (dto.getPinCertificado() != null && !dto.getPinCertificado().equals("********")) {
-            configuracion.setPinCertificado(dto.getPinCertificado()); // TODO: Encriptar
+        if (dto.getPinCertificado() != null && !ConfiguracionHaciendaMapper.MASK.equals(dto.getPinCertificado())) {
+            configuracion.setPinCertificado(dto.getPinCertificado());
         }
         
         configuracion = repository.save(configuracion);

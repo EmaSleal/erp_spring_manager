@@ -173,15 +173,14 @@ public class AsientoContableService {
             }
         }
         
-        // Establecer fecha actual si no tiene
-        if (asiento.getFecha() == null) {
-            asiento.setFecha(LocalDate.now());
-        }
+        // Sin fecha implícita (mismo criterio que ADR-014): un borrador sin fecha se rechaza
+        validarFechaPresente(asiento.getFecha());
         
         // Estado inicial: BORRADOR
         asiento.setEstado(EstadoAsiento.BORRADOR);
         
-        // Validar y establecer relación bidireccional con detalles
+        // Validar y establecer relación bidireccional con detalles. Un borrador puede estar
+        // descuadrado o tener menos de 2 líneas (incluso ninguna): eso se valida al contabilizar.
         if (asiento.getDetalles() != null && !asiento.getDetalles().isEmpty()) {
             validarDetalles(asiento.getDetalles());
             // IMPORTANTE: Establecer la referencia del asiento en cada detalle
@@ -213,6 +212,8 @@ public class AsientoContableService {
                 "Solo se pueden modificar asientos en estado BORRADOR. Estado actual: " + asiento.getEstado()
             );
         }
+        
+        validarFechaPresente(asientoActualizado.getFecha());
         
         // Actualizar campos
         asiento.setFecha(asientoActualizado.getFecha());
@@ -280,10 +281,17 @@ public class AsientoContableService {
         AsientoContable asiento = asientoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Asiento no encontrado"));
         
-        if (!asiento.puedeContabilizarse()) {
+        if (asiento.getEstado() != EstadoAsiento.BORRADOR) {
             throw new IllegalArgumentException(
                 "El asiento no puede contabilizarse. Estado actual: " + asiento.getEstado()
             );
+        }
+        
+        validarFechaPresente(asiento.getFecha());
+        
+        // Validar que tenga al menos 2 detalles
+        if (asiento.getDetalles() == null || asiento.getDetalles().size() < 2) {
+            throw new IllegalArgumentException("El asiento debe tener al menos 2 movimientos");
         }
         
         // Validar que esté cuadrado
@@ -294,10 +302,8 @@ public class AsientoContableService {
             );
         }
         
-        // Validar que tenga al menos 2 detalles
-        if (asiento.getDetalles() == null || asiento.getDetalles().size() < 2) {
-            throw new IllegalArgumentException("El asiento debe tener al menos 2 movimientos");
-        }
+        // Las cuentas pudieron dejar de ser hojas activas entre el guardado y la contabilización
+        validarDetalles(asiento.getDetalles());
         
         asiento.contabilizar();
         
@@ -308,35 +314,44 @@ public class AsientoContableService {
     }
     
     /**
-     * Anula un asiento contabilizado.
-     * @param id ID del asiento
-     * @param motivo Motivo de la anulación
-     * @return Asiento anulado
+     * Revierte un asiento contabilizado desde Contabilidad (ADR-023): genera su reversión con
+     * {@link #generarAsientoReversion(AsientoContable, String)} (espejo fechado hoy, contabilizado y
+     * enlazado) y deja el original CONTABILIZADO. Un asiento contabilizado nunca pasa a ANULADO.
+     *
+     * Solo se revierten asientos de tipo no automático y sin documento de origen vinculado; los demás
+     * se revierten anulando su documento (factura, pago, CxP, pago a proveedor o planilla).
+     *
+     * @param id     ID del asiento a revertir
+     * @param motivo motivo de la reversión (obligatorio)
+     * @return el asiento de reversión
+     * @throws IllegalArgumentException si falta el motivo o el asiento no existe
+     * @throws IllegalStateException    si el asiento no es reversible desde Contabilidad, es una
+     *                                  reversión o ya fue revertido
      */
     @Transactional
-    public AsientoContable anular(Long id, String motivo) {
-        log.info("Anulando asiento ID: {}", id);
-        
+    public AsientoContable revertirManual(Long id, String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new IllegalArgumentException("El motivo de la reversión es obligatorio");
+        }
         AsientoContable asiento = asientoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Asiento no encontrado"));
-        
-        if (asiento.getEstado() != EstadoAsiento.CONTABILIZADO) {
-            throw new IllegalArgumentException(
-                "Solo se pueden anular asientos contabilizados. Estado actual: " + asiento.getEstado()
-            );
+
+        String motivoRechazo = asiento.motivoNoReversibleDesdeContabilidad();
+        if (motivoRechazo != null) {
+            throw new IllegalStateException(motivoRechazo);
         }
-        
-        asiento.anular(motivo, null);
-        
-        // Agregar motivo al concepto
-        if (motivo != null && !motivo.isEmpty()) {
-            asiento.setConcepto(asiento.getConcepto() + " [ANULADO: " + motivo + "]");
-        }
-        
-        AsientoContable guardado = asientoRepository.save(asiento);
-        log.info("Asiento anulado: {}", guardado.getNumero());
-        
-        return guardado;
+
+        log.info("Revirtiendo asiento {} desde Contabilidad", asiento.getNumero());
+        return generarAsientoReversion(asiento, motivo.trim());
+    }
+
+    /**
+     * Asiento de reversión de otro asiento, si fue revertido.
+     * @param idAsiento ID del asiento original
+     * @return la reversión, si existe
+     */
+    public Optional<AsientoContable> obtenerReversionDe(Long idAsiento) {
+        return asientoRepository.findFirstByAsientoRevertidoIdAsiento(idAsiento);
     }
     
     /**
@@ -1092,9 +1107,9 @@ public class AsientoContableService {
 
     /**
      * Cuentas elegibles como contrapartida de una CxP manual (ADR-016), ordenadas por código: hojas
-     * (activas, que aceptan movimientos y sin subcuentas, ADR-017), de tipo EGRESO o ACTIVO y que no
-     * estén configuradas en parametros_contables como banco/caja, cuentas por cobrar, cuentas por
-     * pagar ni IVA crédito fiscal (ver {@link #esClaveExcluidaDeContrapartida(String)}).
+     * (activas, que aceptan movimientos y sin subcuentas, ADR-017), de tipo EGRESO o ACTIVO, que no
+     * sean hojas de cuentas bancarias (ADR-018) y que no estén asignadas a ninguna clave de
+     * parametros_contables salvo CPP_CUENTA_COMPRAS (ADR-022, con los parámetros vigentes).
      */
     public List<CuentaContable> obtenerCuentasContrapartidaCxpManual() {
         Map<Long, String> excluidas = cuentasExcluidasDeContrapartida();
@@ -1119,8 +1134,9 @@ public class AsientoContableService {
      * @param cuentaId id de la cuenta elegida
      * @return la cuenta validada
      * @throws IllegalArgumentException si falta, no existe, está inactiva, no acepta movimientos, tiene
-     *                                  subcuentas, no es de tipo EGRESO o ACTIVO, o está configurada como
-     *                                  banco/caja, CxC, CxP o IVA
+     *                                  subcuentas, no es de tipo EGRESO o ACTIVO, es la hoja de una cuenta
+     *                                  bancaria o está asignada a una clave de parametros_contables distinta
+     *                                  de CPP_CUENTA_COMPRAS (ADR-022)
      */
     public CuentaContable validarContrapartidaCxpManual(Long cuentaId) {
         if (cuentaId == null) {
@@ -1153,29 +1169,25 @@ public class AsientoContableService {
     }
 
     /**
-     * Claves de parametros_contables cuyas cuentas no pueden ser contrapartida de una CxP manual:
-     * banco/caja de pagos a proveedor (CPP_BANCO_*) y de cobros (COBRO_CAJA_*), cuentas por cobrar
-     * (VENTA_CXC_CLIENTES), cuentas por pagar (CPP_CUENTA_POR_PAGAR) e IVA crédito fiscal
-     * (CPP_IVA_CREDITO_FISCAL).
-     */
-    static boolean esClaveExcluidaDeContrapartida(String clave) {
-        return clave.startsWith(PREFIJO_CPP_BANCO)
-            || clave.startsWith(PREFIJO_COBRO_CAJA)
-            || clave.equals(CLAVE_VENTA_CXC_CLIENTES)
-            || clave.equals(CLAVE_CPP_CUENTA_POR_PAGAR)
-            || clave.equals(CLAVE_CPP_IVA_CREDITO_FISCAL);
-    }
-
-    /**
-     * Id de cuenta → motivo que la excluye como contrapartida: la clave de parametros_contables, o la
-     * cuenta bancaria cuya hoja es (ADR-018: las hojas bancarias no tienen clave).
+     * Id de cuenta → motivo que la excluye como contrapartida (ADR-022): la clave de
+     * parametros_contables que la usa (cualquier clave vigente; la cuenta de CPP_CUENTA_COMPRAS es la
+     * única permitida), o la cuenta bancaria cuya hoja es (ADR-018: las hojas bancarias no tienen clave).
      */
     private Map<Long, String> cuentasExcluidasDeContrapartida() {
         Map<Long, String> excluidas = new HashMap<>();
+        Long idCompras = null;
         for (ParametroContable p : parametroContableRepository.findAllWithCuentas()) {
-            if (esClaveExcluidaDeContrapartida(p.getClave())) {
+            if (p.getCuentaContable() == null) {
+                continue;
+            }
+            if (CLAVE_CPP_CUENTA_COMPRAS.equals(p.getClave())) {
+                idCompras = p.getCuentaContable().getIdCuenta();
+            } else {
                 excluidas.putIfAbsent(p.getCuentaContable().getIdCuenta(), p.getClave());
             }
+        }
+        if (idCompras != null) {
+            excluidas.remove(idCompras);
         }
         List<Object[]> hojasBancarias = cuentaRepository.findCuentasDeCuentasBancarias();
         if (hojasBancarias != null) {
@@ -1592,8 +1604,8 @@ public class AsientoContableService {
      * @throws IllegalArgumentException si hay errores de validación
      */
     private void validarDetalles(List<DetalleAsiento> detalles) {
-        if (detalles == null || detalles.isEmpty()) {
-            throw new IllegalArgumentException("El asiento debe tener al menos un detalle");
+        if (detalles == null) {
+            return;
         }
         
         for (DetalleAsiento detalle : detalles) {
@@ -1603,12 +1615,27 @@ public class AsientoContableService {
             
             CuentaContable cuenta = cuentaRepository.findById(detalle.getCuenta().getIdCuenta())
                 .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada: " + detalle.getCuenta().getIdCuenta()));
+            String etiqueta = cuenta.getCodigo() + " - " + cuenta.getNombre();
             
-            if (!cuenta.puedeRecibirMovimientos()) {
-                throw new IllegalArgumentException(
-                    "La cuenta " + cuenta.getCodigo() + " - " + cuenta.getNombre() + " no acepta movimientos directos"
-                );
+            if (!Boolean.TRUE.equals(cuenta.getActiva())) {
+                throw new IllegalArgumentException("La cuenta " + etiqueta + " está inactiva");
             }
+            if (!Boolean.TRUE.equals(cuenta.getAceptaMovimientos())) {
+                throw new IllegalArgumentException("La cuenta " + etiqueta + " no acepta movimientos directos");
+            }
+            if (tieneSubcuentas(cuenta)) {
+                throw new IllegalArgumentException("La cuenta " + etiqueta
+                    + " tiene subcuentas (es agrupadora); un asiento solo admite cuentas hoja");
+            }
+        }
+    }
+    
+    /**
+     * Rechaza un asiento sin fecha: no se rellena con la fecha del sistema (mismo criterio que ADR-014).
+     */
+    private static void validarFechaPresente(LocalDate fecha) {
+        if (fecha == null) {
+            throw new IllegalArgumentException("La fecha del asiento es obligatoria");
         }
     }
 }

@@ -1,0 +1,12 @@
+# T-021 — Mismas expresiones que src/main/resources/application.yml, sin ninguna variable definida.
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+  datasource:
+    url: ${T021_UNSET_DB_URL}
+    username: ${T021_UNSET_DB_USERNAME}
+    password: ${T021_UNSET_DB_PASSWORD}
+meta:
+  webhook:
+    verify-token: ${T021_UNSET_META_WEBHOOK_VERIFY_TOKEN}
