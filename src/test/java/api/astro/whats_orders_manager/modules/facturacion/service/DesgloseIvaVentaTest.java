@@ -109,7 +109,8 @@ class DesgloseIvaVentaTest {
         ReflectionTestUtils.setField(lineaFacturaService, "userDetailsService", userDetailsService);
         ReflectionTestUtils.setField(lineaFacturaService, "asientoContableService", asientoService);
         ReflectionTestUtils.setField(lineaFacturaService, "productoRepository", productoRepository);
-        ReflectionTestUtils.setField(lineaFacturaService, "calculadoraImpuestoService", calculadora);
+        ReflectionTestUtils.setField(lineaFacturaService, "totalesFacturaService",
+                new TotalesFacturaService(calculadora, productoRepository));
         xmlGenerator = new XmlGeneratorServiceImpl(calculadora);
 
         long id = 1;
@@ -166,7 +167,6 @@ class DesgloseIvaVentaTest {
     @Test
     @DisplayName("criterio 3: líneas 1130 + 565 → subtotal 1500.00, igv 195.00, total 1695.00")
     void updateLineas_desglosaIva() {
-        when(lineaFacturaRepository.existsByFacturaId(ID_FACTURA)).thenReturn(0L);
 
         lineaFacturaService.updateLineas(lineasCriterio3());
 
@@ -182,7 +182,6 @@ class DesgloseIvaVentaTest {
     @Test
     @DisplayName("criterio 5: asiento DR CxC 1695.00 / CR Ingresos 1500.00 / CR IVA por pagar 195.00, cuadrado")
     void asientoVenta_registraIvaPorPagar() {
-        when(lineaFacturaRepository.existsByFacturaId(ID_FACTURA)).thenReturn(0L);
 
         lineaFacturaService.updateLineas(lineasCriterio3());
 
@@ -198,12 +197,11 @@ class DesgloseIvaVentaTest {
     @Test
     @DisplayName("criterio 5: editar líneas de una factura con asiento → reversión + asiento nuevo desglosado")
     void editarLineas_reversionYAsientoNuevoDesglosado() {
-        when(lineaFacturaRepository.existsByFacturaId(ID_FACTURA)).thenReturn(0L);
         lineaFacturaService.updateLineas(lineasCriterio3());
+        asignarIdsPersistidos(10, 11);
         AsientoContable vigente = ultimoAsientoGuardado();
         vigente.setIdAsiento(900L);
 
-        when(lineaFacturaRepository.existsByFacturaId(ID_FACTURA)).thenReturn(1L);
         when(asientoRepository.findAsientosVentaVigentes((long) ID_FACTURA)).thenReturn(List.of(vigente));
         clearInvocations(asientoRepository);
 
@@ -235,9 +233,7 @@ class DesgloseIvaVentaTest {
     @Test
     @DisplayName("criterio 6: XML de la factura del criterio 3 → TotalComprobante 1695.00 = factura.total, TotalImpuesto 195.00")
     void xml_coincideConLaFactura() throws Exception {
-        when(lineaFacturaRepository.existsByFacturaId(ID_FACTURA)).thenReturn(0L);
         lineaFacturaService.updateLineas(lineasCriterio3());
-        cargarLineasEntidad(lineasCriterio3());
 
         Document xml = parse(xmlGenerator.generarXmlFactura(comprobante()));
 
@@ -269,14 +265,12 @@ class DesgloseIvaVentaTest {
     @Test
     @DisplayName("criterio 6: redondeo — 5 decimales del XML no generan diferencia con el total de 2 decimales")
     void xml_redondeoSinDiferencia() throws Exception {
-        when(lineaFacturaRepository.existsByFacturaId(ID_FACTURA)).thenReturn(0L);
-        // 1000 → 884.96 + 115.04 por línea; cantidad 3 hace que PrecioUnitario no sea exacto
+        // 3 × 333.33 = 999.99 → 884.95 + 115.04; 1000 → 884.96 + 115.04; PrecioUnitario sin IVA no es exacto
         List<LineaFacturaR> lineas = List.of(
-                lineaR(20, 1, 5, 3, "333.33", "1000.00"),
-                lineaR(21, 2, 6, 1, "1000.00", "1000.00"),
-                lineaR(22, 3, 6, 7, "0.01", "0.07"));
+                lineaR(-1, 1, 5, 3, "333.33", "1000.00"),
+                lineaR(-2, 2, 6, 1, "1000.00", "1000.00"),
+                lineaR(-3, 3, 6, 7, "0.01", "0.07"));
         lineaFacturaService.updateLineas(lineas);
-        cargarLineasEntidad(lineas);
 
         Document xml = parse(xmlGenerator.generarXmlFactura(comprobante()));
 
@@ -290,7 +284,8 @@ class DesgloseIvaVentaTest {
             sumaLineas = sumaLineas.add(valor(linea, "MontoTotalLinea"));
         }
         BigDecimal totalComprobante = valor(xml, "TotalComprobante");
-        assertThat(factura.getTotal()).isEqualByComparingTo("2000.07");
+        // T-024: el importe de línea es cantidad × precio (3 × 333.33 = 999.99), no el subtotal enviado
+        assertThat(factura.getTotal()).isEqualByComparingTo("2000.06");
         assertThat(totalComprobante.subtract(factura.getTotal())).isEqualByComparingTo("0");
         assertThat(sumaLineas.subtract(factura.getTotal())).isEqualByComparingTo("0");
         assertThat(valor(xml, "TotalImpuesto").subtract(factura.getIgv())).isEqualByComparingTo("0");
@@ -305,8 +300,8 @@ class DesgloseIvaVentaTest {
 
     private static List<LineaFacturaR> lineasCriterio3() {
         return List.of(
-                lineaR(10, 1, 5, 1, "1130.00", "1130.00"),
-                lineaR(11, 2, 6, 5, "113.00", "565.00"));
+                lineaR(-1, 1, 5, 1, "1130.00", "1130.00"),
+                lineaR(-2, 2, 6, 5, "113.00", "565.00"));
     }
 
     private static LineaFacturaR lineaR(Integer idLinea, int numero, int idProducto, int cantidad,
@@ -327,22 +322,14 @@ class DesgloseIvaVentaTest {
         return p;
     }
 
-    /** Las líneas que el XML lee son las entidades persistidas por updateLineas. */
-    private void cargarLineasEntidad(List<LineaFacturaR> lineas) {
-        List<LineaFactura> entidades = new ArrayList<>();
-        for (LineaFacturaR r : lineas) {
-            LineaFactura l = new LineaFactura();
-            l.setIdLineaFactura(r.id_linea_factura());
-            l.setNumeroLinea(r.numero_linea());
-            l.setProducto(productos.get(r.id_producto()));
-            l.setFactura(factura);
-            l.setCantidad(r.cantidad());
-            l.setPrecioUnitario(r.precioUnitario());
-            l.setSubtotal(r.subtotal());
-            entidades.add(l);
+    /**
+     * Simula el INSERT: las líneas nuevas que updateLineas agregó a factura.getLineas() reciben su id. Esas mismas
+     * entidades son las que lee el XML (XmlGeneratorServiceImpl recorre factura.getLineas()).
+     */
+    private void asignarIdsPersistidos(Integer... ids) {
+        for (int i = 0; i < ids.length; i++) {
+            factura.getLineas().get(i).setIdLineaFactura(ids[i]);
         }
-        factura.getLineas().clear();
-        factura.getLineas().addAll(entidades);
     }
 
     private ComprobanteElectronico comprobante() {

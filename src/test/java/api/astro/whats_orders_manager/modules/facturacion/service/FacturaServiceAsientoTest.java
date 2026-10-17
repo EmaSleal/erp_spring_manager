@@ -26,6 +26,7 @@ import api.astro.whats_orders_manager.modules.facturacion.service.impl.FacturaSe
 import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInventarioService;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -218,7 +219,8 @@ class FacturaServiceAsientoTest {
     void crearFacturaConLineas_totalesDelDesglose() {
         FacturaServiceImpl service = servicio(new AsientoContableService(
                 asientoRepository, detalleRepository, cuentaRepository, parametroContableRepository));
-        ReflectionTestUtils.setField(service, "calculadoraImpuestoService", new CalculadoraImpuestoService(null));
+        ReflectionTestUtils.setField(service, "totalesFacturaService",
+                new TotalesFacturaService(new CalculadoraImpuestoService(null), mock(ProductoRepository.class)));
         Factura factura = nuevaFactura("1695.00", "0.00", "0.00", MonedaFE.CRC, null);
         factura.getLineas().add(lineaGravada(factura, 1, "1130.00", "1130.00"));
         factura.getLineas().add(lineaGravada(factura, 5, "113.00", "565.00"));

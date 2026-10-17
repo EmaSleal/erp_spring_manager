@@ -166,8 +166,9 @@ function actualizarResumenTotales() {
         }
     });
     
-    // Los precios incluyen IVA (ADR-009): el total es la suma de las líneas y el
-    // desglose base/IVA por línea lo calcula el servidor (CalculadoraImpuestoService).
+    // Vista previa: los precios incluyen IVA (ADR-009) y el total es la suma de las filas en pantalla.
+    // Los montos que se guardan los calcula el servidor (cantidad × precio, desglose por línea) y se
+    // muestran con mostrarTotalesServidor() tras guardar.
     const total = subtotal;
     
     // Actualizar elementos en el DOM
@@ -176,6 +177,30 @@ function actualizarResumenTotales() {
     
     if (elementoSubtotal) elementoSubtotal.textContent = `$${subtotal.toFixed(2)}`;
     if (elementoTotal) elementoTotal.textContent = `$${total.toFixed(2)}`;
+}
+
+/**
+ * Muestra los totales persistidos que devuelve PUT /lineas-factura/actualizar (T-024).
+ * Reemplazan la vista previa calculada en el navegador.
+ * @param {{moneda: string, subtotal: number, igv: number, total: number}} totales
+ */
+function mostrarTotalesServidor(totales) {
+    if (!totales || totales.total === undefined) {
+        return;
+    }
+    const moneda = totales.moneda || 'CRC';
+    const valores = {
+        subtotal: formatCurrency(totales.subtotal, moneda),
+        igv: formatCurrency(totales.igv, moneda),
+        total: formatCurrency(totales.total, moneda)
+    };
+    // Modal de nueva factura (resumen-*) y pantalla de edición (servidor-*)
+    ['resumen', 'servidor'].forEach(prefijo => {
+        Object.entries(valores).forEach(([campo, texto]) => {
+            const elemento = document.getElementById(`${prefijo}-${campo}`);
+            if (elemento) elemento.textContent = texto;
+        });
+    });
 }
 
 function obtenerFilaLinea(element) {
@@ -328,6 +353,8 @@ function actualizarProductoSeleccionado(element) {
 
 
 
+// Quitar una fila solo la saca de la pantalla: al guardar se envía el conjunto completo de líneas y el
+// servidor elimina las que ya no vienen (T-024).
 function removeLinea(button) {
     const row = obtenerFilaLinea(button);
 
@@ -711,9 +738,11 @@ async function guardarLineas() {
         console.log(`Se omitieron ${lineasVacias} línea(s) vacía(s)`);
     }
 
-    // Primero guardar las líneas
+    // Primero guardar las líneas: el cuerpo es el conjunto completo de líneas de la factura. El subtotal
+    // viaja por compatibilidad, pero el servidor lo ignora y devuelve los totales persistidos.
     httpPut('/lineas-factura/actualizar', lineas, {
-        onSuccess: () => {
+        onSuccess: (totales) => {
+            mostrarTotalesServidor(totales);
             // Luego actualizar el estado de la factura
             const entregadoSelect = document.getElementById("entregado");
             const estadoEntregado = entregadoSelect ? (entregadoSelect.value === 'true') : false;
@@ -726,8 +755,11 @@ async function guardarLineas() {
             params.append('descripcion', descInput ? descInput.value : '');
             params.append('fechaEntrega', fechaInput ? fechaInput.value : '');
 
+            const totalGuardado = totales && totales.total !== undefined
+                ? ` Total: ${formatCurrency(totales.total, totales.moneda || 'CRC')}`
+                : '';
             httpPut(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, null, {
-                successMessage: 'Factura guardada correctamente',
+                successMessage: `Factura guardada correctamente.${totalGuardado}`,
                 onSuccess: () => {
                     setTimeout(() => {
                         if (nuevaFacturaModal) {
