@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners({AuditingEntityListener.class, LineaFacturaMutabilidadListener.class})
 public class LineaFactura {
 
     @Id

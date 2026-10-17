@@ -101,14 +101,36 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
     boolean existsByClaveNumerica(String claveNumerica);
     
     /**
-     * Encuentra comprobantes pendientes de reintento.
-     * Busca comprobantes con estado ERROR o FIRMADO que no hayan alcanzado el límite de reintentos.
+     * Encuentra comprobantes vigentes pendientes de reintento: los que Hacienda no tiene (GENERADO, FIRMADO, ERROR
+     * o NO_TRANSMITIDO, ADR-030) y no alcanzaron el límite de intentos. Nunca ENVIO_INCIERTO, ENVIADO, PROCESANDO
+     * ni ACEPTADO: reenviarlos podría duplicar un documento que Hacienda ya tiene.
      */
     @Query("SELECT c FROM ComprobanteElectronico c WHERE " +
-           "(c.estado = 'ERROR' OR c.estado = 'FIRMADO' OR c.estado = 'GENERADO') " +
+           "c.estado IN ('GENERADO', 'FIRMADO', 'ERROR', 'NO_TRANSMITIDO') " +
+           "AND c.vigente = true " +
            "AND c.intentosEnvio < 5 " +
            "ORDER BY c.createdAt ASC")
     List<ComprobanteElectronico> findPendientesReintento();
+
+    /**
+     * Comprobante vigente de una factura (ADR-030 §4: N comprobantes, uno vigente).
+     */
+    Optional<ComprobanteElectronico> findFirstByFactura_IdFacturaAndVigenteTrue(Integer idFactura);
+
+    /**
+     * Todos los comprobantes de una factura, vigente e historial, en orden de creación.
+     */
+    List<ComprobanteElectronico> findByFactura_IdFacturaOrderByIdAsc(Integer idFactura);
+
+    /**
+     * Comprobantes en alguno de los estados indicados enviados antes de la fecha límite.
+     */
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE " +
+           "c.estado IN :estados AND c.fechaEnvio < :fechaLimite")
+    List<ComprobanteElectronico> findByEstadoInAndFechaEnvioLessThan(
+        @Param("estados") List<EstadoComprobante> estados,
+        @Param("fechaLimite") LocalDateTime fechaLimite
+    );
     
     /**
      * Encuentra comprobantes enviados sin respuesta después de cierto tiempo.

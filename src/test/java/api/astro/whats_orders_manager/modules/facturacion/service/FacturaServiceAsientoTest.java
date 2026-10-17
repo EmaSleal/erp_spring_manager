@@ -15,6 +15,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapp
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
 import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFacturacion;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
@@ -466,6 +467,8 @@ class FacturaServiceAsientoTest {
         ReflectionTestUtils.setField(service, "movimientoInventarioService", movimientoInventarioService);
         ReflectionTestUtils.setField(service, "asientoContableService", asientoService);
         ReflectionTestUtils.setField(service, "tipoCambioService", new TipoCambioService(tipoCambioRepository));
+        ReflectionTestUtils.setField(service, "politicaMutabilidad", mock(PoliticaMutabilidadFactura.class));
+        ReflectionTestUtils.setField(service, "comprobanteRepository", mock(ComprobanteElectronicoRepository.class));
         return service;
     }
 

@@ -13,6 +13,16 @@ import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoCon
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MensajeHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.scheduled.ComprobanteReintentosJob;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.FirmaDigitalService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
@@ -33,6 +43,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -55,6 +66,16 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -70,7 +91,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * respuesta es 409 y la factura, sus líneas y el asiento vigente quedan iguales.
  *
  * Base: MySQL 8 en Testcontainers (t025-it-mysql, tmpfs, sin volúmenes); esquema de Hibernate y rutinas de
- * database/routines, como en LineaFacturaSincronizacionIT. Ninguna prueba llama a Hacienda.
+ * database/routines, como en LineaFacturaSincronizacionIT. El cliente de Hacienda, la firma, el generador de XML y
+ * la configuración de Hacienda están simulados (@MockitoBean): ninguna prueba llama a Hacienda.
  */
 @SpringBootTest(properties = {
         "spring.flyway.enabled=false",
@@ -104,7 +126,12 @@ class BloqueoFiscalFacturaIT {
     private static final String USUARIO = "admin.bootstrap@example.invalid";
 
     /** Estados del comprobante vigente que bloquean los campos fiscales (ADR-030 §2). */
-    private static final Set<String> BLOQUEANTES = Set.of("ENVIADO", "PROCESANDO", "ACEPTADO");
+    private static final Set<String> BLOQUEANTES = Set.of("ENVIO_INCIERTO", "ENVIADO", "PROCESANDO", "ACEPTADO");
+
+    @MockitoBean private HaciendaApiService haciendaApi;
+    @MockitoBean private FirmaDigitalService firmaDigital;
+    @MockitoBean private XmlGeneratorService xmlGenerator;
+    @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -118,6 +145,7 @@ class BloqueoFiscalFacturaIT {
     @Autowired private ParametroContableRepository parametroRepository;
     @Autowired private AsientoContableRepository asientoRepository;
     @Autowired private ConfiguracionEmpresaRepository empresaRepository;
+    @Autowired private ComprobanteReintentosJob reintentosJob;
 
     private TransactionTemplate tx;
     private Producto gravado13;
@@ -136,20 +164,33 @@ class BloqueoFiscalFacturaIT {
                 param(AsientoContableService.CLAVE_VENTA_IVA_POR_PAGAR,
                         cuenta("9.2.01.002", "IVA por pagar", TipoCuenta.PASIVO));
             }
-            idEmpresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
-                    .orElseGet(() -> empresaRepository.save(ConfiguracionEmpresa.builder()
-                            .razonSocial("Empresa T025 S.A.").build()))
-                    .getIdConfiguracion();
+            ConfiguracionEmpresa empresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
+                    .orElseGet(() -> ConfiguracionEmpresa.builder().razonSocial("Empresa T025 S.A.").build());
+            if (empresa.getNumeroIdentificacion() == null) {
+                empresa.setNumeroIdentificacion("3101234567");
+            }
+            empresa = empresaRepository.save(empresa);
+            idEmpresa = empresa.getIdConfiguracion();
+            // Configuración de Hacienda activa simulada, de la misma empresa (ADR-021)
+            ConfiguracionHacienda config = ConfiguracionHacienda.builder().id(1L).empresa(empresa).build();
+            when(configuracionHaciendaService.obtenerConfiguracionActiva()).thenReturn(config);
             gravado13 = producto("Producto A gravado 13 %", "1130.00", true);
             exento = producto("Producto B exento", "500.00", false);
         });
+        when(xmlGenerator.generarXmlFactura(any())).thenAnswer(inv ->
+                "<FacturaElectronica><Clave>" + ((ComprobanteElectronico) inv.getArgument(0)).getClaveNumerica()
+                        + "</Clave></FacturaElectronica>");
+        when(firmaDigital.firmarXml(anyString(), any(), any())).thenAnswer(inv -> inv.getArgument(0) + "<!--firmado-->");
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenReturn(RespuestaHaciendaDTO.builder()
+                .resultadoEnvio(ResultadoEnvioHacienda.RECIBIDO).codigoHttp(202).exitoso(false)
+                .mensaje("Comprobante recibido por Hacienda, en procesamiento").build());
     }
 
     // ── Líneas: PUT /lineas-factura/actualizar ───────────────────────────────
 
     @ParameterizedTest(name = "comprobante {0}: quitar una línea")
-    @ValueSource(strings = {"SIN_COMPROBANTE", "GENERADO", "FIRMADO", "ERROR", "RECHAZADO",
-            "ENVIADO", "PROCESANDO", "ACEPTADO"})
+    @ValueSource(strings = {"SIN_COMPROBANTE", "GENERADO", "FIRMADO", "ERROR", "NO_TRANSMITIDO", "RECHAZADO",
+            "ENVIO_INCIERTO", "ENVIADO", "PROCESANDO", "ACEPTADO"})
     @DisplayName("PUT /lineas-factura/actualizar: 200 si el estado lo permite; 409 sin cambios si bloquea")
     void lineas_segunEstado(String estado) throws Exception {
         int idFactura = facturaConLineasAyB();
@@ -172,8 +213,8 @@ class BloqueoFiscalFacturaIT {
     // ── Factura: POST /facturas/guardar (edición) ────────────────────────────
 
     @ParameterizedTest(name = "comprobante {0}: cambiar la condición de venta")
-    @ValueSource(strings = {"SIN_COMPROBANTE", "GENERADO", "FIRMADO", "ERROR", "RECHAZADO",
-            "ENVIADO", "PROCESANDO", "ACEPTADO"})
+    @ValueSource(strings = {"SIN_COMPROBANTE", "GENERADO", "FIRMADO", "ERROR", "NO_TRANSMITIDO", "RECHAZADO",
+            "ENVIO_INCIERTO", "ENVIADO", "PROCESANDO", "ACEPTADO"})
     @DisplayName("POST /facturas/guardar con idFactura: 200 si el estado lo permite; 409 sin cambios si bloquea")
     void guardarFactura_segunEstado(String estado) throws Exception {
         int idFactura = facturaConLineasAyB();
@@ -199,7 +240,7 @@ class BloqueoFiscalFacturaIT {
     // ── Eliminar y anular ────────────────────────────────────────────────────
 
     @ParameterizedTest(name = "comprobante {0}: eliminar")
-    @ValueSource(strings = {"ENVIADO", "PROCESANDO", "ACEPTADO"})
+    @ValueSource(strings = {"ENVIO_INCIERTO", "ENVIADO", "PROCESANDO", "ACEPTADO"})
     @DisplayName("GET /facturas/eliminar/{id} con comprobante en Hacienda → 409 y la factura sigue")
     void eliminar_bloqueado(String estado) throws Exception {
         int idFactura = facturaConLineasAyB();
@@ -216,7 +257,7 @@ class BloqueoFiscalFacturaIT {
     }
 
     @ParameterizedTest(name = "comprobante {0}: anular")
-    @ValueSource(strings = {"ENVIADO", "PROCESANDO", "ACEPTADO"})
+    @ValueSource(strings = {"ENVIO_INCIERTO", "ENVIADO", "PROCESANDO", "ACEPTADO"})
     @DisplayName("POST /facturas/anular/{id} con comprobante en Hacienda → 409 y la factura no se anula")
     void anular_bloqueado(String estado) throws Exception {
         int idFactura = facturaConLineasAyB();
@@ -254,11 +295,12 @@ class BloqueoFiscalFacturaIT {
 
     // ── Listener JPA en LineaFactura ─────────────────────────────────────────
 
-    @Test
-    @DisplayName("listener: con comprobante ACEPTADO, lineaFacturaRepository.save directo → excepción y BD sin cambios")
-    void listener_saveDirecto_rechazado() throws Exception {
+    @ParameterizedTest(name = "comprobante {0}")
+    @ValueSource(strings = {"ACEPTADO", "ENVIO_INCIERTO"})
+    @DisplayName("listener: con comprobante bloqueante, lineaFacturaRepository.save directo → excepción y BD sin cambios")
+    void listener_saveDirecto_rechazado(String estadoComprobante) throws Exception {
         int idFactura = facturaConLineasAyB();
-        comprobante(idFactura, "ACEPTADO");
+        comprobante(idFactura, estadoComprobante);
         Estado antes = estado(idFactura);
         int idLinea = antes.lineas().get(0).id();
 
@@ -281,11 +323,12 @@ class BloqueoFiscalFacturaIT {
         assertThat(estado(idFactura)).isEqualTo(antes);
     }
 
-    @Test
-    @DisplayName("listener: con comprobante ACEPTADO, lineaFacturaRepository.delete directo → excepción y BD sin cambios")
-    void listener_deleteDirecto_rechazado() throws Exception {
+    @ParameterizedTest(name = "comprobante {0}")
+    @ValueSource(strings = {"ACEPTADO", "ENVIO_INCIERTO"})
+    @DisplayName("listener: con comprobante bloqueante, lineaFacturaRepository.delete directo → excepción y BD sin cambios")
+    void listener_deleteDirecto_rechazado(String estadoComprobante) throws Exception {
         int idFactura = facturaConLineasAyB();
-        comprobante(idFactura, "ACEPTADO");
+        comprobante(idFactura, estadoComprobante);
         Estado antes = estado(idFactura);
         int idLinea = antes.lineas().get(1).id();
 
@@ -295,6 +338,247 @@ class BloqueoFiscalFacturaIT {
         })).isInstanceOf(RuntimeException.class);
 
         assertThat(estado(idFactura)).isEqualTo(antes);
+    }
+
+    // ── Eliminar y anular: estados que no bloquean (comportamiento actual) y sin cascade ──
+
+    @Test
+    @DisplayName("anular con comprobante GENERADO → comportamiento actual: redirect y la factura queda anulada")
+    void anular_permitido() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        comprobante(idFactura, "GENERADO");
+
+        int status = mockMvc.perform(post("/facturas/anular/" + idFactura)
+                        .param("motivo", "Prueba T-025")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()).accept(MediaType.TEXT_HTML))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(status).isEqualTo(302);
+        assertThat(jdbc.queryForObject("SELECT anulada FROM factura WHERE id_factura = ?", Boolean.class, idFactura))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("eliminar factura sin asiento con comprobante GENERADO → se elimina; el comprobante local se borra explícitamente")
+    void eliminar_conComprobanteLocal_borraExplicitamente() throws Exception {
+        int idFactura = facturaSinLineas();
+        Long idComprobante = comprobante(idFactura, "GENERADO");
+
+        int status = mockMvc.perform(get("/facturas/eliminar/" + idFactura)
+                        .with(user(USUARIO).roles("ADMIN")).accept(MediaType.TEXT_HTML))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(status).isEqualTo(302);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM factura WHERE id_factura = ?", Integer.class, idFactura))
+                .isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE id = ?", Integer.class,
+                idComprobante)).isZero();
+    }
+
+    @ParameterizedTest(name = "comprobante {0}")
+    @ValueSource(strings = {"RECHAZADO", "NO_TRANSMITIDO"})
+    @DisplayName("eliminar factura sin asiento con comprobante que pasó por Hacienda → 409; factura y comprobante intactos")
+    void eliminar_conHistorialFiscal_rechazado(String estado) throws Exception {
+        int idFactura = facturaSinLineas();
+        Long idComprobante = comprobante(idFactura, estado);
+        ComprobanteBd antes = comprobanteBd(idComprobante);
+
+        int status = mockMvc.perform(get("/facturas/eliminar/" + idFactura)
+                        .with(user(USUARIO).roles("ADMIN")).accept(MediaType.TEXT_HTML))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(status).isEqualTo(409);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM factura WHERE id_factura = ?", Integer.class, idFactura))
+                .isEqualTo(1);
+        assertThat(comprobanteBd(idComprobante)).isEqualTo(antes);
+    }
+
+    @Test
+    @DisplayName("409 en una llamada JSON: cuerpo con success=false, motivo accionable y estado del comprobante")
+    void respuesta409_json() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        comprobante(idFactura, "ACEPTADO");
+
+        MvcResult result = guardarLineas(List.of(linea(lineas(idFactura).get(0).id(), idFactura, gravado13, 1,
+                "1130.00")));
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+        Map<?, ?> cuerpo = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        assertThat(cuerpo.get("success")).isEqualTo(false);
+        assertThat((String) cuerpo.get("message")).contains("nota de crédito o débito");
+        assertThat(cuerpo.get("estadoComprobante")).isEqualTo("ACEPTADO");
+    }
+
+    // ── GENERADO / FIRMADO: editar descarta XML y firma, la clave no cambia ──
+
+    @ParameterizedTest(name = "comprobante {0}")
+    @ValueSource(strings = {"GENERADO", "FIRMADO", "ERROR", "NO_TRANSMITIDO"})
+    @DisplayName("editar líneas con comprobante local → XML y firma descartados, misma clave; el envío regenera con esa clave")
+    void edicion_descartaXml_mismaClave(String estado) throws Exception {
+        int idFactura = facturaConLineasAyB();
+        Long idComprobante = comprobante(idFactura, estado);
+        ComprobanteBd antes = comprobanteBd(idComprobante);
+
+        assertThat(guardarLineas(List.of(linea(lineas(idFactura).get(0).id(), idFactura, gravado13, 1, "1130.00")))
+                .getResponse().getStatus()).isEqualTo(200);
+
+        ComprobanteBd despues = comprobanteBd(idComprobante);
+        assertThat(despues.xml()).isNull();
+        assertThat(despues.rutaXml()).isNull();
+        assertThat(despues.clave()).isEqualTo(antes.clave());
+        assertThat(despues.estado()).isEqualTo("FIRMADO".equals(estado) ? "GENERADO" : estado);
+
+        // El envío regenera el XML con la misma clave, lo firma y lo envía con esa clave
+        clearInvocations(haciendaApi);
+        mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + idComprobante + "/enviar")
+                .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn();
+        ComprobanteBd enviado = comprobanteBd(idComprobante);
+        assertThat(enviado.clave()).isEqualTo(antes.clave());
+        assertThat(enviado.xml()).contains("<Clave>" + antes.clave() + "</Clave>").contains("<!--firmado-->");
+        assertThat(enviado.estado()).isEqualTo("ENVIADO");
+        verify(haciendaApi).enviarComprobante(anyString(), eq(antes.clave()), anyLong());
+    }
+
+    // ── RECHAZADO: se edita y se reemite con clave nueva; el rechazado queda intacto ──
+
+    @Test
+    @DisplayName("RECHAZADO + reemitir → 2 comprobantes; el rechazado conserva clave y SHA2 del XML; el nuevo es el vigente con otra clave y consecutivo")
+    void rechazado_reemitir() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        Long idRechazado = comprobante(idFactura, "RECHAZADO");
+        ComprobanteBd antes = comprobanteBd(idRechazado);
+
+        assertThat(guardarLineas(List.of(linea(lineas(idFactura).get(0).id(), idFactura, gravado13, 1, "1130.00")))
+                .getResponse().getStatus()).isEqualTo(200);
+        int status = mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + idRechazado + "/reemitir")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(status).isEqualTo(201);
+        List<ComprobanteBd> comprobantes = comprobantesBd(idFactura);
+        assertThat(comprobantes).hasSize(2);
+        ComprobanteBd rechazado = comprobantes.get(0);
+        ComprobanteBd nuevo = comprobantes.get(1);
+        assertThat(rechazado.id()).isEqualTo(idRechazado);
+        assertThat(rechazado.clave()).isEqualTo(antes.clave());
+        assertThat(rechazado.hashXml()).isEqualTo(antes.hashXml());
+        assertThat(rechazado.estado()).isEqualTo("RECHAZADO");
+        assertThat(rechazado.vigente()).isFalse();
+        assertThat(nuevo.vigente()).isTrue();
+        assertThat(nuevo.estado()).isEqualTo("GENERADO");
+        assertThat(nuevo.clave()).isNotEqualTo(antes.clave());
+        assertThat(nuevo.consecutivo()).isNotEqualTo(antes.consecutivo());
+    }
+
+    @Test
+    @DisplayName("reemitir un comprobante que no está RECHAZADO → 409 y un solo comprobante")
+    void reemitir_noRechazado_409() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        Long id = comprobante(idFactura, "ACEPTADO");
+
+        int status = mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + id + "/reemitir")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(status).isEqualTo(409);
+        assertThat(comprobantes(idFactura)).isEqualTo(1);
+    }
+
+    // ── ENVIO_INCIERTO: verificar con Hacienda (cliente simulado) ────────────
+
+    @Test
+    @DisplayName("verificar ENVIO_INCIERTO: Hacienda 404 → NO_TRANSMITIDO y la edición pasa a 200")
+    void verificar_404_desbloquea() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        Long id = comprobante(idFactura, "ENVIO_INCIERTO", LocalDateTime.now().minusMinutes(20));
+        when(haciendaApi.consultarComprobante(anyString(), anyLong())).thenReturn(consulta404());
+        int idLinea = lineas(idFactura).get(0).id();
+        assertThat(guardarLineas(List.of(linea(idLinea, idFactura, gravado13, 1, "1130.00")))
+                .getResponse().getStatus()).isEqualTo(409);
+
+        int status = verificar(id);
+
+        assertThat(status).isEqualTo(200);
+        assertThat(comprobanteBd(id).estado()).isEqualTo("NO_TRANSMITIDO");
+        assertThat(guardarLineas(List.of(linea(idLinea, idFactura, gravado13, 1, "1130.00")))
+                .getResponse().getStatus()).isEqualTo(200);
+        verify(haciendaApi, times(1)).consultarComprobante(eq(comprobanteBd(id).clave()), anyLong());
+    }
+
+    @ParameterizedTest(name = "ind-estado {0} → {1}")
+    @org.junit.jupiter.params.provider.CsvSource({"aceptado,ACEPTADO,409", "rechazado,RECHAZADO,200",
+            "procesando,PROCESANDO,409", "recibido,PROCESANDO,409"})
+    @DisplayName("verificar ENVIO_INCIERTO: se adopta el estado informado por Hacienda")
+    void verificar_adoptaEstado(String indEstado, String estadoEsperado, int statusEdicion) throws Exception {
+        int idFactura = facturaConLineasAyB();
+        Long id = comprobante(idFactura, "ENVIO_INCIERTO", LocalDateTime.now().minusMinutes(20));
+        when(haciendaApi.consultarComprobante(anyString(), anyLong())).thenReturn(consulta(indEstado));
+
+        assertThat(verificar(id)).isEqualTo(200);
+
+        assertThat(comprobanteBd(id).estado()).isEqualTo(estadoEsperado);
+        assertThat(guardarLineas(List.of(linea(lineas(idFactura).get(0).id(), idFactura, gravado13, 1, "1130.00")))
+                .getResponse().getStatus()).isEqualTo(statusEdicion);
+    }
+
+    @Test
+    @DisplayName("verificar antes de 15 minutos desde el último envío → 409 con la hora desde la que se puede, sin consultar")
+    void verificar_antesDe15Minutos_409() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        Long id = comprobante(idFactura, "ENVIO_INCIERTO", LocalDateTime.now().minusMinutes(5));
+        reset(haciendaApi);
+
+        MvcResult result = mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + id + "/verificar-hacienda")
+                .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+        assertThat(result.getResponse().getContentAsString()).contains("a partir de las");
+        assertThat(comprobanteBd(id).estado()).isEqualTo("ENVIO_INCIERTO");
+        verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
+    }
+
+    // ── Sondeo y job de reintentos ───────────────────────────────────────────
+
+    @Test
+    @DisplayName("sondeo (job horario): 404 de un ENVIADO → ENVIO_INCIERTO, nunca PROCESANDO; 'recibido' → PROCESANDO")
+    void sondeo_404_noEsProcesando() throws Exception {
+        int factura404 = facturaConLineasAyB();
+        Long enviado404 = comprobante(factura404, "ENVIADO", LocalDateTime.now().minusMinutes(30));
+        int facturaRecibido = facturaConLineasAyB();
+        Long enviadoRecibido = comprobante(facturaRecibido, "ENVIADO", LocalDateTime.now().minusMinutes(30));
+        String clave404 = comprobanteBd(enviado404).clave();
+        when(haciendaApi.consultarComprobante(anyString(), anyLong())).thenAnswer(inv ->
+                clave404.equals(inv.getArgument(0)) ? consulta404() : consulta("recibido"));
+
+        reintentosJob.consultarEstadosPendientes();
+
+        assertThat(comprobanteBd(enviado404).estado()).isEqualTo("ENVIO_INCIERTO");
+        assertThat(comprobanteBd(enviadoRecibido).estado()).isEqualTo("PROCESANDO");
+    }
+
+    @Test
+    @DisplayName("job de reintentos: reenvía ERROR y NO_TRANSMITIDO con su misma clave; nunca ENVIO_INCIERTO, ENVIADO, PROCESANDO ni ACEPTADO")
+    void job_reenviaSoloLoQueHaciendaNoTiene() throws Exception {
+        Map<String, String> clavePorEstado = new LinkedHashMap<>();
+        for (String estado : List.of("ERROR", "NO_TRANSMITIDO", "ENVIO_INCIERTO", "ENVIADO", "PROCESANDO",
+                "ACEPTADO")) {
+            Long id = comprobante(facturaConLineasAyB(), estado);
+            clavePorEstado.put(estado, comprobanteBd(id).clave());
+        }
+        clearInvocations(haciendaApi);
+
+        reintentosJob.reintentarEnviosPendientes();
+
+        verify(haciendaApi).enviarComprobante(anyString(), eq(clavePorEstado.get("ERROR")), anyLong());
+        verify(haciendaApi).enviarComprobante(anyString(), eq(clavePorEstado.get("NO_TRANSMITIDO")), anyLong());
+        for (String estado : List.of("ENVIO_INCIERTO", "ENVIADO", "PROCESANDO", "ACEPTADO")) {
+            verify(haciendaApi, never()).enviarComprobante(anyString(), eq(clavePorEstado.get(estado)), anyLong());
+        }
+    }
+
+    private int verificar(Long idComprobante) throws Exception {
+        return mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + idComprobante + "/verificar-hacienda")
+                .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn().getResponse().getStatus();
     }
 
     // ── Fixture ──────────────────────────────────────────────────────────────
@@ -329,16 +613,69 @@ class BloqueoFiscalFacturaIT {
      * Comprobante vigente de la factura en el estado indicado ("SIN_COMPROBANTE" no crea ninguno). Se inserta por
      * SQL para fijar cualquier estado sin pasar por la generación ni por Hacienda.
      */
-    private void comprobante(int idFactura, String estado) {
+    private Long comprobante(int idFactura, String estado) {
+        return comprobante(idFactura, estado, LocalDateTime.now().minusHours(1));
+    }
+
+    private Long comprobante(int idFactura, String estado, LocalDateTime fechaEnvio) {
         if ("SIN_COMPROBANTE".equals(estado)) {
-            return;
+            return null;
         }
         jdbc.update("INSERT INTO comprobante_electronico (clave_numerica, consecutivo, created_at, updated_at, estado, "
-                        + "fecha_emision, fecha_envio, tipo_comprobante, empresa_id, factura_id, intentos_envio, "
-                        + "enviado_email, xml_comprobante) "
-                        + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), ?, 'FACTURA_ELECTRONICA', ?, ?, 0, b'0', ?)",
+                        + "fecha_emision, fecha_envio, tipo_comprobante, empresa_id, factura_id, vigente, intentos_envio, "
+                        + "enviado_email, xml_comprobante, ruta_archivo_xml) "
+                        + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), ?, 'FACTURA_ELECTRONICA', ?, ?, b'1', 0, b'0', ?, ?)",
                 clave(), String.format("%020d", ThreadLocalRandom.current().nextLong(1, 1_000_000_000L)), estado,
-                LocalDateTime.now().minusHours(1), idEmpresa, idFactura, "<FacturaElectronica>T025</FacturaElectronica>");
+                fechaEnvio, idEmpresa, idFactura, "<FacturaElectronica>T025</FacturaElectronica>",
+                "comprobantes/t025.xml");
+        return jdbc.queryForObject("SELECT MAX(id) FROM comprobante_electronico WHERE factura_id = ?", Long.class,
+                idFactura);
+    }
+
+    /** Factura en CRC sin líneas ni asiento (como la deja POST /facturas/guardar antes de cargar las líneas). */
+    private int facturaSinLineas() {
+        return tx.execute(s -> {
+            Cliente cliente = new Cliente();
+            cliente.setNombre("Cliente T025 " + UUID.randomUUID());
+            cliente = clienteRepository.save(cliente);
+            Factura factura = new Factura();
+            factura.setCliente(cliente);
+            factura.setNumeroFactura("T025-" + UUID.randomUUID().toString().substring(0, 8));
+            factura.setSerie("T025");
+            factura.setMonedaFE(MonedaFE.CRC);
+            factura.setTipoCambio(BigDecimal.ONE);
+            factura.setSubtotal(BigDecimal.ZERO);
+            factura.setIgv(BigDecimal.ZERO);
+            factura.setTotal(BigDecimal.ZERO);
+            factura.setAnulada(false);
+            return facturaRepository.save(factura).getIdFactura();
+        });
+    }
+
+    record ComprobanteBd(Long id, String clave, String consecutivo, String estado, boolean vigente, String xml,
+                         String hashXml, String rutaXml) {
+    }
+
+    private ComprobanteBd comprobanteBd(Long id) {
+        return jdbc.queryForObject("SELECT id, clave_numerica, consecutivo, estado, vigente, xml_comprobante, "
+                        + "SHA2(xml_comprobante, 256), ruta_archivo_xml FROM comprobante_electronico WHERE id = ?",
+                (rs, i) -> new ComprobanteBd(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4),
+                        rs.getBoolean(5), rs.getString(6), rs.getString(7), rs.getString(8)), id);
+    }
+
+    private List<ComprobanteBd> comprobantesBd(int idFactura) {
+        return jdbc.queryForList("SELECT id FROM comprobante_electronico WHERE factura_id = ? ORDER BY id",
+                Long.class, idFactura).stream().map(this::comprobanteBd).toList();
+    }
+
+    private static RespuestaHaciendaDTO consulta(String indEstado) {
+        return RespuestaHaciendaDTO.builder().indicadorEstado(indEstado).codigoHttp(200).exitoso(false)
+                .codigoMensaje(MensajeHacienda.PROCESANDO).mensaje("ind-estado " + indEstado).build();
+    }
+
+    private static RespuestaHaciendaDTO consulta404() {
+        return RespuestaHaciendaDTO.builder().documentoNoExiste(true).codigoHttp(404).exitoso(false)
+                .codigoMensaje(MensajeHacienda.ERROR).mensaje("Hacienda no tiene el documento (404)").build();
     }
 
     private static String clave() {

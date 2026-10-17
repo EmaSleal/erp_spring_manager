@@ -9,6 +9,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabilidadFactura;
 import api.astro.whats_orders_manager.modules.facturacion.service.TotalesFacturaService;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
@@ -47,6 +48,9 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
 
     @Autowired
     private TotalesFacturaService totalesFacturaService;
+
+    @Autowired
+    private PoliticaMutabilidadFactura politicaMutabilidad;
 
     @Override
     public List<LineaFactura> findAll() { return lineaFacturaRepository.findAll(); }
@@ -104,6 +108,8 @@ public class LineaFacturaServiceImpl implements LineaFacturaService {
         if (factura.estaAnulada()) {
             throw new IllegalStateException("No se pueden modificar las líneas de una factura anulada");
         }
+        // ADR-030: 409 si el comprobante vigente está en Hacienda o con envío incierto; si no, descarta XML y firma
+        politicaMutabilidad.prepararEdicionFiscal(idFactura);
 
         log.info("Sincronizando {} líneas de la factura {}", lineas.size(), idFactura);
 

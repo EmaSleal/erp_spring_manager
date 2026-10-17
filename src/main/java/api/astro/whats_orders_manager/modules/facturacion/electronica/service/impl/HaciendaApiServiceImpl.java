@@ -2,11 +2,14 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.service.i
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MensajeHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.ClasificadorEnvioHacienda;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +21,10 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -58,7 +63,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
         
         try {
-            String urlToken = config.getAmbiente().getUrlToken();
+            String urlToken = urlToken(config);
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();
@@ -115,7 +120,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
         
         try {
-            String urlToken = config.getAmbiente().getUrlToken();
+            String urlToken = urlToken(config);
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -153,38 +158,39 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
         }
     }
     
+    /**
+     * POST /recepcion. Nunca lanza: clasifica el resultado en origen (ADR-030 §3) en
+     * {@link RespuestaHaciendaDTO#getResultadoEnvio()}:
+     * <ul>
+     *   <li>2xx → RECIBIDO (ENVIADO);</li>
+     *   <li>sin token, sin conexión (DNS, rechazada, timeout de conexión), 401/403 o 4xx de validación →
+     *       NO_TRANSMITIDO;</li>
+     *   <li>timeout de lectura, conexión cortada, 5xx, 4xx de ya recibido o sin causa clasificable →
+     *       ENVIO_INCIERTO;</li>
+     *   <li>falla al preparar la petición, antes de conectar → ERROR_LOCAL.</li>
+     * </ul>
+     * Sin reintentos automáticos del POST: repetirlo a ciegas podría duplicar un documento ya recibido.
+     */
     @Override
     @CircuitBreaker(name = "haciendaAPI", fallbackMethod = "enviarComprobanteFallback")
-    @Retry(name = "haciendaAPI")
     public RespuestaHaciendaDTO enviarComprobante(String xml, String claveNumerica, Long configuracionId) {
         log.info("Enviando comprobante a Hacienda - Clave: {}", claveNumerica);
-        
-        ConfiguracionHacienda config = configuracionRepository.findById(configuracionId)
-            .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
-        
+
+        ConfiguracionHacienda config;
+        String urlRecepcion;
+        Map<String, Object> body;
         try {
-            // Obtener token
-            TokenResponse token = autenticar(configuracionId);
-            
-            String urlRecepcion = config.getAmbiente().getUrlBase() + "/recepcion/v1/recepcion";
-            
-            // Codificar XML en Base64
-            String xmlBase64 = Base64.getEncoder().encodeToString(xml.getBytes("UTF-8"));
-            
-            // Preparar headers
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(token.accessToken());
-            
-            // Preparar body JSON
+            config = configuracionRepository.findById(configuracionId)
+                .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
+            urlRecepcion = urlBase(config) + "/recepcion/v1/recepcion";
+
+            String xmlBase64 = Base64.getEncoder().encodeToString(xml.getBytes(StandardCharsets.UTF_8));
             String fechaEmision = OffsetDateTime.now(ZoneId.of("America/Costa_Rica"))
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx"));
-
             String tipoId = config.getEmpresa().getTipoIdentificacion() != null
                 ? config.getEmpresa().getTipoIdentificacion().getCodigo()
                 : "02";
-
-            Map<String, Object> body = Map.of(
+            body = Map.of(
                 "clave", claveNumerica,
                 "fecha", fechaEmision,
                 "emisor", Map.of(
@@ -193,55 +199,82 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
                 ),
                 "comprobanteXml", xmlBase64
             );
-            // Log de request completo para depuración
-            log.info("URL consulta: {}", urlRecepcion);
-            // T-021: nunca registrar el token, ni siquiera parcial
-            log.info("Auth header presente: {}", headers.getFirst(HttpHeaders.AUTHORIZATION) != null);
+        } catch (Exception e) {
+            log.error("Error local preparando el envío de {}: {}", claveNumerica, e.getMessage());
+            return resultadoEnvio(claveNumerica, ResultadoEnvioHacienda.ERROR_LOCAL, null, null,
+                "Error preparando el envío: " + e.getMessage(), 0);
+        }
 
+        // Token: si no se obtiene, la recepción nunca se intentó
+        TokenResponse token;
+        try {
+            token = autenticar(configuracionId);
+        } catch (Exception e) {
+            log.error("No se obtuvo el token de Hacienda para {}: {}", claveNumerica, e.getMessage());
+            return resultadoEnvio(claveNumerica, ResultadoEnvioHacienda.NO_TRANSMITIDO, null, null,
+                "No se obtuvo el token de Hacienda: " + e.getMessage(), 0);
+        }
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            
-            
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token.accessToken());
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        log.info("URL recepción: {}", urlRecepcion);
+        // T-021: nunca registrar el token, ni siquiera parcial
+        log.info("Auth header presente: {}", headers.getFirst(HttpHeaders.AUTHORIZATION) != null);
 
-            long startTime = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
+        try {
             ResponseEntity<String> response = restTemplate.postForEntity(urlRecepcion, request, String.class);
             long responseTime = System.currentTimeMillis() - startTime;
-            
-            log.info("Respuesta de Hacienda - Status: {} - Tiempo: {}ms", 
-                response.getStatusCode(), responseTime);
-            
-            log.debug("Respuesta de Hacienda: {}", response.toString());
-            
-            // Parsear respuesta
-            return parsearRespuesta(response, claveNumerica, responseTime);
-            
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            log.error("Error HTTP al enviar comprobante: {} - {}", 
-                e.getStatusCode(), e.getResponseBodyAsString());
-            
-            return RespuestaHaciendaDTO.builder()
-                .claveNumerica(claveNumerica)
-                .fechaRespuesta(LocalDateTime.now())
-                .codigoMensaje(MensajeHacienda.ERROR)
-                .mensaje("Error HTTP: " + e.getStatusCode())
-                .exitoso(false)
-                .detalles(e.getResponseBodyAsString())
-                .codigoHttp(e.getStatusCode().value())
-                .debeReintentar(e.getStatusCode().is5xxServerError())
-                .build();
-                
+            log.info("Respuesta de Hacienda - Status: {} - Tiempo: {}ms", response.getStatusCode(), responseTime);
+            return resultadoEnvio(claveNumerica, ResultadoEnvioHacienda.RECIBIDO, response.getStatusCode().value(),
+                null, "Comprobante recibido por Hacienda, en procesamiento", responseTime);
+
+        } catch (HttpStatusCodeException e) {
+            long responseTime = System.currentTimeMillis() - startTime;
+            String causa = e.getResponseHeaders() != null
+                ? e.getResponseHeaders().getFirst(ClasificadorEnvioHacienda.HEADER_ERROR_CAUSE)
+                : null;
+            ResultadoEnvioHacienda resultado = ClasificadorEnvioHacienda.porRespuesta(e.getStatusCode().value(), causa);
+            log.error("Recepción rechazada por Hacienda: {} - causa: {} → {}", e.getStatusCode(), causa, resultado);
+            return resultadoEnvio(claveNumerica, resultado, e.getStatusCode().value(), causa,
+                "Error HTTP " + e.getStatusCode().value() + (causa != null ? ": " + causa : ""), responseTime);
+
         } catch (Exception e) {
-            log.error("Error al enviar comprobante: {}", e.getMessage(), e);
-            
-            return RespuestaHaciendaDTO.builder()
-                .claveNumerica(claveNumerica)
-                .fechaRespuesta(LocalDateTime.now())
-                .codigoMensaje(MensajeHacienda.ERROR)
-                .mensaje("Error de comunicación: " + e.getMessage())
-                .exitoso(false)
-                .debeReintentar(true)
-                .build();
+            long responseTime = System.currentTimeMillis() - startTime;
+            ResultadoEnvioHacienda resultado = ClasificadorEnvioHacienda.porFalloDeTransporte(e);
+            log.error("Error de comunicación enviando {}: {} → {}", claveNumerica, e.getMessage(), resultado);
+            return resultadoEnvio(claveNumerica, resultado, null, null,
+                "Error de comunicación: " + e.getMessage(), responseTime);
         }
+    }
+
+    private RespuestaHaciendaDTO resultadoEnvio(String claveNumerica, ResultadoEnvioHacienda resultado,
+                                                Integer codigoHttp, String causa, String mensaje,
+                                                long responseTime) {
+        return RespuestaHaciendaDTO.builder()
+            .claveNumerica(claveNumerica)
+            .fechaRespuesta(LocalDateTime.now())
+            .codigoMensaje(resultado == ResultadoEnvioHacienda.RECIBIDO ? MensajeHacienda.PROCESANDO : MensajeHacienda.ERROR)
+            .mensaje(mensaje)
+            .exitoso(false)
+            .codigoHttp(codigoHttp)
+            .causaError(causa)
+            .resultadoEnvio(resultado)
+            .tiempoRespuestaMs(responseTime)
+            .debeReintentar(false)
+            .build();
+    }
+
+    /** URL base de la API de recepción del ambiente. Protegido para apuntar las pruebas a un servidor simulado. */
+    protected String urlBase(ConfiguracionHacienda config) {
+        return config.getAmbiente().getUrlBase();
+    }
+
+    /** URL del token OAuth2 del ambiente. Protegido para apuntar las pruebas a un servidor simulado. */
+    protected String urlToken(ConfiguracionHacienda config) {
+        return config.getAmbiente().getUrlToken();
     }
     
     @Override
@@ -257,7 +290,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             // Obtener token
             TokenResponse token = autenticar(configuracionId);
             
-            String urlConsulta = config.getAmbiente().getUrlBase() +
+            String urlConsulta = urlBase(config) +
                 "/recepcion/v1/recepcion/" + claveNumerica;
             
             // Preparar headers
@@ -290,16 +323,18 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
-                log.info("Comprobante no encontrado en Hacienda: {}", claveNumerica);
-                
+                // ADR-030 §3: el 404 es una señal explícita de que Hacienda no tiene el documento
+                log.info("Hacienda no tiene el comprobante (404): {}", claveNumerica);
+
                 return RespuestaHaciendaDTO.builder()
                     .claveNumerica(claveNumerica)
                     .fechaRespuesta(LocalDateTime.now())
-                    .codigoMensaje(MensajeHacienda.PROCESANDO)
-                    .mensaje("Comprobante no encontrado - aún en procesamiento")
+                    .codigoMensaje(MensajeHacienda.ERROR)
+                    .mensaje("Hacienda no tiene el documento (404)")
                     .exitoso(false)
                     .codigoHttp(404)
-                    .debeReintentar(true)
+                    .documentoNoExiste(true)
+                    .debeReintentar(false)
                     .build();
             }
             
@@ -443,7 +478,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
         return switch (codigo.toLowerCase()) {
             case "aceptado", "1" -> MensajeHacienda.ACEPTADO;
             case "rechazado", "2" -> MensajeHacienda.RECHAZADO;
-            case "procesando", "0" -> MensajeHacienda.PROCESANDO;
+            case "procesando", "recibido", "0" -> MensajeHacienda.PROCESANDO;
             default -> MensajeHacienda.ERROR;
         };
     }
@@ -461,22 +496,15 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             String claveNumerica, 
             Long configuracionId, 
             Exception e) {
-        
-        log.error("⚠️ Circuit Breaker ABIERTO - Fallback activado para enviarComprobante: {}", 
-            e.getMessage());
-        
-        return RespuestaHaciendaDTO.builder()
-            .claveNumerica(claveNumerica)
-            .fechaRespuesta(LocalDateTime.now())
-            .codigoMensaje(MensajeHacienda.ERROR)
-            .mensaje("Servicio de Hacienda temporalmente no disponible. Se reintentará automáticamente.")
-            .indicadorEstado("circuit-breaker-open")
-            .exitoso(false)
-            .detalles("Circuit Breaker activado debido a múltiples fallos. " +
-                     "Causa: " + e.getClass().getSimpleName() + " - " + e.getMessage())
-            .codigoHttp(503) // Service Unavailable
-            .debeReintentar(true)
-            .build();
+        // Circuito abierto: la llamada no se hizo, así que Hacienda no recibió nada. Cualquier otra excepción
+        // aquí proviene de la preparación local (enviarComprobante no lanza tras conectar).
+        ResultadoEnvioHacienda resultado = e instanceof CallNotPermittedException
+            ? ResultadoEnvioHacienda.NO_TRANSMITIDO
+            : ResultadoEnvioHacienda.ERROR_LOCAL;
+        log.error("⚠️ Fallback de enviarComprobante ({}): {} → {}", e.getClass().getSimpleName(),
+            e.getMessage(), resultado);
+        return resultadoEnvio(claveNumerica, resultado, null, null,
+            "Servicio de Hacienda no disponible (circuito abierto). Se reintentará automáticamente.", 0);
     }
     
     /**

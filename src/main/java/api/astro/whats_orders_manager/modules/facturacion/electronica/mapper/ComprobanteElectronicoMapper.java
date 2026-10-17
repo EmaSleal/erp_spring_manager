@@ -1,5 +1,8 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.mapper;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
+
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import org.springframework.stereotype.Component;
@@ -46,6 +49,9 @@ public class ComprobanteElectronicoMapper {
             .urlPdf(entity.getUrlPdf())
             .puedeReenviar(entity.puedeReenviar())
             .listoParaEnviar(entity.listoParaEnviar())
+            .vigente(entity.getVigente())
+            .verificableDesde(entity.getEstado() == EstadoComprobante.ENVIO_INCIERTO
+                ? ComprobanteElectronicoServiceImpl.disponibleParaVerificar(entity) : null)
             .createdAt(entity.getCreatedAt())
             .updatedAt(entity.getUpdatedAt())
             .xmlComprobante(entity.getXmlComprobante())

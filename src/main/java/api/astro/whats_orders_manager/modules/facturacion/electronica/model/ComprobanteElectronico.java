@@ -40,12 +40,21 @@ public class ComprobanteElectronico {
     private Long id;
     
     /**
-     * Factura asociada a este comprobante (opcional para tiquetes).
+     * Factura asociada a este comprobante (opcional para tiquetes). Una factura puede tener varios comprobantes
+     * (p. ej. uno RECHAZADO y su reemisión) y solo uno vigente (ADR-030 §4).
      */
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factura_id")
     @JsonIgnore
     private Factura factura;
+
+    /**
+     * Comprobante vigente de su factura. Al reemitir tras un RECHAZADO, el rechazado deja de ser vigente y queda
+     * como historial; la BD garantiza como máximo un vigente por factura (V36).
+     */
+    @Column(name = "vigente", nullable = false)
+    @Builder.Default
+    private Boolean vigente = true;
     
     /**
      * Empresa emisora del comprobante.
@@ -180,18 +189,19 @@ public class ComprobanteElectronico {
     private LocalDateTime updatedAt;
     
     /**
-     * Verifica si el comprobante puede ser reenviado.
+     * Verifica si el comprobante puede ser (re)enviado con su clave: Hacienda no lo tiene (ADR-030).
      */
     public boolean puedeReenviar() {
-        return !estado.esTerminal() && intentosEnvio < 3;
+        return estado.esReenviable();
     }
     
     /**
-     * Verifica si el comprobante está listo para enviar a Hacienda.
+     * Verifica si el comprobante puede enviarse tal como está: XML firmado presente (FIRMADO, o NO_TRANSMITIDO
+     * sin cambios desde el intento anterior).
      */
     public boolean listoParaEnviar() {
-        return xmlComprobante != null && 
-               (estado == EstadoComprobante.GENERADO || estado == EstadoComprobante.FIRMADO);
+        return xmlComprobante != null &&
+               (estado == EstadoComprobante.FIRMADO || estado == EstadoComprobante.NO_TRANSMITIDO);
     }
     
     /**

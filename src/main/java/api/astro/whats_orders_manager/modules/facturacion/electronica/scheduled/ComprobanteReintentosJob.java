@@ -59,37 +59,25 @@ public class ComprobanteReintentosJob {
             
             for (ComprobanteElectronico comprobante : pendientes) {
                 try {
-                    // Verificar límite de intentos
+                    // Límite de intentos: se deja de reintentar sin cambiar el estado (sigue reenviable a mano).
+                    // No se marca ERROR: ERROR es solo una falla local antes de transmitir (ADR-030).
                     if (comprobante.getIntentosEnvio() >= MAX_INTENTOS) {
-                        log.warn("⚠️ Comprobante {} alcanzó límite de {} reintentos", 
+                        log.warn("⚠️ Comprobante {} alcanzó límite de {} reintentos",
                             comprobante.getId(), MAX_INTENTOS);
-                        
-                        comprobante.setEstado(EstadoComprobante.ERROR);
-                        comprobante.setUltimoError(
-                            String.format("Límite de %d reintentos alcanzado. Último error: %s", 
-                                MAX_INTENTOS, comprobante.getUltimoError())
-                        );
-                        comprobanteRepository.save(comprobante);
                         alcanzaronLimite++;
                         continue;
                     }
-                    
-                    log.info("🔄 Reintentando comprobante {} (intento {}/{})", 
-                        comprobante.getId(), 
-                        comprobante.getIntentosEnvio() + 1, 
+
+                    log.info("🔄 Reintentando comprobante {} ({}, intento {}/{})",
+                        comprobante.getId(),
+                        comprobante.getEstado(),
+                        comprobante.getIntentosEnvio() + 1,
                         MAX_INTENTOS);
-                    
-                    // Determinar qué hacer según el estado
-                    if (comprobante.getEstado() == EstadoComprobante.GENERADO) {
-                        // Necesita firma
-                        comprobanteService.firmar(comprobante.getId());
-                        comprobanteService.enviarAHacienda(comprobante.getId());
-                    } else if (comprobante.getEstado() == EstadoComprobante.FIRMADO || 
-                               comprobante.getEstado() == EstadoComprobante.ERROR) {
-                        // Solo necesita envío
-                        comprobanteService.reenviar(comprobante.getId());
-                    }
-                    
+
+                    // GENERADO, FIRMADO, ERROR o NO_TRANSMITIDO: reenviar regenera/firma si hace falta y envía
+                    // con la misma clave (ADR-030)
+                    comprobanteService.reenviar(comprobante.getId());
+
                     exitosos++;
                     log.info("✅ Comprobante {} reenviado exitosamente", comprobante.getId());
                     
@@ -125,10 +113,11 @@ public class ComprobanteReintentosJob {
         log.info("🔍 Iniciando consulta de estados pendientes");
         
         try {
-            // Buscar comprobantes enviados hace más de 5 minutos sin respuesta
+            // Comprobantes recibidos por Hacienda (ENVIADO) o en proceso, enviados hace más de 5 minutos.
+            // ENVIO_INCIERTO no se consulta aquí: se resuelve con "verificar con Hacienda" (ADR-030).
             List<ComprobanteElectronico> enviados = comprobanteRepository
-                .findByEstadoAndFechaEnvioLessThan(
-                    EstadoComprobante.ENVIADO,
+                .findByEstadoInAndFechaEnvioLessThan(
+                    List.of(EstadoComprobante.ENVIADO, EstadoComprobante.PROCESANDO),
                     LocalDateTime.now().minusMinutes(5)
                 );
             

@@ -116,14 +116,14 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
      * sinFE y estadoFE son mutuamente excluyentes: sinFE busca facturas sin
      * comprobante electrónico, mientras que estadoFE filtra por el estado del comprobante.
      */
-    @Query(value = "SELECT f FROM Factura f LEFT JOIN f.comprobanteElectronico c " +
+    @Query(value = "SELECT f FROM Factura f LEFT JOIN f.comprobantes c ON c.vigente = true " +
            "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
            "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
            "AND (:entregado IS NULL OR f.entregado = :entregado) " +
            "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL')) " +
            "AND (:sinFE IS NULL OR c IS NULL) " +
            "AND (:estadoFE IS NULL OR c.estado = :estadoFE)",
-           countQuery = "SELECT COUNT(f) FROM Factura f LEFT JOIN f.comprobanteElectronico c " +
+           countQuery = "SELECT COUNT(f) FROM Factura f LEFT JOIN f.comprobantes c ON c.vigente = true " +
            "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
            "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
            "AND (:entregado IS NULL OR f.entregado = :entregado) " +

@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapp
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabilidadFactura;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.PermisoService;
 import api.astro.whats_orders_manager.shared.service.EmailService;
@@ -78,7 +79,8 @@ class FacturaAnularPermisoTest {
                     mock(MonedaService.class),
                     mock(FacturaMapper.class),
                     mock(FacturaPdfService.class),
-                    mock(PagoMapper.class));
+                    mock(PagoMapper.class),
+                    mock(PoliticaMutabilidadFactura.class));
         }
     }
 

@@ -64,6 +64,12 @@ public class ComprobanteElectronicoDTO {
     private Boolean puedeReenviar;
     
     private Boolean listoParaEnviar;
+
+    /** Comprobante vigente de su factura (los demás son historial, p. ej. un RECHAZADO reemitido). */
+    private Boolean vigente;
+
+    /** ENVIO_INCIERTO: momento a partir del cual se habilita "verificar con Hacienda" (ADR-030). */
+    private LocalDateTime verificableDesde;
     
     private LocalDateTime createdAt;
     

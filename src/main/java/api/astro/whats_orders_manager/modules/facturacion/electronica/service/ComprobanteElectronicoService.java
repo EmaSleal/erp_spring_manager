@@ -38,6 +38,20 @@ public interface ComprobanteElectronicoService {
      * Genera un comprobante electrónico desde una factura.
      */
     ComprobanteElectronicoDTO generarDesdeFactura(Long facturaId);
+
+    /**
+     * Reemite una factura cuyo comprobante vigente fue RECHAZADO: el rechazado queda como historial inmutable y se
+     * genera un comprobante nuevo, vigente, con consecutivo y clave nuevos (ADR-030).
+     *
+     * @param id id del comprobante RECHAZADO vigente
+     */
+    ComprobanteElectronicoDTO reemitir(Long id);
+
+    /**
+     * "Verificar con Hacienda" para un comprobante en ENVIO_INCIERTO, 15 minutos después del último envío: 404 →
+     * NO_TRANSMITIDO; otra respuesta → el estado informado (ADR-030).
+     */
+    ComprobanteElectronicoDTO verificarConHacienda(Long id);
     
     /**
      * Obtiene comprobante por ID.
