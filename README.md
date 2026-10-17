@@ -192,9 +192,10 @@ mvn spring-boot:run
 
 Abrí el navegador en: **http://localhost:15808** (o el puerto que hayas definido en `SERVER_PORT`)
 
-Credenciales por defecto:
-- **Usuario:** `admin`
-- **Contraseña:** `admin123`
+No hay usuario ni contraseña por defecto. En el primer arranque, si no existe ningún usuario activo con rol
+ADMIN, se crea "Administrador" con `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_TELEFONO` y
+`BOOTSTRAP_ADMIN_PASSWORD` (ver [Configuración](#configuración)). Se ingresa con ese email y esa contraseña,
+y el sistema pide cambiarla.
 
 ---
 
@@ -208,12 +209,46 @@ DB_URL=jdbc:mysql://localhost:3306/erp_orders_manager
 DB_USERNAME=tu_usuario
 DB_PASSWORD=tu_password
 
+# URL pública y orígenes CORS (obligatorias, sin valor por defecto; separar orígenes con coma)
+APP_BASE_URL=https://erp.tu-dominio.com
+CORS_ALLOWED_ORIGINS=https://erp.tu-dominio.com
+
+# Webhook de WhatsApp y cifrado de credenciales (obligatorias)
+META_WEBHOOK_VERIFY_TOKEN=token-aleatorio
+HACIENDA_CRYPTO_KEY=                 # openssl rand -base64 32; respaldar aparte de la base
+
+# Admin de bootstrap: solo se usan si no hay ningún usuario ADMIN activo
+BOOTSTRAP_ADMIN_EMAIL=admin@tu-dominio.com
+BOOTSTRAP_ADMIN_TELEFONO=50600000000
+BOOTSTRAP_ADMIN_PASSWORD=            # mínimo 12 caracteres; se pide cambiarla al ingresar
+
+# Solo si la contraseña SMTP guardada está en el formato anterior "{enc}" (se recifra al arrancar)
+SMTP_ENCRYPTION_KEY=
+
 # Puerto (opcional, default 15808 si no se define)
 SERVER_PORT=15808
 
 # Perfil de Spring
 SPRING_PROFILES_ACTIVE=production
 ```
+
+Si falta una variable obligatoria la aplicación no arranca y el mensaje nombra la variable.
+
+### Despliegue con Docker Compose
+
+`docker compose` exige en el `.env` del servidor `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`,
+`META_WEBHOOK_VERIFY_TOKEN`, `HACIENDA_CRYPTO_KEY`, `APP_BASE_URL` y `CORS_ALLOWED_ORIGINS`: sin alguna,
+`docker compose config` / `up` falla nombrándola. `BOOTSTRAP_ADMIN_*` solo hace falta si no hay ningún ADMIN
+activo y `SMTP_ENCRYPTION_KEY` solo si hay contraseñas SMTP en el formato `{enc}`. El healthcheck de MySQL no
+usa credenciales. Los seeds no se cargan en cada `up`; solo bajo demanda con
+`docker compose --profile seed run --rm seed` (ver `database/README.md`).
+
+### Correo (SMTP)
+
+El servidor SMTP se configura en **Configuración → Email** (una sola configuración). La contraseña se guarda
+cifrada con `HACIENDA_CRYPTO_KEY` y nunca se muestra. "Activo" habilita el envío de correos: con la
+configuración inactiva no se envía nada. La prueba de envío funciona aunque esté inactiva, para probar antes
+de activar.
 
 ### Facturación Electrónica
 

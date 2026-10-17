@@ -3,17 +3,16 @@ package api.astro.whats_orders_manager.modules.configuracion.service.impl;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmail;
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmailRepository;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmailService;
+import api.astro.whats_orders_manager.modules.configuracion.service.SmtpMailSenderFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.Properties;
 
 /**
  * Implementación del servicio de configuración de email
@@ -24,20 +23,21 @@ import java.util.Properties;
 @RequiredArgsConstructor
 public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService {
 
+    /** Valor con el que la pantalla y la API muestran la contraseña (ConfiguracionEmailMapper). */
+    static final String MASCARA_PASSWORD = "********";
+
     private final ConfiguracionEmailRepository configuracionRepository;
 
+    /**
+     * ADR-027: único método de lectura de la configuración de email (la tabla tiene una sola fila). Lo usan el
+     * envío de correos, la prueba, la validación, la edición y la pantalla. "activo" no influye en cuál fila se
+     * lee: indica si el envío está habilitado.
+     */
     @Override
     @Transactional(readOnly = true)
     public Optional<ConfiguracionEmail> obtenerConfiguracion() {
         log.debug("Obteniendo configuración de email");
         return configuracionRepository.findFirstByOrderByIdConfiguracionAsc();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<ConfiguracionEmail> obtenerConfiguracionActiva() {
-        log.debug("Obteniendo configuración de email activa");
-        return configuracionRepository.findFirstByActivoTrue();
     }
 
     @Override
@@ -50,7 +50,7 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
             return configuracionOpt.get();
         }
         
-        // Crear configuración por defecto
+        // Tabla vacía (instalación nueva): se crea la única fila, inactiva. Nunca se crea una segunda (ADR-027).
         ConfiguracionEmail nuevaConfiguracion = ConfiguracionEmail.builder()
                 .smtpHost("smtp.gmail.com")
                 .smtpPort(587)
@@ -90,6 +90,18 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
             throw new IllegalArgumentException("El email remitente es obligatorio");
         }
         
+        // ADR-027: una sola fila; no se crea una segunda
+        Optional<ConfiguracionEmail> actual = obtenerConfiguracion();
+        if (actual.isPresent() && !actual.get().getIdConfiguracion().equals(configuracion.getIdConfiguracion())) {
+            throw new IllegalStateException("Ya existe una configuración de email; el sistema opera con una sola. "
+                    + "Actualice la existente en lugar de crear otra.");
+        }
+
+        // La máscara (o vacío) nunca se guarda como contraseña: se conserva la actual
+        if (sinContrasenaNueva(configuracion.getSmtpPassword())) {
+            configuracion.setSmtpPassword(actual.map(ConfiguracionEmail::getSmtpPassword).orElse(""));
+        }
+
         ConfiguracionEmail guardada = configuracionRepository.save(configuracion);
         log.info("Configuración de email guardada correctamente con ID: {}", guardada.getIdConfiguracion());
         
@@ -117,7 +129,8 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
         if (configuracion.getSmtpUsuario() != null) {
             configuracionExistente.setSmtpUsuario(configuracion.getSmtpUsuario());
         }
-        if (configuracion.getSmtpPassword() != null && !configuracion.getSmtpPassword().equals("********")) {
+        // La máscara (o vacío) nunca se guarda como contraseña: se conserva la actual (ADR-027)
+        if (!sinContrasenaNueva(configuracion.getSmtpPassword())) {
             configuracionExistente.setSmtpPassword(configuracion.getSmtpPassword());
         }
         if (configuracion.getSmtpSsl() != null) {
@@ -176,28 +189,10 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
         }
         
         try {
-            // Crear JavaMailSender con la configuración actual
-            JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-            mailSender.setHost(configuracion.getSmtpHost());
-            mailSender.setPort(configuracion.getSmtpPort());
-            mailSender.setUsername(configuracion.getSmtpUsuario());
-            mailSender.setPassword(configuracion.getSmtpPassword());
-            mailSender.setDefaultEncoding(
-                    configuracion.getCharset() != null ? configuracion.getCharset() : "UTF-8");
+            // Mismo servidor y parámetros que el envío de correos; la prueba no exige "activo" (se prueba antes
+            // de habilitar el envío)
+            JavaMailSenderImpl mailSender = SmtpMailSenderFactory.crear(configuracion);
 
-            Properties props = mailSender.getJavaMailProperties();
-            props.put("mail.transport.protocol", "smtp");
-            props.put("mail.smtp.auth", configuracion.getSmtpAuth() ? "true" : "false");
-            props.put("mail.smtp.starttls.enable", configuracion.getSmtpTls() ? "true" : "false");
-            props.put("mail.smtp.ssl.enable", configuracion.getSmtpSsl() ? "true" : "false");
-            props.put("mail.debug", "false");
-
-            String timeoutMs = String.valueOf(
-                    configuracion.getSmtpTimeout() != null ? configuracion.getSmtpTimeout() : 5000);
-            props.put("mail.smtp.connectiontimeout", timeoutMs);
-            props.put("mail.smtp.timeout", timeoutMs);
-            props.put("mail.smtp.writetimeout", timeoutMs);
-            
             // Crear y enviar mensaje de prueba
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(configuracion.getEmailRemitente());
@@ -261,5 +256,9 @@ public class ConfiguracionEmailServiceImpl implements ConfiguracionEmailService 
     @Override
     public ConfiguracionEmail saveOrUpdate(ConfiguracionEmail configuracion) {
         return actualizarConfiguracion(configuracion);
+    }
+
+    private static boolean sinContrasenaNueva(String password) {
+        return password == null || password.isBlank() || MASCARA_PASSWORD.equals(password);
     }
 }

@@ -42,24 +42,10 @@ spring:
         use_sql_comments: false
   
   # ========================================
-  # CONFIGURACIÓN DE EMAIL
+  # EMAIL
   # ========================================
-  mail:
-    host: ${EMAIL_HOST:smtp.gmail.com}
-    port: ${EMAIL_PORT:587}
-    username: ${EMAIL_USERNAME:}
-    password: ${EMAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          ssl:
-            trust: ${EMAIL_HOST:smtp.gmail.com}
-        debug: false
-    default-encoding: UTF-8
+  # Sin propiedades de correo de Spring Boot (T-022, ADR-027): el SMTP se configura en Configuración → Email (fila única de
+  # configuracion_email); EmailServiceImpl arma el JavaMailSender con SmtpMailSenderFactory.
 
 # ========================================
 # CONFIGURACIÓN DE WHATSAPP WEBHOOK
@@ -89,14 +75,35 @@ whatsapp:
   access-token: ${META_WHATSAPP_ACCESS_TOKEN:}
 
 # ========================================
-# CONFIGURACIÓN DE BASE URL
+# CLAVE HEREDADA DE LA CONTRASEÑA SMTP (T-022)
 # ========================================
+# Solo hace falta si configuracion_email.smtp_password está en el formato anterior "{enc}": al arrancar se
+# descifra con esta clave y se vuelve a cifrar con HACIENDA_CRYPTO_KEY (SmtpPasswordCifradoRunner).
 smtp:
   encryption:
     key: ${SMTP_ENCRYPTION_KEY:}
 
+# ========================================
+# ADMIN DE BOOTSTRAP (T-022)
+# ========================================
+# Solo se usan si no hay ningún usuario activo con rol ADMIN: se crea "Administrador" con este email,
+# teléfono y contraseña (mínimo 12 caracteres), con cambio de contraseña obligatorio. Con un ADMIN activo
+# se ignoran y pueden faltar.
+bootstrap:
+  admin:
+    email: ${BOOTSTRAP_ADMIN_EMAIL:}
+    telefono: ${BOOTSTRAP_ADMIN_TELEFONO:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+
+# ========================================
+# URL PÚBLICA Y CORS
+# ========================================
+# Sin valores por defecto (T-022): si falta APP_BASE_URL o CORS_ALLOWED_ORIGINS la aplicación no arranca
+# (RequiredConfigurationEnvironmentPostProcessor). CORS_ALLOWED_ORIGINS: orígenes separados por coma.
 app:
-  base-url: ${APP_BASE_URL:http://localhost:15808}
+  base-url: ${APP_BASE_URL}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
   certificados:
     directorio: ${CERTIFICADOS_DIR:/app/certificados}
   sellos:
@@ -110,16 +117,6 @@ app:
 facturacion:
   comprobantes:
     directorio-base: ${FACTURACION_DIRECTORIO_BASE:./comprobantes}
-  
-  hacienda:
-    webhook:
-      # Token de seguridad para validar callbacks de Hacienda
-      # Si está vacío, no se valida el token
-      token: ${HACIENDA_WEBHOOK_TOKEN:}
-      
-      # URL pública del webhook (para registrar en Hacienda)
-      # Esta URL debe ser accesible desde internet
-      url: ${HACIENDA_WEBHOOK_URL:https://tu-dominio.com/api/hacienda/callback}
 
 # ========================================
 # TIPO DE CAMBIO - SINCRONIZACIÓN DIARIA (T-008)

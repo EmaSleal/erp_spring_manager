@@ -124,6 +124,36 @@
                         <i class="fas fa-plus me-2"></i>Agregar Producto
                     </button>
 
+                    <!-- Totales persistidos (calculados en el servidor). La suma de las filas es solo una vista previa. -->
+                    <div class="card mt-4 border-primary"
+                         th:with="moneda=${factura.monedaFE != null ? factura.monedaFE.codigo : 'CRC'}">
+                        <div class="card-body">
+                            <h6 class="card-title text-primary">
+                                <i class="fas fa-calculator me-2"></i>Totales guardados
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-4 d-flex justify-content-between">
+                                    <span>Subtotal:</span>
+                                    <strong id="servidor-subtotal"
+                                            th:text="${moneda + ' ' + #numbers.formatDecimal(factura.subtotal, 1, 'COMMA', 2, 'POINT')}">CRC 0.00</strong>
+                                </div>
+                                <div class="col-md-4 d-flex justify-content-between">
+                                    <span>IVA:</span>
+                                    <strong id="servidor-igv"
+                                            th:text="${moneda + ' ' + #numbers.formatDecimal(factura.igv, 1, 'COMMA', 2, 'POINT')}">CRC 0.00</strong>
+                                </div>
+                                <div class="col-md-4 d-flex justify-content-between align-items-center">
+                                    <span class="h5 mb-0">Total:</span>
+                                    <strong class="h5 mb-0" id="servidor-total"
+                                            th:text="${moneda + ' ' + #numbers.formatDecimal(factura.total, 1, 'COMMA', 2, 'POINT')}">CRC 0.00</strong>
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                Vista previa de las filas en pantalla (sin guardar): <span id="resumen-total">$0.00</span>
+                            </small>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-end mt-4 gap-2">
                         <a th:href="@{/facturas}" class="btn btn-secondary">
                             <i class="fas fa-times me-2"></i>Cancelar

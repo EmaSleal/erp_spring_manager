@@ -1,14 +1,17 @@
 package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 
+import api.astro.whats_orders_manager.modules.facturacion.dto.TotalesFacturaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFacturaR;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * ============================================================================
@@ -39,21 +42,24 @@ public class LineaFacturaController {
     }
 
 
+    /**
+     * Guarda el conjunto completo de líneas de una factura (T-024): las que no vienen se eliminan y los montos
+     * se calculan en el servidor. Devuelve los totales persistidos.
+     */
     @PutMapping("/actualizar")
     @ResponseBody
-    public Boolean actualizarLineaFactura(@RequestBody List<LineaFacturaR> lineas) {
+    public TotalesFacturaDTO actualizarLineaFactura(@RequestBody List<LineaFacturaR> lineas) {
         log.info("Actualizando {} líneas de factura", lineas.size());
-        Boolean resultado = lineaFacturaService.updateLineas(lineas);
-        log.info("✅ Líneas actualizadas: {}", resultado);
-        return resultado;
+        TotalesFacturaDTO totales = lineaFacturaService.updateLineas(lineas);
+        log.info("✅ Líneas de la factura {} guardadas: {} líneas, total {}",
+                totales.idFactura(), totales.lineas(), totales.total());
+        return totales;
     }
 
-    @DeleteMapping("/eliminar/{id}")
-    @ResponseBody
-    public Boolean eliminarLineaFactura(@PathVariable Integer id) {
-        log.info("Eliminando línea de factura ID: {}", id);
-        Boolean resultado = lineaFacturaService.deleteById(id);
-        log.info("✅ Línea eliminada: {}", resultado);
-        return resultado;
+    /** Cuerpo inválido (factura inexistente, línea ajena, cantidad o precio inválidos): 400 y nada se persiste. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException e) {
+        log.warn("Líneas de factura rechazadas: {}", e.getMessage());
+        return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
     }
 }

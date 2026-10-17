@@ -39,13 +39,11 @@ Abrir `.env.local` y verificar que todas las variables tienen valores:
 - [ ] `DB_URL` - URL completa de MySQL
 - [ ] `DB_USERNAME` - Usuario de base de datos
 - [ ] `DB_PASSWORD` - Contraseña de base de datos
-- [ ] `EMAIL_HOST` - smtp.gmail.com
-- [ ] `EMAIL_PORT` - 587
-- [ ] `EMAIL_USERNAME` - Tu email de Gmail
-- [ ] `EMAIL_PASSWORD` - App Password (16 caracteres sin espacios)
 - [ ] `META_WHATSAPP_PHONE_NUMBER_ID` - ID de WhatsApp (si aplica)
 - [ ] `META_WHATSAPP_ACCESS_TOKEN` - Token de acceso (si aplica)
 - [ ] `META_WEBHOOK_VERIFY_TOKEN` - Token de verificación
+
+El SMTP no se configura aquí: se hace en **Configuración → Email** dentro de la aplicación: guardar la contraseña de aplicación, ejecutar la prueba de envío y activar el envío.
 
 ---
 
@@ -91,18 +89,12 @@ Abrir `.env.local` y verificar que todas las variables tienen valores:
 - [ ] Verificar output del script:
   - ✅ Variables cargadas: X
   - ✅ DB_URL = jdbc:mysql://...
-  - ✅ EMAIL_HOST = smtp.gmail.com
 
 ### 2. Verificar Variables Manualmente
 
 - [ ] Ver variables de base de datos
   ```powershell
   Get-ChildItem Env: | Where-Object { $_.Name -like "DB_*" }
-  ```
-
-- [ ] Ver variables de email
-  ```powershell
-  Get-ChildItem Env: | Where-Object { $_.Name -like "EMAIL_*" }
   ```
 
 - [ ] Verificar valor de DB_URL
@@ -374,7 +366,7 @@ Verificar en `.env.local`:
 
 1. Generar App Password: https://myaccount.google.com/apppasswords
 2. Usar ese password (NO tu contraseña normal)
-3. Actualizar `EMAIL_PASSWORD` en `.env.local`
+3. Guardarla en **Configuración → Email**, ejecutar la prueba de envío y activar el envío
 
 ### No aparecen SQL queries
 

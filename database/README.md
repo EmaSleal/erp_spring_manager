@@ -94,7 +94,11 @@ stored encrypted (AES-256-GCM, `enc:v1:` prefix). The key lives only in the `HAC
 environment variable and **must be backed up separately** (password manager / vault), never next
 to the dumps.
 
-- Without the key the application refuses to start while `configuracion_hacienda` has rows.
+- Since T-022 the same key also encrypts the SMTP password (`configuracion_email.smtp_password`).
+  Plain-text values and the old `{enc}` format are re-encrypted to `enc:v1:` on startup
+  (`SmtpPasswordCifradoRunner`); `{enc}` values need the old `SMTP_ENCRYPTION_KEY` on that start.
+- Without the key the application refuses to start while `configuracion_hacienda` or
+  `configuracion_email` has rows.
 - If the key is lost the encrypted values cannot be recovered: generate a new key
   (`openssl rand -base64 32`) and re-enter the credentials. Because rows can no longer be
   decrypted, overwrite them directly so the app can start and re-encrypt them:
@@ -108,15 +112,31 @@ to the dumps.
 
 ## Docker
 
-On `docker compose up`, the `seed` sidecar automatically seeds the DB after the app reports healthy (tables created by Hibernate). Re-runs are safe — all seeds are idempotent.
+`docker compose up` no longer seeds anything (T-022). The `seed` service only runs on demand, behind the
+`seed` profile, and uses `scripts/seed.sh` with its safeguards (asks for the database name, aborts if the
+database already has business data, password via `--defaults-extra-file`, never `MYSQL_PWD`):
+
+```sh
+docker compose --profile seed run --rm seed
+```
 
 If migrating from a previous Docker volume, run `docker compose down -v` first to reset.
 
-## Test user
+## First administrator (bootstrap)
 
-The "usuario prueba" account is created automatically by `DataInitializer.java` on first boot.
-Credentials: `usuario prueba` / `JhfKHZ2%mJMI` — ADMIN role.
-To change the password, update `DataInitializer.java` and rebuild.
+There is no built-in test user or fixed password (T-022, ADR-026). On startup, if there is **no active user
+with role ADMIN**, `BootstrapAdminInitializer` creates one named "Administrador" from:
+
+| Variable | Notes |
+|----------|-------|
+| `BOOTSTRAP_ADMIN_EMAIL` | Login name; must not belong to another user |
+| `BOOTSTRAP_ADMIN_TELEFONO` | Must not belong to another user |
+| `BOOTSTRAP_ADMIN_PASSWORD` | At least 12 characters; a password change is required on first login |
+
+If they are missing (or the password is too short) and there is no active ADMIN, the application does not
+start and names the missing variables. With an active ADMIN they are ignored and can be removed from `.env`.
+The password is never logged; only `admin de bootstrap creado (id=N)`. Existing user rows are never
+modified by code.
 
 ## Populating live-data seed files (T-07 to T-13)
 
@@ -134,5 +154,5 @@ Seeds 04 through 10 are stubs that require data from the live DB. To populate th
 ## Warnings
 
 - **Existing volume migration**: developers with an existing `mysql_data` volume populated by the old `/docker-entrypoint-initdb.d` mount must run `docker compose down -v` before `docker compose up` to get a clean seeded database.
-- **Password change**: to change the admin password, update `DataInitializer.java` and then either `docker compose down -v` (volume reset) or manually `DELETE FROM usuario WHERE nombre='usuario prueba'` before restarting.
+- **Password change**: administrators change their password from the UI. The `BOOTSTRAP_ADMIN_*` variables only matter while there is no active ADMIN.
 - **`database/export/` is gitignored**: files in that folder may contain sensitive configuration data and must not be committed. Only `database/export/.gitkeep` is tracked.

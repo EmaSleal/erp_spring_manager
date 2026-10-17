@@ -1,6 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.model;
 
-import api.astro.whats_orders_manager.modules.configuracion.converter.SmtpPasswordConverter;
+import api.astro.whats_orders_manager.config.crypto.CredencialCifradaConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
  * Entidad que almacena la configuración del servidor de correo electrónico (SMTP).
  * Permite configurar el envío de emails para notificaciones del sistema.
  * 
- * Solo debe existir UN registro activo en esta tabla.
+ * Tiene exactamente una fila (ADR-027): "activo" indica si el envío de correos está habilitado, no cuál
+ * fila se usa.
  */
 @Entity
 @Table(name = "configuracion_email")
@@ -47,8 +48,12 @@ public class ConfiguracionEmail implements Serializable {
     @Column(name = "smtp_usuario", nullable = false, length = 255)
     private String smtpUsuario;
 
-    @Convert(converter = SmtpPasswordConverter.class)
-    @Column(name = "smtp_password", nullable = false, length = 255)
+    /**
+     * Contraseña SMTP. Cifrada en reposo con AES-256-GCM (T-022, mismo formato y clave que las credenciales de
+     * Hacienda); en la entidad, texto plano. Nunca sale en el DTO, en toString ni en logs.
+     */
+    @Convert(converter = CredencialCifradaConverter.class)
+    @Column(name = "smtp_password", nullable = false, columnDefinition = "TEXT")
     private String smtpPassword;
 
     // ==================== CONFIGURACIÓN DE SEGURIDAD ====================

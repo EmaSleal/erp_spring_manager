@@ -10,32 +10,31 @@ import java.util.Optional;
 public interface ConfiguracionEmailService {
     
     /**
-     * Obtiene la configuración de email (única en el sistema)
+     * Único método de lectura de la configuración de email (fila única, ADR-027). Lo usan el envío de correos,
+     * la prueba, la validación, la edición y la pantalla. "activo" indica si el envío está habilitado.
      * @return Optional con la configuración si existe
      */
     Optional<ConfiguracionEmail> obtenerConfiguracion();
     
     /**
-     * Obtiene la configuración de email activa
-     * @return Optional con la configuración activa
-     */
-    Optional<ConfiguracionEmail> obtenerConfiguracionActiva();
-    
-    /**
-     * Obtiene la configuración de email o crea una nueva si no existe
+     * Obtiene la configuración de email o, solo si la tabla está vacía, crea la única fila (inactiva).
+     * Nunca crea una segunda fila.
      * @return ConfiguracionEmail existente o nueva
      */
     ConfiguracionEmail obtenerOCrearConfiguracion();
     
     /**
-     * Guarda o actualiza la configuración de email
+     * Guarda la configuración de email. Si la contraseña llega vacía o con la máscara "********", se conserva
+     * la guardada.
      * @param configuracion Configuración a guardar
      * @return Configuración guardada
+     * @throws IllegalStateException si es una fila nueva y ya existe una configuración (ADR-027)
      */
     ConfiguracionEmail guardarConfiguracion(ConfiguracionEmail configuracion);
     
     /**
-     * Actualiza parcialmente la configuración de email
+     * Actualiza parcialmente la configuración de email (campos no nulos). Si la contraseña llega vacía o con la
+     * máscara "********", se conserva la guardada.
      * @param configuracion Configuración con los campos a actualizar
      * @return Configuración actualizada
      */
