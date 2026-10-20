@@ -19,6 +19,9 @@ import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionF
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.facturacion.service.TotalesFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabilidadFactura;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +76,12 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Autowired
     private TotalesFacturaService totalesFacturaService;
+
+    @Autowired
+    private PoliticaMutabilidadFactura politicaMutabilidad;
+
+    @Autowired
+    private ComprobanteElectronicoRepository comprobanteRepository;
 
     @Autowired
     private TipoCambioService tipoCambioService;
@@ -154,6 +163,12 @@ public class FacturaServiceImpl implements FacturaService {
             throw new IllegalArgumentException(
                 "tipoCambio debe ser mayor a 0 para facturas en " + factura.getMonedaFE().getCodigo()
             );
+        }
+
+        // ADR-030: editar una factura existente modifica campos fiscales (cliente, moneda, TC, condición, líneas):
+        // 409 si su comprobante vigente lo impide; si no, se descartan el XML y la firma del vigente local
+        if (factura.getIdFactura() != null) {
+            politicaMutabilidad.prepararEdicionFiscal(factura.getIdFactura());
         }
 
         // ADR-009: los totales de una factura con líneas vienen del desglose por línea
@@ -364,6 +379,8 @@ public class FacturaServiceImpl implements FacturaService {
     public void eliminarConValidacion(Integer id) {
         Factura factura = facturaRepository.findById(id)
             .orElseThrow(() -> new NoSuchElementException("La factura no existe"));
+        // ADR-030 §5: 409 con comprobante en Hacienda, con envío incierto o con historial fiscal
+        List<ComprobanteElectronico> comprobantesLocales = politicaMutabilidad.exigirEliminable(id);
         validarSinAsientoContabilizado(id);
         if (!pagoService.findByFacturaId(id).isEmpty())
             throw new IllegalStateException("No se puede eliminar: la factura tiene pagos registrados");
@@ -371,6 +388,8 @@ public class FacturaServiceImpl implements FacturaService {
             throw new IllegalStateException("No se puede eliminar: la factura está marcada como entregada");
         List<LineaFactura> lineas = factura.getLineas();
         if (lineas != null) lineas.forEach(l -> lineaFacturaService.deleteById(l.getIdLineaFactura()));
+        // Sin cascade (ADR-030 §5): solo se borran, de forma explícita, comprobantes que nunca salieron a Hacienda
+        comprobanteRepository.deleteAll(comprobantesLocales);
         facturaRepository.deleteById(id);
         log.info("Factura eliminada con validación, ID: {}", id);
     }
@@ -386,6 +405,8 @@ public class FacturaServiceImpl implements FacturaService {
         if (factura.estaAnulada()) {
             throw new IllegalStateException("La factura " + factura.getNumeroFactura() + " ya está anulada");
         }
+        // ADR-030 §5: con comprobante en Hacienda o envío incierto, 409 (la corrección es con nota de crédito)
+        politicaMutabilidad.exigirEditable(id);
         if (!pagoService.findPagosValidosByFacturaId(id).isEmpty()) {
             throw new IllegalStateException(
                 "No se puede anular: la factura tiene pagos confirmados o conciliados. Anule primero los pagos");

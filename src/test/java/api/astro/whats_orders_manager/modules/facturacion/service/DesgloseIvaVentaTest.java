@@ -60,6 +60,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -111,6 +112,7 @@ class DesgloseIvaVentaTest {
         ReflectionTestUtils.setField(lineaFacturaService, "productoRepository", productoRepository);
         ReflectionTestUtils.setField(lineaFacturaService, "totalesFacturaService",
                 new TotalesFacturaService(calculadora, productoRepository));
+        ReflectionTestUtils.setField(lineaFacturaService, "politicaMutabilidad", mock(PoliticaMutabilidadFactura.class));
         xmlGenerator = new XmlGeneratorServiceImpl(calculadora);
 
         long id = 1;

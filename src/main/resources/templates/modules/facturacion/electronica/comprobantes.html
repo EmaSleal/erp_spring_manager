@@ -78,6 +78,9 @@
                                 <option value="RECHAZADO">Rechazado</option>
                                 <option value="FIRMADO">Firmado</option>
                                 <option value="ENVIADO">Enviado</option>
+                                <option value="ENVIO_INCIERTO">Envío incierto</option>
+                                <option value="NO_TRANSMITIDO">No transmitido</option>
+                                <option value="ERROR_HACIENDA">Error en Hacienda</option>
                                 <option value="ERROR">Error</option>
                                 <option value="ANULADO">Anulado</option>
                             </select>
@@ -275,7 +278,12 @@
                         <small class="text-muted">ID: ${comp.facturaId || '-'}</small>
                     </td>
                     <td>${comp.tipoComprobanteDescripcion}</td>
-                    <td class="text-center">${getEstadoBadge(comp.estado)}</td>
+                    <td class="text-center">
+                        ${getEstadoBadge(comp.estado)}
+                        ${comp.estado === 'ERROR_HACIENDA' && comp.mensajeRespuesta ? `
+                            <div class="small text-danger mt-1">${escapeHtml(comp.mensajeRespuesta)}</div>
+                        ` : ''}
+                    </td>
                     <td class="text-center">${formatearFecha(comp.fechaEmision)}</td>
                     <td class="text-center">
                         <div class="btn-group btn-group-sm" role="group">
@@ -311,6 +319,13 @@
             `).join('');
         }
 
+        // Helper: escapa texto de Hacienda antes de insertarlo como HTML
+        function escapeHtml(texto) {
+            const div = document.createElement('div');
+            div.textContent = texto == null ? '' : String(texto);
+            return div.innerHTML;
+        }
+
         // Helper: Badge de estado
         function getEstadoBadge(estado) {
             const badges = {
@@ -320,6 +335,9 @@
                 'FIRMADO': '<span class="badge bg-info"><i class="fas fa-certificate me-1"></i>Firmado</span>',
                 'ENVIADO': '<span class="badge bg-primary"><i class="fas fa-paper-plane me-1"></i>Enviado</span>',
                 'ERROR': '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Error</span>',
+                'NO_TRANSMITIDO': '<span class="badge bg-secondary"><i class="fas fa-cloud me-1"></i>No transmitido</span>',
+                'ENVIO_INCIERTO': '<span class="badge bg-warning text-dark"><i class="fas fa-question-circle me-1"></i>Envío incierto</span>',
+                'ERROR_HACIENDA': '<span class="badge bg-danger"><i class="fas fa-exclamation-circle me-1"></i>Error en Hacienda</span>',
                 'ANULADO': '<span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>Anulado</span>',
                 'GENERADO': '<span class="badge bg-light text-dark"><i class="fas fa-file me-1"></i>Generado</span>'
             };
@@ -523,6 +541,49 @@
                 });
         }
 
+        function verificarConHacienda(id) {
+            fetch(`/api/facturas/electronica/comprobantes/${id}/verificar-hacienda`, {
+                method: 'POST',
+                headers: { [csrfHeader]: csrfToken }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    mostrarAlerta(data.message || (data.success ? 'Estado verificado' : 'No se pudo verificar'),
+                        data.success ? 'success' : 'warning');
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('detalleComprobanteModal'))?.hide();
+                        cargarComprobantes();
+                        cargarEstadisticas();
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error verificando con Hacienda', 'danger');
+                });
+        }
+
+        function reemitir(id) {
+            if (!confirm('¿Reemitir la factura con un comprobante nuevo (clave nueva)? El rechazado queda como historial.')) return;
+
+            fetch(`/api/facturas/electronica/comprobantes/${id}/reemitir`, {
+                method: 'POST',
+                headers: { [csrfHeader]: csrfToken }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    mostrarAlerta(data.message || (data.success ? 'Comprobante reemitido' : 'No se pudo reemitir'),
+                        data.success ? 'success' : 'warning');
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('detalleComprobanteModal'))?.hide();
+                        cargarComprobantes();
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    mostrarAlerta('Error reemitiendo comprobante', 'danger');
+                });
+        }
+
         function descargarXML(id) {
             window.location.href = `/api/facturas/electronica/comprobantes/${id}/xml`;
         }
@@ -649,6 +710,37 @@
                     
                     // Actualizar botones de acción
                     let actionButtons = '';
+                    // ind-estado "error" repetido: el sondeo dejó de consultar; la revisión se hace en ATV
+                    if (comp.revisarEnAtv) {
+                        actionButtons += `
+                            <div class="alert alert-danger w-100 mb-2" role="alert">
+                                <i class="fas fa-exclamation-circle me-1"></i>
+                                Hacienda informó "error" en ${comp.consultasErrorHacienda} consultas seguidas y el
+                                sistema dejó de consultarlo. Revise el comprobante en ATV.
+                            </div>
+                        `;
+                    }
+                    // ADR-030: un envío incierto se resuelve consultando a Hacienda, 15 minutos después del envío
+                    if (comp.estado === 'ENVIO_INCIERTO') {
+                        const desde = comp.verificableDesde ? new Date(comp.verificableDesde) : null;
+                        const disponible = !desde || desde <= new Date();
+                        const hora = desde ? desde.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' }) : '';
+                        actionButtons += `
+                            <button id="btnVerificarHacienda" onclick="verificarConHacienda(${comp.id})"
+                                    class="btn btn-warning" ${disponible ? '' : 'disabled'}
+                                    title="${disponible ? 'Consultar a Hacienda si recibió el comprobante' : 'Disponible a partir de las ' + hora}">
+                                <i class="fas fa-search me-1"></i>Verificar con Hacienda
+                            </button>
+                            ${disponible ? '' : `<small class="text-muted ms-2">Disponible a partir de las ${hora}</small>`}
+                        `;
+                    }
+                    if (comp.estado === 'RECHAZADO' && comp.vigente) {
+                        actionButtons += `
+                            <button onclick="reemitir(${comp.id})" class="btn btn-primary">
+                                <i class="fas fa-redo me-1"></i>Reemitir con clave nueva
+                            </button>
+                        `;
+                    }
                     if (comp.estado === 'ACEPTADO') {
                         actionButtons += `
                             <button onclick="enviarPorEmail(${comp.id})" class="btn btn-primary">
@@ -774,6 +866,9 @@
                 'ACEPTADO': 'bg-success',
                 'RECHAZADO': 'bg-danger',
                 'ERROR': 'bg-danger',
+                'NO_TRANSMITIDO': 'bg-secondary',
+                'ENVIO_INCIERTO': 'bg-warning',
+                'ERROR_HACIENDA': 'bg-danger',
                 'EMAIL': 'bg-info'
             };
             return colores[estado] || 'bg-secondary';

@@ -156,6 +156,62 @@ public class ComprobanteElectronicoController {
     }
     
     /**
+     * "Verificar con Hacienda" un comprobante en ENVIO_INCIERTO (ADR-030), 15 minutos después del último envío.
+     * POST /api/facturas/electronica/comprobantes/{id}/verificar-hacienda
+     * 409 si no está en ENVIO_INCIERTO o todavía no pasaron los 15 minutos (el mensaje indica desde qué hora).
+     */
+    @PostMapping("/{id}/verificar-hacienda")
+    public ResponseEntity<Map<String, Object>> verificarConHacienda(@PathVariable Long id) {
+        log.info("Verificando con Hacienda el comprobante {}", id);
+        try {
+            ComprobanteElectronicoDTO verificado = comprobanteService.verificarConHacienda(id);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Estado verificado con Hacienda: " + verificado.getEstado().getCodigo(),
+                "comprobante", verificado
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error verificando con Hacienda: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                "success", false,
+                "message", "No se pudo consultar a Hacienda: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Reemite la factura de un comprobante vigente RECHAZADO: comprobante nuevo con consecutivo y clave nuevos; el
+     * rechazado queda como historial (ADR-030).
+     * POST /api/facturas/electronica/comprobantes/{id}/reemitir
+     */
+    @PostMapping("/{id}/reemitir")
+    public ResponseEntity<Map<String, Object>> reemitir(@PathVariable Long id) {
+        log.info("Reemitiendo comprobante rechazado {}", id);
+        try {
+            ComprobanteElectronicoDTO nuevo = comprobanteService.reemitir(id);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "success", true,
+                "message", "Comprobante reemitido con la clave " + nuevo.getClaveNumerica(),
+                "comprobante", nuevo
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error reemitiendo comprobante: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error reemitiendo comprobante: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
      * Consulta estado del comprobante en Hacienda.
      * GET /api/facturacion/comprobantes/{id}/consultar-estado
      */

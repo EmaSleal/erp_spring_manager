@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPagoFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -90,12 +91,26 @@ public class Factura {
     private List<Pago> pagos = new ArrayList<>();
     
     /**
-     * Relación con el comprobante electrónico de Hacienda (CR).
-     * Una factura puede tener un solo comprobante electrónico.
+     * Comprobantes electrónicos de la factura (ADR-030 §4): N comprobantes, uno solo vigente (un RECHAZADO queda
+     * como historial al reemitir). Sin cascade: eliminar la factura nunca borra sus comprobantes (§5).
      */
-    @OneToOne(mappedBy = "factura", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "factura", fetch = FetchType.LAZY)
     @ToString.Exclude
-    private ComprobanteElectronico comprobanteElectronico;
+    @JsonIgnore
+    @Setter(AccessLevel.NONE)
+    private List<ComprobanteElectronico> comprobantes = new ArrayList<>();
+
+    /**
+     * Comprobante vigente de la factura, o null si no tiene (vistas Thymeleaf y PDF). No se serializa a JSON: la
+     * entidad lleva relaciones perezosas (empresa) y la API usa DTOs para el detalle.
+     */
+    @JsonIgnore
+    public ComprobanteElectronico getComprobanteElectronico() {
+        return comprobantes.stream()
+                .filter(c -> Boolean.TRUE.equals(c.getVigente()))
+                .findFirst()
+                .orElse(null);
+    }
     
     /**
      * Estado de pago calculado basado en los pagos aplicados.

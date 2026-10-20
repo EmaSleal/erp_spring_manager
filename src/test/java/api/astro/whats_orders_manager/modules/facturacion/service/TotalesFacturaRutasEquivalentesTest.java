@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -82,6 +83,7 @@ class TotalesFacturaRutasEquivalentesTest {
         ReflectionTestUtils.setField(lineaFacturaService, "asientoContableService", asientoContableService);
         ReflectionTestUtils.setField(lineaFacturaService, "productoRepository", productoRepository);
         ReflectionTestUtils.setField(lineaFacturaService, "totalesFacturaService", totales);
+        ReflectionTestUtils.setField(lineaFacturaService, "politicaMutabilidad", mock(PoliticaMutabilidadFactura.class));
 
         facturaService = new FacturaServiceImpl();
         ReflectionTestUtils.setField(facturaService, "facturaRepository", facturaRepository);
@@ -94,6 +96,7 @@ class TotalesFacturaRutasEquivalentesTest {
         ReflectionTestUtils.setField(facturaService, "asientoContableService", asientoContableService);
         ReflectionTestUtils.setField(facturaService, "tipoCambioService", tipoCambioService);
         ReflectionTestUtils.setField(facturaService, "totalesFacturaService", totales);
+        ReflectionTestUtils.setField(facturaService, "politicaMutabilidad", mock(PoliticaMutabilidadFactura.class));
 
         when(configuracionFacturacionService.getOrCreateConfiguracion()).thenReturn(new ConfiguracionFacturacion());
         when(facturaRepository.save(any(Factura.class))).thenAnswer(inv -> {

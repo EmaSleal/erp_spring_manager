@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -40,12 +41,21 @@ public class ComprobanteElectronico {
     private Long id;
     
     /**
-     * Factura asociada a este comprobante (opcional para tiquetes).
+     * Factura asociada a este comprobante (opcional para tiquetes). Una factura puede tener varios comprobantes
+     * (p. ej. uno RECHAZADO y su reemisión) y solo uno vigente (ADR-030 §4).
      */
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factura_id")
     @JsonIgnore
     private Factura factura;
+
+    /**
+     * Comprobante vigente de su factura. Al reemitir tras un RECHAZADO, el rechazado deja de ser vigente y queda
+     * como historial; la BD garantiza como máximo un vigente por factura (V36).
+     */
+    @Column(name = "vigente", nullable = false)
+    @Builder.Default
+    private Boolean vigente = true;
     
     /**
      * Empresa emisora del comprobante.
@@ -138,7 +148,16 @@ public class ComprobanteElectronico {
     @Column(name = "intentos_envio")
     @Builder.Default
     private Integer intentosEnvio = 0;
-    
+
+    /**
+     * Consultas de estado seguidas en que Hacienda informó ind-estado "error" (ERROR_HACIENDA). Vuelve a 0 con
+     * cualquier otra respuesta; al llegar al máximo configurado, el sondeo deja de consultar (V37).
+     */
+    @Column(name = "consultas_error_hacienda", nullable = false)
+    @ColumnDefault("0")
+    @Builder.Default
+    private Integer consultasErrorHacienda = 0;
+
     /**
      * Último error ocurrido durante el proceso.
      */
@@ -180,20 +199,30 @@ public class ComprobanteElectronico {
     private LocalDateTime updatedAt;
     
     /**
-     * Verifica si el comprobante puede ser reenviado.
+     * Verifica si el comprobante puede ser (re)enviado con su clave: Hacienda no lo tiene (ADR-030).
      */
     public boolean puedeReenviar() {
-        return !estado.esTerminal() && intentosEnvio < 3;
+        return estado.esReenviable();
     }
     
     /**
-     * Verifica si el comprobante está listo para enviar a Hacienda.
+     * Verifica si el comprobante puede enviarse tal como está: XML firmado presente (FIRMADO, o NO_TRANSMITIDO
+     * sin cambios desde el intento anterior).
      */
     public boolean listoParaEnviar() {
-        return xmlComprobante != null && 
-               (estado == EstadoComprobante.GENERADO || estado == EstadoComprobante.FIRMADO);
+        return xmlComprobante != null &&
+               (estado == EstadoComprobante.FIRMADO || estado == EstadoComprobante.NO_TRANSMITIDO);
     }
     
+    /**
+     * true si Hacienda informó ind-estado "error" en al menos maxConsultas consultas seguidas: el sondeo deja de
+     * consultarlo y se señala para revisarlo en ATV.
+     */
+    public boolean requiereRevisionEnAtv(int maxConsultas) {
+        return estado == EstadoComprobante.ERROR_HACIENDA
+            && consultasErrorHacienda != null && consultasErrorHacienda >= maxConsultas;
+    }
+
     /**
      * Incrementa el contador de intentos de envío.
      */
