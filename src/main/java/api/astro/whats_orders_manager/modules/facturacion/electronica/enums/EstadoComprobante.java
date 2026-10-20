@@ -56,7 +56,15 @@ public enum EstadoComprobante {
      * Hacienda procesó el documento y lo rechazó (ind-estado). Historial inmutable: se reemite con clave nueva.
      */
     RECHAZADO("Rechazado", "Rechazado por Hacienda", "danger", "bi-x-circle-fill"),
-    
+
+    /**
+     * La consulta de estado informa ind-estado "error": Hacienda tiene el documento pero no lo resolvió como
+     * aceptado ni rechazado. Bloqueado (Hacienda lo tiene); el sondeo vuelve a consultar y, tras N consultas
+     * seguidas con "error", deja de hacerlo y el comprobante queda señalado para revisarlo en ATV.
+     */
+    ERROR_HACIENDA("Error en Hacienda", "Hacienda informó error al procesarlo; revíselo en ATV", "danger",
+            "bi-exclamation-octagon-fill"),
+
     /**
      * Falla local antes de transmitir (XML, firma, configuración). Se reenvía con la misma clave.
      */

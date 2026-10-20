@@ -10,6 +10,7 @@ import java.net.UnknownHostException;
 import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * Clasifica en origen el resultado de un POST /recepcion a Hacienda (ADR-030 §3).
@@ -17,23 +18,35 @@ import java.util.Locale;
  * <p>Regla prudente: solo se declara NO_TRANSMITIDO cuando hay evidencia de que Hacienda no recibió el documento;
  * ante la duda, ENVIO_INCIERTO (se resuelve con "verificar con Hacienda").
  *
- * <p>Fuente de los textos de X-Error-Cause: el repositorio no tiene ejemplos reales ni el catálogo oficial de
- * causas; docs/referencias/facturacion cr.txt solo indica que Hacienda "devuelve errores si ya fue recibido".
- * Por eso los patrones de "ya recibido" son amplios y cualquier causa que no coincida con un patrón de validación
- * conocido se trata como incierta.
+ * <p>Fuente de los textos de X-Error-Cause: la documentación oficial del API de recepción
+ * (https://www.hacienda.go.cr/docs/ComprobantesElectronicosAPI.html, resumida en
+ * docs/referencias/HACIENDA_API_RECEPCION.md) documenta para el 400 de POST /recepcion la causa
+ * "El comprobante con la Clave [&lt;clave&gt;] ya fue recibido.", que se reconoce de forma explícita. No hay un
+ * catálogo oficial del resto de causas: los demás patrones de "ya recibido" son amplios y cualquier causa que no
+ * coincida con un patrón de validación conocido se trata como incierta.
  */
 public final class ClasificadorEnvioHacienda {
 
     /** Encabezado con la causa del rechazo de la recepción. */
     public static final String HEADER_ERROR_CAUSE = "X-Error-Cause";
 
-    /** La causa indica que Hacienda ya tenía el documento: reenviar o reemitir duplicaría (P-048). */
+    /**
+     * Causa documentada por Hacienda para un comprobante ya recibido, normalizada (sin tildes, minúsculas): "el
+     * comprobante con la clave [&lt;clave&gt;] ya fue recibido", con o sin corchetes y punto final.
+     */
+    private static final Pattern YA_RECIBIDO_DOCUMENTADO = Pattern.compile(
+            "^el comprobante con la clave\\s*\\[?\\s*\\d+\\s*\\]?\\s*ya fue recibido\\s*\\.?$");
+
+    /** Otras formas de decir que Hacienda ya tenía el documento: reenviar o reemitir duplicaría (P-048). */
     private static final List<String> PATRONES_YA_RECIBIDO = List.of(
             "ya fue recibid", "ya ha sido recibid", "recibido anteriormente", "ya se recibi", "ya existe",
             "ya registrad", "duplicad");
 
-    /** La causa es una validación del documento o de la petición: Hacienda no lo aceptó para procesar. */
-    private static final List<String> PATRONES_VALIDACION = List.of(
+    /**
+     * La causa es una validación del documento o de la petición: Hacienda no lo aceptó para procesar. Ninguno
+     * coincide con el texto de "ya fue recibido" (ClasificadorEnvioHaciendaTest).
+     */
+    static final List<String> PATRONES_VALIDACION = List.of(
             "no es valid", "invalid", "no cumple", "esquema", "xsd", "formato", "firma", "no coincide",
             "requerid", "obligatori", "no corresponde", "incorrect", "mal formad", "no se pudo leer",
             "no permitid", "vencid");
@@ -61,7 +74,7 @@ public final class ClasificadorEnvioHacienda {
         if (causa.isEmpty()) {
             return ResultadoEnvioHacienda.ENVIO_INCIERTO;
         }
-        if (PATRONES_YA_RECIBIDO.stream().anyMatch(causa::contains)) {
+        if (esYaRecibidoDocumentado(xErrorCause) || PATRONES_YA_RECIBIDO.stream().anyMatch(causa::contains)) {
             return ResultadoEnvioHacienda.ENVIO_INCIERTO;
         }
         if (PATRONES_VALIDACION.stream().anyMatch(causa::contains)) {
@@ -96,7 +109,15 @@ public final class ClasificadorEnvioHacienda {
         return ResultadoEnvioHacienda.ENVIO_INCIERTO;
     }
 
-    private static String normalizar(String texto) {
+    /**
+     * true si la causa es la documentada por Hacienda para un comprobante ya recibido, sin distinguir mayúsculas ni
+     * tildes y con la clave entre corchetes o sin ellos.
+     */
+    public static boolean esYaRecibidoDocumentado(String xErrorCause) {
+        return YA_RECIBIDO_DOCUMENTADO.matcher(normalizar(xErrorCause)).matches();
+    }
+
+    static String normalizar(String texto) {
         if (texto == null) {
             return "";
         }

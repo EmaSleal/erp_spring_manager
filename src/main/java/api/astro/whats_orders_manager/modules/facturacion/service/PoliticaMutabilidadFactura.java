@@ -5,15 +5,24 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.model.Comp
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import api.astro.whats_orders_manager.modules.facturacion.exception.FacturaBloqueadaException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.FlushModeType;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.hibernate.engine.spi.EntityEntry;
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.Status;
+import org.hibernate.proxy.HibernateProxy;
 import org.springframework.stereotype.Component;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -25,12 +34,21 @@ import java.util.Set;
  *   <li>EDITABLE: sin comprobante vigente, o vigente en GENERADO, FIRMADO, ERROR, NO_TRANSMITIDO, RECHAZADO o
  *       ANULADO. Al editar, el XML y la firma de un vigente que Hacienda no tiene se descartan (se regeneran al
  *       enviar, con la misma clave).</li>
- *   <li>BLOQUEADA: ENVIADO o PROCESANDO (esperar a Hacienda) y ACEPTADO (nota de crédito o débito).</li>
+ *   <li>BLOQUEADA: ENVIADO o PROCESANDO (esperar a Hacienda), ERROR_HACIENDA (revisar en ATV) y ACEPTADO (nota
+ *       de crédito o débito).</li>
  *   <li>REQUIERE_VERIFICACION: ENVIO_INCIERTO (verificar con Hacienda).</li>
  * </ul>
  *
- * El estado se lee con JDBC, no con JPA: el listener de LineaFactura la invoca durante el flush de Hibernate, donde
- * no se deben ejecutar consultas JPA. JdbcTemplate usa la conexión de la transacción en curso.
+ * <p>Acceso a datos, siempre dentro del contexto de persistencia de la transacción en curso:
+ * <ul>
+ *   <li>Lectura: primero los comprobantes de la factura ya gestionados por JPA en esta transacción (su estado en
+ *       memoria puede no estar en la BD todavía); si no hay uno vigente gestionado, una proyección JPQL del vigente,
+ *       sin cargar la entidad ni la factura. La consulta no provoca flush (FlushModeType.COMMIT) porque el listener
+ *       de LineaFactura la invoca durante el flush de Hibernate; los cambios pendientes ya se tomaron de memoria.</li>
+ *   <li>Descarte del XML y la firma: sobre la entidad gestionada (la misma instancia si ya estaba en el contexto),
+ *       de modo que el flush escribe el descarte y nunca reescribe el XML previo. Se carga con la factura en
+ *       join fetch para no dejar un proxy de Factura que el merge de FacturaServiceImpl.save devolvería.</li>
+ * </ul>
  */
 @Slf4j
 @Component
@@ -64,29 +82,82 @@ public class PoliticaMutabilidadFactura {
 
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
 
-    private final JdbcTemplate jdbc;
+    /** Proyección del comprobante vigente: lo que la política necesita, sin cargar la entidad. */
+    public record Vigente(Long id, EstadoComprobante estado, String claveNumerica, LocalDateTime fechaEnvio) {
+    }
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private final ComprobanteElectronicoRepository comprobanteRepository;
 
-    public PoliticaMutabilidadFactura(JdbcTemplate jdbc, ComprobanteElectronicoRepository comprobanteRepository) {
-        this.jdbc = jdbc;
+    public PoliticaMutabilidadFactura(ComprobanteElectronicoRepository comprobanteRepository) {
         this.comprobanteRepository = comprobanteRepository;
     }
 
     /** Evalúa la factura según su comprobante vigente. */
     public Decision evaluar(Integer idFactura) {
-        if (idFactura == null) {
-            return new Decision(Mutabilidad.EDITABLE, null, null, null);
+        Vigente vigente = idFactura != null ? vigente(idFactura) : null;
+        return vigente == null
+                ? new Decision(Mutabilidad.EDITABLE, null, null, null)
+                : decidir(vigente.estado(), vigente.claveNumerica(), vigente.fechaEnvio());
+    }
+
+    /**
+     * Comprobante vigente de la factura tal como lo ve la transacción en curso: el gestionado en memoria si lo hay;
+     * si no, la proyección JPQL (ignorando los gestionados que en memoria dejaron de ser vigentes).
+     */
+    private Vigente vigente(Integer idFactura) {
+        List<ComprobanteElectronico> gestionados = gestionadosDeLaFactura(idFactura);
+        ComprobanteElectronico gestionado = vigenteEnMemoria(gestionados);
+        if (gestionado != null) {
+            return new Vigente(gestionado.getId(), gestionado.getEstado(), gestionado.getClaveNumerica(),
+                    gestionado.getFechaEnvio());
         }
-        List<Decision> decisiones = jdbc.query(
-                "SELECT estado, clave_numerica, fecha_envio FROM comprobante_electronico "
-                        + "WHERE factura_id = ? AND vigente = TRUE",
-                (rs, i) -> {
-                    Timestamp envio = rs.getTimestamp(3);
-                    return decidir(EstadoComprobante.valueOf(rs.getString(1)), rs.getString(2),
-                            envio != null ? envio.toLocalDateTime() : null);
-                },
-                idFactura);
-        return decisiones.isEmpty() ? new Decision(Mutabilidad.EDITABLE, null, null, null) : decisiones.get(0);
+        Set<Long> idsGestionados = ids(gestionados);
+        return entityManager.createQuery(
+                        "SELECT new " + Vigente.class.getName() + "(c.id, c.estado, c.claveNumerica, c.fechaEnvio) "
+                                + "FROM ComprobanteElectronico c "
+                                + "WHERE c.factura.idFactura = :idFactura AND c.vigente = true", Vigente.class)
+                .setParameter("idFactura", idFactura)
+                .setFlushMode(FlushModeType.COMMIT)
+                .getResultList().stream()
+                .filter(v -> !idsGestionados.contains(v.id()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static ComprobanteElectronico vigenteEnMemoria(List<ComprobanteElectronico> gestionados) {
+        return gestionados.stream().filter(c -> Boolean.TRUE.equals(c.getVigente())).findFirst().orElse(null);
+    }
+
+    private static Set<Long> ids(List<ComprobanteElectronico> comprobantes) {
+        Set<Long> ids = new HashSet<>();
+        comprobantes.forEach(c -> ids.add(c.getId()));
+        return ids;
+    }
+
+    /** Comprobantes de la factura presentes en el contexto de persistencia (sin cargar nada ni inicializar proxys). */
+    private List<ComprobanteElectronico> gestionadosDeLaFactura(Integer idFactura) {
+        List<ComprobanteElectronico> gestionados = new ArrayList<>();
+        SessionImplementor session = entityManager.unwrap(SessionImplementor.class);
+        for (Map.Entry<Object, EntityEntry> entry : session.getPersistenceContextInternal().reentrantSafeEntityEntries()) {
+            if (entry.getKey() instanceof ComprobanteElectronico c
+                    && entry.getValue().getStatus() != Status.DELETED
+                    && entry.getValue().getStatus() != Status.GONE
+                    && Objects.equals(idFactura, idFactura(c))) {
+                gestionados.add(c);
+            }
+        }
+        return gestionados;
+    }
+
+    private static Integer idFactura(ComprobanteElectronico comprobante) {
+        Object factura = comprobante.getFactura();
+        if (factura instanceof HibernateProxy proxy) {
+            return (Integer) proxy.getHibernateLazyInitializer().getIdentifier();
+        }
+        return factura != null ? comprobante.getFactura().getIdFactura() : null;
     }
 
     /** Regla de ADR-030 §2 para el estado del comprobante vigente. */
@@ -97,6 +168,9 @@ public class PoliticaMutabilidadFactura {
                     + "ACEPTADO por Hacienda: no se puede modificar. Emita una nota de crédito o débito.");
             case ENVIADO, PROCESANDO -> new Decision(Mutabilidad.BLOQUEADA, estado, clave, comprobante
                     + "en Hacienda (" + estado + "): espere la respuesta de Hacienda antes de modificarla.");
+            case ERROR_HACIENDA -> new Decision(Mutabilidad.BLOQUEADA, estado, clave, comprobante
+                    + "en Hacienda, que informó un error al procesarlo: revise el comprobante en ATV antes de "
+                    + "modificarla.");
             case ENVIO_INCIERTO -> {
                 LocalDateTime desde = ComprobanteElectronicoServiceImpl.disponibleParaVerificar(fechaEnvio);
                 yield new Decision(Mutabilidad.REQUIERE_VERIFICACION, estado, clave, comprobante
@@ -132,17 +206,37 @@ public class PoliticaMutabilidadFactura {
         if (idFactura == null || decision.estado() == null || !DESCARTAN_XML.contains(decision.estado())) {
             return;
         }
-        // JDBC, no JPA: cargar el comprobante dejaría un proxy de la factura en el contexto de persistencia y el
-        // merge de FacturaServiceImpl.save devolvería ese proxy en lugar de la entidad.
-        int filas = jdbc.update("UPDATE comprobante_electronico SET xml_comprobante = NULL, ruta_archivo_xml = NULL, "
-                        + "estado = CASE WHEN estado = 'FIRMADO' THEN 'GENERADO' ELSE estado END, updated_at = ? "
-                        + "WHERE factura_id = ? AND vigente = TRUE "
-                        + "AND estado IN ('GENERADO', 'FIRMADO', 'ERROR', 'NO_TRANSMITIDO')",
-                Timestamp.valueOf(LocalDateTime.now()), idFactura);
-        if (filas > 0) {
-            log.info("Factura {} editada: XML y firma del comprobante {} descartados (misma clave)",
-                    idFactura, decision.claveNumerica());
+        ComprobanteElectronico comprobante = gestionadoOCargado(idFactura);
+        if (comprobante == null || !DESCARTAN_XML.contains(comprobante.getEstado())) {
+            return;
         }
+        comprobante.setXmlComprobante(null);
+        comprobante.setRutaArchivoXml(null);
+        if (comprobante.getEstado() == EstadoComprobante.FIRMADO) {
+            comprobante.setEstado(EstadoComprobante.GENERADO);
+        }
+        log.info("Factura {} editada: XML y firma del comprobante {} descartados (misma clave)",
+                idFactura, comprobante.getClaveNumerica());
+    }
+
+    /**
+     * El comprobante vigente como entidad gestionada: la instancia del contexto si ya estaba; si no, se carga con su
+     * factura en join fetch (sin proxy de Factura en el contexto).
+     */
+    private ComprobanteElectronico gestionadoOCargado(Integer idFactura) {
+        List<ComprobanteElectronico> gestionados = gestionadosDeLaFactura(idFactura);
+        ComprobanteElectronico gestionado = vigenteEnMemoria(gestionados);
+        if (gestionado != null) {
+            return gestionado;
+        }
+        Set<Long> idsGestionados = ids(gestionados);
+        return entityManager.createQuery("SELECT c FROM ComprobanteElectronico c JOIN FETCH c.factura "
+                        + "WHERE c.factura.idFactura = :idFactura AND c.vigente = true", ComprobanteElectronico.class)
+                .setParameter("idFactura", idFactura)
+                .getResultList().stream()
+                .filter(c -> !idsGestionados.contains(c.getId()))
+                .findFirst()
+                .orElse(null);
     }
 
     /**

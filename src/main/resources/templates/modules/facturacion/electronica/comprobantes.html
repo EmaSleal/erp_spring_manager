@@ -80,6 +80,7 @@
                                 <option value="ENVIADO">Enviado</option>
                                 <option value="ENVIO_INCIERTO">Envío incierto</option>
                                 <option value="NO_TRANSMITIDO">No transmitido</option>
+                                <option value="ERROR_HACIENDA">Error en Hacienda</option>
                                 <option value="ERROR">Error</option>
                                 <option value="ANULADO">Anulado</option>
                             </select>
@@ -277,7 +278,12 @@
                         <small class="text-muted">ID: ${comp.facturaId || '-'}</small>
                     </td>
                     <td>${comp.tipoComprobanteDescripcion}</td>
-                    <td class="text-center">${getEstadoBadge(comp.estado)}</td>
+                    <td class="text-center">
+                        ${getEstadoBadge(comp.estado)}
+                        ${comp.estado === 'ERROR_HACIENDA' && comp.mensajeRespuesta ? `
+                            <div class="small text-danger mt-1">${escapeHtml(comp.mensajeRespuesta)}</div>
+                        ` : ''}
+                    </td>
                     <td class="text-center">${formatearFecha(comp.fechaEmision)}</td>
                     <td class="text-center">
                         <div class="btn-group btn-group-sm" role="group">
@@ -313,6 +319,13 @@
             `).join('');
         }
 
+        // Helper: escapa texto de Hacienda antes de insertarlo como HTML
+        function escapeHtml(texto) {
+            const div = document.createElement('div');
+            div.textContent = texto == null ? '' : String(texto);
+            return div.innerHTML;
+        }
+
         // Helper: Badge de estado
         function getEstadoBadge(estado) {
             const badges = {
@@ -324,6 +337,7 @@
                 'ERROR': '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Error</span>',
                 'NO_TRANSMITIDO': '<span class="badge bg-secondary"><i class="fas fa-cloud me-1"></i>No transmitido</span>',
                 'ENVIO_INCIERTO': '<span class="badge bg-warning text-dark"><i class="fas fa-question-circle me-1"></i>Envío incierto</span>',
+                'ERROR_HACIENDA': '<span class="badge bg-danger"><i class="fas fa-exclamation-circle me-1"></i>Error en Hacienda</span>',
                 'ANULADO': '<span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>Anulado</span>',
                 'GENERADO': '<span class="badge bg-light text-dark"><i class="fas fa-file me-1"></i>Generado</span>'
             };
@@ -696,6 +710,16 @@
                     
                     // Actualizar botones de acción
                     let actionButtons = '';
+                    // ind-estado "error" repetido: el sondeo dejó de consultar; la revisión se hace en ATV
+                    if (comp.revisarEnAtv) {
+                        actionButtons += `
+                            <div class="alert alert-danger w-100 mb-2" role="alert">
+                                <i class="fas fa-exclamation-circle me-1"></i>
+                                Hacienda informó "error" en ${comp.consultasErrorHacienda} consultas seguidas y el
+                                sistema dejó de consultarlo. Revise el comprobante en ATV.
+                            </div>
+                        `;
+                    }
                     // ADR-030: un envío incierto se resuelve consultando a Hacienda, 15 minutos después del envío
                     if (comp.estado === 'ENVIO_INCIERTO') {
                         const desde = comp.verificableDesde ? new Date(comp.verificableDesde) : null;
@@ -844,6 +868,7 @@
                 'ERROR': 'bg-danger',
                 'NO_TRANSMITIDO': 'bg-secondary',
                 'ENVIO_INCIERTO': 'bg-warning',
+                'ERROR_HACIENDA': 'bg-danger',
                 'EMAIL': 'bg-info'
             };
             return colores[estado] || 'bg-secondary';

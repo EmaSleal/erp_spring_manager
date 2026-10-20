@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -147,7 +148,16 @@ public class ComprobanteElectronico {
     @Column(name = "intentos_envio")
     @Builder.Default
     private Integer intentosEnvio = 0;
-    
+
+    /**
+     * Consultas de estado seguidas en que Hacienda informó ind-estado "error" (ERROR_HACIENDA). Vuelve a 0 con
+     * cualquier otra respuesta; al llegar al máximo configurado, el sondeo deja de consultar (V37).
+     */
+    @Column(name = "consultas_error_hacienda", nullable = false)
+    @ColumnDefault("0")
+    @Builder.Default
+    private Integer consultasErrorHacienda = 0;
+
     /**
      * Último error ocurrido durante el proceso.
      */
@@ -204,6 +214,15 @@ public class ComprobanteElectronico {
                (estado == EstadoComprobante.FIRMADO || estado == EstadoComprobante.NO_TRANSMITIDO);
     }
     
+    /**
+     * true si Hacienda informó ind-estado "error" en al menos maxConsultas consultas seguidas: el sondeo deja de
+     * consultarlo y se señala para revisarlo en ATV.
+     */
+    public boolean requiereRevisionEnAtv(int maxConsultas) {
+        return estado == EstadoComprobante.ERROR_HACIENDA
+            && consultasErrorHacienda != null && consultasErrorHacienda >= maxConsultas;
+    }
+
     /**
      * Incrementa el contador de intentos de envío.
      */

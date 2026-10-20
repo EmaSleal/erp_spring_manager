@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.Respue
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.ClasificadorEnvioHacienda;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -175,6 +176,26 @@ class HaciendaEnvioClasificacionTest {
         assertThat(respuesta.getCausaError()).isEqualTo(causa);
     }
 
+    /**
+     * Texto documentado por Hacienda para el 400 de POST /recepcion (docs/referencias/HACIENDA_API_RECEPCION.md):
+     * "El comprobante con la Clave [&lt;clave&gt;] ya fue recibido."
+     */
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', value = {
+            "El comprobante con la Clave [" + CLAVE + "] ya fue recibido.",
+            "El comprobante con la Clave " + CLAVE + " ya fue recibido.",
+            "EL COMPROBANTE CON LA CLAVE [" + CLAVE + "] YA FUE RECIBIDO.",
+            "El comprobante con la clave [" + CLAVE + "] ya fué recibido"
+    })
+    @DisplayName("400 con el X-Error-Cause documentado de 'ya fue recibido' (con o sin corchetes, mayúsculas, tildes) → ENVIO_INCIERTO")
+    void yaRecibidoDocumentado(String causa) {
+        assertThat(ClasificadorEnvioHacienda.esYaRecibidoDocumentado(causa)).isTrue();
+        recepcion = new Respuesta(400, Map.of("X-Error-Cause", causa), "", 0);
+        RespuestaHaciendaDTO respuesta = enviar();
+        assertThat(respuesta.getResultadoEnvio()).isEqualTo(ResultadoEnvioHacienda.ENVIO_INCIERTO);
+        assertThat(respuesta.getCausaError()).isEqualTo(causa);
+    }
+
     // ── Consulta ─────────────────────────────────────────────────────────────
 
     @Test
@@ -187,7 +208,7 @@ class HaciendaEnvioClasificacionTest {
     }
 
     @ParameterizedTest(name = "ind-estado {0}")
-    @CsvSource({"aceptado", "rechazado", "procesando", "recibido"})
+    @CsvSource({"aceptado", "rechazado", "procesando", "recibido", "error"})
     @DisplayName("consulta con ind-estado → se informa tal cual, sin documentoNoExiste")
     void consultaConEstado(String indEstado) {
         consulta = new Respuesta(200, Map.of("Content-Type", "application/json"),

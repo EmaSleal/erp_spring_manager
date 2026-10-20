@@ -5,7 +5,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.enums;
  */
 public enum ResultadoEnvioHacienda {
 
-    /** Hacienda confirmó la recepción (2xx, normalmente 202) → ENVIADO. */
+    /** Hacienda confirmó la recepción (2xx: 201 según la documentación, 202 en la práctica) → ENVIADO. */
     RECIBIDO(EstadoComprobante.ENVIADO),
 
     /** Es seguro que Hacienda no lo tiene (no hubo conexión, token, o 4xx que no indica recepción) → NO_TRANSMITIDO. */

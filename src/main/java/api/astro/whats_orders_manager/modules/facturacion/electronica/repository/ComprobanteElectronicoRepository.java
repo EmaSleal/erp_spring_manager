@@ -133,6 +133,20 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
     );
     
     /**
+     * Comprobantes vigentes que el sondeo debe consultar: ENVIADO o PROCESANDO, y ERROR_HACIENDA mientras no llegue
+     * al máximo de consultas seguidas con ind-estado "error"; enviados antes de la fecha límite.
+     */
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE c.vigente = true AND c.fechaEnvio < :fechaLimite AND (" +
+           "c.estado IN (api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIADO, " +
+           "api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.PROCESANDO) " +
+           "OR (c.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ERROR_HACIENDA " +
+           "AND c.consultasErrorHacienda < :maxConsultasError))")
+    List<ComprobanteElectronico> findParaSondeo(
+        @Param("fechaLimite") LocalDateTime fechaLimite,
+        @Param("maxConsultasError") int maxConsultasError
+    );
+
+    /**
      * Encuentra comprobantes enviados sin respuesta después de cierto tiempo.
      */
     @Query("SELECT c FROM ComprobanteElectronico c WHERE " +

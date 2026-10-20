@@ -508,26 +508,18 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
     }
     
     /**
-     * Método fallback para consultarComprobante cuando el Circuit Breaker se abre.
+     * Fallback de consultarComprobante (circuito abierto o fallo de la consulta): Hacienda no informó nada, así que
+     * no se fabrica una respuesta. Antes devolvía un ind-estado ficticio "circuit-breaker-open"; con el mapeo
+     * explícito de ind-estado (ADR-030) se leería como valor desconocido y movería el comprobante a ENVIO_INCIERTO.
+     * El llamador conserva el estado y registra el error; el sondeo vuelve a consultar.
      */
     private RespuestaHaciendaDTO consultarComprobanteFallback(
             String claveNumerica, 
             Long configuracionId, 
             Exception e) {
         
-        log.error("⚠️ Circuit Breaker ABIERTO - Fallback activado para consultarComprobante: {}", 
+        log.error("⚠️ Circuit Breaker - Fallback activado para consultarComprobante {}: {}", claveNumerica,
             e.getMessage());
-        
-        return RespuestaHaciendaDTO.builder()
-            .claveNumerica(claveNumerica)
-            .fechaRespuesta(LocalDateTime.now())
-            .codigoMensaje(MensajeHacienda.PROCESANDO)
-            .mensaje("No se pudo consultar estado. El comprobante se encuentra en procesamiento.")
-            .indicadorEstado("circuit-breaker-open")
-            .exitoso(false)
-            .detalles("Circuit Breaker activado. Consulta automática se realizará posteriormente.")
-            .codigoHttp(503)
-            .debeReintentar(true)
-            .build();
+        throw new RuntimeException("No se pudo consultar el estado en Hacienda: " + e.getMessage(), e);
     }
 }

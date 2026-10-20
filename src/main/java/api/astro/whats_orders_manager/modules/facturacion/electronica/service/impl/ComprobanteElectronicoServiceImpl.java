@@ -77,6 +77,16 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     
     @Value("${facturacion.comprobantes.directorio-base:./comprobantes}")
     private String directorioBase;
+
+    /**
+     * Consultas seguidas con ind-estado "error" tras las que el sondeo deja de consultar el comprobante y lo señala
+     * para revisarlo en ATV.
+     */
+    @Value("${facturacion.hacienda.max-consultas-error:" + MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO + "}")
+    private int maxConsultasErrorHacienda = MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
+
+    /** Valor por defecto de facturacion.hacienda.max-consultas-error. */
+    public static final int MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO = 5;
     
     @Override
     @Transactional
@@ -463,10 +473,9 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     }
 
     /**
-     * Sondeo del estado (tras el envío y en el job horario). Adopta lo que informa Hacienda (ADR-030):
-     * aceptado → ACEPTADO, rechazado → RECHAZADO (única asignación de RECHAZADO), procesando/recibido → PROCESANDO.
-     * Un 404 ya no se lee como procesando: si el comprobante figuraba como recibido (ENVIADO o PROCESANDO), pasa a
-     * ENVIO_INCIERTO para resolverse con "verificar con Hacienda".
+     * Sondeo del estado (tras el envío y en el job horario). Adopta lo que informa Hacienda (ADR-030; mapeo en
+     * aplicarRespuestaDeConsulta). Un 404 ya no se lee como procesando: si el comprobante figuraba en Hacienda
+     * (ENVIADO, PROCESANDO o ERROR_HACIENDA), pasa a ENVIO_INCIERTO para resolverse con "verificar con Hacienda".
      */
     @Override
     @Transactional
@@ -489,8 +498,10 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
             if (Boolean.TRUE.equals(respuesta.getDocumentoNoExiste())) {
                 if (comprobante.getEstado() == EstadoComprobante.ENVIADO
-                        || comprobante.getEstado() == EstadoComprobante.PROCESANDO) {
+                        || comprobante.getEstado() == EstadoComprobante.PROCESANDO
+                        || comprobante.getEstado() == EstadoComprobante.ERROR_HACIENDA) {
                     comprobante.setEstado(EstadoComprobante.ENVIO_INCIERTO);
+                    comprobante.setConsultasErrorHacienda(0);
                 }
                 comprobante.setMensajeRespuesta(respuesta.getMensaje());
                 comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
@@ -561,7 +572,19 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         return fechaEnvio != null ? fechaEnvio.plusMinutes(MINUTOS_ANTES_DE_VERIFICAR) : null;
     }
 
-    /** Adopta el estado informado por la consulta (ind-estado). Un indicador desconocido no cambia el estado. */
+    /**
+     * Adopta el estado informado por la consulta. Cada ind-estado documentado de GET /recepcion/{clave} se mapea de
+     * forma explícita (docs/referencias/HACIENDA_API_RECEPCION.md):
+     * <ul>
+     *   <li>recibido, procesando → PROCESANDO (Hacienda lo tiene y no lo resolvió);</li>
+     *   <li>aceptado → ACEPTADO; rechazado → RECHAZADO (única asignación de RECHAZADO);</li>
+     *   <li>error → ERROR_HACIENDA: bloqueado, porque Hacienda tiene el documento. No es PROCESANDO para que se vea
+     *       que Hacienda informó un error y se pueda señalar tras N consultas seguidas;</li>
+     *   <li>cualquier otro valor (o ninguno) → ENVIO_INCIERTO: no se sabe qué tiene Hacienda; se resuelve con
+     *       "verificar con Hacienda".</li>
+     * </ul>
+     * El contador de consultas con "error" vuelve a 0 con cualquier otra respuesta.
+     */
     private void aplicarRespuestaDeConsulta(ComprobanteElectronico comprobante, RespuestaHaciendaDTO respuesta) {
         comprobante.setCodigoRespuesta(respuesta.getCodigoMensaje() != null
             ? respuesta.getCodigoMensaje().getCodigo() : null);
@@ -577,13 +600,37 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
         String indicador = respuesta.getIndicadorEstado() != null
             ? respuesta.getIndicadorEstado().trim().toLowerCase() : "";
-        switch (indicador) {
-            case "aceptado" -> comprobante.setEstado(EstadoComprobante.ACEPTADO);
-            case "rechazado" -> comprobante.setEstado(EstadoComprobante.RECHAZADO);
-            case "procesando", "recibido" -> comprobante.setEstado(EstadoComprobante.PROCESANDO);
-            default -> log.warn("Indicador de estado no reconocido '{}' para {}: se mantiene {}",
-                respuesta.getIndicadorEstado(), comprobante.getClaveNumerica(), comprobante.getEstado());
+        EstadoComprobante estado = switch (indicador) {
+            case "recibido", "procesando" -> EstadoComprobante.PROCESANDO;
+            case "aceptado" -> EstadoComprobante.ACEPTADO;
+            case "rechazado" -> EstadoComprobante.RECHAZADO;
+            case "error" -> EstadoComprobante.ERROR_HACIENDA;
+            default -> {
+                log.warn("ind-estado no documentado '{}' para {}: ENVIO_INCIERTO", respuesta.getIndicadorEstado(),
+                    comprobante.getClaveNumerica());
+                yield EstadoComprobante.ENVIO_INCIERTO;
+            }
+        };
+        comprobante.setEstado(estado);
+        if (estado != EstadoComprobante.ERROR_HACIENDA) {
+            comprobante.setConsultasErrorHacienda(0);
+            return;
         }
+        int consultas = (comprobante.getConsultasErrorHacienda() != null ? comprobante.getConsultasErrorHacienda() : 0) + 1;
+        comprobante.setConsultasErrorHacienda(consultas);
+        if (comprobante.requiereRevisionEnAtv(maxConsultasErrorHacienda)) {
+            comprobante.setMensajeRespuesta(mensajeRevisarEnAtv(consultas)
+                + (respuesta.getMensaje() != null && !respuesta.getMensaje().isBlank()
+                    ? " Último mensaje de Hacienda: " + respuesta.getMensaje() : ""));
+            log.warn("Comprobante {}: {} consultas seguidas con ind-estado 'error'; se deja de consultar (revisar en ATV)",
+                comprobante.getClaveNumerica(), consultas);
+        }
+    }
+
+    /** Mensaje con el que se señala un comprobante ERROR_HACIENDA que el sondeo ya no consulta. */
+    static String mensajeRevisarEnAtv(int consultas) {
+        return "Hacienda informó \"error\" en " + consultas + " consultas seguidas: se dejó de consultar. "
+            + "Revise el comprobante en ATV.";
     }
 
     @Override

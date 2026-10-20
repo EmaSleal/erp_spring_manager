@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.service.im
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,6 +17,10 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ComprobanteElectronicoMapper {
+
+    @Value("${facturacion.hacienda.max-consultas-error:"
+        + ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO + "}")
+    private int maxConsultasErrorHacienda = ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
     
     /**
      * Convierte entidad a DTO.
@@ -52,6 +57,8 @@ public class ComprobanteElectronicoMapper {
             .vigente(entity.getVigente())
             .verificableDesde(entity.getEstado() == EstadoComprobante.ENVIO_INCIERTO
                 ? ComprobanteElectronicoServiceImpl.disponibleParaVerificar(entity) : null)
+            .consultasErrorHacienda(entity.getConsultasErrorHacienda())
+            .revisarEnAtv(entity.requiereRevisionEnAtv(maxConsultasErrorHacienda))
             .createdAt(entity.getCreatedAt())
             .updatedAt(entity.getUpdatedAt())
             .xmlComprobante(entity.getXmlComprobante())

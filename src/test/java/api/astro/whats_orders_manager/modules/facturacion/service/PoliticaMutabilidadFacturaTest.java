@@ -48,6 +48,14 @@ class PoliticaMutabilidadFacturaTest {
     }
 
     @Test
+    @DisplayName("ERROR_HACIENDA (ind-estado 'error') → BLOQUEADA: revisar el comprobante en ATV")
+    void errorHacienda() {
+        Decision decision = PoliticaMutabilidadFactura.decidir(EstadoComprobante.ERROR_HACIENDA, CLAVE, null);
+        assertThat(decision.mutabilidad()).isEqualTo(Mutabilidad.BLOQUEADA);
+        assertThat(decision.motivo()).contains(CLAVE).contains("ATV");
+    }
+
+    @Test
     @DisplayName("ENVIO_INCIERTO → REQUIERE_VERIFICACION: verificar con Hacienda desde fechaEnvio + 15 min")
     void envioIncierto() {
         Decision decision = PoliticaMutabilidadFactura.decidir(EstadoComprobante.ENVIO_INCIERTO, CLAVE,

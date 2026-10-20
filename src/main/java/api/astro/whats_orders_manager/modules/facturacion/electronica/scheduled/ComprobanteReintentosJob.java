@@ -4,14 +4,16 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -30,6 +32,12 @@ public class ComprobanteReintentosJob {
     
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final ComprobanteElectronicoService comprobanteService;
+    private final Clock clock;
+
+    /** Consultas seguidas con ind-estado "error" tras las que un ERROR_HACIENDA deja de consultarse (revisar en ATV). */
+    @Value("${facturacion.hacienda.max-consultas-error:"
+        + ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO + "}")
+    private int maxConsultasErrorHacienda = ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
     
     private static final int MAX_INTENTOS = 5;
     
@@ -113,13 +121,11 @@ public class ComprobanteReintentosJob {
         log.info("🔍 Iniciando consulta de estados pendientes");
         
         try {
-            // Comprobantes recibidos por Hacienda (ENVIADO) o en proceso, enviados hace más de 5 minutos.
-            // ENVIO_INCIERTO no se consulta aquí: se resuelve con "verificar con Hacienda" (ADR-030).
-            List<ComprobanteElectronico> enviados = comprobanteRepository
-                .findByEstadoInAndFechaEnvioLessThan(
-                    List.of(EstadoComprobante.ENVIADO, EstadoComprobante.PROCESANDO),
-                    LocalDateTime.now().minusMinutes(5)
-                );
+            // Comprobantes recibidos por Hacienda (ENVIADO), en proceso o con ind-estado "error" (ERROR_HACIENDA,
+            // hasta el máximo de consultas seguidas), enviados hace más de 5 minutos. ENVIO_INCIERTO no se consulta
+            // aquí: se resuelve con "verificar con Hacienda" (ADR-030).
+            List<ComprobanteElectronico> enviados = comprobanteRepository.findParaSondeo(
+                LocalDateTime.now(clock).minusMinutes(5), maxConsultasErrorHacienda);
             
             if (enviados.isEmpty()) {
                 log.info("✅ No hay estados pendientes de consultar");
