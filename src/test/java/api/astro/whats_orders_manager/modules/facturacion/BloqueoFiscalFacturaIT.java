@@ -88,7 +88,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -551,10 +550,10 @@ class BloqueoFiscalFacturaIT {
         assertThat(comprobantes(idFactura)).isEqualTo(1);
     }
 
-    // ── ENVIO_INCIERTO: verificar con Hacienda (cliente simulado) ────────────
+    // ── ENVIO_INCIERTO: consultar estado en Hacienda (cliente simulado) ──────
 
     @Test
-    @DisplayName("verificar ENVIO_INCIERTO: Hacienda 404 → NO_TRANSMITIDO y la edición pasa a 200")
+    @DisplayName("consultar ENVIO_INCIERTO a los 20 min: Hacienda 404 → NO_TRANSMITIDO y la edición pasa a 200")
     void verificar_404_desbloquea() throws Exception {
         int idFactura = facturaConLineasAyB();
         Long id = comprobante(idFactura, "ENVIO_INCIERTO", LocalDateTime.now().minusMinutes(20));
@@ -576,7 +575,7 @@ class BloqueoFiscalFacturaIT {
     @org.junit.jupiter.params.provider.CsvSource({"aceptado,ACEPTADO,409", "rechazado,RECHAZADO,200",
             "procesando,PROCESANDO,409", "recibido,PROCESANDO,409", "error,ERROR_HACIENDA,409",
             "otro-valor,ENVIO_INCIERTO,409"})
-    @DisplayName("verificar ENVIO_INCIERTO: se adopta el estado informado por Hacienda")
+    @DisplayName("consultar ENVIO_INCIERTO: se adopta el estado informado por Hacienda")
     void verificar_adoptaEstado(String indEstado, String estadoEsperado, int statusEdicion) throws Exception {
         int idFactura = facturaConLineasAyB();
         Long id = comprobante(idFactura, "ENVIO_INCIERTO", LocalDateTime.now().minusMinutes(20));
@@ -590,19 +589,16 @@ class BloqueoFiscalFacturaIT {
     }
 
     @Test
-    @DisplayName("verificar antes de 15 minutos desde el último envío → 409 con la hora desde la que se puede, sin consultar")
-    void verificar_antesDe15Minutos_409() throws Exception {
+    @DisplayName("consultar ENVIO_INCIERTO antes de 15 minutos (T-026): se consulta y una respuesta que no es 404 se adopta")
+    void consultar_antesDe15Minutos_adoptaEstado() throws Exception {
         int idFactura = facturaConLineasAyB();
         Long id = comprobante(idFactura, "ENVIO_INCIERTO", LocalDateTime.now().minusMinutes(5));
-        reset(haciendaApi);
+        when(haciendaApi.consultarComprobante(anyString(), anyLong())).thenReturn(consulta("aceptado"));
 
-        MvcResult result = mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + id + "/verificar-hacienda")
-                .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn();
+        assertThat(verificar(id)).isEqualTo(200);
 
-        assertThat(result.getResponse().getStatus()).isEqualTo(409);
-        assertThat(result.getResponse().getContentAsString()).contains("a partir de las");
-        assertThat(comprobanteBd(id).estado()).isEqualTo("ENVIO_INCIERTO");
-        verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
+        assertThat(comprobanteBd(id).estado()).isEqualTo("ACEPTADO");
+        verify(haciendaApi, times(1)).consultarComprobante(eq(comprobanteBd(id).clave()), anyLong());
     }
 
     // ── Sondeo y job de reintentos ───────────────────────────────────────────
@@ -805,8 +801,9 @@ class BloqueoFiscalFacturaIT {
                 new BigDecimal(precio), new BigDecimal(precio), null, null, null, null);
     }
 
+    /** "Consultar estado en Hacienda" (T-026; reemplaza a "verificar con Hacienda"). */
     private int verificar(Long idComprobante) throws Exception {
-        return mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + idComprobante + "/verificar-hacienda")
+        return mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + idComprobante + "/consultar-estado-hacienda")
                 .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn().getResponse().getStatus();
     }
 
