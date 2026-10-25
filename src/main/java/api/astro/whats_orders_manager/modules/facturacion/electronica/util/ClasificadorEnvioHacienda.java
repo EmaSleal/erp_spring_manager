@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * Clasifica en origen el resultado de un POST /recepcion a Hacienda (ADR-030 §3).
  *
  * <p>Regla prudente: solo se declara NO_TRANSMITIDO cuando hay evidencia de que Hacienda no recibió el documento;
- * ante la duda, ENVIO_INCIERTO (se resuelve con "verificar con Hacienda").
+ * ante la duda, ENVIO_INCIERTO (se resuelve con "Consultar estado en Hacienda").
  *
  * <p>Fuente de los textos de X-Error-Cause: la documentación oficial del API de recepción
  * (https://www.hacienda.go.cr/docs/ComprobantesElectronicosAPI.html, resumida en

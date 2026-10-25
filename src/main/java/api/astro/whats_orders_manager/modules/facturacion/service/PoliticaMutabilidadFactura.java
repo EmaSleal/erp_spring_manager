@@ -13,7 +13,9 @@ import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.Status;
 import org.hibernate.proxy.HibernateProxy;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -36,7 +38,7 @@ import java.util.Set;
  *       enviar, con la misma clave).</li>
  *   <li>BLOQUEADA: ENVIADO o PROCESANDO (esperar a Hacienda), ERROR_HACIENDA (revisar en ATV) y ACEPTADO (nota
  *       de crédito o débito).</li>
- *   <li>REQUIERE_VERIFICACION: ENVIO_INCIERTO (verificar con Hacienda).</li>
+ *   <li>REQUIERE_VERIFICACION: ENVIO_INCIERTO (consultar el estado en Hacienda).</li>
  * </ul>
  *
  * <p>Acceso a datos, siempre dentro del contexto de persistencia de la transacción en curso:
@@ -83,8 +85,21 @@ public class PoliticaMutabilidadFactura {
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
 
     /** Proyección del comprobante vigente: lo que la política necesita, sin cargar la entidad. */
-    public record Vigente(Long id, EstadoComprobante estado, String claveNumerica, LocalDateTime fechaEnvio) {
+    public record Vigente(Long id, EstadoComprobante estado, String claveNumerica, LocalDateTime fechaEnvio,
+                          Integer consultasErrorHacienda) {
     }
+
+    /**
+     * Estado FE de la factura para la UI (modal del listado, ADR-031): estado y clave del comprobante vigente y si
+     * quedó señalado para revisarlo en ATV.
+     */
+    public record EstadoFe(Long idComprobante, EstadoComprobante estado, String claveNumerica, boolean revisarEnAtv) {
+    }
+
+    /** Consultas seguidas con ind-estado "error" tras las que un ERROR_HACIENDA queda señalado para revisar en ATV. */
+    @Value("${facturacion.hacienda.max-consultas-error:"
+            + ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO + "}")
+    private int maxConsultasErrorHacienda = ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -104,6 +119,23 @@ public class PoliticaMutabilidadFactura {
     }
 
     /**
+     * Estado FE de la factura según su comprobante vigente (misma proyección que la política; sin cargar la entidad).
+     *
+     * @return null si la factura no tiene comprobante vigente
+     */
+    @Transactional(readOnly = true)
+    public EstadoFe estadoFe(Integer idFactura) {
+        Vigente vigente = idFactura != null ? vigente(idFactura) : null;
+        if (vigente == null) {
+            return null;
+        }
+        boolean revisarEnAtv = vigente.estado() == EstadoComprobante.ERROR_HACIENDA
+                && vigente.consultasErrorHacienda() != null
+                && vigente.consultasErrorHacienda() >= maxConsultasErrorHacienda;
+        return new EstadoFe(vigente.id(), vigente.estado(), vigente.claveNumerica(), revisarEnAtv);
+    }
+
+    /**
      * Comprobante vigente de la factura tal como lo ve la transacción en curso: el gestionado en memoria si lo hay;
      * si no, la proyección JPQL (ignorando los gestionados que en memoria dejaron de ser vigentes).
      */
@@ -112,11 +144,12 @@ public class PoliticaMutabilidadFactura {
         ComprobanteElectronico gestionado = vigenteEnMemoria(gestionados);
         if (gestionado != null) {
             return new Vigente(gestionado.getId(), gestionado.getEstado(), gestionado.getClaveNumerica(),
-                    gestionado.getFechaEnvio());
+                    gestionado.getFechaEnvio(), gestionado.getConsultasErrorHacienda());
         }
         Set<Long> idsGestionados = ids(gestionados);
         return entityManager.createQuery(
-                        "SELECT new " + Vigente.class.getName() + "(c.id, c.estado, c.claveNumerica, c.fechaEnvio) "
+                        "SELECT new " + Vigente.class.getName() + "(c.id, c.estado, c.claveNumerica, c.fechaEnvio, "
+                                + "c.consultasErrorHacienda) "
                                 + "FROM ComprobanteElectronico c "
                                 + "WHERE c.factura.idFactura = :idFactura AND c.vigente = true", Vigente.class)
                 .setParameter("idFactura", idFactura)
@@ -174,9 +207,11 @@ public class PoliticaMutabilidadFactura {
             case ENVIO_INCIERTO -> {
                 LocalDateTime desde = ComprobanteElectronicoServiceImpl.disponibleParaVerificar(fechaEnvio);
                 yield new Decision(Mutabilidad.REQUIERE_VERIFICACION, estado, clave, comprobante
-                        + "con envío incierto: Hacienda pudo haberlo recibido. Verifique el estado con Hacienda"
-                        + (desde != null ? " (disponible a partir de las " + desde.format(HORA) + ")" : "")
-                        + " antes de modificarla.");
+                        + "con envío incierto: Hacienda pudo haberlo recibido. Consulte el estado en Hacienda antes "
+                        + "de modificarla"
+                        + (desde != null ? " (si Hacienda no lo tiene, quedará como no transmitido con una consulta "
+                                + "a partir de las " + desde.format(HORA) + ")" : "")
+                        + ".");
             }
             default -> new Decision(Mutabilidad.EDITABLE, estado, clave, null);
         };

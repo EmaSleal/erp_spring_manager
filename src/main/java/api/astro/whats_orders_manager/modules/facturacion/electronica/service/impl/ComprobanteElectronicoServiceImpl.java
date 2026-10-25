@@ -4,9 +4,12 @@ import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionE
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
@@ -41,10 +44,12 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Implementación del servicio de comprobantes electrónicos.
@@ -71,9 +76,19 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final FacturaPdfService facturaPdfService;
     private final EmailService emailService;
     private final Clock clock;
+    private final LimiteConsultaManualHacienda limiteConsultaManual;
 
-    /** Minutos desde el último envío antes de poder verificar un ENVIO_INCIERTO con Hacienda (ADR-030). */
+    /**
+     * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
+     * Hacienda no lo tiene (NO_TRANSMITIDO). Antes, el 404 no cambia el estado (ADR-030 §2, ADR-031 §4).
+     */
     public static final long MINUTOS_ANTES_DE_VERIFICAR = 15;
+
+    /** Estados en los que se puede "Consultar estado en Hacienda" (ADR-031 §4). */
+    public static final Set<EstadoComprobante> CONSULTABLES_A_MANO = EnumSet.of(EstadoComprobante.ENVIADO,
+        EstadoComprobante.PROCESANDO, EstadoComprobante.ENVIO_INCIERTO, EstadoComprobante.ERROR_HACIENDA);
+
+    private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
     
     @Value("${facturacion.comprobantes.directorio-base:./comprobantes}")
     private String directorioBase;
@@ -474,8 +489,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
     /**
      * Sondeo del estado (tras el envío y en el job horario). Adopta lo que informa Hacienda (ADR-030; mapeo en
-     * aplicarRespuestaDeConsulta). Un 404 ya no se lee como procesando: si el comprobante figuraba en Hacienda
-     * (ENVIADO, PROCESANDO o ERROR_HACIENDA), pasa a ENVIO_INCIERTO para resolverse con "verificar con Hacienda".
+     * aplicarRespuestaDeConsulta). Un 404 se interpreta con la misma regla que la consulta manual
+     * ({@link #interpretarNoExiste}).
      */
     @Override
     @Transactional
@@ -497,16 +512,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             );
 
             if (Boolean.TRUE.equals(respuesta.getDocumentoNoExiste())) {
-                if (comprobante.getEstado() == EstadoComprobante.ENVIADO
-                        || comprobante.getEstado() == EstadoComprobante.PROCESANDO
-                        || comprobante.getEstado() == EstadoComprobante.ERROR_HACIENDA) {
-                    comprobante.setEstado(EstadoComprobante.ENVIO_INCIERTO);
-                    comprobante.setConsultasErrorHacienda(0);
-                }
-                comprobante.setMensajeRespuesta(respuesta.getMensaje());
-                comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-                log.warn("⚠️ Hacienda no tiene el comprobante {} (404) → {}", comprobante.getClaveNumerica(),
-                    comprobante.getEstado());
+                interpretarNoExiste(comprobante, respuesta);
                 return mapper.toDTO(repository.save(comprobante));
             }
 
@@ -525,49 +531,93 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     }
 
     /**
-     * "Verificar con Hacienda" para un ENVIO_INCIERTO (ADR-030): disponible 15 minutos después del último envío.
-     * GET /recepcion/{clave} con 404 → NO_TRANSMITIDO (la factura vuelve a ser editable y el comprobante se reenvía
-     * con la misma clave); con otra respuesta → se adopta el estado informado.
+     * "Consultar estado en Hacienda" (ADR-031 §4): GET /recepcion/{clave}, de solo lectura, para un comprobante
+     * ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA, como máximo 1 vez cada 30 s por comprobante. Un 404 se
+     * interpreta según el estado de origen ({@link #interpretarNoExiste}); otra respuesta se adopta como en el sondeo.
+     * En ERROR_HACIENDA, el contador de consultas con "error" vuelve a 0 antes de aplicar la respuesta, de modo que el
+     * sondeo lo vuelve a incluir.
      *
-     * @throws IllegalStateException si el comprobante no está en ENVIO_INCIERTO o aún no pasaron 15 minutos
+     * @throws ConsultaManualNoPermitidaException (409) si el estado no se consulta a mano
+     * @throws ConsultaManualDemasiadoProntoException (429) si no pasaron 30 s desde la consulta manual anterior
      */
     @Override
     @Transactional
-    public ComprobanteElectronicoDTO verificarConHacienda(Long id) {
+    public ResultadoConsultaManualDTO consultarEstadoManual(Long id) {
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        if (comprobante.getEstado() != EstadoComprobante.ENVIO_INCIERTO) {
-            throw new IllegalStateException("Solo se verifica con Hacienda un comprobante en ENVIO_INCIERTO; "
-                + "este está en estado " + comprobante.getEstado());
+        EstadoComprobante estadoPrevio = comprobante.getEstado();
+        if (!CONSULTABLES_A_MANO.contains(estadoPrevio)) {
+            throw new ConsultaManualNoPermitidaException("Solo se consulta el estado en Hacienda de un comprobante "
+                + "ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA; este está en estado " + estadoPrevio);
         }
-        LocalDateTime disponible = disponibleParaVerificar(comprobante);
-        if (disponible != null && LocalDateTime.now(clock).isBefore(disponible)) {
-            throw new IllegalStateException("Podrá verificar con Hacienda a partir de las "
-                + disponible.format(DateTimeFormatter.ofPattern("HH:mm")) + " ("
-                + MINUTOS_ANTES_DE_VERIFICAR + " minutos después del último envío)");
-        }
+        limiteConsultaManual.exigirYRegistrar(id);
 
         ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
         RespuestaHaciendaDTO respuesta = haciendaApi.consultarComprobante(comprobante.getClaveNumerica(), config.getId());
+        if (estadoPrevio == EstadoComprobante.ERROR_HACIENDA) {
+            comprobante.setConsultasErrorHacienda(0);
+        }
+        String mensaje;
         if (Boolean.TRUE.equals(respuesta.getDocumentoNoExiste())) {
-            comprobante.setEstado(EstadoComprobante.NO_TRANSMITIDO);
-            comprobante.setMensajeRespuesta(respuesta.getMensaje());
-            comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-            log.info("Verificación: Hacienda no tiene {} → NO_TRANSMITIDO", comprobante.getClaveNumerica());
+            mensaje = interpretarNoExiste(comprobante, respuesta);
         } else {
             aplicarRespuestaDeConsulta(comprobante, respuesta);
-            log.info("Verificación de {}: ind-estado '{}' → {}", comprobante.getClaveNumerica(),
-                respuesta.getIndicadorEstado(), comprobante.getEstado());
+            mensaje = "Estado consultado en Hacienda: " + comprobante.getEstado().getCodigo();
         }
-        return mapper.toDTO(repository.save(comprobante));
+        log.info("Consulta manual de {} ({}): {} → {}", comprobante.getClaveNumerica(), estadoPrevio,
+            Boolean.TRUE.equals(respuesta.getDocumentoNoExiste()) ? "404" : "ind-estado " + respuesta.getIndicadorEstado(),
+            comprobante.getEstado());
+        return new ResultadoConsultaManualDTO(mapper.toDTO(repository.save(comprobante)), mensaje);
     }
 
-    /** Momento a partir del cual se puede verificar con Hacienda (null si no hay envío registrado). */
+    /**
+     * Regla del 404 de GET /recepcion/{clave} ("no existe"), única para la consulta manual y el sondeo (ADR-031 §4):
+     * <ul>
+     *   <li>ENVIO_INCIERTO y al menos 15 minutos desde el último envío → NO_TRANSMITIDO (se corrige y se reenvía con la
+     *       misma clave);</li>
+     *   <li>ENVIO_INCIERTO antes de 15 minutos → sin cambios: Hacienda puede tardar en registrar un envío;</li>
+     *   <li>ENVIADO, PROCESANDO o ERROR_HACIENDA → ENVIO_INCIERTO (T-025): Hacienda ya confirmó la recepción, así que
+     *       nunca pasa directo a NO_TRANSMITIDO.</li>
+     * </ul>
+     *
+     * @return mensaje para el usuario
+     */
+    private String interpretarNoExiste(ComprobanteElectronico comprobante, RespuestaHaciendaDTO respuesta) {
+        EstadoComprobante estado = comprobante.getEstado();
+        String mensaje;
+        if (estado == EstadoComprobante.ENVIO_INCIERTO) {
+            LocalDateTime desde = disponibleParaVerificar(comprobante);
+            if (desde == null || !LocalDateTime.now(clock).isBefore(desde)) {
+                comprobante.setEstado(EstadoComprobante.NO_TRANSMITIDO);
+                mensaje = "Hacienda no tiene el comprobante: queda como no transmitido y se puede corregir y reenviar "
+                    + "con la misma clave.";
+            } else {
+                mensaje = "Hacienda todavía no registra el comprobante; puede tardar hasta " + MINUTOS_ANTES_DE_VERIFICAR
+                    + " minutos desde el envío. Si a partir de las " + desde.format(HORA)
+                    + " sigue sin registrarlo, la consulta lo marcará como no transmitido.";
+            }
+        } else if (estado == EstadoComprobante.ENVIADO || estado == EstadoComprobante.PROCESANDO
+                || estado == EstadoComprobante.ERROR_HACIENDA) {
+            comprobante.setEstado(EstadoComprobante.ENVIO_INCIERTO);
+            comprobante.setConsultasErrorHacienda(0);
+            mensaje = "Hacienda respondió que no tiene el comprobante, aunque había confirmado su recepción: queda como "
+                + "envío incierto. Vuelva a consultar más tarde.";
+        } else {
+            mensaje = "Hacienda no tiene el comprobante.";
+        }
+        comprobante.setMensajeRespuesta(respuesta.getMensaje());
+        comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
+        log.warn("⚠️ Hacienda no tiene el comprobante {} (404): {} → {}", comprobante.getClaveNumerica(), estado,
+            comprobante.getEstado());
+        return mensaje;
+    }
+
+    /** Momento a partir del cual un 404 de un ENVIO_INCIERTO significa NO_TRANSMITIDO (null si no hubo envío). */
     public static LocalDateTime disponibleParaVerificar(ComprobanteElectronico comprobante) {
         return disponibleParaVerificar(comprobante.getFechaEnvio());
     }
 
-    /** Momento a partir del cual se puede verificar con Hacienda un envío hecho en fechaEnvio (null si no hubo). */
+    /** Momento a partir del cual un 404 significa NO_TRANSMITIDO para un envío hecho en fechaEnvio (null si no hubo). */
     public static LocalDateTime disponibleParaVerificar(LocalDateTime fechaEnvio) {
         return fechaEnvio != null ? fechaEnvio.plusMinutes(MINUTOS_ANTES_DE_VERIFICAR) : null;
     }
@@ -581,7 +631,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
      *   <li>error → ERROR_HACIENDA: bloqueado, porque Hacienda tiene el documento. No es PROCESANDO para que se vea
      *       que Hacienda informó un error y se pueda señalar tras N consultas seguidas;</li>
      *   <li>cualquier otro valor (o ninguno) → ENVIO_INCIERTO: no se sabe qué tiene Hacienda; se resuelve con
-     *       "verificar con Hacienda".</li>
+     *       "Consultar estado en Hacienda".</li>
      * </ul>
      * El contador de consultas con "error" vuelve a 0 con cualquier otra respuesta.
      */

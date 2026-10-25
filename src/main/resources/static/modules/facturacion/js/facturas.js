@@ -90,29 +90,34 @@ function openModal(button) {
             const feBotonEnviar = document.getElementById("modal-fe-boton-enviar");
             const feEstado = document.getElementById("modal-fe-estado");
             
-            if (data.comprobanteElectronico) {
-                // Tiene comprobante electrónico
-                feContainer.style.display = 'block';
+            // Estado FE del comprobante vigente (ADR-031): badge con el color e ícono de EstadoComprobante
+            feContainer.style.display = 'block';
+            if (data.estadoComprobante) {
                 feBotonEnviar.style.display = 'none';
                 feEstado.style.display = 'block';
-                
-                const comprobante = data.comprobanteElectronico;
+                const color = escapeHtml(data.estadoComprobanteColor || 'secondary');
                 feEstado.innerHTML = `
-                    <div class="alert alert-info">
-                        <h6><i class="bi bi-file-earmark-check me-2"></i>Comprobante Electrónico</h6>
-                        <p class="mb-1"><strong>Clave:</strong> <code>${comprobante.claveNumerica}</code></p>
-                        <p class="mb-1"><strong>Estado:</strong> <span class="badge bg-${getEstadoBadgeClass(comprobante.estado)}">${comprobante.estado}</span></p>
-                        ${comprobante.mensajeRespuesta ? `<p class="mb-0"><strong>Mensaje:</strong> ${comprobante.mensajeRespuesta}</p>` : ''}
-                        <button class="btn btn-sm btn-primary mt-2" onclick="verComprobante(${comprobante.id})">
-                            <i class="bi bi-box-arrow-up-right me-1"></i>Ver Comprobante
-                        </button>
-                    </div>
+                    <p class="mb-1"><strong>Estado:</strong>
+                        <span class="badge bg-${color}${color === 'warning' ? ' text-dark' : ''}" id="modal-fe-badge">
+                            <i class="bi ${escapeHtml(data.estadoComprobanteIcono || '')} me-1"></i>${escapeHtml(data.estadoComprobanteDescripcion || data.estadoComprobante)}
+                        </span>
+                    </p>
+                    ${data.claveComprobante ? `<p class="mb-1"><strong>Clave:</strong> <code>${escapeHtml(data.claveComprobante)}</code></p>` : ''}
+                    ${data.revisarEnAtv ? `<div class="alert alert-danger py-2 mb-2"><i class="fas fa-exclamation-circle me-1"></i>Hacienda informó "error" en varias consultas seguidas: revise el comprobante en ATV.</div>` : ''}
+                    ${data.idComprobante ? `<button class="btn btn-sm btn-primary mt-1" onclick="verComprobante(${Number(data.idComprobante)})">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Ver Comprobante
+                    </button>` : ''}
                 `;
             } else {
-                // NO tiene comprobante electrónico
-                feContainer.style.display = 'block';
+                // Sin comprobante electrónico: badge «Sin comprobante» y botón para enviarla
+                feEstado.style.display = 'block';
+                feEstado.innerHTML = `
+                    <p class="mb-2"><strong>Estado:</strong>
+                        <span class="badge bg-light text-dark border" id="modal-fe-badge">
+                            <i class="bi bi-file-earmark me-1"></i>Sin comprobante
+                        </span>
+                    </p>`;
                 feBotonEnviar.style.display = 'block';
-                feEstado.style.display = 'none';
                 feBotonEnviar.setAttribute('data-id', data.idFactura);
             }
 

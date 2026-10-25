@@ -149,6 +149,15 @@ public class FacturaServiceImpl implements FacturaService {
             log.info("Serie proporcionada manualmente: {}", factura.getSerie());
         }
         
+        // createDate es la fecha de emisión (ADR-014) y nunca proviene del cliente (ADR-031 §3): al crear la asigna la
+        // auditoría JPA (@CreatedDate); al editar se conserva la de la BD aunque el cuerpo no la traiga o traiga otra
+        if (factura.getIdFactura() == null) {
+            factura.setCreateDate(null);
+        } else {
+            facturaRepository.findById(factura.getIdFactura())
+                .ifPresent(existente -> factura.setCreateDate(existente.getCreateDate()));
+        }
+
         // Ensure monedaFE defaults to CRC and tipoCambio is consistent
         if (factura.getMonedaFE() == null || factura.getMonedaFE() == MonedaFE.CRC) {
             factura.setMonedaFE(MonedaFE.CRC);

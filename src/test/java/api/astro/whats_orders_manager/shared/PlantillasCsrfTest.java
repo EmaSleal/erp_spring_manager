@@ -20,7 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * variable, $.ajax/$.post de mutación, o los helpers httpPost/httpPut/httpDelete de common.js) debe tener las meta
  * _csrf/_csrf_header y cargar common.js, que agrega el encabezado CSRF. Vale la plantilla o los scripts locales que
  * incluye con th:src. Las meta y common.js pueden venir de shared/layout (head y scripts) o estar en la plantilla.
- * Los fragmentos sin &lt;body&gt; se validan en la página que los incluye.
+ * Los fragmentos (sin &lt;body&gt;, o con th:fragment en &lt;html&gt;) se validan en la página que los incluye: su código
+ * cuenta como mutación de esa página.
  */
 @DisplayName("T-026 — plantillas con mutaciones incluyen las meta CSRF y common.js")
 class PlantillasCsrfTest {
@@ -36,6 +37,8 @@ class PlantillasCsrfTest {
             Pattern.compile("\\b(httpPost|httpPut|httpDelete|httpDeleteWithConfirm)\\s*\\("));
 
     private static final Pattern SCRIPT_LOCAL = Pattern.compile("th:src=\"@\\{(/[^}\"]+\\.js)\\}\"");
+    private static final Pattern FRAGMENTO_INCLUIDO = Pattern.compile("~\\{\\s*([\\w/-]+)\\s*::");
+    private static final Pattern HTML_FRAGMENTO = Pattern.compile("<html[^>]*th:fragment");
 
     @Test
     @DisplayName("cada plantilla con una mutación por JS tiene meta _csrf/_csrf_header y common.js")
@@ -45,10 +48,10 @@ class PlantillasCsrfTest {
         try (Stream<Path> plantillas = Files.walk(TEMPLATES)) {
             for (Path plantilla : plantillas.filter(p -> p.toString().endsWith(".html")).sorted().toList()) {
                 String html = Files.readString(plantilla, StandardCharsets.UTF_8);
-                if (!html.contains("<body")) {
+                if (!html.contains("<body") || HTML_FRAGMENTO.matcher(html).find()) {
                     continue; // fragmento
                 }
-                if (!tieneMutacion(html + scriptsLocales(html))) {
+                if (!tieneMutacion(html + scriptsLocales(html) + fragmentosIncluidos(html))) {
                     continue;
                 }
                 conMutacion++;
@@ -68,6 +71,20 @@ class PlantillasCsrfTest {
 
     private static boolean tieneMutacion(String codigo) {
         return MUTACIONES.stream().anyMatch(p -> p.matcher(codigo).find());
+    }
+
+    /** Código de las plantillas que la página incluye como fragmento (th:replace/th:insert), salvo shared/layout. */
+    private static String fragmentosIncluidos(String html) throws IOException {
+        StringBuilder codigo = new StringBuilder();
+        Matcher m = FRAGMENTO_INCLUIDO.matcher(html);
+        while (m.find()) {
+            Path fragmento = TEMPLATES.resolve(m.group(1) + ".html");
+            if (!m.group(1).equals("shared/layout") && Files.exists(fragmento)) {
+                String contenido = Files.readString(fragmento, StandardCharsets.UTF_8);
+                codigo.append('\n').append(contenido).append(scriptsLocales(contenido));
+            }
+        }
+        return codigo.toString();
     }
 
     /** Contenido de los scripts locales (static/) que la plantilla incluye con th:src. */

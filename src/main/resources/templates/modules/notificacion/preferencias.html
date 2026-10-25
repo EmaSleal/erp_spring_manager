@@ -211,6 +211,8 @@
     </main>
 
     <!-- Scripts adicionales -->
+    <!-- common.js: helpers HTTP y encabezado CSRF en fetch/$.ajax (ADR-031) -->
+    <script th:src="@{/shared/js/common.js}"></script>
     <script th:inline="javascript">
         /*<![CDATA[*/
         // Configuración de CSRF para peticiones AJAX

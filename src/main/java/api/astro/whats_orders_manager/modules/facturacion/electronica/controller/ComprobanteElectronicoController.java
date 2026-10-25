@@ -1,6 +1,9 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.controller;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.TendenciaEnviosDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
@@ -156,26 +159,33 @@ public class ComprobanteElectronicoController {
     }
     
     /**
-     * "Verificar con Hacienda" un comprobante en ENVIO_INCIERTO (ADR-030), 15 minutos después del último envío.
-     * POST /api/facturas/electronica/comprobantes/{id}/verificar-hacienda
-     * 409 si no está en ENVIO_INCIERTO o todavía no pasaron los 15 minutos (el mensaje indica desde qué hora).
+     * "Consultar estado en Hacienda" (ADR-031 §4; reemplaza a "verificar con Hacienda"): consulta de solo lectura para
+     * un comprobante ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA.
+     * POST /api/facturas/electronica/comprobantes/{id}/consultar-estado-hacienda
+     * 409 en otro estado; 429 si no pasaron 30 s desde la consulta manual anterior (con disponibleDesde).
      */
-    @PostMapping("/{id}/verificar-hacienda")
-    public ResponseEntity<Map<String, Object>> verificarConHacienda(@PathVariable Long id) {
-        log.info("Verificando con Hacienda el comprobante {}", id);
+    @PostMapping("/{id}/consultar-estado-hacienda")
+    public ResponseEntity<Map<String, Object>> consultarEstadoEnHacienda(@PathVariable Long id) {
+        log.info("Consulta manual de estado en Hacienda del comprobante {}", id);
         try {
-            ComprobanteElectronicoDTO verificado = comprobanteService.verificarConHacienda(id);
+            ResultadoConsultaManualDTO resultado = comprobanteService.consultarEstadoManual(id);
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Estado verificado con Hacienda: " + verificado.getEstado().getCodigo(),
-                "comprobante", verificado
+                "message", resultado.mensaje(),
+                "comprobante", resultado.comprobante()
             ));
-        } catch (IllegalStateException e) {
+        } catch (ConsultaManualNoPermitidaException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (ConsultaManualDemasiadoProntoException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+                "success", false,
+                "message", e.getMessage(),
+                "disponibleDesde", e.getDisponibleDesde().toString()
+            ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
-            log.error("Error verificando con Hacienda: {}", e.getMessage(), e);
+            log.error("Error consultando el estado en Hacienda: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
                 "success", false,
                 "message", "No se pudo consultar a Hacienda: " + e.getMessage()

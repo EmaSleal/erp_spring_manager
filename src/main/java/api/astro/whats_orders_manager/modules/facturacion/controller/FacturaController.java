@@ -170,8 +170,22 @@ public class FacturaController {
             }
             
             Factura factura = facturaOpt.get();
-            
-            return ResponseEntity.ok(facturaMapper.toDetalleDTO(factura));
+            FacturaDetalleDTO detalle = facturaMapper.toDetalleDTO(factura);
+
+            // Estado FE del comprobante vigente para el modal (ADR-031): proyección JPQL, sin la entidad
+            PoliticaMutabilidadFactura.EstadoFe estadoFe = politicaMutabilidad.estadoFe(id);
+            if (estadoFe != null) {
+                detalle.setIdComprobante(estadoFe.idComprobante());
+                detalle.setEstadoComprobante(estadoFe.estado());
+                detalle.setEstadoComprobanteDescripcion(estadoFe.estado().getCodigo());
+                detalle.setEstadoComprobanteColor(estadoFe.estado().getColor());
+                detalle.setEstadoComprobanteIcono(estadoFe.estado().getIcono());
+                detalle.setClaveComprobante(estadoFe.claveNumerica());
+                detalle.setRevisarEnAtv(estadoFe.revisarEnAtv());
+            } else {
+                detalle.setRevisarEnAtv(false);
+            }
+            return ResponseEntity.ok(detalle);
                     
         } catch (Exception e) {
             log.error("Error al obtener factura: {}", e.getMessage(), e);

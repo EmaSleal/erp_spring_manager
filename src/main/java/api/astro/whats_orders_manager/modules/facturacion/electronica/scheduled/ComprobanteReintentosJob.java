@@ -123,7 +123,7 @@ public class ComprobanteReintentosJob {
         try {
             // Comprobantes recibidos por Hacienda (ENVIADO), en proceso o con ind-estado "error" (ERROR_HACIENDA,
             // hasta el máximo de consultas seguidas), enviados hace más de 5 minutos. ENVIO_INCIERTO no se consulta
-            // aquí: se resuelve con "verificar con Hacienda" (ADR-030).
+            // aquí: se resuelve con "Consultar estado en Hacienda" (ADR-030, ADR-031).
             List<ComprobanteElectronico> enviados = comprobanteRepository.findParaSondeo(
                 LocalDateTime.now(clock).minusMinutes(5), maxConsultasErrorHacienda);
             

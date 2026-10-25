@@ -290,7 +290,7 @@
                             <button onclick="verDetalle(${comp.id})" class="btn btn-sm btn-primary" title="Ver Detalle">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            ${(comp.estado === 'FIRMADO' || comp.puedeReenviar || comp.xmlComprobante) ? `
+                            ${(comp.estado === 'FIRMADO' || comp.puedeReenviar || comp.consultableEnHacienda || comp.xmlComprobante) ? `
                                 <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
                                         data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones">
                                     <span class="visually-hidden">Más acciones</span>
@@ -304,6 +304,11 @@
                                     ${comp.puedeReenviar ? `
                                         <li><button type="button" class="dropdown-item" onclick="reenviar(${comp.id})">
                                             <i class="fas fa-redo me-2"></i>Reenviar
+                                        </button></li>
+                                    ` : ''}
+                                    ${comp.consultableEnHacienda ? `
+                                        <li><button type="button" class="dropdown-item" onclick="consultarEstadoEnHacienda(${comp.id})">
+                                            <i class="fas fa-search me-2"></i>Consultar estado en Hacienda
                                         </button></li>
                                     ` : ''}
                                     ${comp.xmlComprobante ? `
@@ -541,15 +546,16 @@
                 });
         }
 
-        function verificarConHacienda(id) {
-            fetch(`/api/facturas/electronica/comprobantes/${id}/verificar-hacienda`, {
+        // ADR-031 §4: consulta de solo lectura para ENVIADO, PROCESANDO, ENVIO_INCIERTO y ERROR_HACIENDA (1 cada 30 s)
+        function consultarEstadoEnHacienda(id) {
+            fetch(`/api/facturas/electronica/comprobantes/${id}/consultar-estado-hacienda`, {
                 method: 'POST',
                 headers: { [csrfHeader]: csrfToken }
             })
-                .then(res => res.json())
-                .then(data => {
-                    mostrarAlerta(data.message || (data.success ? 'Estado verificado' : 'No se pudo verificar'),
-                        data.success ? 'success' : 'warning');
+                .then(res => res.json().then(data => ({ status: res.status, data })))
+                .then(({ status, data }) => {
+                    mostrarAlerta(data.message || (data.success ? 'Estado consultado' : 'No se pudo consultar el estado'),
+                        data.success ? 'success' : (status === 429 ? 'info' : 'warning'));
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('detalleComprobanteModal'))?.hide();
                         cargarComprobantes();
@@ -558,7 +564,7 @@
                 })
                 .catch(err => {
                     console.error(err);
-                    mostrarAlerta('Error verificando con Hacienda', 'danger');
+                    mostrarAlerta('Error consultando el estado en Hacienda', 'danger');
                 });
         }
 
@@ -720,18 +726,16 @@
                             </div>
                         `;
                     }
-                    // ADR-030: un envío incierto se resuelve consultando a Hacienda, 15 minutos después del envío
-                    if (comp.estado === 'ENVIO_INCIERTO') {
-                        const desde = comp.verificableDesde ? new Date(comp.verificableDesde) : null;
-                        const disponible = !desde || desde <= new Date();
+                    // ADR-031 §4: "Consultar estado en Hacienda" para ENVIADO, PROCESANDO, ENVIO_INCIERTO y ERROR_HACIENDA
+                    if (comp.consultableEnHacienda) {
+                        const desde = comp.estado === 'ENVIO_INCIERTO' && comp.verificableDesde ? new Date(comp.verificableDesde) : null;
                         const hora = desde ? desde.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' }) : '';
                         actionButtons += `
-                            <button id="btnVerificarHacienda" onclick="verificarConHacienda(${comp.id})"
-                                    class="btn btn-warning" ${disponible ? '' : 'disabled'}
-                                    title="${disponible ? 'Consultar a Hacienda si recibió el comprobante' : 'Disponible a partir de las ' + hora}">
-                                <i class="fas fa-search me-1"></i>Verificar con Hacienda
+                            <button id="btnConsultarEstadoHacienda" onclick="consultarEstadoEnHacienda(${comp.id})"
+                                    class="btn btn-warning" title="Consultar en Hacienda el estado del comprobante (solo lectura)">
+                                <i class="fas fa-search me-1"></i>Consultar estado en Hacienda
                             </button>
-                            ${disponible ? '' : `<small class="text-muted ms-2">Disponible a partir de las ${hora}</small>`}
+                            ${desde && desde > new Date() ? `<small class="text-muted ms-2">Si Hacienda aún no lo tiene, quedará como no transmitido con una consulta a partir de las ${hora}</small>` : ''}
                         `;
                     }
                     if (comp.estado === 'RECHAZADO' && comp.vigente) {

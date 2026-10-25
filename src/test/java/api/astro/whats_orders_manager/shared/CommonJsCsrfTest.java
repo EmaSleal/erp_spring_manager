@@ -23,7 +23,7 @@ class CommonJsCsrfTest {
     void pruebasJs() throws Exception {
         assumeTrue(nodeDisponible(), "node no está en el PATH");
 
-        Process node = new ProcessBuilder("node", "--test", "src/test/js/*.test.mjs")
+        Process node = new ProcessBuilder("node", "--test", "--test-reporter=tap", "src/test/js/*.test.mjs")
                 .directory(Path.of("").toAbsolutePath().toFile())
                 .redirectErrorStream(true)
                 .start();
@@ -33,7 +33,7 @@ class CommonJsCsrfTest {
 
         assertThat(termino).as("node --test terminó a tiempo").isTrue();
         assertThat(node.exitValue()).as(salida).isZero();
-        assertThat(salida).contains("# fail 0");
+        assertThat(salida).contains("# fail 0").containsPattern("# pass [1-9]");
     }
 
     private static boolean nodeDisponible() {

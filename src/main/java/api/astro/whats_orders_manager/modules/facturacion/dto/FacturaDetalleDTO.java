@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.dto;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPagoFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
@@ -70,6 +71,17 @@ public class FacturaDetalleDTO {
     private BigDecimal totalPagado;
     private BigDecimal saldoPendiente;
     
+    // Facturación electrónica: comprobante vigente (ADR-031; null si no tiene). Solo estos datos, nunca la entidad
+    private Long idComprobante;
+    private EstadoComprobante estadoComprobante;
+    /** Texto, color de Bootstrap e ícono del estado, como los define EstadoComprobante. */
+    private String estadoComprobanteDescripcion;
+    private String estadoComprobanteColor;
+    private String estadoComprobanteIcono;
+    private String claveComprobante;
+    /** ERROR_HACIENDA tras el máximo de consultas seguidas con "error": revisar el comprobante en ATV. */
+    private Boolean revisarEnAtv;
+
     // Auditoría
     private Integer createBy;
     private Integer updateBy;
