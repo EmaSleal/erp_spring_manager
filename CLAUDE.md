@@ -1,6 +1,10 @@
-# erp_spring_manager
-
-Este repositorio se gestiona en memoria-proyectos con el proyecto `erp_spring_manager`.
+## Project memory (read first)
+This repository uses the `ratifact` MCP server with project `erp_spring_manager`. Before working, call
+`get_context("erp_spring_manager")`. Only **accepted** decisions are rules; proposals are not implemented without the
+user's confirmation. Code tasks run with `/run-task T-NNN` (in Codex: `$run-task T-NNN`).
+Decisions, pending items and tasks live in `ratifact`; on a contradiction with another memory, the
+accepted decision wins.
+Test command (from the repository root): `./mvnw test`
 
 Contexto general, estructura y comandos: ver `agents.md`. Comando de pruebas: `./mvnw test`.
 

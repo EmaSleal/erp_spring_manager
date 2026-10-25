@@ -3,13 +3,13 @@
 ## Propósito
 Este archivo ofrece al agente (Copilot / subagentes) un resumen conciso del proyecto, su estructura de carpetas, documentación relevante y comandos útiles para entender y actuar sobre el código sin necesidad de adivinar dónde están los recursos.
 
-   ## Memoria del proyecto (leer primero)
-   Este repositorio usa el MCP `memoria-proyectos` con el proyecto `erp_spring_manager`. Antes de trabajar, llama
-   `obtener_contexto("erp_spring_manager")`. Solo las decisiones **acordadas** son reglas; las propuestas no se implementan
-   sin confirmación del usuario. Las tareas de código se ejecutan con `/tarea T-NNN`.
-   Si usas otra memoria de agente (p. ej. engram de gentle-ai), úsala solo para aprendizajes técnicos; decisiones,
-   pendientes y tareas viven en `memoria-proyectos`, y ante una contradicción gana la decisión acordada.
-   Comando de pruebas (desde la raíz del repositorio): `./mvnw test`
+## Project memory (read first)
+This repository uses the `ratifact` MCP server with project `erp_spring_manager`. Before working, call
+`get_context("erp_spring_manager")`. Only **accepted** decisions are rules; proposals are not implemented without the
+user's confirmation. Code tasks run with `/run-task T-NNN` (in Codex: `$run-task T-NNN`).
+Decisions, pending items and tasks live in `ratifact`; on a contradiction with another memory, the
+accepted decision wins.
+Test command (from the repository root): `./mvnw test`
 
 ## Resumen del proyecto
 - Nombre: erp_spring_manager
