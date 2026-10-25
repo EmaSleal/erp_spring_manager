@@ -459,6 +459,26 @@ class EstadoFeYConsultaHaciendaIT {
         verify(haciendaApi, times(2)).consultarComprobante(eq(clave(id)), anyLong());
     }
 
+    @Test
+    @DisplayName("listado por empresa: consultableEnHacienda true para ERROR_HACIENDA y false para GENERADO")
+    void listado_consultableEnHacienda() throws Exception {
+        Long consultable = comprobante(facturaSinLineas(), "ERROR_HACIENDA");
+        Long noConsultable = comprobante(facturaSinLineas(), "GENERADO");
+
+        MvcResult r = mockMvc.perform(get("/api/facturas/electronica/comprobantes/empresa/" + idEmpresa)
+                .param("page", "0").param("size", "500").with(user(USUARIO).roles("ADMIN"))).andReturn();
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        List<?> lista = objectMapper.readValue(r.getResponse().getContentAsString(), List.class);
+        Map<Long, Object> porId = new LinkedHashMap<>();
+        for (Object o : lista) {
+            Map<?, ?> c = (Map<?, ?>) o;
+            porId.put(((Number) c.get("id")).longValue(), c.get("consultableEnHacienda"));
+        }
+        assertThat(porId.get(consultable)).isEqualTo(true);
+        assertThat(porId.get(noConsultable)).isEqualTo(false);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private MvcResult consultar(Long id) throws Exception {

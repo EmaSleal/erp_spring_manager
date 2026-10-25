@@ -948,6 +948,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 .mensajeRespuesta((String) row[9])
                 .intentosEnvio(row[10] != null ? ((Number) row[10]).intValue() : 0)
                 .enviadoEmail(row[11] instanceof Boolean b ? b : row[11] instanceof Number n && n.intValue() != 0)
+                // Acción "Consultar estado en Hacienda" del listado (ADR-031 §4)
+                .consultableEnHacienda(CONSULTABLES_A_MANO.contains(EstadoComprobante.valueOf((String) row[5])))
                 .build())
             .collect(java.util.stream.Collectors.toList());
     }
