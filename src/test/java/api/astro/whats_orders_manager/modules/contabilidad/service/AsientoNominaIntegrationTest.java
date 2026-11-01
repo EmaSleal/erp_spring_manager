@@ -53,8 +53,8 @@ import static org.mockito.Mockito.*;
  * - 2+ employees with both deductions: per-account totals are sums of the lines
  * - forced imbalance: message includes Debe, Haber and the difference
  *
- * Fixture (corrected in T-010): totalNeto = bruto − ccssObrero − ins − renta − solidarista − pensión
- * (881 700.00 for the base case) and NOMINA_CCSS_PATRONAL_POR_PAGAR maps to a liability account.
+ * Fixture (corrected in T-010): totalNeto = bruto − ccssObrero − renta − solidarista − pensión
+ * (891 700.00 for the base case; INS riesgos del trabajo is an employer charge, ADR-033) and NOMINA_CCSS_PATRONAL_POR_PAGAR maps to a liability account.
  * Previously the fixture inflated totalNeto to 1 150 000.00 (= 881 700 + 268 300, crediting the
  * CCSS patronal twice) and mapped the CCSS patronal liability key to an expense account (5.1.02).
  */
@@ -109,8 +109,6 @@ class AsientoNominaIntegrationTest {
                 .thenReturn(Optional.of(buildParam("NOMINA_CCSS_PATRONAL_POR_PAGAR", cuenta)));
         when(parametroContableRepository.findByClave("NOMINA_CCSS_POR_PAGAR"))
                 .thenReturn(Optional.of(buildParam("NOMINA_CCSS_POR_PAGAR", cuenta)));
-        when(parametroContableRepository.findByClave("NOMINA_INS_POR_PAGAR"))
-                .thenReturn(Optional.of(buildParam("NOMINA_INS_POR_PAGAR", cuenta)));
         when(parametroContableRepository.findByClave("NOMINA_RENTA_POR_PAGAR"))
                 .thenReturn(Optional.of(buildParam("NOMINA_RENTA_POR_PAGAR", cuenta)));
         // NOMINA_SALARIOS_POR_PAGAR absent:
@@ -139,7 +137,7 @@ class AsientoNominaIntegrationTest {
 
         Nomina nomina = buildNomina();
         // DR = bruto 1_000_000 + CCSS patronal 268_300 = 1_268_300
-        // CR = ccssObrero 108_300 + ins 10_000 + renta 0 + neto 881_700 + CCSS patronal 268_300 = 1_268_300
+        // CR = ccssObrero 108_300 + renta 0 + neto 891_700 + CCSS patronal 268_300 = 1_268_300
 
         // save returns the same asiento (with id set)
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> {
@@ -212,10 +210,10 @@ class AsientoNominaIntegrationTest {
         AsientoContable result = service.generarAsientoNomina(buildNomina());
 
         assertThat(result.getTotalDebe()).isEqualByComparingTo(result.getTotalHaber());
-        assertThat(result.getDetalles()).hasSize(6);
+        assertThat(result.getDetalles()).hasSize(5);
         assertThat(result.getDetalles()).extracting(d -> d.getCuenta().getIdCuenta())
                 .doesNotContain(C_SOLIDARISTA.getIdCuenta(), C_PENSION.getIdCuenta(), C_ASE_GASTO.getIdCuenta());
-        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("881700.00");
+        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("891700.00");
         assertThat(haber(result, C_CCSS_PATRONAL)).isEqualByComparingTo("268300.00");
         verify(parametroContableRepository, never()).findByClave("NOMINA_SOLIDARISTA_POR_PAGAR");
         verify(parametroContableRepository, never()).findByClave("NOMINA_PENSION_ALIMENTARIA_POR_PAGAR");
@@ -231,9 +229,9 @@ class AsientoNominaIntegrationTest {
         seedAseKeys();
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        // neto = 1_000_000 − 108_300 − 10_000 − 0 − 30_000 = 851_700
+        // neto = 1_000_000 − 108_300 − 0 − 30_000 = 861_700
         Nomina nomina = buildNominaConLineas(
-                linea("1000000.00", "108300.00", "10000.00", "0", "30000.00", "0", "268300.00", "53300.00"));
+                linea("1000000.00", "108300.00", "0", "0", "30000.00", "0", "268300.00", "53300.00"));
 
         AsientoContable result = service.generarAsientoNomina(nomina);
 
@@ -242,7 +240,7 @@ class AsientoNominaIntegrationTest {
                 .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
                 .containsExactlyInAnyOrder(new BigDecimal("30000.00"), new BigDecimal("53300.00"));
         assertThat(debe(result, C_ASE_GASTO)).isEqualByComparingTo("53300.00");
-        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("851700.00");
+        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("861700.00");
         assertThat(result.getDetalles()).extracting(d -> d.getCuenta().getIdCuenta())
                 .doesNotContain(C_PENSION.getIdCuenta());
         assertThat(result.getTotalDebe()).isEqualByComparingTo(result.getTotalHaber());
@@ -256,14 +254,14 @@ class AsientoNominaIntegrationTest {
         seedPensionKey();
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        // neto = 1_000_000 − 108_300 − 10_000 − 0 − 50_000 = 831_700
+        // neto = 1_000_000 − 108_300 − 0 − 50_000 = 841_700
         Nomina nomina = buildNominaConLineas(
-                linea("1000000.00", "108300.00", "10000.00", "0", "0", "50000.00", "268300.00", "0"));
+                linea("1000000.00", "108300.00", "0", "0", "0", "50000.00", "268300.00", "0"));
 
         AsientoContable result = service.generarAsientoNomina(nomina);
 
         assertThat(haber(result, C_PENSION)).isEqualByComparingTo("50000.00");
-        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("831700.00");
+        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("841700.00");
         assertThat(result.getDetalles()).extracting(d -> d.getCuenta().getIdCuenta())
                 .doesNotContain(C_SOLIDARISTA.getIdCuenta(), C_ASE_GASTO.getIdCuenta());
         assertThat(result.getTotalDebe()).isEqualByComparingTo(result.getTotalHaber());
@@ -281,15 +279,15 @@ class AsientoNominaIntegrationTest {
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // Employee A: bruto 1_000_000, solidarista 3 % = 30_000, pensión 50_000, ASE 53_300
-        //   neto = 1_000_000 − 108_300 − 10_000 − 0 − 30_000 − 50_000 = 801_700
+        //   neto = 1_000_000 − 108_300 − 0 − 30_000 − 50_000 = 811_700
         // Employee B: bruto 1_500_000, renta 17_870.50, solidarista 5 % = 75_000, pensión 120_000, ASE 79_950
-        //   neto = 1_500_000 − 162_450 − 15_000 − 17_870.50 − 75_000 − 120_000 = 1_109_679.50
+        //   neto = 1_500_000 − 162_450 − 17_870.50 − 75_000 − 120_000 = 1_124_679.50
         // Employee C: bruto 600_000, no optional deductions
-        //   neto = 600_000 − 64_980 − 6_000 = 529_020
+        //   neto = 600_000 − 64_980 = 535_020
         Nomina nomina = buildNominaConLineas(
-                linea("1000000.00", "108300.00", "10000.00", "0", "30000.00", "50000.00", "268300.00", "53300.00"),
-                linea("1500000.00", "162450.00", "15000.00", "17870.50", "75000.00", "120000.00", "402450.00", "79950.00"),
-                linea("600000.00", "64980.00", "6000.00", "0", "0", "0", "160980.00", "0"));
+                linea("1000000.00", "108300.00", "0", "0", "30000.00", "50000.00", "268300.00", "53300.00"),
+                linea("1500000.00", "162450.00", "0", "17870.50", "75000.00", "120000.00", "402450.00", "79950.00"),
+                linea("600000.00", "64980.00", "0", "0", "0", "0", "160980.00", "0"));
 
         AsientoContable result = service.generarAsientoNomina(nomina);
 
@@ -301,7 +299,7 @@ class AsientoNominaIntegrationTest {
                 .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
                 .containsExactlyInAnyOrder(new BigDecimal("105000.00"), new BigDecimal("133250.00"));
         assertThat(haber(result, C_PENSION)).isEqualByComparingTo("170000.00");       // 50_000 + 120_000
-        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("2440399.50");
+        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("2471399.50");
         assertThat(haber(result, C_CCSS_PATRONAL)).isEqualByComparingTo("831730.00");
         assertThat(result.getTotalDebe()).isEqualByComparingTo(result.getTotalHaber());
         assertThat(result.getTotalDebe()).isEqualByComparingTo("4064980.00");
@@ -313,7 +311,7 @@ class AsientoNominaIntegrationTest {
         seedAllKeys();
 
         Nomina nomina = buildNomina();
-        nomina.setTotalNeto(new BigDecimal("882000.00")); // 300.00 more than the correct net
+        nomina.setTotalNeto(new BigDecimal("892000.00")); // 300.00 more than the correct net
 
         assertThatThrownBy(() -> service.generarAsientoNomina(nomina))
                 .isInstanceOf(IllegalStateException.class)
@@ -331,11 +329,68 @@ class AsientoNominaIntegrationTest {
         when(parametroContableRepository.findByClave("NOMINA_SOLIDARISTA_POR_PAGAR")).thenReturn(Optional.empty());
 
         Nomina nomina = buildNominaConLineas(
-                linea("1000000.00", "108300.00", "10000.00", "0", "30000.00", "0", "268300.00", "0"));
+                linea("1000000.00", "108300.00", "0", "0", "30000.00", "0", "268300.00", "0"));
 
         assertThatThrownBy(() -> service.generarAsientoNomina(nomina))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("NOMINA_SOLIDARISTA_POR_PAGAR");
+
+        verify(asientoRepository, never()).save(any());
+    }
+
+    // =========================================================================
+    // T-027 — INS riesgos del trabajo as optional employer charge (ADR-033)
+    // =========================================================================
+
+    @Test
+    @DisplayName("T-027 INS RT total 0: no INS lines and NOMINA_INS_POR_PAGAR is never resolved")
+    void generarAsientoNomina_sinInsRiesgos_sinLineasNiClaveIns() {
+        seedAllKeys();
+        when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AsientoContable result = service.generarAsientoNomina(buildNomina());
+
+        assertThat(result.getDetalles()).extracting(DetalleAsiento::getDescripcion)
+                .noneMatch(d -> d.contains("INS"));
+        assertThat(result.getTotalDebe()).isEqualByComparingTo(result.getTotalHaber());
+        verify(parametroContableRepository, never()).findByClave("NOMINA_INS_POR_PAGAR");
+    }
+
+    @Test
+    @DisplayName("T-027 INS RT 1.25 % on 1 000 000.00: DR cargas sociales 12 500.00 / CR INS por pagar 12 500.00, balanced")
+    void generarAsientoNomina_conInsRiesgos_debeCargasSocialesHaberInsPorPagar() {
+        seedAllKeys();
+        when(parametroContableRepository.findByClave("NOMINA_INS_POR_PAGAR"))
+                .thenReturn(Optional.of(buildParam("NOMINA_INS_POR_PAGAR", C_INS)));
+        when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // The employer charge does not reduce the net: neto = 1_000_000 − 108_300 = 891_700
+        Nomina nomina = buildNominaConLineas(
+                linea("1000000.00", "108300.00", "12500.00", "0", "0", "0", "268300.00", "0"));
+
+        AsientoContable result = service.generarAsientoNomina(nomina);
+
+        assertThat(lineas(result, C_CARGAS_SOCIALES, true)).extracting(DetalleAsiento::getDescripcion)
+                .anyMatch(d -> d.startsWith("Carga patronal INS riesgos del trabajo —"));
+        assertThat(debe(result, C_CARGAS_SOCIALES)).isEqualByComparingTo("280800.00"); // 268 300 + 12 500
+        assertThat(haber(result, C_INS)).isEqualByComparingTo("12500.00");
+        assertThat(haber(result, C_SALARIOS)).isEqualByComparingTo("891700.00");
+        assertThat(result.getTotalDebe()).isEqualByComparingTo(result.getTotalHaber());
+        assertThat(result.getTotalDebe()).isEqualByComparingTo("1280800.00");
+    }
+
+    @Test
+    @DisplayName("T-027 INS RT present but NOMINA_INS_POR_PAGAR not configured → IllegalStateException naming the key")
+    void generarAsientoNomina_insSinClave_lanzaIllegalState() {
+        seedBaseKeys();
+        when(parametroContableRepository.findByClave("NOMINA_INS_POR_PAGAR")).thenReturn(Optional.empty());
+
+        Nomina nomina = buildNominaConLineas(
+                linea("1000000.00", "108300.00", "12500.00", "0", "0", "0", "268300.00", "0"));
+
+        assertThatThrownBy(() -> service.generarAsientoNomina(nomina))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NOMINA_INS_POR_PAGAR");
 
         verify(asientoRepository, never()).save(any());
     }
@@ -407,6 +462,7 @@ class AsientoNominaIntegrationTest {
     private static final CuentaContable C_SOLIDARISTA   = cuenta(16L, "2.1.04.001");
     private static final CuentaContable C_PENSION       = cuenta(17L, "2.1.04.002");
     private static final CuentaContable C_ASE_GASTO     = cuenta(18L, "5.1.02.001");
+    private static final CuentaContable C_INS           = cuenta(20L, "2.1.01.004");
 
     private static CuentaContable cuenta(Long id, String codigo) {
         CuentaContable c = new CuentaContable();
@@ -436,19 +492,19 @@ class AsientoNominaIntegrationTest {
                 .thenReturn(Optional.of(buildParam("NOMINA_APORTE_PATRONAL_ASE_POR_PAGAR", C_SOLIDARISTA)));
     }
 
-    /** One payroll line; neto is derived as bruto − ccssObrero − ins − renta − solidarista − pensión. */
-    private static DetalleNomina linea(String bruto, String ccssObrero, String ins, String renta,
+    /** One payroll line (insPatronal is an employer charge, never deducted); neto is derived as bruto − ccssObrero − renta − solidarista − pensión. */
+    private static DetalleNomina linea(String bruto, String ccssObrero, String insPatronal, String renta,
                                        String solidarista, String pension, String ccssPatronal, String aporteAse) {
         DetalleNomina d = new DetalleNomina();
         d.setBrutoProrrateado(new BigDecimal(bruto));
         d.setCcssObrero(new BigDecimal(ccssObrero));
-        d.setIns(new BigDecimal(ins));
+        d.setInsRiesgosPatronal(new BigDecimal(insPatronal));
         d.setImpuestoRenta(new BigDecimal(renta));
         d.setSolidarista(new BigDecimal(solidarista));
         d.setPensionAlimentaria(new BigDecimal(pension));
         d.setCcssPatronal(new BigDecimal(ccssPatronal));
         d.setAportePatronalSolidarista(new BigDecimal(aporteAse));
-        BigDecimal deducciones = d.getCcssObrero().add(d.getIns()).add(d.getImpuestoRenta())
+        BigDecimal deducciones = d.getCcssObrero().add(d.getImpuestoRenta())
                 .add(d.getSolidarista()).add(d.getPensionAlimentaria());
         d.setTotalDeducciones(deducciones);
         d.setSalarioNeto(d.getBrutoProrrateado().subtract(deducciones));
@@ -514,13 +570,12 @@ class AsientoNominaIntegrationTest {
         when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
     }
 
-    /** The seven base NOMINA_* keys, without the entry-number stub (for tests that fail before numbering). */
+    /** The six base NOMINA_* keys, without the entry-number stub (for tests that fail before numbering). */
     private void seedBaseKeys() {
         // Each key gets its own distinct account (different id/codigo to avoid confusion)
         CuentaContable cGastoSueldos       = C_GASTO_SUELDOS;
         CuentaContable cCcssPatronal       = C_CCSS_PATRONAL;
         CuentaContable cCcssObrero         = buildCuenta(12L, "2.1.01.003");
-        CuentaContable cIns                = buildCuenta(13L, "2.1.01.004");
         CuentaContable cRenta              = buildCuenta(14L, "2.1.01.005");
         CuentaContable cSalarios           = C_SALARIOS;
 
@@ -532,8 +587,6 @@ class AsientoNominaIntegrationTest {
                 .thenReturn(Optional.of(buildParam("NOMINA_CCSS_PATRONAL_POR_PAGAR", cCcssPatronal)));
         when(parametroContableRepository.findByClave("NOMINA_CCSS_POR_PAGAR"))
                 .thenReturn(Optional.of(buildParam("NOMINA_CCSS_POR_PAGAR", cCcssObrero)));
-        when(parametroContableRepository.findByClave("NOMINA_INS_POR_PAGAR"))
-                .thenReturn(Optional.of(buildParam("NOMINA_INS_POR_PAGAR", cIns)));
         when(parametroContableRepository.findByClave("NOMINA_RENTA_POR_PAGAR"))
                 .thenReturn(Optional.of(buildParam("NOMINA_RENTA_POR_PAGAR", cRenta)));
         when(parametroContableRepository.findByClave("NOMINA_SALARIOS_POR_PAGAR"))
@@ -545,8 +598,8 @@ class AsientoNominaIntegrationTest {
      * Builds a Nomina with known totals such that:
      *   totalBruto = 1_000_000
      *   totalCcssPatronal = 268_300
-     *   One DetalleNomina: ccssObrero=108_300, ins=10_000, impuestoRenta=0
-     *   totalNeto = totalBruto − ccssObrero − ins − renta = 881_700 (balanced entry)
+     *   One DetalleNomina: ccssObrero=108_300, insRiesgosPatronal=0, impuestoRenta=0
+     *   totalNeto = totalBruto − ccssObrero − renta = 891_700 (balanced entry)
      */
     private Nomina buildNomina() {
         Nomina nomina = Nomina.builder()
@@ -559,13 +612,13 @@ class AsientoNominaIntegrationTest {
                 .estado(EstadoNomina.APROBADA)
                 .totalBruto(new BigDecimal("1000000.00"))
                 .totalCcssPatronal(new BigDecimal("268300.00"))
-                .totalNeto(new BigDecimal("881700.00"))
+                .totalNeto(new BigDecimal("891700.00"))
                 .build();
 
-        // One employee detalle: ccssObrero=108300, ins=10000, renta=0
+        // One employee detalle: ccssObrero=108300, insRiesgosPatronal=0, renta=0
         DetalleNomina detalle = new DetalleNomina();
         detalle.setCcssObrero(new BigDecimal("108300.00"));
-        detalle.setIns(new BigDecimal("10000.00"));
+        detalle.setInsRiesgosPatronal(BigDecimal.ZERO);
         detalle.setImpuestoRenta(BigDecimal.ZERO);
         List<DetalleNomina> detalles = new ArrayList<>();
         detalles.add(detalle);

@@ -207,6 +207,13 @@
                                         <td class="text-end fw-bold" id="tasa-aporte-patronal-ase"
                                             th:text="${#numbers.formatDecimal(parametroNominaEmpresa.porcentajeAportePatronalAse * 100, 1, 'POINT', 2, 'COMMA') + ' %'}"></td>
                                     </tr>
+                                    <tr>
+                                        <td>INS riesgos del trabajo (carga patronal)</td>
+                                        <td class="text-end fw-bold" id="tasa-ins-riesgos-trabajo"
+                                            th:text="${parametroNominaEmpresa.porcentajeInsRiesgosTrabajo != null
+                                                ? #numbers.formatDecimal(parametroNominaEmpresa.porcentajeInsRiesgosTrabajo * 100, 1, 'POINT', 2, 'COMMA') + ' %'
+                                                : 'No configurada'}"></td>
+                                    </tr>
                                 </tbody>
                             </table>
 
@@ -248,6 +255,7 @@
                                 <th>Vigencia desde</th>
                                 <th>Vigencia hasta</th>
                                 <th class="text-end">Aporte patronal ASE %</th>
+                                <th class="text-end">INS RT %</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -258,6 +266,10 @@
                                     : 'Indefinido'}"></td>
                                 <td class="text-end"
                                     th:text="${#numbers.formatDecimal(p.porcentajeAportePatronalAse * 100, 1, 'POINT', 2, 'COMMA') + ' %'}"></td>
+                                <td class="text-end"
+                                    th:text="${p.porcentajeInsRiesgosTrabajo != null
+                                        ? #numbers.formatDecimal(p.porcentajeInsRiesgosTrabajo * 100, 1, 'POINT', 2, 'COMMA') + ' %'
+                                        : 'No configurada'}"></td>
                             </tr>
                         </tbody>
                     </table>
