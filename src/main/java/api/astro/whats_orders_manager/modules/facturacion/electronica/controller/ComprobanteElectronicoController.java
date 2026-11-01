@@ -220,28 +220,6 @@ public class ComprobanteElectronicoController {
             ));
         }
     }
-
-    /**
-     * Consulta estado del comprobante en Hacienda.
-     * GET /api/facturacion/comprobantes/{id}/consultar-estado
-     */
-    @GetMapping("/{id}/consultar-estado")
-    public ResponseEntity<Map<String, Object>> consultarEstado(@PathVariable Long id) {
-        log.info("Consultando estado de comprobante {}", id);
-        try {
-            ComprobanteElectronicoDTO actualizado = comprobanteService.consultarEstado(id);
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "comprobante", actualizado
-            ));
-        } catch (Exception e) {
-            log.error("Error consultando estado: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Error consultando estado: " + e.getMessage()
-            ));
-        }
-    }
     
     /**
      * Envía comprobante por email al cliente.

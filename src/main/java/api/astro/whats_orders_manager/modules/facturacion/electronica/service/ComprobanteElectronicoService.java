@@ -111,11 +111,6 @@ public interface ComprobanteElectronicoService {
     ComprobanteElectronicoDTO reenviar(Long id);
     
     /**
-     * Consulta estado de un comprobante en Hacienda.
-     */
-    ComprobanteElectronicoDTO consultarEstado(Long id);
-    
-    /**
      * Consulta estado en Hacienda y actualiza comprobante según respuesta.
      * 
      * @param comprobanteId ID del comprobante a consultar

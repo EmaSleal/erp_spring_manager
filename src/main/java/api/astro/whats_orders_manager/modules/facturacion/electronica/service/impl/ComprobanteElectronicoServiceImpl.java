@@ -474,19 +474,6 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         return generarDesdeFactura(rechazado.getFactura().getIdFactura().longValue());
     }
 
-    @Override
-    @Transactional
-    public ComprobanteElectronicoDTO consultarEstado(Long id) {
-        log.info("Consultando estado de comprobante ID: {}", id);
-        try {
-            return consultarYActualizarEstado(id);
-        } catch (Exception e) {
-            log.error("Error consultando estado: {}", e.getMessage());
-            return repository.findById(id).map(mapper::toDTO)
-                .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        }
-    }
-
     /**
      * Sondeo del estado (tras el envío y en el job horario). Adopta lo que informa Hacienda (ADR-030; mapeo en
      * aplicarRespuestaDeConsulta). Un 404 se interpreta con la misma regla que la consulta manual
