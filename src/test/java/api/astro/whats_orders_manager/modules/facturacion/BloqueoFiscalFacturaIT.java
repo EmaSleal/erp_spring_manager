@@ -571,6 +571,24 @@ class BloqueoFiscalFacturaIT {
         verify(haciendaApi, times(1)).consultarComprobante(eq(comprobanteBd(id).clave()), anyLong());
     }
 
+    @Test
+    @DisplayName("GET /{id}/consultar-estado no existe ni muta (T-026 revisión 1): ENVIO_INCIERTO de 16 min sigue igual y bloqueado")
+    void get_consultarEstado_noExisteNiMuta() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        Long id = comprobante(idFactura, "ENVIO_INCIERTO", LocalDateTime.now().minusMinutes(16));
+        when(haciendaApi.consultarComprobante(anyString(), anyLong())).thenReturn(consulta404());
+
+        int status = mockMvc.perform(get("/api/facturas/electronica/comprobantes/" + id + "/consultar-estado")
+                        .with(user(USUARIO).roles("ADMIN")))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(status).isIn(404, 405);
+        assertThat(comprobanteBd(id).estado()).isEqualTo("ENVIO_INCIERTO");
+        verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
+        assertThat(guardarLineas(List.of(linea(lineas(idFactura).get(0).id(), idFactura, gravado13, 1, "1130.00")))
+                .getResponse().getStatus()).isEqualTo(409);
+    }
+
     @ParameterizedTest(name = "ind-estado {0} → {1}")
     @org.junit.jupiter.params.provider.CsvSource({"aceptado,ACEPTADO,409", "rechazado,RECHAZADO,200",
             "procesando,PROCESANDO,409", "recibido,PROCESANDO,409", "error,ERROR_HACIENDA,409",
