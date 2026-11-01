@@ -125,17 +125,45 @@ class CalculosNominaServiceTest {
     }
 
     // =========================================================================
-    // 2.2.3 — calcularIns
+    // 2.2.3 — calcularInsRiesgosPatronal (ADR-033)
     // =========================================================================
 
     @Test
-    @DisplayName("2.2.3 calcularIns: bruto=1500000 → 1500000 × 0.01 = 15000.00")
-    void calcularIns_bruto1500000_returns15000() {
-        BigDecimal bruto = new BigDecimal("1500000");
+    @DisplayName("2.2.3 calcularInsRiesgosPatronal: null rate → 0.00")
+    void calcularInsRiesgosPatronal_tasaNull_returnsZero() {
+        assertEquals(new BigDecimal("0.00"),
+                service.calcularInsRiesgosPatronal(new BigDecimal("1500000"), null));
+    }
 
-        BigDecimal result = service.calcularIns(bruto);
+    @Test
+    @DisplayName("2.2.3 calcularInsRiesgosPatronal: rate 0 → 0.00")
+    void calcularInsRiesgosPatronal_tasaCero_returnsZero() {
+        assertEquals(new BigDecimal("0.00"),
+                service.calcularInsRiesgosPatronal(new BigDecimal("1500000"), new BigDecimal("0.0000")));
+    }
 
-        assertEquals(new BigDecimal("15000.00"), result);
+    @Test
+    @DisplayName("2.2.3 calcularInsRiesgosPatronal: bruto=1500000 × 0.0125 = 18750.00")
+    void calcularInsRiesgosPatronal_tasaConfigurada_brutoPorTasa() {
+        assertEquals(new BigDecimal("18750.00"),
+                service.calcularInsRiesgosPatronal(new BigDecimal("1500000"), new BigDecimal("0.0125")));
+    }
+
+    @Test
+    @DisplayName("2.2.3 INS RT never reduces neto nor baseGravable (bruto 1 500 000)")
+    void calcular_insRiesgos_noReduceNetoNiBaseGravable() {
+        ResultadoCalculoNomina sinIns = service.calcular(new BigDecimal("1500000"), BigDecimal.ZERO,
+                null, null, ccss2026, null, null, tramos2026, 0, false);
+        ResultadoCalculoNomina conIns = service.calcular(new BigDecimal("1500000"), BigDecimal.ZERO,
+                null, null, ccss2026, null, new BigDecimal("0.0125"), tramos2026, 0, false);
+
+        assertEquals(new BigDecimal("0.00"), sinIns.insRiesgosPatronal());
+        assertEquals(new BigDecimal("18750.00"), conIns.insRiesgosPatronal());
+        assertEquals(sinIns.salarioNeto(), conIns.salarioNeto());
+        assertEquals(sinIns.totalDeducciones(), conIns.totalDeducciones());
+        // baseGravable = bruto − ccssObrero (1 500 000 − 162 450.00)
+        assertEquals(new BigDecimal("1337550.00"), conIns.baseGravable());
+        assertEquals(sinIns.baseGravable(), conIns.baseGravable());
     }
 
     // =========================================================================
@@ -214,6 +242,7 @@ class CalculosNominaServiceTest {
                 pension != null ? new BigDecimal(pension) : null,
                 ccss2026,
                 tasaAse,
+                null,
                 tramos2026,
                 0,
                 false);
@@ -252,7 +281,7 @@ class CalculosNominaServiceTest {
     @DisplayName("T-010 aporte ASE uses the bruto prorrateado (2 absent hours → 990 000 × 0.0533)")
     void calcular_afiliadoConAusencias_aporteSobreBrutoProrrateado() {
         ResultadoCalculoNomina r = service.calcular(new BigDecimal("1000000"), new BigDecimal("2"),
-                new BigDecimal("0.03"), null, ccss2026, TASA_ASE_2026, tramos2026, 0, false);
+                new BigDecimal("0.03"), null, ccss2026, TASA_ASE_2026, null, tramos2026, 0, false);
         assertEquals(new BigDecimal("990000.00"), r.brutoProrrateado());
         assertEquals(new BigDecimal("52767.00"), r.aportePatronalSolidarista());
     }
@@ -260,13 +289,13 @@ class CalculosNominaServiceTest {
     @Test
     @DisplayName("T-010 salarioNeto and totalDeducciones unchanged by the ASE contribution")
     void calcular_aporteAse_noAlteraNetoNiDeducciones() {
-        // 1 000 000: ccssObrero 108 300 + ins 10 000 + renta 0 (base 881 700 is exempt)
-        //            + solidarista 30 000 + pensión 50 000 = 198 300 → neto 801 700
+        // 1 000 000: ccssObrero 108 300 + renta 0 (base 891 700 is exempt)
+        //            + solidarista 30 000 + pensión 50 000 = 188 300 → neto 811 700
         ResultadoCalculoNomina conAse = calcular("0.03", "50000", TASA_ASE_2026);
         ResultadoCalculoNomina sinAse = calcular("0.03", "50000", BigDecimal.ZERO);
 
-        assertEquals(new BigDecimal("198300.00"), conAse.totalDeducciones());
-        assertEquals(new BigDecimal("801700.00"), conAse.salarioNeto());
+        assertEquals(new BigDecimal("188300.00"), conAse.totalDeducciones());
+        assertEquals(new BigDecimal("811700.00"), conAse.salarioNeto());
         assertEquals(sinAse.totalDeducciones(), conAse.totalDeducciones());
         assertEquals(sinAse.salarioNeto(), conAse.salarioNeto());
         assertEquals(new BigDecimal("268300.00"), conAse.ccssPatronal());

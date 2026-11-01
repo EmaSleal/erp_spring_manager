@@ -31,6 +31,10 @@ public class ParametroNominaEmpresa {
     @Column(name = "porcentaje_aporte_patronal_ase", nullable = false, precision = 5, scale = 4)
     private BigDecimal porcentajeAportePatronalAse;
 
+    /** Tasa INS riesgos del trabajo (carga patronal, ADR-033). null = no configurada: no se calcula. */
+    @Column(name = "porcentaje_ins_riesgos_trabajo", precision = 5, scale = 4)
+    private BigDecimal porcentajeInsRiesgosTrabajo;
+
     @Column(name = "vigencia_desde", nullable = false)
     private LocalDate vigenciaDesde;
 

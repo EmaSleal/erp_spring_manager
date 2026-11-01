@@ -27,7 +27,6 @@ public class DetalleNominaDTO {
 
     // Employee deductions
     private BigDecimal ccssObrero;
-    private BigDecimal ins;
     private BigDecimal impuestoRenta;
     private BigDecimal creditoFamiliar;
     private BigDecimal solidarista;
@@ -39,4 +38,5 @@ public class DetalleNominaDTO {
 
     // Employer cost (not deducted from employee)
     private BigDecimal ccssPatronal;
+    private BigDecimal insRiesgosPatronal;
 }

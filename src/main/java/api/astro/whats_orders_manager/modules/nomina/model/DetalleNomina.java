@@ -64,10 +64,6 @@ public class DetalleNomina {
     @Builder.Default
     private BigDecimal ccssObrero = BigDecimal.ZERO;
 
-    @Column(name = "ins", precision = 15, scale = 2)
-    @Builder.Default
-    private BigDecimal ins = BigDecimal.ZERO;
-
     @Column(name = "impuesto_renta", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal impuestoRenta = BigDecimal.ZERO;
@@ -108,4 +104,9 @@ public class DetalleNomina {
     @Column(name = "aporte_patronal_solidarista", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal aportePatronalSolidarista = BigDecimal.ZERO;
+
+    /** Carga patronal INS riesgos del trabajo (ADR-033); no se deduce del empleado. */
+    @Column(name = "ins_riesgos_patronal", precision = 15, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal insRiesgosPatronal = BigDecimal.ZERO;
 }

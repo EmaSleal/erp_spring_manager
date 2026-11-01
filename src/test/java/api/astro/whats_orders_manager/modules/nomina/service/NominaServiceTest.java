@@ -243,7 +243,7 @@ class NominaServiceTest {
                 eq(10L), any(), any())).thenReturn(List.of());
 
         ResultadoCalculoNomina resultado = buildResultado();
-        when(calculosNominaService.calcular(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
+        when(calculosNominaService.calcular(any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
                 .thenReturn(resultado);
 
         // WHEN
@@ -291,7 +291,7 @@ class NominaServiceTest {
         // Capture what horasAusentes value is passed to CalculosNominaService
         ResultadoCalculoNomina resultado = buildResultado();
         when(calculosNominaService.calcular(
-                any(), any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
+                any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
                 .thenReturn(resultado);
 
         // WHEN
@@ -301,7 +301,7 @@ class NominaServiceTest {
         verify(calculosNominaService).calcular(
                 eq(new BigDecimal("1000000")),
                 eq(new BigDecimal("8")),
-                any(), any(), any(), any(), any(), anyInt(), anyBoolean()
+                any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()
         );
     }
 
@@ -399,8 +399,8 @@ class NominaServiceTest {
                 .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
                 .containsExactly(new BigDecimal("40000.00"), BigDecimal.ZERO);
         assertThat(julio.getTotalAportePatronalSolidarista()).isEqualByComparingTo("40000.00");
-        // The ASE contribution does not reduce the net: 1 000 000 − 108 300 − 10 000 − 30 000 = 851 700
-        assertThat(julio.getDetalles().get(0).getSalarioNeto()).isEqualByComparingTo("851700.00");
+        // The ASE contribution does not reduce the net: 1 000 000 − 108 300 − 30 000 = 861 700
+        assertThat(julio.getDetalles().get(0).getSalarioNeto()).isEqualByComparingTo("861700.00");
     }
 
     @Test
@@ -420,7 +420,6 @@ class NominaServiceTest {
         mapear("NOMINA_SALARIOS_POR_PAGAR", 2L, "2.1.01.001");
         mapear("NOMINA_CCSS_PATRONAL_POR_PAGAR", 3L, "2.1.01.002");
         mapear("NOMINA_CCSS_POR_PAGAR", 4L, "2.1.01.003");
-        mapear("NOMINA_INS_POR_PAGAR", 5L, "2.1.01.004");
         mapear("NOMINA_RENTA_POR_PAGAR", 6L, "2.1.01.005");
         mapear("NOMINA_SOLIDARISTA_POR_PAGAR", 7L, "2.1.04.001");
         mapear("NOMINA_PENSION_ALIMENTARIA_POR_PAGAR", 8L, "2.1.04.002");
@@ -433,11 +432,10 @@ class NominaServiceTest {
         // Payroll computed by the real engine: solidarista 3 % + pensión 50 000, ASE 5.33 %
         ResultadoCalculoNomina r = new CalculosNominaService().calcular(new BigDecimal("1000000"),
                 BigDecimal.ZERO, new BigDecimal("0.03"), new BigDecimal("50000"), buildCcss(),
-                new BigDecimal("0.0533"), buildTramos(), 0, false);
+                new BigDecimal("0.0533"), null, buildTramos(), 0, false);
         DetalleNomina detalle = new DetalleNomina();
         detalle.setBrutoProrrateado(r.brutoProrrateado());
         detalle.setCcssObrero(r.ccssObrero());
-        detalle.setIns(r.ins());
         detalle.setImpuestoRenta(r.impuestoRenta());
         detalle.setSolidarista(r.solidarista());
         detalle.setPensionAlimentaria(r.pensionAlimentaria());
@@ -490,7 +488,6 @@ class NominaServiceTest {
         mapear("NOMINA_SALARIOS_POR_PAGAR", 7L, "2.1.04.003");
         mapear("NOMINA_CCSS_PATRONAL_POR_PAGAR", 8L, "2.1.04.004");
         mapear("NOMINA_CCSS_POR_PAGAR", 9L, "2.1.04.005");
-        mapear("NOMINA_INS_POR_PAGAR", 10L, "2.1.04.006");
         mapear("NOMINA_RENTA_POR_PAGAR", 11L, "2.1.02.002");
         when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
         ArgumentCaptor<AsientoContable> captor = ArgumentCaptor.forClass(AsientoContable.class);
@@ -499,12 +496,11 @@ class NominaServiceTest {
         CalculosNominaService calculos = new CalculosNominaService();
         ResultadoCalculoNomina r = calculos.calcular(new BigDecimal("1000000.00"),
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, buildCcss(),
-                BigDecimal.ZERO, buildTramos(), 0, false);
+                BigDecimal.ZERO, null, buildTramos(), 0, false);
         BigDecimal cargaPatronal = calculos.calcularCargaPatronalCcss(new BigDecimal("1000000.00"), buildCcss());
         DetalleNomina detalle = new DetalleNomina();
         detalle.setBrutoProrrateado(r.brutoProrrateado());
         detalle.setCcssObrero(r.ccssObrero());
-        detalle.setIns(r.ins());
         detalle.setImpuestoRenta(r.impuestoRenta());
         detalle.setTotalDeducciones(r.totalDeducciones());
         detalle.setSalarioNeto(r.salarioNeto());
@@ -549,6 +545,91 @@ class NominaServiceTest {
         verify(nominaRepository, never()).save(any());
     }
 
+    // =========================================================================
+    // T-027 (ADR-033) — INS riesgos del trabajo as optional employer charge
+    // =========================================================================
+
+    @Test
+    @DisplayName("T-027 calcular() resolves the INS RT rate from the row vigente at periodoFin")
+    void calcular_tasaInsSegunFechaDelPeriodo() {
+        Nomina borrador = buildBorradorNomina(3L);
+        when(nominaRepository.findById(3L)).thenReturn(Optional.of(borrador));
+        when(nominaRepository.save(any(Nomina.class))).thenReturn(borrador);
+        when(parametroCCSSRepository.findVigenteByFecha(FIN)).thenReturn(Optional.of(buildCcss()));
+        when(parametroNominaEmpresaRepository.findVigenteByFecha(FIN))
+                .thenReturn(Optional.of(buildParametroEmpresa("0.0533", "0.0125", LocalDate.of(2026, 1, 1), null)));
+        when(tramoImpuestoSalarioRepository.findByAnioVigenciaOrderByLimiteInferiorAsc(2026))
+                .thenReturn(buildTramos());
+        when(empleadoRepository.findByActivoTrue()).thenReturn(List.of(buildEmpleado(6L, "Ana", "Mora")));
+        ContratoEmpleado contrato = new ContratoEmpleado();
+        contrato.setSalarioBruto(new BigDecimal("1000000"));
+        when(contratoEmpleadoRepository.findByEmpleadoIdAndActivoTrue(6L)).thenReturn(Optional.of(contrato));
+        when(ausenciaRepository.findByEmpleadoIdAndAprobadaTrueAndFechaInicioBetween(eq(6L), any(), any()))
+                .thenReturn(List.of());
+        when(calculosNominaService.calcular(any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyBoolean()))
+                .thenReturn(buildResultado());
+
+        service.calcular(3L);
+
+        verify(calculosNominaService).calcular(any(), any(), any(), any(), any(),
+                eq(new BigDecimal("0.0533")), eq(new BigDecimal("0.0125")), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("T-027 contabilizar() with INS RT rate > 0 requires NOMINA_INS_POR_PAGAR and posts DR cargas sociales / CR INS por pagar, balanced")
+    void contabilizar_conInsRiesgos_asientoConLineasIns() {
+        AsientoContableRepository asientoRepository = mock(AsientoContableRepository.class);
+        AsientoContableService asientoReal = new AsientoContableService(asientoRepository,
+                mock(DetalleAsientoRepository.class), mock(CuentaContableRepository.class), parametroContableRepository);
+        NominaService servicioReal = new NominaService(nominaRepository, detalleNominaRepository,
+                empleadoRepository, contratoEmpleadoRepository, ausenciaRepository, parametroCCSSRepository,
+                parametroNominaEmpresaRepository, tramoImpuestoSalarioRepository, parametroContableRepository,
+                calculosNominaService, asientoReal, new NominaMapper(new DetalleNominaMapper()));
+
+        mapear("NOMINA_GASTO_SUELDOS", 6L, "5.1.02.002");
+        mapear("NOMINA_GASTO_CARGAS_SOCIALES", 48L, "5.1.02.003");
+        mapear("NOMINA_SALARIOS_POR_PAGAR", 7L, "2.1.04.003");
+        mapear("NOMINA_CCSS_PATRONAL_POR_PAGAR", 8L, "2.1.04.004");
+        mapear("NOMINA_CCSS_POR_PAGAR", 9L, "2.1.04.005");
+        mapear("NOMINA_INS_POR_PAGAR", 10L, "2.1.04.006");
+        mapear("NOMINA_RENTA_POR_PAGAR", 11L, "2.1.02.002");
+        when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
+        ArgumentCaptor<AsientoContable> captor = ArgumentCaptor.forClass(AsientoContable.class);
+        when(asientoRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        ResultadoCalculoNomina r = new CalculosNominaService().calcular(new BigDecimal("1000000.00"),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, buildCcss(),
+                BigDecimal.ZERO, new BigDecimal("0.0125"), buildTramos(), 0, false);
+        DetalleNomina detalle = new DetalleNomina();
+        detalle.setBrutoProrrateado(r.brutoProrrateado());
+        detalle.setCcssObrero(r.ccssObrero());
+        detalle.setImpuestoRenta(r.impuestoRenta());
+        detalle.setTotalDeducciones(r.totalDeducciones());
+        detalle.setSalarioNeto(r.salarioNeto());
+        detalle.setCcssPatronal(r.ccssPatronal());
+        detalle.setInsRiesgosPatronal(r.insRiesgosPatronal());
+        Nomina aprobada = Nomina.builder().id(43L).numero("NOM-2026-0043")
+                .periodoInicio(INICIO).periodoFin(FIN).fechaPago(PAGO)
+                .tipo(TipoNomina.MENSUAL).estado(EstadoNomina.APROBADA)
+                .totalBruto(r.brutoProrrateado()).totalDeducciones(r.totalDeducciones())
+                .totalNeto(r.salarioNeto()).totalCcssPatronal(r.ccssPatronal())
+                .build();
+        detalle.setNomina(aprobada);
+        aprobada.setDetalles(new ArrayList<>(List.of(detalle)));
+        when(nominaRepository.findById(43L)).thenReturn(Optional.of(aprobada));
+        when(nominaRepository.save(any(Nomina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        servicioReal.contabilizar(43L);
+
+        AsientoContable asiento = captor.getValue();
+        assertThat(r.insRiesgosPatronal()).isEqualByComparingTo("12500.00");
+        assertThat(debePorCuenta(asiento, 48L)).isEqualByComparingTo("280800.00"); // 268 300 CCSS + 12 500 INS
+        assertThat(asiento.getDetalles()).extracting(DetalleAsiento::getDescripcion)
+                .anyMatch(d -> d.startsWith("Carga patronal INS riesgos del trabajo —"))
+                .anyMatch(d -> d.startsWith("INS por pagar —"));
+        assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private static BigDecimal debePorCuenta(AsientoContable asiento, Long idCuenta) {
@@ -570,7 +651,12 @@ class NominaServiceTest {
     }
 
     private ParametroNominaEmpresa buildParametroEmpresa(String tasa, LocalDate desde, LocalDate hasta) {
+        return buildParametroEmpresa(tasa, null, desde, hasta);
+    }
+
+    private ParametroNominaEmpresa buildParametroEmpresa(String tasa, String tasaIns, LocalDate desde, LocalDate hasta) {
         ParametroNominaEmpresa p = new ParametroNominaEmpresa();
+        p.setPorcentajeInsRiesgosTrabajo(tasaIns != null ? new BigDecimal(tasaIns) : null);
         p.setPorcentajeAportePatronalAse(new BigDecimal(tasa));
         p.setVigenciaDesde(desde);
         p.setVigenciaHasta(hasta);
@@ -624,16 +710,16 @@ class NominaServiceTest {
         return new ResultadoCalculoNomina(
                 new BigDecimal("900000.00"),  // brutoProrrateado
                 new BigDecimal("97470.00"),   // ccssObrero
-                new BigDecimal("9000.00"),    // ins
-                new BigDecimal("793530.00"),  // baseGravable
+                new BigDecimal("802530.00"),  // baseGravable
                 BigDecimal.ZERO,              // impuestoRenta
                 BigDecimal.ZERO,              // creditoFamiliar
                 BigDecimal.ZERO,              // solidarista
                 BigDecimal.ZERO,              // pensionAlimentaria
                 new BigDecimal("241470.00"),  // ccssPatronal
                 BigDecimal.ZERO,              // aportePatronalSolidarista
-                new BigDecimal("106470.00"),  // totalDeducciones
-                new BigDecimal("793530.00")   // salarioNeto
+                BigDecimal.ZERO,              // insRiesgosPatronal
+                new BigDecimal("97470.00"),   // totalDeducciones
+                new BigDecimal("802530.00")   // salarioNeto
         );
     }
 }

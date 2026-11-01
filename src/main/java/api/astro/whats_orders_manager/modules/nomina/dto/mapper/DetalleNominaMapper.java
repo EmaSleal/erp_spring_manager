@@ -27,7 +27,6 @@ public class DetalleNominaMapper {
                 .horasAusentes(detalle.getHorasAusentes())
                 .brutoProrrateado(detalle.getBrutoProrrateado())
                 .ccssObrero(detalle.getCcssObrero())
-                .ins(detalle.getIns())
                 .impuestoRenta(detalle.getImpuestoRenta())
                 .creditoFamiliar(detalle.getCreditoFamiliar())
                 .solidarista(detalle.getSolidarista())
@@ -35,6 +34,7 @@ public class DetalleNominaMapper {
                 .totalDeducciones(detalle.getTotalDeducciones())
                 .salarioNeto(detalle.getSalarioNeto())
                 .ccssPatronal(detalle.getCcssPatronal())
+                .insRiesgosPatronal(detalle.getInsRiesgosPatronal())
                 .build();
     }
 

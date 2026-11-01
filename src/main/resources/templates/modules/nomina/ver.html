@@ -155,11 +155,11 @@
                                 <th class="text-end">Salario Base</th>
                                 <th class="text-end">Bruto</th>
                                 <th class="text-end">CCSS Obrero</th>
-                                <th class="text-end">INS</th>
                                 <th class="text-end">Renta</th>
                                 <th class="text-end">Total Deduc.</th>
                                 <th class="text-end fw-bold">Neto</th>
                                 <th class="text-end text-muted">Carga Patronal</th>
+                                <th class="text-end text-muted">INS RT Patronal</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -172,8 +172,6 @@
                                 <td class="text-end"
                                     th:text="${#numbers.formatDecimal(d.ccssObrero, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                 <td class="text-end"
-                                    th:text="${#numbers.formatDecimal(d.ins, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td class="text-end"
                                     th:text="${#numbers.formatDecimal(d.impuestoRenta, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                 <td class="text-end fw-semibold"
                                     th:text="${#numbers.formatDecimal(d.totalDeducciones, 1, 'COMMA', 2, 'POINT')}">0.00</td>
@@ -181,6 +179,8 @@
                                     th:text="${#numbers.formatDecimal(d.salarioNeto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                 <td class="text-end text-muted"
                                     th:text="${#numbers.formatDecimal(d.ccssPatronal, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end text-muted"
+                                    th:text="${#numbers.formatDecimal(d.insRiesgosPatronal, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                             </tr>
                         </tbody>
                         <tfoot class="table-light fw-bold">
@@ -189,10 +189,10 @@
                                 <td></td>
                                 <td class="text-end"
                                     th:text="${#numbers.formatDecimal(nomina.totalBruto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td colspan="4"></td>
+                                <td colspan="3"></td>
                                 <td class="text-end"
                                     th:text="${#numbers.formatDecimal(nomina.totalNeto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                <td></td>
+                                <td colspan="2"></td>
                             </tr>
                         </tfoot>
                     </table>
