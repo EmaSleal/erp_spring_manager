@@ -61,3 +61,29 @@ El patrono, como agente retenedor, responde solidariamente por lo no retenido (a
 - `baseGravable = brutoProrrateado` (sin restar `ccssObrero`), menos los ingresos no sujetos que confirme el contador.
 - Prueba de referencia: bruto ₡1 500 000, sin créditos, tramos 2026 → ₡65 850.
 - Se registra como ADR y tarea. No se toca nada antes de la validación.
+
+
+## 6. Actualización 2026-11-01: verificación y decisión
+
+**Texto vigente verificado.** La Ley 10469 (La Gaceta, 7 de mayo de 2024; expediente 24.140) reformó el primer párrafo del art. 33. Ahora dice que el patrono retiene y aplica el impuesto «sobre la renta total percibida mensualmente por el trabajador», y añade que las rentas retroactivas se tributan en el periodo en que se devengaron. Ninguna reforma introdujo deducciones antes de aplicar la escala. Con esto queda cerrado el vacío señalado en la sección 2.1 (texto anterior a la Ley 9635).
+
+**Fuentes adicionales:** facsímil de la Ley 10469 (Bufete de Costa Rica); Teletica y El Observador (tramos 2026 sobre salario bruto sin deducciones); PwC (créditos 2026: ₡1 710 por hijo y ₡2 590 por cónyuge); informe externo «Impuesto único sobre el salario en Costa Rica 2026: reglas de retención para un ERP de nómina» (aportado por el usuario).
+
+**Decisión:** ADR-034, aceptado. Base = bruto prorrateado; la CCSS obrera nunca se resta. Implementación: T-028.
+
+**Datos del ERP:** V4__rrhh_catalogos_regulatorios.sql ya carga los tramos y créditos 2026 correctos. calcularImpuestoRenta resta los créditos del impuesto, no de la base: correcto.
+
+**Pendientes derivados (no bloquean T-028):**
+
+| Pendiente | Tema |
+|---|---|
+| P-057 | Conceptos no sujetos (art. 35) |
+| P-058 | Salario en especie: valoración y tarifa |
+| P-059 | Multipatrono (art. 38) |
+| P-060 | Acumulación mensual en pagos quincenales o semanales |
+| P-061 | Retroactivos (Ley 10469) |
+| P-062 | Prorrateo del tramo exento (art. 36) |
+| P-063 | Tramos y créditos 2027 |
+| P-064 | Declaración mensual en TRIBU-CR |
+
+**Descartado del informe externo:** la sección política. Es inconsistente: atribuye a Rodrigo Chaves el cargo de presidente y luego el de ministro de Hacienda. Además, una reforma de renta global solo anunciada no es norma.
