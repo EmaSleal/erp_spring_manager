@@ -86,7 +86,7 @@ public class CalculosNominaService {
      *   <li>Floor result at ZERO — tax is never negative.</li>
      * </ol>
      *
-     * @param baseGravable taxable base (brutoProrrateado - ccssObrero)
+     * @param baseGravable taxable base (brutoProrrateado, no CCSS deduction; ADR-034)
      * @param tramos       tax brackets ordered by limiteInferior ASC (caller guarantees order)
      * @param hijos        number of dependent children
      * @param conyuge      whether the employee has a registered spouse credit
@@ -177,7 +177,7 @@ public class CalculosNominaService {
      * <ol>
      *   <li>Prorate bruto for absent hours.</li>
      *   <li>CCSS obrero.</li>
-     *   <li>baseGravable = brutoProrrateado - ccssObrero.</li>
+     *   <li>baseGravable = brutoProrrateado; CCSS obrera is not subtracted (ADR-034, art. 33 Ley 7092 as amended by Ley 10469).</li>
      *   <li>Income tax on baseGravable.</li>
      *   <li>Optional: solidarista (% of bruto) + pension alimentaria (fixed amount).</li>
      *   <li>totalDeducciones = ccssObrero + impuestoRenta + solidarista + pensionAlimentaria.</li>
@@ -219,10 +219,9 @@ public class CalculosNominaService {
         // 2. Employee CCSS
         BigDecimal ccssObrero = calcularCcssObrero(brutoProrrateado, ccss);
 
-        // 3. Taxable base
-        BigDecimal baseGravable = brutoProrrateado
-                .subtract(ccssObrero)
-                .setScale(2, RoundingMode.HALF_UP);
+        // 3. Taxable base (ADR-034): the scale applies on the prorated gross; employee CCSS
+        //    is deducted from the net only, never from the base.
+        BigDecimal baseGravable = brutoProrrateado.setScale(2, RoundingMode.HALF_UP);
 
         // 4. Income tax and family credit
         BigDecimal impuestoRenta = calcularImpuestoRenta(baseGravable, tramos, hijos, conyuge);

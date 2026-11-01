@@ -23,9 +23,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tax fixture: 2026 CR income-tax brackets.
  *   Exento : [0, 918000)   — 0 %,   creditoPorHijo=1710,  creditoPorConyuge=2590
  *   10 %   : [918000, 1347000)
- *   15 %   : [1347000, 2371000)
- *   20 %   : [2371000, 4740000)
- *   25 %   : [4740000, ∞)
+ *   15 %   : [1347000, 2364000)
+ *   20 %   : [2364000, 4727000)
+ *   25 %   : [4727000, ∞)
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CalculosNominaService — unit tests")
@@ -72,13 +72,14 @@ class CalculosNominaServiceTest {
 
         ccss2026 = buildCcss2026();
 
+        // Same 2026 scale as V4__rrhh_catalogos_regulatorios.sql lines 55-59
         // ordered by limiteInferior ASC — caller guarantee
         tramos2026 = List.of(
                 tramo("0",       "918000",  "0.00",  "1710", "2590"),
                 tramo("918000",  "1347000", "0.10",  null,   null),
-                tramo("1347000", "2371000", "0.15",  null,   null),
-                tramo("2371000", "4740000", "0.20",  null,   null),
-                tramo("4740000", null,      "0.25",  null,   null)
+                tramo("1347000", "2364000", "0.15",  null,   null),
+                tramo("2364000", "4727000", "0.20",  null,   null),
+                tramo("4727000", null,      "0.25",  null,   null)
         );
     }
 
@@ -161,8 +162,8 @@ class CalculosNominaServiceTest {
         assertEquals(new BigDecimal("18750.00"), conIns.insRiesgosPatronal());
         assertEquals(sinIns.salarioNeto(), conIns.salarioNeto());
         assertEquals(sinIns.totalDeducciones(), conIns.totalDeducciones());
-        // baseGravable = bruto − ccssObrero (1 500 000 − 162 450.00)
-        assertEquals(new BigDecimal("1337550.00"), conIns.baseGravable());
+        // ADR-034: baseGravable = brutoProrrateado, CCSS obrera is not subtracted (1 500 000.00)
+        assertEquals(new BigDecimal("1500000.00"), conIns.baseGravable());
         assertEquals(sinIns.baseGravable(), conIns.baseGravable());
     }
 
@@ -289,13 +290,14 @@ class CalculosNominaServiceTest {
     @Test
     @DisplayName("T-010 salarioNeto and totalDeducciones unchanged by the ASE contribution")
     void calcular_aporteAse_noAlteraNetoNiDeducciones() {
-        // 1 000 000: ccssObrero 108 300 + renta 0 (base 891 700 is exempt)
-        //            + solidarista 30 000 + pensión 50 000 = 188 300 → neto 811 700
+        // ADR-034: base = 1 000 000; renta = 10% × (1 000 000 − 918 000) = 8 200
+        // 1 000 000: ccssObrero 108 300 + renta 8 200
+        //            + solidarista 30 000 + pensión 50 000 = 196 500 → neto 803 500
         ResultadoCalculoNomina conAse = calcular("0.03", "50000", TASA_ASE_2026);
         ResultadoCalculoNomina sinAse = calcular("0.03", "50000", BigDecimal.ZERO);
 
-        assertEquals(new BigDecimal("188300.00"), conAse.totalDeducciones());
-        assertEquals(new BigDecimal("811700.00"), conAse.salarioNeto());
+        assertEquals(new BigDecimal("196500.00"), conAse.totalDeducciones());
+        assertEquals(new BigDecimal("803500.00"), conAse.salarioNeto());
         assertEquals(sinAse.totalDeducciones(), conAse.totalDeducciones());
         assertEquals(sinAse.salarioNeto(), conAse.salarioNeto());
         assertEquals(new BigDecimal("268300.00"), conAse.ccssPatronal());
@@ -309,5 +311,56 @@ class CalculosNominaServiceTest {
                 calcular("0.03", null, new BigDecimal("0.0533")).aportePatronalSolidarista());
         assertEquals(new BigDecimal("40000.00"),
                 calcular("0.03", null, new BigDecimal("0.0400")).aportePatronalSolidarista());
+    }
+
+    // =========================================================================
+    // T-028 — income tax scale applied on brutoProrrateado (ADR-034)
+    // =========================================================================
+
+    private ResultadoCalculoNomina calcularRenta(String bruto, int hijos, boolean conyuge) {
+        return service.calcular(new BigDecimal(bruto), BigDecimal.ZERO, null, null,
+                ccss2026, null, null, tramos2026, hijos, conyuge);
+    }
+
+    @Test
+    @DisplayName("T-028a bruto 1 500 000, no credits → baseGravable 1 500 000.00, renta 65 850.00")
+    void calcular_t028a_baseEsBrutoSinRestarCcss() {
+        ResultadoCalculoNomina r = calcularRenta("1500000", 0, false);
+        // 10% × (1 347 000 − 918 000) = 42 900 ; 15% × (1 500 000 − 1 347 000) = 22 950 ; total 65 850
+        assertEquals(new BigDecimal("1500000.00"), r.baseGravable());
+        assertEquals(new BigDecimal("65850.00"), r.impuestoRenta());
+    }
+
+    @Test
+    @DisplayName("T-028b bruto 1 000 000, 1 child + spouse → 8 200 − 1 710 − 2 590 = 3 900.00")
+    void calcular_t028b_creditosSeRestanDelImpuesto() {
+        ResultadoCalculoNomina r = calcularRenta("1000000", 1, true);
+        // 10% × (1 000 000 − 918 000) = 8 200 ; credits 1 710 + 2 590 = 4 300 ; 8 200 − 4 300 = 3 900
+        assertEquals(new BigDecimal("1000000.00"), r.baseGravable());
+        assertEquals(new BigDecimal("3900.00"), r.impuestoRenta());
+    }
+
+    @Test
+    @DisplayName("T-028c bruto 918 000 → renta 0.00")
+    void calcular_t028c_brutoExento() {
+        // base 918 000 is not above the exempt threshold (918 000) → no taxable excess → 0
+        assertEquals(new BigDecimal("0.00"), calcularRenta("918000", 0, false).impuestoRenta());
+    }
+
+    @Test
+    @DisplayName("T-028d bruto 1 800 000, no credits → renta 110 850.00")
+    void calcular_t028d_tramo15() {
+        // 42 900 + 15% × (1 800 000 − 1 347 000) = 42 900 + 67 950 = 110 850
+        assertEquals(new BigDecimal("110850.00"), calcularRenta("1800000", 0, false).impuestoRenta());
+    }
+
+    @Test
+    @DisplayName("T-028e CCSS obrera still reduces the neto: 1 500 000 − 162 450 − 65 850 = 1 271 700.00")
+    void calcular_t028e_ccssSigueRebajadaDelNeto() {
+        ResultadoCalculoNomina r = calcularRenta("1500000", 0, false);
+        // ccssObrero = 1 500 000 × 0.1083 = 162 450 ; neto = 1 500 000 − 162 450 − 65 850 = 1 271 700
+        assertEquals(new BigDecimal("162450.00"), r.ccssObrero());
+        assertEquals(new BigDecimal("228300.00"), r.totalDeducciones());
+        assertEquals(new BigDecimal("1271700.00"), r.salarioNeto());
     }
 }
