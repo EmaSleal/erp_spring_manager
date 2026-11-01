@@ -32,9 +32,9 @@ public enum EstadoComprobante {
 
     /**
      * Hacienda pudo recibirlo (timeout de lectura, conexión cortada tras enviar, 5xx o 4xx de documento ya recibido
-     * o sin causa clasificable). Se resuelve con "verificar con Hacienda" (ADR-030).
+     * o sin causa clasificable). Se resuelve con "Consultar estado en Hacienda" (ADR-030, ADR-031).
      */
-    ENVIO_INCIERTO("Envío incierto", "Hacienda pudo recibirlo; verifique con Hacienda", "warning",
+    ENVIO_INCIERTO("Envío incierto", "Hacienda pudo recibirlo; consulte el estado en Hacienda", "warning",
             "bi-question-circle-fill"),
 
     /**

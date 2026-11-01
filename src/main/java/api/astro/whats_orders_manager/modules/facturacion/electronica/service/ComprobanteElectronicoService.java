@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 
@@ -48,10 +49,10 @@ public interface ComprobanteElectronicoService {
     ComprobanteElectronicoDTO reemitir(Long id);
 
     /**
-     * "Verificar con Hacienda" para un comprobante en ENVIO_INCIERTO, 15 minutos después del último envío: 404 →
-     * NO_TRANSMITIDO; otra respuesta → el estado informado (ADR-030).
+     * "Consultar estado en Hacienda" (ADR-031 §4) para un comprobante ENVIADO, PROCESANDO, ENVIO_INCIERTO o
+     * ERROR_HACIENDA, 1 vez cada 30 s: 404 según el estado de origen; otra respuesta → el estado informado.
      */
-    ComprobanteElectronicoDTO verificarConHacienda(Long id);
+    ResultadoConsultaManualDTO consultarEstadoManual(Long id);
     
     /**
      * Obtiene comprobante por ID.
@@ -108,11 +109,6 @@ public interface ComprobanteElectronicoService {
      * Reenvía un comprobante que falló.
      */
     ComprobanteElectronicoDTO reenviar(Long id);
-    
-    /**
-     * Consulta estado de un comprobante en Hacienda.
-     */
-    ComprobanteElectronicoDTO consultarEstado(Long id);
     
     /**
      * Consulta estado en Hacienda y actualiza comprobante según respuesta.

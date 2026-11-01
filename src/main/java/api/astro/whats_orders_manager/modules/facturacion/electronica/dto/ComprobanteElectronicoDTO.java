@@ -68,8 +68,14 @@ public class ComprobanteElectronicoDTO {
     /** Comprobante vigente de su factura (los demás son historial, p. ej. un RECHAZADO reemitido). */
     private Boolean vigente;
 
-    /** ENVIO_INCIERTO: momento a partir del cual se habilita "verificar con Hacienda" (ADR-030). */
+    /**
+     * ENVIO_INCIERTO: momento a partir del cual un 404 de "Consultar estado en Hacienda" lo marca NO_TRANSMITIDO
+     * (ADR-031 §4); antes se puede consultar igual, pero un 404 no cambia el estado.
+     */
     private LocalDateTime verificableDesde;
+
+    /** Se puede "Consultar estado en Hacienda": ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA (ADR-031 §4). */
+    private Boolean consultableEnHacienda;
 
     /** Consultas seguidas en que Hacienda informó ind-estado "error". */
     private Integer consultasErrorHacienda;

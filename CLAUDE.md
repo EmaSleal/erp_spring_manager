@@ -22,3 +22,8 @@ Contexto general, estructura y comandos: ver `agents.md`. Comando de pruebas: `.
   Al terminar, el conjunto de contenedores y volúmenes debe ser igual al que había antes de empezar.
 - Nunca ejecutar la aplicación ni Maven desde la raíz del repositorio con `.env` presente: contiene credenciales
   de producción. Trabajar en una copia sin `.env`/`.env.local` y sin acceso a red externa.
+
+## Dependencias
+
+- Toda actualización de Spring Boot o Hibernate exige BloqueoFiscalFacturaIT en verde antes de integrarse
+  (PoliticaMutabilidadFactura usa PersistenceContext, SPI interna). Las *IT corren con `./mvnw verify`.

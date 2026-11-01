@@ -57,6 +57,7 @@ public class ComprobanteElectronicoMapper {
             .vigente(entity.getVigente())
             .verificableDesde(entity.getEstado() == EstadoComprobante.ENVIO_INCIERTO
                 ? ComprobanteElectronicoServiceImpl.disponibleParaVerificar(entity) : null)
+            .consultableEnHacienda(ComprobanteElectronicoServiceImpl.CONSULTABLES_A_MANO.contains(entity.getEstado()))
             .consultasErrorHacienda(entity.getConsultasErrorHacienda())
             .revisarEnAtv(entity.requiereRevisionEnAtv(maxConsultasErrorHacienda))
             .createdAt(entity.getCreatedAt())

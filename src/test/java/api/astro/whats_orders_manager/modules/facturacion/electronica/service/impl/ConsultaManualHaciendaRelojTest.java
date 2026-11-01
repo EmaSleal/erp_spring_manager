@@ -3,12 +3,14 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.service.i
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.LimiteConsultaManualHacienda;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,13 +36,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * T-025 (ADR-030) — "verificar con Hacienda" un ENVIO_INCIERTO solo 15 minutos después del último envío, con un
- * reloj inyectado fijo. El cliente de Hacienda es un mock: ninguna llamada real.
+ * T-026 (ADR-031 §4) — "Consultar estado en Hacienda" con un reloj inyectado fijo: la espera de 15 minutos ya no
+ * impide consultar; solo decide si un 404 de un ENVIO_INCIERTO significa NO_TRANSMITIDO. El cliente de Hacienda es
+ * un mock: ninguna llamada real.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("T-025 — verificación con Hacienda: regla de 15 minutos con reloj inyectado")
-class VerificacionHaciendaRelojTest {
+@DisplayName("T-026 — consulta manual de estado: regla del 404 de ENVIO_INCIERTO con reloj inyectado")
+class ConsultaManualHaciendaRelojTest {
 
     private static final ZoneId ZONA = ZoneId.of("America/Costa_Rica");
     private static final LocalDateTime ENVIO = LocalDateTime.of(2026, 10, 17, 10, 0);
@@ -49,6 +52,7 @@ class VerificacionHaciendaRelojTest {
     @Mock private ConfiguracionHaciendaService configuracionService;
     @Mock private HaciendaApiService haciendaApi;
     @Mock private ComprobanteElectronicoMapper mapper;
+    @Mock private LimiteConsultaManualHacienda limiteConsultaManual;
     @Mock private Clock clock;
 
     @InjectMocks private ComprobanteElectronicoServiceImpl service;
@@ -67,6 +71,8 @@ class VerificacionHaciendaRelojTest {
         when(configuracionService.obtenerConfiguracionActiva())
                 .thenReturn(ConfiguracionHacienda.builder().id(1L).empresa(empresa).build());
         when(clock.getZone()).thenReturn(ZONA);
+        when(haciendaApi.consultarComprobante(anyString(), anyLong()))
+                .thenReturn(RespuestaHaciendaDTO.builder().documentoNoExiste(true).codigoHttp(404).build());
     }
 
     private void ahora(LocalDateTime momento) {
@@ -74,36 +80,35 @@ class VerificacionHaciendaRelojTest {
     }
 
     @Test
-    @DisplayName("14 min 59 s después del envío → rechazado con la hora desde la que se puede (10:15), sin consultar")
-    void antesDe15Minutos() {
+    @DisplayName("14 min 59 s después del envío: consulta; 404 → sigue ENVIO_INCIERTO con la hora (10:15) en el mensaje")
+    void antesDe15Minutos_404_sinCambios() {
         ahora(ENVIO.plusMinutes(14).plusSeconds(59));
 
-        assertThatThrownBy(() -> service.verificarConHacienda(5L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("a partir de las 10:15");
-        verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
+        var resultado = service.consultarEstadoManual(5L);
+
+        verify(haciendaApi).consultarComprobante(anyString(), anyLong());
         assertThat(comprobante.getEstado()).isEqualTo(EstadoComprobante.ENVIO_INCIERTO);
+        assertThat(resultado.mensaje()).contains("a partir de las 10:15");
     }
 
     @Test
-    @DisplayName("15 min después del envío → consulta; 404 → NO_TRANSMITIDO")
-    void a15Minutos_404() {
+    @DisplayName("15 min después del envío: 404 → NO_TRANSMITIDO")
+    void a15Minutos_404_noTransmitido() {
         ahora(ENVIO.plusMinutes(15));
-        when(haciendaApi.consultarComprobante(anyString(), anyLong()))
-                .thenReturn(RespuestaHaciendaDTO.builder().documentoNoExiste(true).codigoHttp(404).build());
 
-        service.verificarConHacienda(5L);
+        service.consultarEstadoManual(5L);
 
         assertThat(comprobante.getEstado()).isEqualTo(EstadoComprobante.NO_TRANSMITIDO);
     }
 
     @Test
-    @DisplayName("un comprobante que no está en ENVIO_INCIERTO no se verifica")
-    void soloEnvioIncierto() {
+    @DisplayName("un comprobante ACEPTADO no se consulta a mano")
+    void aceptado_noConsultable() {
         comprobante.setEstado(EstadoComprobante.ACEPTADO);
         ahora(ENVIO.plusHours(2));
 
-        assertThatThrownBy(() -> service.verificarConHacienda(5L)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> service.consultarEstadoManual(5L))
+                .isInstanceOf(ConsultaManualNoPermitidaException.class);
         verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
     }
 }

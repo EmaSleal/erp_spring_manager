@@ -56,12 +56,12 @@ class PoliticaMutabilidadFacturaTest {
     }
 
     @Test
-    @DisplayName("ENVIO_INCIERTO → REQUIERE_VERIFICACION: verificar con Hacienda desde fechaEnvio + 15 min")
+    @DisplayName("ENVIO_INCIERTO → REQUIERE_VERIFICACION: consultar el estado en Hacienda; un 404 cuenta desde fechaEnvio + 15 min")
     void envioIncierto() {
         Decision decision = PoliticaMutabilidadFactura.decidir(EstadoComprobante.ENVIO_INCIERTO, CLAVE,
                 LocalDateTime.of(2026, 10, 17, 9, 50));
         assertThat(decision.mutabilidad()).isEqualTo(Mutabilidad.REQUIERE_VERIFICACION);
         assertThat(decision.permite()).isFalse();
-        assertThat(decision.motivo()).contains("Verifique el estado con Hacienda").contains("10:05");
+        assertThat(decision.motivo()).contains("Consulte el estado en Hacienda").contains("10:05");
     }
 }
