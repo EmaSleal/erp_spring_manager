@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.proveedores.dto.ProveedorDTO;
+import api.astro.whats_orders_manager.modules.proveedores.exception.CedulaProveedorDuplicadaException;
 import api.astro.whats_orders_manager.modules.proveedores.enums.CategoriaProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.ProveedorItem;
@@ -33,7 +34,7 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Transactional
     public Proveedor crear(ProveedorDTO dto) {
         if (proveedorRepository.existsByCedula(dto.getCedula())) {
-            throw new IllegalArgumentException("Ya existe un proveedor con cédula: " + dto.getCedula());
+            throw new CedulaProveedorDuplicadaException(dto.getCedula());
         }
         Proveedor p = toEntity(dto);
         Proveedor guardado = proveedorRepository.save(p);
@@ -47,7 +48,7 @@ public class ProveedorServiceImpl implements ProveedorService {
     public Proveedor actualizar(Long id, ProveedorDTO dto) {
         Proveedor p = findById(id);
         if (!p.getCedula().equals(dto.getCedula()) && proveedorRepository.existsByCedula(dto.getCedula())) {
-            throw new IllegalArgumentException("Ya existe un proveedor con cédula: " + dto.getCedula());
+            throw new CedulaProveedorDuplicadaException(dto.getCedula());
         }
         mapFromDto(p, dto);
         Proveedor guardado = proveedorRepository.save(p);

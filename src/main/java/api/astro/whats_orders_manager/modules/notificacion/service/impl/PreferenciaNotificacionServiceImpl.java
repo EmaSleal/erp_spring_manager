@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.notificacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.notificacion.dto.PreferenciaTipoDTO;
 import api.astro.whats_orders_manager.modules.notificacion.model.PreferenciaNotificacion;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
@@ -416,6 +417,65 @@ public class PreferenciaNotificacionServiceImpl implements PreferenciaNotificaci
                 .build();
             
             return preferenciaRepository.save(nueva);
+        }
+    }
+
+    @Override
+    public List<PreferenciaTipoDTO> listarPorTipo(Usuario usuario) {
+        Map<TipoNotificacion, Set<CanalNotificacion>> activos = new EnumMap<>(TipoNotificacion.class);
+        for (PreferenciaNotificacion pref : findByUsuario(usuario)) {
+            if (pref.esEspecifica() && Boolean.TRUE.equals(pref.getActiva())) {
+                activos.computeIfAbsent(pref.getTipoNotificacion(), t -> EnumSet.noneOf(CanalNotificacion.class))
+                    .add(pref.getCanal());
+            }
+        }
+
+        List<PreferenciaTipoDTO> resultado = new ArrayList<>();
+        for (TipoNotificacion tipo : TipoNotificacion.values()) {
+            Set<CanalNotificacion> canales = activos.getOrDefault(tipo, Set.of());
+            resultado.add(PreferenciaTipoDTO.builder()
+                .tipo(tipo)
+                .activoWeb(canales.contains(CanalNotificacion.WEB))
+                .activoEmail(canales.contains(CanalNotificacion.EMAIL))
+                .activoWhatsapp(canales.contains(CanalNotificacion.WHATSAPP))
+                .build());
+        }
+        return resultado;
+    }
+
+    @Override
+    @Transactional
+    public List<PreferenciaTipoDTO> guardarPorTipo(Usuario usuario, List<PreferenciaTipoDTO> preferencias) {
+        validarPreferenciasPorTipo(preferencias);
+
+        for (PreferenciaTipoDTO pref : preferencias) {
+            for (CanalNotificacion canal : PreferenciaTipoDTO.CANALES) {
+                crearOActualizar(usuario, pref.getTipo(), canal, pref.activoPara(canal));
+            }
+        }
+        log.info("✅ Guardadas preferencias de {} tipos para usuario {}", preferencias.size(), usuario.getIdUsuario());
+
+        return listarPorTipo(usuario);
+    }
+
+    private static void validarPreferenciasPorTipo(List<PreferenciaTipoDTO> preferencias) {
+        if (preferencias == null) {
+            throw new IllegalArgumentException("Debe enviar la lista de preferencias");
+        }
+        Set<TipoNotificacion> tipos = EnumSet.noneOf(TipoNotificacion.class);
+        for (PreferenciaTipoDTO pref : preferencias) {
+            if (pref == null || pref.getTipo() == null) {
+                throw new IllegalArgumentException("Cada preferencia debe indicar el tipo de notificación");
+            }
+            if (!tipos.add(pref.getTipo())) {
+                throw new IllegalArgumentException("El tipo " + pref.getTipo() + " está repetido");
+            }
+            for (CanalNotificacion canal : PreferenciaTipoDTO.CANALES) {
+                if (pref.activoPara(canal) == null) {
+                    throw new IllegalArgumentException(
+                        "Falta el estado del canal " + canal + " para el tipo " + pref.getTipo());
+                }
+            }
         }
     }
 
