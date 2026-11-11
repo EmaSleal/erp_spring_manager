@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.notificacion.enums.TipoNotificacio
 import api.astro.whats_orders_manager.modules.notificacion.model.PreferenciaNotificacion;
 import api.astro.whats_orders_manager.modules.notificacion.repository.PreferenciaNotificacionRepository;
 import api.astro.whats_orders_manager.modules.notificacion.service.NotificacionService;
+import api.astro.whats_orders_manager.modules.notificacion.service.PreferenciaNotificacionService;
 import api.astro.whats_orders_manager.modules.notificacion.service.impl.PreferenciaNotificacionServiceImpl;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioRepository;
@@ -72,6 +73,7 @@ class PreferenciasNotificacionApiTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private UsuarioRepository usuarioRepository;
+    @Autowired private PreferenciaNotificacionService preferenciaService;
     @Autowired private ObjectMapper objectMapper;
 
     private Usuario usuario;
@@ -157,7 +159,32 @@ class PreferenciasNotificacionApiTest {
         assertThat(respuesta.toString()).doesNotContain("hashDeLaClave", EMAIL);
         assertThat(respuesta).hasSize(TipoNotificacion.values().length);
         assertThat(canales(respuesta, TipoNotificacion.FACTURA_VENCIDA))
-                .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", false, "EMAIL", true, "WHATSAPP", false));
+                .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", true, "EMAIL", true, "WHATSAPP", true));
+    }
+
+    @Test
+    @DisplayName("GET muestra el valor efectivo que usa el envío: global activa → todo activo; tras desactivar X/EMAIL, inactivo en ambos")
+    void get_coincideConElEnvio() throws Exception {
+        fila(null, null, true);
+
+        JsonNode antes = leer();
+        for (TipoNotificacion tipo : TipoNotificacion.values()) {
+            assertThat(canales(antes, tipo)).as(tipo.name())
+                    .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", true, "EMAIL", true, "WHATSAPP", true));
+        }
+
+        guardar("""
+                [{"tipo":"FACTURA_VENCIDA","activoWeb":true,"activoEmail":false,"activoWhatsapp":true}]""")
+                .andExpect(status().isOk());
+
+        assertThat(canales(leer(), TipoNotificacion.FACTURA_VENCIDA))
+                .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", true, "EMAIL", false, "WHATSAPP", true));
+        assertThat(preferenciaService.usuarioAceptaNotificacion(
+                usuario, TipoNotificacion.FACTURA_VENCIDA, CanalNotificacion.EMAIL)).isFalse();
+        assertThat(preferenciaService.usuarioAceptaNotificacion(
+                usuario, TipoNotificacion.FACTURA_VENCIDA, CanalNotificacion.WEB)).isTrue();
+        assertThat(preferenciaService.usuarioAceptaNotificacion(
+                usuario, TipoNotificacion.STOCK_BAJO, CanalNotificacion.EMAIL)).isTrue();
     }
 
     @Test
@@ -173,8 +200,8 @@ class PreferenciasNotificacionApiTest {
                 .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", true, "EMAIL", false, "WHATSAPP", true));
         assertThat(canales(respuesta, TipoNotificacion.STOCK_BAJO))
                 .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", false, "EMAIL", true, "WHATSAPP", false));
-        assertThat(canales(respuesta, TipoNotificacion.PAGO_RECIBIDO))
-                .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", false, "EMAIL", false, "WHATSAPP", false));
+        assertThat(canales(respuesta, TipoNotificacion.PAGO_RECIBIDO)) // sin filas propias: sigue a la global
+                .containsExactlyInAnyOrderEntriesOf(Map.of("WEB", true, "EMAIL", true, "WHATSAPP", true));
         assertThat(preferenciaRepository.count()).isEqualTo(7); // 2 tipos x 3 canales + la global
         assertThat(filasConNull()).isEqualTo(1);
     }

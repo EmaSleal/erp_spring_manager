@@ -151,8 +151,10 @@ public interface PreferenciaNotificacionService {
 
     /**
      * Verifica si un usuario acepta recibir un tipo de notificación por un canal
-     * Aplica lógica de prioridad: específica > tipo > canal > global
-     * 
+     * Aplica lógica de prioridad: específica > tipo > canal > global. Decide la fila aplicable más específica
+     * según su campo activa (una inactiva bloquea aunque haya otras menos específicas activas);
+     * notificacionesDesactivadasGlobal bloquea siempre y, sin ninguna fila aplicable, se rechaza.
+     *
      * @param usuario Usuario a validar
      * @param tipo Tipo de notificación
      * @param canal Canal de notificación
