@@ -10,16 +10,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Controlador REST para gestión de configuración de Hacienda.
@@ -33,12 +38,21 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class ConfiguracionHaciendaController {
-    
+
+    /** T-030 (ADR-035): toda escritura de la configuración de Hacienda y del certificado es solo para ADMIN. */
+    static final String SOLO_ADMIN = "hasRole('ADMIN')";
+
+    private static final List<String> EXTENSIONES_CERTIFICADO = List.of(".p12", ".pfx");
+    private static final DateTimeFormatter MARCA_TIEMPO = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+
     private final ConfiguracionHaciendaService configuracionService;
     private final ConfiguracionHaciendaMapper mapper;
 
     @Value("${app.certificados.directorio:/app/certificados}")
     private String certificadosDir;
+
+    @Value("${app.certificados.tamano-maximo-bytes:262144}")
+    private long tamanoMaximoCertificado;
     
     /**
      * Obtiene configuración activa de una empresa.
@@ -85,6 +99,7 @@ public class ConfiguracionHaciendaController {
      * Crea nueva configuración de Hacienda.
      * POST /api/facturacion/configuracion-hacienda
      */
+    @PreAuthorize(SOLO_ADMIN)
     @PostMapping
     public ResponseEntity<ConfiguracionHaciendaDTO> crear(
             @Valid @RequestBody ConfiguracionHaciendaDTO dto) {
@@ -97,6 +112,7 @@ public class ConfiguracionHaciendaController {
      * Actualiza configuración existente.
      * PUT /api/facturacion/configuracion-hacienda/{id}
      */
+    @PreAuthorize(SOLO_ADMIN)
     @PutMapping("/{id}")
     public ResponseEntity<ConfiguracionHaciendaDTO> actualizar(
             @PathVariable Long id,
@@ -110,6 +126,7 @@ public class ConfiguracionHaciendaController {
      * Activa una configuración específica.
      * PUT /api/facturacion/configuracion-hacienda/{id}/activar
      */
+    @PreAuthorize(SOLO_ADMIN)
     @PutMapping("/{id}/activar")
     public ResponseEntity<ConfiguracionHaciendaDTO> activar(@PathVariable Long id) {
         log.info("Activando configuración {}", id);
@@ -121,6 +138,7 @@ public class ConfiguracionHaciendaController {
      * Desactiva una configuración.
      * PUT /api/facturacion/configuracion-hacienda/{id}/desactivar
      */
+    @PreAuthorize(SOLO_ADMIN)
     @PutMapping("/{id}/desactivar")
     public ResponseEntity<ConfiguracionHaciendaDTO> desactivar(@PathVariable Long id) {
         log.info("Desactivando configuración {}", id);
@@ -132,6 +150,7 @@ public class ConfiguracionHaciendaController {
      * Renueva el token de OAuth2 de Hacienda.
      * POST /api/facturacion/configuracion-hacienda/{id}/renovar-token
      */
+    @PreAuthorize(SOLO_ADMIN)
     @PostMapping("/{id}/renovar-token")
     public ResponseEntity<Map<String, Object>> renovarToken(@PathVariable Long id) {
         log.info("Renovando token OAuth2 para configuración {}", id);
@@ -200,6 +219,7 @@ public class ConfiguracionHaciendaController {
      * Elimina una configuración (soft delete).
      * DELETE /api/facturacion/configuracion-hacienda/{id}
      */
+    @PreAuthorize(SOLO_ADMIN)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         log.info("Eliminando configuración {}", id);
@@ -207,27 +227,53 @@ public class ConfiguracionHaciendaController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Sube un certificado .p12/.pfx (T-030, P-035 parcial). El nombre lo genera el servidor (ambiente, marca de
+     * tiempo y UUID); el del cliente solo aporta la extensión. Nunca sobrescribe un archivo existente y la ruta final
+     * debe quedar dentro de app.certificados.directorio. El PIN no llega a este endpoint: su validación queda en P-035.
+     */
+    @PreAuthorize(SOLO_ADMIN)
     @PostMapping("/upload-certificado")
     public ResponseEntity<Map<String, String>> uploadCertificado(
-            @RequestParam("archivo") MultipartFile archivo) {
-        log.info("Subiendo certificado: {}", archivo.getOriginalFilename());
+            @RequestParam("archivo") MultipartFile archivo,
+            @RequestParam(value = "ambiente", required = false) AmbienteHacienda ambiente) {
+        Optional<String> extension = extensionPermitida(archivo.getOriginalFilename());
+        if (extension.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Solo se permiten archivos .p12 o .pfx"));
+        }
+        if (archivo.isEmpty() || archivo.getSize() > tamanoMaximoCertificado) {
+            return ResponseEntity.badRequest().body(Map.of("error",
+                    "El certificado debe tener contenido y no superar " + tamanoMaximoCertificado + " bytes"));
+        }
         try {
-            String originalName = archivo.getOriginalFilename();
-            if (originalName == null || (!originalName.endsWith(".p12") && !originalName.endsWith(".pfx"))) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Solo se permiten archivos .p12 o .pfx"));
+            Path dir = Path.of(certificadosDir).toAbsolutePath().normalize();
+            String prefijo = ambiente != null ? ambiente.name().toLowerCase(Locale.ROOT) : "certificado";
+            String nombre = prefijo + "-" + LocalDateTime.now().format(MARCA_TIEMPO) + "-" + UUID.randomUUID()
+                    + extension.get();
+            Path destino = dir.resolve(nombre).normalize();
+            if (!destino.getParent().equals(dir)) {
+                log.warn("Ruta de certificado fuera del directorio rechazada: {}", destino);
+                return ResponseEntity.badRequest().body(Map.of("error", "Ruta de destino inválida"));
             }
-            String safeName = originalName.replace(" ", "_");
-            Path dir = Path.of(certificadosDir);
             Files.createDirectories(dir); // idempotent — no-op if already exists
-            Path destino = dir.resolve(safeName);
-            Files.copy(archivo.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
-            String ruta = destino.toAbsolutePath().toString();
+            try (InputStream contenido = archivo.getInputStream()) {
+                Files.copy(contenido, destino); // sin REPLACE_EXISTING: falla antes que sobrescribir
+            }
+            String ruta = destino.toString();
             log.info("Certificado guardado en: {}", ruta);
             return ResponseEntity.ok(Map.of("ruta", ruta));
         } catch (IOException e) {
-            log.error("Error al guardar certificado [{}]: {}", e.getClass().getSimpleName(), e.getMessage());
+            log.error("Error al guardar certificado", e);
             return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+                    .body(Map.of("error", "No se pudo guardar el certificado"));
         }
+    }
+
+    private static Optional<String> extensionPermitida(String nombreOriginal) {
+        if (nombreOriginal == null) {
+            return Optional.empty();
+        }
+        String nombre = nombreOriginal.toLowerCase(Locale.ROOT);
+        return EXTENSIONES_CERTIFICADO.stream().filter(nombre::endsWith).findFirst();
     }
 }

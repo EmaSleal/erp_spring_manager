@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.notificacion.controller;
 
+import api.astro.whats_orders_manager.modules.notificacion.dto.PreferenciaTipoDTO;
 import api.astro.whats_orders_manager.modules.notificacion.model.Notificacion;
 import api.astro.whats_orders_manager.modules.notificacion.model.PreferenciaNotificacion;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
@@ -300,12 +301,8 @@ public class NotificacionRestController {
                     .body(Map.of("error", "Usuario no encontrado"));
             }
 
-            Usuario usuario = usuarioOpt.get();
-            List<PreferenciaNotificacion> preferencias = 
-                preferenciaService.findByUsuario(usuario);
-            
-            // Si no hay preferencias, devolver array vacío (el frontend creará las predeterminadas)
-            return ResponseEntity.ok(preferencias);
+            // T-030: DTO por tipo y canal; nunca la entidad (que serializaba el Usuario completo)
+            return ResponseEntity.ok(preferenciaService.listarPorTipo(usuarioOpt.get()));
 
         } catch (Exception e) {
             log.error("Error al obtener preferencias de notificación", e);
@@ -320,44 +317,29 @@ public class NotificacionRestController {
      */
     @PutMapping("/preferencias")
     public ResponseEntity<?> actualizarPreferencias(
-            @RequestBody List<PreferenciaNotificacion> preferencias,
+            @RequestBody List<PreferenciaTipoDTO> preferencias,
             Authentication authentication) {
         
         try {
-            Integer idUsuario = obtenerIdUsuario(authentication);
+            Usuario usuario = obtenerUsuario(authentication);
             
-            if (idUsuario == null) {
+            if (usuario == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Usuario no autenticado"));
             }
 
-            // Validar que todas las preferencias pertenezcan al usuario
-            Optional<Usuario> usuarioOpt = usuarioRepository.findById(idUsuario);
-            if (usuarioOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Usuario no encontrado"));
-            }
-
-            Usuario usuario = usuarioOpt.get();
-            
-            // Actualizar cada preferencia
-            for (PreferenciaNotificacion pref : preferencias) {
-                pref.setUsuario(usuario);
-                if (pref.getIdPreferencia() != null) {
-                    // Actualizar existente
-                    preferenciaService.actualizar(pref.getIdPreferencia(), pref);
-                } else {
-                    // Crear nueva
-                    preferenciaService.crear(pref);
-                }
-            }
+            // T-030 (P-032): cada tipo se guarda como una fila por canal, en una sola transacción
+            List<PreferenciaTipoDTO> guardadas = preferenciaService.guardarPorTipo(usuario, preferencias);
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Preferencias actualizadas correctamente",
-                "total", preferencias.size()
+                "total", preferencias.size(),
+                "preferencias", guardadas
             ));
 
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("Error al actualizar preferencias", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -467,7 +449,7 @@ public class NotificacionRestController {
                 "success", true,
                 "message", "Preferencias inicializadas correctamente",
                 "totalPreferencias", preferencias.size(),
-                "preferencias", preferencias
+                "preferencias", preferenciaService.listarPorTipo(usuario)
             ));
 
         } catch (Exception e) {
