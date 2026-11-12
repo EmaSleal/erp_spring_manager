@@ -710,7 +710,7 @@ class NominaServiceTest {
         return new ResultadoCalculoNomina(
                 new BigDecimal("900000.00"),  // brutoProrrateado
                 new BigDecimal("97470.00"),   // ccssObrero
-                new BigDecimal("802530.00"),  // baseGravable
+                new BigDecimal("900000.00"),  // baseGravable = brutoProrrateado (ADR-034)
                 BigDecimal.ZERO,              // impuestoRenta
                 BigDecimal.ZERO,              // creditoFamiliar
                 BigDecimal.ZERO,              // solidarista
