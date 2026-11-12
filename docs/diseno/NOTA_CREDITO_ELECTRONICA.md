@@ -98,3 +98,24 @@ Restricción temporal de T-032: una factura con pagos aplicados no admite nota t
 - **Fecha contable por error material (P-074):** confirmar con el contador.
 - **Nota de débito (P-075):** diferida.
 - **Prueba real:** el flujo completo debe probarse en el ambiente de pruebas de Hacienda antes de PRODUCCIÓN; las pruebas automáticas usan un cliente simulado.
+
+
+## 8. Verificación contra el Anexo oficial (2026-11-12)
+
+Fuente: `docs/referencias/ANEXOS_Y_ESTRUCTURAS_V4.4/` (Anexo convertido a Markdown; bitácora al 22/04/2026). Esta sección prevalece sobre §2 y §3 donde difieran.
+
+**Catálogo de la nota 9 (oficial, completo):** 01 Anula documento de referencia · 02 Corrige monto · 04 Referencia a otro documento · 05 Sustituye comprobante provisional por contingencia · 06 Devolución de mercancía · 07 Sustituye comprobante electrónico · 08 Factura endosada · 09 Nota de crédito financiera · 10 Nota de débito financiera · 11 Proveedor no domiciliado · 12 Nota de crédito financiera por exoneración posterior a la facturación · 13 Anula documento de referencia por error material · 14 Corrige monto por error material · 15 Sustituye comprobante electrónico por error material · 16 Sustituye comprobante electrónico rechazado · 17 Pago a comprobante electrónico (exclusivo del recibo electrónico de pago) · 99 Otros.
+
+- **El código 03 no existe.** «Corrige monto» es el 02. Queda resuelta la duda de §3.
+- **Periodo del efecto** (nota al pie de la nota 9): 01, 02 y 06 → periodo en que se genera la nota; 13 y 14 → periodo del comprobante que se modifica; 12 → periodo de la nota.
+- **El 15 no es un código de nota de crédito.** Es el código que lleva el comprobante nuevo que reemplaza a uno anulado con 13. Igual el 07, que lleva el comprobante nuevo que reemplaza a uno anulado con 01. ADR-037 §4 menciona el 15 junto a 13 y 14: en la práctica la regla de fecha aplica a 13 y 14.
+
+**Nota 10 (tipo de documento de referencia), códigos relevantes:** 01 Factura electrónica · 02 Nota de débito · 03 Nota de crédito · 04 Tiquete · 10 Comprobante electrónico rechazado por el Ministerio de Hacienda · 19 Factura electrónica de exportación · 20 Recibo electrónico de pago.
+
+**Apartado d, InformacionReferencia:**
+- Obligatoria en la nota de crédito; admite hasta 10 repeticiones.
+- `TipoDocIR` (nota 10), `Numero` (clave numérica o consecutivo, 50), `FechaEmisionIR` (fecha del documento de referencia, con antigüedad máxima de 10 años), `Codigo` (nota 9) y `Razon` (3 a 180 caracteres).
+- Hacienda verifica que la clave sea válida y que los datos de la nota (encabezado, tipo de cambio, CAByS, entre otros) correspondan al comprobante referenciado.
+- **Tope acumulado:** la suma de las notas de crédito no puede superar el monto del comprobante referenciado más sus notas de débito. T-033 debe controlar el acumulado por factura.
+
+**Impacto en P-073:** la nota 9 dice que el comprobante nuevo que reemplaza a uno anulado «deberá» llevar el código 07 (o 15). Para el sustituto de un rechazado existen el tipo 10 y el código 16, pero el apartado d no declara obligatoria la referencia en la factura electrónica salvo un caso de exoneración. Conclusión: obligatorio para la factura sustituta tras una anulación; para la reemisión tras rechazo, recomendable y a confirmar.
