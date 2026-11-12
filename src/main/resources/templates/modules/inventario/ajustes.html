@@ -156,9 +156,9 @@
     /*<![CDATA[*/
     const productosData = {};
     /*[# th:each="p : ${productos}"]*/
-    productosData[/*[(${p.idProducto})]*/ 0] = {
+    productosData[ /*[(${p.idProducto})]*/ 0 ] = {
         id: /*[(${p.idProducto})]*/ 0,
-        descripcion: /*[(${p.descripcion})]*/ '',
+        descripcion: /*[[${p.descripcion}]]*/ '',
         stock: /*[(${p.stock != null ? p.stock : 0})]*/ 0
     };
     /*[/]*/
