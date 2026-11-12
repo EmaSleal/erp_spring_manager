@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.contabilidad.controller;
 
 import api.astro.whats_orders_manager.modules.contabilidad.service.CalculoContableService;
+import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CalculoContableService.MovimientoCuenta;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CalculoContableService.SaldoCuenta;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ import java.util.Map;
 public class ReporteContableController {
     
     private final CalculoContableService calculoService;
+    private final MonedaService monedaService;
     
     /**
      * Vista principal de reportes contables.
@@ -126,6 +128,7 @@ public class ReporteContableController {
         
         model.addAttribute("fecha", fecha);
         model.addAttribute("balance", balance);
+        model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
         
         return "modules/contabilidad/reportes/balance-general";
     }
@@ -153,6 +156,7 @@ public class ReporteContableController {
         model.addAttribute("fechaInicio", fechaInicio);
         model.addAttribute("fechaFin", fechaFin);
         model.addAttribute("estado", estado);
+        model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
         
         return "modules/contabilidad/reportes/estado-resultados";
     }

@@ -23,6 +23,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +56,13 @@ public class AsientoContableController {
     }
     
     /**
+     * Tipos que un usuario puede elegir en un asiento manual: los automáticos los genera el sistema.
+     */
+    private static List<TipoAsiento> tiposManuales() {
+        return Arrays.stream(TipoAsiento.values()).filter(t -> !t.esAutomatico()).toList();
+    }
+    
+    /**
      * Vista del formulario para crear asiento.
      */
     @GetMapping("/crear")
@@ -63,7 +71,7 @@ public class AsientoContableController {
         log.info("Mostrando formulario de creación de asiento");
         
         model.addAttribute("esEdicion", false);
-        model.addAttribute("tiposAsiento", TipoAsiento.values());
+        model.addAttribute("tiposAsiento", tiposManuales());
         model.addAttribute("fechaActual", LocalDate.now());
         model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
         
@@ -86,7 +94,7 @@ public class AsientoContableController {
         }
         
         model.addAttribute("asiento", asientoMapper.toDTO(asiento));
-        model.addAttribute("tiposAsiento", TipoAsiento.values());
+        model.addAttribute("tiposAsiento", tiposManuales());
         model.addAttribute("esEdicion", true);
         model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
         
