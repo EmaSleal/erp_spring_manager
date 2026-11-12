@@ -23,12 +23,27 @@ public enum EstadoComprobante {
     FIRMADO("Firmado", "Comprobante firmado digitalmente", "info", "bi-shield-check"),
     
     /**
-     * Comprobante enviado a Hacienda, esperando respuesta.
+     * Se intentó enviar y es seguro que Hacienda no lo tiene: falló la conexión (rechazada, DNS, timeout de
+     * conexión, token) o la recepción respondió un 4xx que no indica recepción previa (ADR-030).
+     * Se reenvía con la misma clave.
+     */
+    NO_TRANSMITIDO("No transmitido", "Hacienda no lo recibió; se puede corregir y reenviar", "secondary",
+            "bi-cloud-slash"),
+
+    /**
+     * Hacienda pudo recibirlo (timeout de lectura, conexión cortada tras enviar, 5xx o 4xx de documento ya recibido
+     * o sin causa clasificable). Se resuelve con "Consultar estado en Hacienda" (ADR-030, ADR-031).
+     */
+    ENVIO_INCIERTO("Envío incierto", "Hacienda pudo recibirlo; consulte el estado en Hacienda", "warning",
+            "bi-question-circle-fill"),
+
+    /**
+     * Hacienda confirmó la recepción (202) y aún no informa el resultado.
      */
     ENVIADO("Enviado", "Enviado a Hacienda", "primary", "bi-send"),
     
     /**
-     * Comprobante procesando en Hacienda.
+     * Hacienda informa que lo está procesando o que lo recibió sin resolver.
      */
     PROCESANDO("Procesando", "Procesando en Hacienda", "primary", "bi-hourglass-split"),
     
@@ -38,12 +53,20 @@ public enum EstadoComprobante {
     ACEPTADO("Aceptado", "Aceptado por Hacienda", "success", "bi-check-circle-fill"),
     
     /**
-     * Comprobante rechazado por Hacienda.
+     * Hacienda procesó el documento y lo rechazó (ind-estado). Historial inmutable: se reemite con clave nueva.
      */
     RECHAZADO("Rechazado", "Rechazado por Hacienda", "danger", "bi-x-circle-fill"),
-    
+
     /**
-     * Error al procesar el comprobante.
+     * La consulta de estado informa ind-estado "error": Hacienda tiene el documento pero no lo resolvió como
+     * aceptado ni rechazado. Bloqueado (Hacienda lo tiene); el sondeo vuelve a consultar y, tras N consultas
+     * seguidas con "error", deja de hacerlo y el comprobante queda señalado para revisarlo en ATV.
+     */
+    ERROR_HACIENDA("Error en Hacienda", "Hacienda informó error al procesarlo; revíselo en ATV", "danger",
+            "bi-exclamation-octagon-fill"),
+
+    /**
+     * Falla local antes de transmitir (XML, firma, configuración). Se reenvía con la misma clave.
      */
     ERROR("Error", "Error en el proceso", "danger", "bi-exclamation-triangle-fill"),
     
@@ -71,6 +94,14 @@ public enum EstadoComprobante {
         return this == ACEPTADO || this == RECHAZADO || this == ANULADO;
     }
     
+    /**
+     * true si Hacienda no tiene el documento y se puede (re)enviar con la misma clave: GENERADO, FIRMADO,
+     * ERROR o NO_TRANSMITIDO (ADR-030).
+     */
+    public boolean esReenviable() {
+        return this == GENERADO || this == FIRMADO || this == ERROR || this == NO_TRANSMITIDO;
+    }
+
     /**
      * Verifica si el estado indica éxito.
      */

@@ -2,6 +2,8 @@ package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
+import api.astro.whats_orders_manager.modules.facturacion.exception.FacturaBloqueadaException;
+import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabilidadFactura;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
@@ -59,6 +61,7 @@ public class FacturaController {
     private final FacturaMapper facturaMapper;
     private final FacturaPdfService facturaPdfService;
     private final PagoMapper pagoMapper;
+    private final PoliticaMutabilidadFactura politicaMutabilidad;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -167,8 +170,22 @@ public class FacturaController {
             }
             
             Factura factura = facturaOpt.get();
-            
-            return ResponseEntity.ok(facturaMapper.toDetalleDTO(factura));
+            FacturaDetalleDTO detalle = facturaMapper.toDetalleDTO(factura);
+
+            // Estado FE del comprobante vigente para el modal (ADR-031): proyección JPQL, sin la entidad
+            PoliticaMutabilidadFactura.EstadoFe estadoFe = politicaMutabilidad.estadoFe(id);
+            if (estadoFe != null) {
+                detalle.setIdComprobante(estadoFe.idComprobante());
+                detalle.setEstadoComprobante(estadoFe.estado());
+                detalle.setEstadoComprobanteDescripcion(estadoFe.estado().getCodigo());
+                detalle.setEstadoComprobanteColor(estadoFe.estado().getColor());
+                detalle.setEstadoComprobanteIcono(estadoFe.estado().getIcono());
+                detalle.setClaveComprobante(estadoFe.claveNumerica());
+                detalle.setRevisarEnAtv(estadoFe.revisarEnAtv());
+            } else {
+                detalle.setRevisarEnAtv(false);
+            }
+            return ResponseEntity.ok(detalle);
                     
         } catch (Exception e) {
             log.error("Error al obtener factura: {}", e.getMessage(), e);
@@ -199,6 +216,8 @@ public class FacturaController {
             log.info("Factura guardada exitosamente con ID: {}", nuevaFactura.getIdFactura());
             return ResponseEntity.ok(nuevaFactura);
             
+        } catch (FacturaBloqueadaException e) {
+            throw e; // 409 (FacturaBloqueadaAdvice)
         } catch (Exception e) {
             log.error("Error al guardar factura: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
@@ -220,6 +239,8 @@ public class FacturaController {
             facturaService.eliminarConValidacion(id);
             redirectAttributes.addFlashAttribute("success", "Factura eliminada exitosamente");
             log.info("Factura eliminada exitosamente ID: {}", id);
+        } catch (FacturaBloqueadaException e) {
+            throw e; // 409 (FacturaBloqueadaAdvice)
         } catch (NoSuchElementException | IllegalStateException e) {
             log.warn("No se pudo eliminar factura {}: {}", id, e.getMessage());
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -246,6 +267,8 @@ public class FacturaController {
         try {
             facturaService.anular(id, motivo);
             redirectAttributes.addFlashAttribute("success", "Factura anulada exitosamente");
+        } catch (FacturaBloqueadaException e) {
+            throw e; // 409 (FacturaBloqueadaAdvice)
         } catch (NoSuchElementException | IllegalStateException | IllegalArgumentException e) {
             log.warn("No se pudo anular factura {}: {}", id, e.getMessage());
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -280,6 +303,8 @@ public class FacturaController {
             }
             
             model.addAttribute("factura", facturaOptional.get());
+            // ADR-030: la UI deshabilita los campos fiscales y muestra el motivo; el servidor sigue siendo la autoridad
+            model.addAttribute("bloqueoFiscal", politicaMutabilidad.evaluar(idFactura));
             return "modules/facturacion/form";
             
         } catch (Exception e) {

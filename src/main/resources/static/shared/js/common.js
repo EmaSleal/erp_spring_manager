@@ -20,6 +20,107 @@ const APP_CONFIG = {
 };
 
 // ============================================================================
+// CSRF TRANSVERSAL (ADR-031 §1)
+// ============================================================================
+
+/** Métodos que no modifican estado: nunca llevan el encabezado CSRF. */
+const METODOS_SIN_CSRF = ['GET', 'HEAD', 'OPTIONS'];
+
+/**
+ * Token y nombre del encabezado CSRF de las meta _csrf/_csrf_header. Se leen en cada petición: algunas páginas
+ * declaran las meta después de cargar este script.
+ * @returns {{header: string, token: string}|null} - null si falta alguna de las dos meta
+ */
+function leerCsrfDeMeta() {
+    const token = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+    return token && header ? { header, token } : null;
+}
+
+/**
+ * Envuelve window.fetch para que toda petición de mismo origen cuyo método no sea GET, HEAD u OPTIONS lleve el
+ * encabezado CSRF, salvo que ya lo traiga. Acepta fetch(url, opts) y fetch(Request), con headers como objeto,
+ * Headers o array. Sin las meta la petición sale igual y se avisa una sola vez por consola. Idempotente.
+ * Si jQuery está cargado (ahora o al terminar de cargar la página), registra lo mismo con $.ajaxPrefilter.
+ * @param {Window} win - Ventana cuyo fetch se envuelve
+ */
+function instalarCsrfEnFetch(win) {
+    if (!win || typeof win.fetch !== 'function' || win.fetch.__conCsrf) {
+        return;
+    }
+    const fetchOriginal = win.fetch;
+    let avisado = false;
+
+    const esMismoOrigen = (url) => {
+        try {
+            return new URL(url, win.location.href).origin === win.location.origin;
+        } catch (e) {
+            return false;
+        }
+    };
+    const csrfOAviso = () => {
+        const csrf = leerCsrfDeMeta();
+        if (!csrf && !avisado) {
+            avisado = true;
+            console.warn('CSRF: faltan las meta _csrf/_csrf_header; las peticiones salen sin el encabezado CSRF');
+        }
+        return csrf;
+    };
+
+    const fetchConCsrf = function (input, init) {
+        const esRequest = typeof Request !== 'undefined' && input instanceof Request;
+        const metodo = String((init && init.method) || (esRequest ? input.method : 'GET')).toUpperCase();
+        const url = esRequest ? input.url : String(input);
+        if (METODOS_SIN_CSRF.includes(metodo) || !esMismoOrigen(url)) {
+            return fetchOriginal.call(win, input, init);
+        }
+        const csrf = csrfOAviso();
+        if (!csrf) {
+            return fetchOriginal.call(win, input, init);
+        }
+        // Los headers de init reemplazan a los del Request (semántica de fetch)
+        const origen = init && init.headers !== undefined ? init.headers : (esRequest ? input.headers : undefined);
+        const headers = new Headers(origen);
+        if (headers.has(csrf.header)) {
+            return fetchOriginal.call(win, input, init);
+        }
+        headers.set(csrf.header, csrf.token);
+        return fetchOriginal.call(win, input, Object.assign({}, init, { headers }));
+    };
+    fetchConCsrf.__conCsrf = true;
+    win.fetch = fetchConCsrf;
+
+    let prefiltroRegistrado = false;
+    const registrarEnJquery = () => {
+        const jq = win.jQuery;
+        if (prefiltroRegistrado || !jq || typeof jq.ajaxPrefilter !== 'function') {
+            return;
+        }
+        prefiltroRegistrado = true;
+        jq.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+            const metodo = String(options.type || options.method || 'GET').toUpperCase();
+            if (METODOS_SIN_CSRF.includes(metodo) || options.crossDomain) {
+                return;
+            }
+            const csrf = csrfOAviso();
+            if (!csrf) {
+                return;
+            }
+            const yaLoTrae = Object.keys(options.headers || {})
+                .some(nombre => nombre.toLowerCase() === csrf.header.toLowerCase());
+            if (!yaLoTrae) {
+                jqXHR.setRequestHeader(csrf.header, csrf.token);
+            }
+        });
+    };
+    registrarEnJquery();
+    // Páginas que cargan jQuery después de common.js
+    win.document?.addEventListener?.('DOMContentLoaded', registrarEnJquery);
+}
+
+instalarCsrfEnFetch(window);
+
+// ============================================================================
 // UTILIDADES GENERALES
 // ============================================================================
 

@@ -3,8 +3,13 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.service.i
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
@@ -35,13 +40,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Implementación del servicio de comprobantes electrónicos.
@@ -67,9 +75,33 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final ComprobanteElectronicoMapper mapper;
     private final FacturaPdfService facturaPdfService;
     private final EmailService emailService;
+    private final Clock clock;
+    private final LimiteConsultaManualHacienda limiteConsultaManual;
+
+    /**
+     * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
+     * Hacienda no lo tiene (NO_TRANSMITIDO). Antes, el 404 no cambia el estado (ADR-030 §2, ADR-031 §4).
+     */
+    public static final long MINUTOS_ANTES_DE_VERIFICAR = 15;
+
+    /** Estados en los que se puede "Consultar estado en Hacienda" (ADR-031 §4). */
+    public static final Set<EstadoComprobante> CONSULTABLES_A_MANO = EnumSet.of(EstadoComprobante.ENVIADO,
+        EstadoComprobante.PROCESANDO, EstadoComprobante.ENVIO_INCIERTO, EstadoComprobante.ERROR_HACIENDA);
+
+    private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
     
     @Value("${facturacion.comprobantes.directorio-base:./comprobantes}")
     private String directorioBase;
+
+    /**
+     * Consultas seguidas con ind-estado "error" tras las que el sondeo deja de consultar el comprobante y lo señala
+     * para revisarlo en ATV.
+     */
+    @Value("${facturacion.hacienda.max-consultas-error:" + MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO + "}")
+    private int maxConsultasErrorHacienda = MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
+
+    /** Valor por defecto de facturacion.hacienda.max-consultas-error. */
+    public static final int MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO = 5;
     
     @Override
     @Transactional
@@ -120,6 +152,10 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             // Enviar a Hacienda
             ComprobanteElectronicoDTO resultado = enviarAHacienda(comprobanteId);
             log.info("✅ Comprobante enviado a Hacienda: {}", resultado.getEstado());
+            if (resultado.getEstado() != EstadoComprobante.ENVIADO) {
+                // NO_TRANSMITIDO, ENVIO_INCIERTO o ERROR: no hay nada que sondear
+                return;
+            }
 
             // Hacienda es asíncrono: esperar y reintentar hasta obtener estado final
             int maxReintentos = 5;
@@ -129,7 +165,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 var actualizado = consultarYActualizarEstado(comprobanteId);
                 EstadoComprobante estadoActual = actualizado.getEstado();
                 if (estadoActual == EstadoComprobante.ACEPTADO
-                        || estadoActual == EstadoComprobante.RECHAZADO) {
+                        || estadoActual == EstadoComprobante.RECHAZADO
+                        || estadoActual == EstadoComprobante.ENVIO_INCIERTO) {
                     log.info("✅ Estado final obtenido: {} (intento {}/{})", estadoActual, intento, maxReintentos);
                     break;
                 }
@@ -141,17 +178,9 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             log.warn("⚠️ Proceso asíncrono interrumpido: {}", e.getMessage());
             Thread.currentThread().interrupt();
         } catch (Exception e) {
-            log.error("❌ Error en procesamiento asíncrono: {}", e.getMessage());
-            // Marcar como error
-            try {
-                ComprobanteElectronico comprobante = repository.findById(comprobanteId)
-                    .orElseThrow();
-                comprobante.setEstado(EstadoComprobante.ERROR);
-                comprobante.setUltimoError("Error asíncrono: " + e.getMessage());
-                repository.save(comprobante);
-            } catch (Exception ex) {
-                log.error("❌ No se pudo actualizar estado de error", ex);
-            }
+            // El envío ya clasificó su resultado; un fallo del sondeo posterior no cambia el estado (ADR-030:
+            // ERROR es solo una falla local antes de transmitir). El job horario vuelve a consultar.
+            log.error("❌ Error en el sondeo asíncrono del comprobante {}: {}", comprobanteId, e.getMessage());
         }
     }
     
@@ -164,6 +193,19 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         Factura factura = facturaRepository.findById(facturaId.intValue())
             .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada"));
+
+        // ADR-030 §4: un solo comprobante vigente por factura. Solo un RECHAZADO cede su lugar (reemisión con
+        // consecutivo y clave nuevos); el rechazado queda como historial, sin otros cambios.
+        repository.findFirstByFactura_IdFacturaAndVigenteTrue(factura.getIdFactura()).ifPresent(vigente -> {
+            if (vigente.getEstado() != EstadoComprobante.RECHAZADO) {
+                throw new IllegalStateException("La factura ya tiene el comprobante vigente "
+                    + vigente.getClaveNumerica() + " en estado " + vigente.getEstado()
+                    + "; solo se emite uno nuevo si el vigente fue RECHAZADO");
+            }
+            vigente.setVigente(false);
+            repository.saveAndFlush(vigente); // antes del INSERT del nuevo: la BD admite un solo vigente
+            log.info("Comprobante rechazado {} pasa a historial", vigente.getClaveNumerica());
+        });
 
         // ADR-021: la configuración activa (exactamente una) de la empresa única
         ConfiguracionEmpresa empresa = configuracionEmpresaService.obtenerConfiguracion()
@@ -198,6 +240,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             .consecutivo(String.format("%020d", consecutivo))
             .fechaEmision(fechaEmision)
             .estado(EstadoComprobante.GENERADO)
+            .vigente(true)
             .intentosEnvio(0)
             .enviadoEmail(false)
             .build();
@@ -267,198 +310,205 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     @Transactional
     public ComprobanteElectronicoDTO firmar(Long id) {
         log.info("Firmando comprobante ID: {}", id);
-        
+
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        
-        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
-        
+        firmarInterno(comprobante);
+        return mapper.toDTO(repository.save(comprobante));
+    }
+
+    /** Firma el XML del comprobante: FIRMADO, o ERROR (falla local) si no se pudo firmar. */
+    private void firmarInterno(ComprobanteElectronico comprobante) {
         try {
+            ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
             String xmlFirmado = firmaDigital.firmarXml(
                 comprobante.getXmlComprobante(),
                 config.getRutaCertificado(),
                 config.getPinCertificado()
             );
-            
+
             comprobante.setXmlComprobante(xmlFirmado);
             comprobante.setEstado(EstadoComprobante.FIRMADO);
-            
-            comprobante = repository.save(comprobante);
-            
+
             // Guardar XML firmado en filesystem
             try {
                 guardarXmlEnFilesystem(comprobante.getId(), xmlFirmado);
             } catch (Exception e) {
                 log.warn("⚠️ No se pudo guardar XML en filesystem: {}", e.getMessage());
             }
-            
+
             log.info("Comprobante firmado exitosamente");
-            
-            return mapper.toDTO(comprobante);
         } catch (Exception e) {
             log.error("Error firmando comprobante: {}", e.getMessage());
             comprobante.setEstado(EstadoComprobante.ERROR);
             comprobante.setUltimoError("Error en firma digital: " + e.getMessage());
-            comprobante = repository.save(comprobante);
-            return mapper.toDTO(comprobante);
         }
     }
-    
+
+    /**
+     * Envía el comprobante a Hacienda con su clave (ADR-030). Solo si Hacienda no lo tiene: GENERADO, FIRMADO,
+     * ERROR o NO_TRANSMITIDO. Si el XML se descartó por una edición, o el comprobante quedó en GENERADO o ERROR,
+     * se regenera (misma clave) y se firma antes de enviar. El estado final lo fija la clasificación en origen del
+     * cliente de Hacienda: ENVIADO, NO_TRANSMITIDO o ENVIO_INCIERTO; ERROR solo por fallas locales previas.
+     */
     @Override
     @Transactional
     public ComprobanteElectronicoDTO enviarAHacienda(Long id) {
         log.info("Enviando comprobante ID: {} a Hacienda", id);
-        
+
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        
-        if (!comprobante.listoParaEnviar()) {
-            throw new IllegalStateException("Comprobante no está listo para enviar");
+
+        if (!comprobante.puedeReenviar()) {
+            throw new IllegalStateException("El comprobante en estado " + comprobante.getEstado()
+                + " no se puede enviar: Hacienda ya lo tiene o pudo recibirlo");
         }
-        
-        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
-        
-        // Verificar y renovar token si es necesario
-        configuracionService.verificarYRenovarToken(config.getId());
-        
+
+        if (!prepararXmlFirmado(comprobante)) {
+            return mapper.toDTO(repository.save(comprobante));
+        }
+
+        ConfiguracionHacienda config;
         try {
-            comprobante.setEstado(EstadoComprobante.ENVIADO);
-            comprobante.setFechaEnvio(LocalDateTime.now());
-            comprobante.incrementarIntentos();
-            
-            var respuesta = haciendaApi.enviarComprobante(
-                comprobante.getXmlComprobante(),
-                comprobante.getClaveNumerica(),
-                config.getId()
-            );
-            
-            comprobante.setCodigoRespuesta(respuesta.getCodigoMensaje().getCodigo());
+            config = configuracionActivaDe(comprobante.getEmpresa());
+        } catch (Exception e) {
+            comprobante.setEstado(EstadoComprobante.ERROR);
+            comprobante.setUltimoError("Configuración de Hacienda: " + e.getMessage());
+            return mapper.toDTO(repository.save(comprobante));
+        }
+
+        // Token: si no se puede renovar, la recepción nunca se intenta
+        try {
+            configuracionService.verificarYRenovarToken(config.getId());
+        } catch (Exception e) {
+            comprobante.setEstado(EstadoComprobante.NO_TRANSMITIDO);
+            comprobante.setUltimoError("No se obtuvo el token de Hacienda: " + e.getMessage());
+            return mapper.toDTO(repository.save(comprobante));
+        }
+
+        comprobante.setFechaEnvio(LocalDateTime.now(clock));
+        comprobante.incrementarIntentos();
+        RespuestaHaciendaDTO respuesta = haciendaApi.enviarComprobante(
+            comprobante.getXmlComprobante(),
+            comprobante.getClaveNumerica(),
+            config.getId()
+        );
+
+        try {
+            ResultadoEnvioHacienda resultado = respuesta.getResultadoEnvio() != null
+                ? respuesta.getResultadoEnvio()
+                : ResultadoEnvioHacienda.ENVIO_INCIERTO;
+            comprobante.setEstado(resultado.estado());
+            comprobante.setCodigoRespuesta(respuesta.getCodigoHttp() != null
+                ? String.valueOf(respuesta.getCodigoHttp()) : null);
             comprobante.setMensajeRespuesta(respuesta.getMensaje());
             comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-            if (respuesta.getXmlRespuesta() != null && !respuesta.getXmlRespuesta().isBlank()) {
-                try {
-                    comprobante.setXmlRespuesta(new String(
-                        Base64.getDecoder().decode(respuesta.getXmlRespuesta()), StandardCharsets.UTF_8));
-                } catch (IllegalArgumentException e) {
-                    comprobante.setXmlRespuesta(respuesta.getXmlRespuesta());
-                }
-            }
-
-            if (respuesta.getExitoso()) {
-                comprobante.setEstado(EstadoComprobante.ACEPTADO);
-                log.info("Comprobante aceptado por Hacienda");
-            } else if (respuesta.getDebeReintentar() || respuesta.getCodigoHttp() == 202) {
-                // 202 = Hacienda recibió y está procesando de forma asíncrona — NO es rechazo
-                comprobante.setEstado(EstadoComprobante.ENVIADO);
-                log.info("Comprobante en procesamiento por Hacienda (asíncrono)");
-            } else {
-                comprobante.setEstado(EstadoComprobante.RECHAZADO);
-                log.warn("Comprobante rechazado por Hacienda: {}", respuesta.getMensaje());
-            }
-            
+            comprobante.setUltimoError(resultado == ResultadoEnvioHacienda.RECIBIDO ? null : respuesta.getMensaje());
+            log.info("Envío de {} clasificado como {} → {}", comprobante.getClaveNumerica(), resultado,
+                comprobante.getEstado());
         } catch (Exception e) {
-            log.error("Error enviando a Hacienda: {}", e.getMessage());
-            comprobante.setEstado(EstadoComprobante.ERROR);
+            // Ya hubo un POST: ante cualquier duda, Hacienda pudo recibirlo
+            log.error("Error procesando la respuesta del envío: {}", e.getMessage());
+            comprobante.setEstado(EstadoComprobante.ENVIO_INCIERTO);
             comprobante.setUltimoError(e.getMessage());
         }
-        
-        comprobante = repository.save(comprobante);
-        return mapper.toDTO(comprobante);
+
+        return mapper.toDTO(repository.save(comprobante));
     }
-    
+
+    /**
+     * Deja el comprobante con su XML firmado. Regenera el XML (misma clave y fecha de emisión) si se descartó o si
+     * quedó en ERROR, y firma si está en GENERADO o se regeneró.
+     *
+     * @return false si quedó en ERROR (falla local)
+     */
+    private boolean prepararXmlFirmado(ComprobanteElectronico comprobante) {
+        boolean regenerar = comprobante.getXmlComprobante() == null
+            || comprobante.getEstado() == EstadoComprobante.ERROR;
+        if (regenerar) {
+            try {
+                comprobante.setXmlComprobante(generarXml(comprobante));
+                comprobante.setEstado(EstadoComprobante.GENERADO);
+                log.info("XML regenerado con la misma clave {}", comprobante.getClaveNumerica());
+            } catch (Exception e) {
+                comprobante.setEstado(EstadoComprobante.ERROR);
+                comprobante.setUltimoError("Error generando el XML: " + e.getMessage());
+                return false;
+            }
+        }
+        if (comprobante.getEstado() == EstadoComprobante.GENERADO) {
+            firmarInterno(comprobante);
+        }
+        return comprobante.getEstado() != EstadoComprobante.ERROR;
+    }
+
     @Override
     @Transactional
     public ComprobanteElectronicoDTO reenviar(Long id) {
         log.info("Reenviando comprobante ID: {}", id);
-        
+
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        
+
         if (!comprobante.puedeReenviar()) {
-            throw new IllegalStateException("Comprobante no puede ser reenviado");
+            throw new IllegalStateException("Comprobante no puede ser reenviado en estado " + comprobante.getEstado());
         }
-        
+
         return enviarAHacienda(id);
     }
-    
+
     @Override
     @Transactional
-    public ComprobanteElectronicoDTO consultarEstado(Long id) {
-        log.info("Consultando estado de comprobante ID: {}", id);
-        
-        ComprobanteElectronico comprobante = repository.findById(id)
+    public ComprobanteElectronicoDTO reemitir(Long id) {
+        ComprobanteElectronico rechazado = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        
-        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
-        
-        try {
-            var respuesta = haciendaApi.consultarComprobante(
-                comprobante.getClaveNumerica(),
-                config.getId()
-            );
-            
-            comprobante.setCodigoRespuesta(respuesta.getCodigoMensaje().getCodigo());
-            comprobante.setMensajeRespuesta(respuesta.getMensaje());
-            comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-            
-            if (respuesta.getExitoso()) {
-                comprobante.setEstado(EstadoComprobante.ACEPTADO);
-            }
-            
-            comprobante = repository.save(comprobante);
-            return mapper.toDTO(comprobante);
-        } catch (Exception e) {
-            log.error("Error consultando estado: {}", e.getMessage());
-            return mapper.toDTO(comprobante);
+        if (rechazado.getEstado() != EstadoComprobante.RECHAZADO || !Boolean.TRUE.equals(rechazado.getVigente())) {
+            throw new IllegalStateException("Solo se reemite el comprobante vigente RECHAZADO por Hacienda; "
+                + "este está en estado " + rechazado.getEstado());
         }
+        if (rechazado.getFactura() == null) {
+            throw new IllegalStateException("El comprobante no está asociado a una factura");
+        }
+        log.info("Reemitiendo la factura {} tras el rechazo de {}", rechazado.getFactura().getIdFactura(),
+            rechazado.getClaveNumerica());
+        return generarDesdeFactura(rechazado.getFactura().getIdFactura().longValue());
     }
-    
+
+    /**
+     * Sondeo del estado (tras el envío y en el job horario). Adopta lo que informa Hacienda (ADR-030; mapeo en
+     * aplicarRespuestaDeConsulta). Un 404 se interpreta con la misma regla que la consulta manual
+     * ({@link #interpretarNoExiste}).
+     */
     @Override
     @Transactional
     public ComprobanteElectronicoDTO consultarYActualizarEstado(Long comprobanteId) {
         log.info("🔍 Consultando y actualizando estado de comprobante ID: {}", comprobanteId);
-        
+
         ComprobanteElectronico comprobante = repository.findById(comprobanteId)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-        
+        if (comprobante.getEstado().esTerminal()) {
+            return mapper.toDTO(comprobante); // ACEPTADO, RECHAZADO (historial inmutable) o ANULADO
+        }
+
         ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
-        
+
         try {
             var respuesta = haciendaApi.consultarComprobante(
                 comprobante.getClaveNumerica(),
                 config.getId()
             );
-            
-            // Actualizar con información de respuesta
-            comprobante.setCodigoRespuesta(respuesta.getCodigoMensaje().getCodigo());
-            comprobante.setMensajeRespuesta(respuesta.getMensaje());
-            comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-            if (respuesta.getXmlRespuesta() != null && !respuesta.getXmlRespuesta().isBlank()) {
-                try {
-                    comprobante.setXmlRespuesta(new String(
-                        Base64.getDecoder().decode(respuesta.getXmlRespuesta()), StandardCharsets.UTF_8));
-                } catch (IllegalArgumentException e) {
-                    comprobante.setXmlRespuesta(respuesta.getXmlRespuesta());
-                }
+
+            if (Boolean.TRUE.equals(respuesta.getDocumentoNoExiste())) {
+                interpretarNoExiste(comprobante, respuesta);
+                return mapper.toDTO(repository.save(comprobante));
             }
 
-            // Determinar estado según respuesta
-            if (respuesta.getExitoso()) {
-                comprobante.setEstado(EstadoComprobante.ACEPTADO);
-                log.info("✅ Comprobante ACEPTADO por Hacienda");
-            } else if ("rechazado".equalsIgnoreCase(respuesta.getIndicadorEstado())) {
-                comprobante.setEstado(EstadoComprobante.RECHAZADO);
-                log.warn("❌ Comprobante RECHAZADO: {}", respuesta.getMensaje());
-            } else if ("procesando".equalsIgnoreCase(respuesta.getIndicadorEstado())) {
-                comprobante.setEstado(EstadoComprobante.ENVIADO);
-                log.info("⏳ Comprobante aún en procesamiento");
-            }
-            
+            aplicarRespuestaDeConsulta(comprobante, respuesta);
             comprobante = repository.save(comprobante);
             log.info("✅ Estado actualizado: {}", comprobante.getEstado());
-            
+
             return mapper.toDTO(comprobante);
-            
+
         } catch (Exception e) {
             log.error("❌ Error consultando estado en Hacienda: {}", e.getMessage());
             comprobante.setUltimoError("Error consultando estado: " + e.getMessage());
@@ -466,7 +516,160 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             throw new RuntimeException("Error consultando estado en Hacienda", e);
         }
     }
-    
+
+    /**
+     * "Consultar estado en Hacienda" (ADR-031 §4): GET /recepcion/{clave}, de solo lectura, para un comprobante
+     * ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA, como máximo 1 vez cada 30 s por comprobante. Un 404 se
+     * interpreta según el estado de origen ({@link #interpretarNoExiste}); otra respuesta se adopta como en el sondeo.
+     * En ERROR_HACIENDA, el contador de consultas con "error" vuelve a 0 antes de aplicar la respuesta, de modo que el
+     * sondeo lo vuelve a incluir.
+     *
+     * @throws ConsultaManualNoPermitidaException (409) si el estado no se consulta a mano
+     * @throws ConsultaManualDemasiadoProntoException (429) si no pasaron 30 s desde la consulta manual anterior
+     */
+    @Override
+    @Transactional
+    public ResultadoConsultaManualDTO consultarEstadoManual(Long id) {
+        ComprobanteElectronico comprobante = repository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
+        EstadoComprobante estadoPrevio = comprobante.getEstado();
+        if (!CONSULTABLES_A_MANO.contains(estadoPrevio)) {
+            throw new ConsultaManualNoPermitidaException("Solo se consulta el estado en Hacienda de un comprobante "
+                + "ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA; este está en estado " + estadoPrevio);
+        }
+        limiteConsultaManual.exigirYRegistrar(id);
+
+        ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
+        RespuestaHaciendaDTO respuesta = haciendaApi.consultarComprobante(comprobante.getClaveNumerica(), config.getId());
+        if (estadoPrevio == EstadoComprobante.ERROR_HACIENDA) {
+            comprobante.setConsultasErrorHacienda(0);
+        }
+        String mensaje;
+        if (Boolean.TRUE.equals(respuesta.getDocumentoNoExiste())) {
+            mensaje = interpretarNoExiste(comprobante, respuesta);
+        } else {
+            aplicarRespuestaDeConsulta(comprobante, respuesta);
+            mensaje = "Estado consultado en Hacienda: " + comprobante.getEstado().getCodigo();
+        }
+        log.info("Consulta manual de {} ({}): {} → {}", comprobante.getClaveNumerica(), estadoPrevio,
+            Boolean.TRUE.equals(respuesta.getDocumentoNoExiste()) ? "404" : "ind-estado " + respuesta.getIndicadorEstado(),
+            comprobante.getEstado());
+        return new ResultadoConsultaManualDTO(mapper.toDTO(repository.save(comprobante)), mensaje);
+    }
+
+    /**
+     * Regla del 404 de GET /recepcion/{clave} ("no existe"), única para la consulta manual y el sondeo (ADR-031 §4):
+     * <ul>
+     *   <li>ENVIO_INCIERTO y al menos 15 minutos desde el último envío → NO_TRANSMITIDO (se corrige y se reenvía con la
+     *       misma clave);</li>
+     *   <li>ENVIO_INCIERTO antes de 15 minutos → sin cambios: Hacienda puede tardar en registrar un envío;</li>
+     *   <li>ENVIADO, PROCESANDO o ERROR_HACIENDA → ENVIO_INCIERTO (T-025): Hacienda ya confirmó la recepción, así que
+     *       nunca pasa directo a NO_TRANSMITIDO.</li>
+     * </ul>
+     *
+     * @return mensaje para el usuario
+     */
+    private String interpretarNoExiste(ComprobanteElectronico comprobante, RespuestaHaciendaDTO respuesta) {
+        EstadoComprobante estado = comprobante.getEstado();
+        String mensaje;
+        if (estado == EstadoComprobante.ENVIO_INCIERTO) {
+            LocalDateTime desde = disponibleParaVerificar(comprobante);
+            if (desde == null || !LocalDateTime.now(clock).isBefore(desde)) {
+                comprobante.setEstado(EstadoComprobante.NO_TRANSMITIDO);
+                mensaje = "Hacienda no tiene el comprobante: queda como no transmitido y se puede corregir y reenviar "
+                    + "con la misma clave.";
+            } else {
+                mensaje = "Hacienda todavía no registra el comprobante; puede tardar hasta " + MINUTOS_ANTES_DE_VERIFICAR
+                    + " minutos desde el envío. Si a partir de las " + desde.format(HORA)
+                    + " sigue sin registrarlo, la consulta lo marcará como no transmitido.";
+            }
+        } else if (estado == EstadoComprobante.ENVIADO || estado == EstadoComprobante.PROCESANDO
+                || estado == EstadoComprobante.ERROR_HACIENDA) {
+            comprobante.setEstado(EstadoComprobante.ENVIO_INCIERTO);
+            comprobante.setConsultasErrorHacienda(0);
+            mensaje = "Hacienda respondió que no tiene el comprobante, aunque había confirmado su recepción: queda como "
+                + "envío incierto. Vuelva a consultar más tarde.";
+        } else {
+            mensaje = "Hacienda no tiene el comprobante.";
+        }
+        comprobante.setMensajeRespuesta(respuesta.getMensaje());
+        comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
+        log.warn("⚠️ Hacienda no tiene el comprobante {} (404): {} → {}", comprobante.getClaveNumerica(), estado,
+            comprobante.getEstado());
+        return mensaje;
+    }
+
+    /** Momento a partir del cual un 404 de un ENVIO_INCIERTO significa NO_TRANSMITIDO (null si no hubo envío). */
+    public static LocalDateTime disponibleParaVerificar(ComprobanteElectronico comprobante) {
+        return disponibleParaVerificar(comprobante.getFechaEnvio());
+    }
+
+    /** Momento a partir del cual un 404 significa NO_TRANSMITIDO para un envío hecho en fechaEnvio (null si no hubo). */
+    public static LocalDateTime disponibleParaVerificar(LocalDateTime fechaEnvio) {
+        return fechaEnvio != null ? fechaEnvio.plusMinutes(MINUTOS_ANTES_DE_VERIFICAR) : null;
+    }
+
+    /**
+     * Adopta el estado informado por la consulta. Cada ind-estado documentado de GET /recepcion/{clave} se mapea de
+     * forma explícita (docs/referencias/HACIENDA_API_RECEPCION.md):
+     * <ul>
+     *   <li>recibido, procesando → PROCESANDO (Hacienda lo tiene y no lo resolvió);</li>
+     *   <li>aceptado → ACEPTADO; rechazado → RECHAZADO (única asignación de RECHAZADO);</li>
+     *   <li>error → ERROR_HACIENDA: bloqueado, porque Hacienda tiene el documento. No es PROCESANDO para que se vea
+     *       que Hacienda informó un error y se pueda señalar tras N consultas seguidas;</li>
+     *   <li>cualquier otro valor (o ninguno) → ENVIO_INCIERTO: no se sabe qué tiene Hacienda; se resuelve con
+     *       "Consultar estado en Hacienda".</li>
+     * </ul>
+     * El contador de consultas con "error" vuelve a 0 con cualquier otra respuesta.
+     */
+    private void aplicarRespuestaDeConsulta(ComprobanteElectronico comprobante, RespuestaHaciendaDTO respuesta) {
+        comprobante.setCodigoRespuesta(respuesta.getCodigoMensaje() != null
+            ? respuesta.getCodigoMensaje().getCodigo() : null);
+        comprobante.setMensajeRespuesta(respuesta.getMensaje());
+        comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
+        if (respuesta.getXmlRespuesta() != null && !respuesta.getXmlRespuesta().isBlank()) {
+            try {
+                comprobante.setXmlRespuesta(new String(
+                    Base64.getDecoder().decode(respuesta.getXmlRespuesta()), StandardCharsets.UTF_8));
+            } catch (IllegalArgumentException e) {
+                comprobante.setXmlRespuesta(respuesta.getXmlRespuesta());
+            }
+        }
+        String indicador = respuesta.getIndicadorEstado() != null
+            ? respuesta.getIndicadorEstado().trim().toLowerCase() : "";
+        EstadoComprobante estado = switch (indicador) {
+            case "recibido", "procesando" -> EstadoComprobante.PROCESANDO;
+            case "aceptado" -> EstadoComprobante.ACEPTADO;
+            case "rechazado" -> EstadoComprobante.RECHAZADO;
+            case "error" -> EstadoComprobante.ERROR_HACIENDA;
+            default -> {
+                log.warn("ind-estado no documentado '{}' para {}: ENVIO_INCIERTO", respuesta.getIndicadorEstado(),
+                    comprobante.getClaveNumerica());
+                yield EstadoComprobante.ENVIO_INCIERTO;
+            }
+        };
+        comprobante.setEstado(estado);
+        if (estado != EstadoComprobante.ERROR_HACIENDA) {
+            comprobante.setConsultasErrorHacienda(0);
+            return;
+        }
+        int consultas = (comprobante.getConsultasErrorHacienda() != null ? comprobante.getConsultasErrorHacienda() : 0) + 1;
+        comprobante.setConsultasErrorHacienda(consultas);
+        if (comprobante.requiereRevisionEnAtv(maxConsultasErrorHacienda)) {
+            comprobante.setMensajeRespuesta(mensajeRevisarEnAtv(consultas)
+                + (respuesta.getMensaje() != null && !respuesta.getMensaje().isBlank()
+                    ? " Último mensaje de Hacienda: " + respuesta.getMensaje() : ""));
+            log.warn("Comprobante {}: {} consultas seguidas con ind-estado 'error'; se deja de consultar (revisar en ATV)",
+                comprobante.getClaveNumerica(), consultas);
+        }
+    }
+
+    /** Mensaje con el que se señala un comprobante ERROR_HACIENDA que el sondeo ya no consulta. */
+    static String mensajeRevisarEnAtv(int consultas) {
+        return "Hacienda informó \"error\" en " + consultas + " consultas seguidas: se dejó de consultar. "
+            + "Revise el comprobante en ATV.";
+    }
+
     @Override
     @Transactional
     public boolean enviarPorEmail(Long id, String emailAdicional) {
@@ -732,6 +935,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 .mensajeRespuesta((String) row[9])
                 .intentosEnvio(row[10] != null ? ((Number) row[10]).intValue() : 0)
                 .enviadoEmail(row[11] instanceof Boolean b ? b : row[11] instanceof Number n && n.intValue() != 0)
+                // Acción "Consultar estado en Hacienda" del listado (ADR-031 §4)
+                .consultableEnHacienda(CONSULTABLES_A_MANO.contains(EstadoComprobante.valueOf((String) row[5])))
                 .build())
             .collect(java.util.stream.Collectors.toList());
     }

@@ -174,6 +174,33 @@ class CatalogoParametrosNominaEmpresaViewTest {
     }
 
     @Test
+    @DisplayName("T-027 INS RT rate null → «No configurada» in the current rate row")
+    void tasaInsNull_muestraNoConfigurada() throws Exception {
+        ParametroNominaEmpresa vigente = build("0.0533", LocalDate.of(2026, 1, 1), null);
+        when(parametroNominaEmpresaService.findVigenteByFecha(any())).thenReturn(vigente);
+        when(parametroNominaEmpresaService.findAll()).thenReturn(List.of(vigente));
+
+        mockMvc.perform(get("/rrhh/catalogos/parametros-ccss").with(user("rrhh")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("tasa-ins-riesgos-trabajo")))
+                .andExpect(content().string(containsString("No configurada")));
+    }
+
+    @Test
+    @DisplayName("T-027 INS RT rate configured (1,25 %) is shown and «No configurada» does not appear")
+    void tasaInsConfigurada_muestraTasa() throws Exception {
+        ParametroNominaEmpresa vigente = build("0.0533", LocalDate.of(2026, 1, 1), null);
+        vigente.setPorcentajeInsRiesgosTrabajo(new BigDecimal("0.0125"));
+        when(parametroNominaEmpresaService.findVigenteByFecha(any())).thenReturn(vigente);
+        when(parametroNominaEmpresaService.findAll()).thenReturn(List.of(vigente));
+
+        mockMvc.perform(get("/rrhh/catalogos/parametros-ccss").with(user("rrhh")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("1,25 %")))
+                .andExpect(content().string(not(containsString("No configurada"))));
+    }
+
+    @Test
     @DisplayName("page still renders when there is no current company payroll record")
     void sinRegistroVigente_renderizaConAviso() throws Exception {
         when(parametroNominaEmpresaService.findVigenteByFecha(any()))

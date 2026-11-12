@@ -1,6 +1,10 @@
-# erp_spring_manager
-
-Este repositorio se gestiona en memoria-proyectos con el proyecto `erp_spring_manager`.
+## Project memory (read first)
+This repository uses the `ratifact` MCP server with project `erp_spring_manager`. Before working, call
+`get_context("erp_spring_manager")`. Only **accepted** decisions are rules; proposals are not implemented without the
+user's confirmation. Code tasks run with `/run-task T-NNN` (in Codex: `$run-task T-NNN`).
+Decisions, pending items and tasks live in `ratifact`; on a contradiction with another memory, the
+accepted decision wins.
+Test command (from the repository root): `./mvnw test`
 
 Contexto general, estructura y comandos: ver `agents.md`. Comando de pruebas: `./mvnw test`.
 
@@ -18,3 +22,8 @@ Contexto general, estructura y comandos: ver `agents.md`. Comando de pruebas: `.
   Al terminar, el conjunto de contenedores y volúmenes debe ser igual al que había antes de empezar.
 - Nunca ejecutar la aplicación ni Maven desde la raíz del repositorio con `.env` presente: contiene credenciales
   de producción. Trabajar en una copia sin `.env`/`.env.local` y sin acceso a red externa.
+
+## Dependencias
+
+- Toda actualización de Spring Boot o Hibernate exige BloqueoFiscalFacturaIT en verde antes de integrarse
+  (PoliticaMutabilidadFactura usa PersistenceContext, SPI interna). Las *IT corren con `./mvnw verify`.

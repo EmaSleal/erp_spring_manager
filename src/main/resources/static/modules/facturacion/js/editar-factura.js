@@ -96,11 +96,34 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     // Actualizar resumen de totales
                     actualizarResumenTotales();
+
+                    // ADR-030: con la factura bloqueada, los campos fiscales quedan de solo lectura
+                    aplicarBloqueoFiscal();
                 }
             });
         }
     }
 });
+
+/**
+ * true si la pantalla de edición informa que el comprobante electrónico vigente bloquea los campos fiscales
+ * (ADR-030). Es solo una ayuda: el servidor rechaza con 409 cualquier cambio fiscal.
+ */
+function facturaBloqueada() {
+    return document.getElementById('bloqueo-fiscal') !== null;
+}
+
+/** Deshabilita líneas, productos, cantidades, precios y los botones de agregar o quitar líneas. */
+function aplicarBloqueoFiscal() {
+    if (!facturaBloqueada()) {
+        return;
+    }
+    document.querySelectorAll('#lineas-body input, #lineas-body select, #lineas-body button, '
+        + '#lineas-cards-container input, #lineas-cards-container select, #lineas-cards-container button')
+        .forEach(control => { control.disabled = true; });
+    const agregar = document.getElementById('btnAgregarLinea');
+    if (agregar) agregar.disabled = true;
+}
 
 // Función para abrir el modal de nueva factura
 function openNuevaFacturaModal() {
@@ -679,6 +702,12 @@ async function guardarLineas() {
         return;
     }
 
+    // ADR-030: factura bloqueada → solo los campos operativos (entrega y descripción)
+    if (facturaBloqueada()) {
+        actualizarEstadoFactura(null);
+        return;
+    }
+
     const rows = document.querySelectorAll("#lineas-body tr");
 
     if (rows.length === 0) {
@@ -743,34 +772,7 @@ async function guardarLineas() {
     httpPut('/lineas-factura/actualizar', lineas, {
         onSuccess: (totales) => {
             mostrarTotalesServidor(totales);
-            // Luego actualizar el estado de la factura
-            const entregadoSelect = document.getElementById("entregado");
-            const estadoEntregado = entregadoSelect ? (entregadoSelect.value === 'true') : false;
-
-            console.log('Actualizando estado a:', estadoEntregado);
-
-            const descInput = document.getElementById('descripcion');
-            const fechaInput = document.getElementById('fechaEntrega');
-            const params = new URLSearchParams({ entregado: estadoEntregado });
-            params.append('descripcion', descInput ? descInput.value : '');
-            params.append('fechaEntrega', fechaInput ? fechaInput.value : '');
-
-            const totalGuardado = totales && totales.total !== undefined
-                ? ` Total: ${formatCurrency(totales.total, totales.moneda || 'CRC')}`
-                : '';
-            httpPut(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, null, {
-                successMessage: `Factura guardada correctamente.${totalGuardado}`,
-                onSuccess: () => {
-                    setTimeout(() => {
-                        if (nuevaFacturaModal) {
-                            nuevaFacturaModal.hide();
-                            location.reload();
-                        } else {
-                            window.location.href = '/facturas';
-                        }
-                    }, 2000);
-                }
-            });
+            actualizarEstadoFactura(totales);
         }
     }).catch(error => {
         console.error('Error:', error);
@@ -778,3 +780,36 @@ async function guardarLineas() {
     });
 }
 
+/**
+ * Guarda los campos operativos (entrega, fecha de entrega, descripción) y vuelve al listado.
+ * @param {{moneda: string, total: number}|null} totales totales devueltos al guardar las líneas, si se guardaron
+ */
+function actualizarEstadoFactura(totales) {
+    const entregadoSelect = document.getElementById("entregado");
+    const estadoEntregado = entregadoSelect ? (entregadoSelect.value === 'true') : false;
+
+    console.log('Actualizando estado a:', estadoEntregado);
+
+    const descInput = document.getElementById('descripcion');
+    const fechaInput = document.getElementById('fechaEntrega');
+    const params = new URLSearchParams({ entregado: estadoEntregado });
+    params.append('descripcion', descInput ? descInput.value : '');
+    params.append('fechaEntrega', fechaInput ? fechaInput.value : '');
+
+    const totalGuardado = totales && totales.total !== undefined
+        ? ` Total: ${formatCurrency(totales.total, totales.moneda || 'CRC')}`
+        : '';
+    httpPut(`/facturas/actualizar-estado/${facturaId}?${params.toString()}`, null, {
+        successMessage: `Factura guardada correctamente.${totalGuardado}`,
+        onSuccess: () => {
+            setTimeout(() => {
+                if (nuevaFacturaModal) {
+                    nuevaFacturaModal.hide();
+                    location.reload();
+                } else {
+                    window.location.href = '/facturas';
+                }
+            }, 2000);
+        }
+    });
+}

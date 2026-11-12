@@ -17,7 +17,8 @@ import java.util.List;
  *
  * Legal basis (2026):
  *   - CCSS: obrero 10.83 %, patronal 26.83 % (CCSS SICERE rates)
- *   - INS: occupational-risk tariff hardcoded at 1.00 % (not DB-modeled)
+ *   - INS riesgos del trabajo: optional employer charge, versioned nullable rate from
+ *     ParametroNominaEmpresa (ADR-033); never deducted from the employee
  *   - Income tax: marginal brackets from TramoImpuestoSalario, credits from exento row
  *   - Aporte patronal ASE: company agreement rate from ParametroNominaEmpresa (ADR-013),
  *     only for employees affiliated to the Asociación Solidarista
@@ -27,9 +28,6 @@ public class CalculosNominaService {
 
     /** Total ordinary hours per monthly pay period (convention). */
     private static final BigDecimal HORAS_PERIODO = new BigDecimal("200");
-
-    /** INS occupational-risk tariff — legal constant, not DB-modeled. */
-    private static final BigDecimal INS_RATE = new BigDecimal("0.0100");
 
     // ── Public calculation methods ────────────────────────────────────────────
 
@@ -61,14 +59,19 @@ public class CalculosNominaService {
     }
 
     /**
-     * Calculates the INS occupational-risk contribution (1 % — hardcoded legal constant).
+     * Calculates the employer INS occupational-risk charge (ADR-033). It is an employer cost:
+     * it is not deducted from the employee.
      *
      * @param bruto gross prorated salary
-     * @return bruto × 0.0100
+     * @param tasa  INS RT rate vigente for the period (decimal, e.g. 0.0100); null or &le; 0 = not configured
+     * @return bruto × tasa, or 0.00 when the rate is null or &le; 0
      */
-    public BigDecimal calcularIns(BigDecimal bruto) {
+    public BigDecimal calcularInsRiesgosPatronal(BigDecimal bruto, BigDecimal tasa) {
+        if (tasa == null || tasa.signum() <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
         return bruto
-                .multiply(INS_RATE)
+                .multiply(tasa)
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
@@ -83,7 +86,7 @@ public class CalculosNominaService {
      *   <li>Floor result at ZERO — tax is never negative.</li>
      * </ol>
      *
-     * @param baseGravable taxable base (brutoProrrateado - ccssObrero - ins)
+     * @param baseGravable taxable base (brutoProrrateado - ccssObrero)
      * @param tramos       tax brackets ordered by limiteInferior ASC (caller guarantees order)
      * @param hijos        number of dependent children
      * @param conyuge      whether the employee has a registered spouse credit
@@ -173,15 +176,17 @@ public class CalculosNominaService {
      * <p>Deduction order:
      * <ol>
      *   <li>Prorate bruto for absent hours.</li>
-     *   <li>CCSS obrero + INS.</li>
-     *   <li>baseGravable = brutoProrrateado - ccssObrero - ins.</li>
+     *   <li>CCSS obrero.</li>
+     *   <li>baseGravable = brutoProrrateado - ccssObrero.</li>
      *   <li>Income tax on baseGravable.</li>
      *   <li>Optional: solidarista (% of bruto) + pension alimentaria (fixed amount).</li>
-     *   <li>totalDeducciones = ccssObrero + ins + impuestoRenta + solidarista + pensionAlimentaria.</li>
+     *   <li>totalDeducciones = ccssObrero + impuestoRenta + solidarista + pensionAlimentaria.</li>
      *   <li>salarioNeto = brutoProrrateado - totalDeducciones.</li>
      *   <li>ccssPatronal (employer cost, not deducted from employee).</li>
      *   <li>aportePatronalSolidarista = brutoProrrateado × tasaAportePatronalAse, only when
      *       porcentajeSolidarista &gt; 0 (employer cost, not deducted from employee).</li>
+     *   <li>insRiesgosPatronal = brutoProrrateado × tasaInsRiesgosTrabajo when the rate is &gt; 0
+     *       (employer cost, not deducted from employee).</li>
      * </ol>
      *
      * @param salarioBase          monthly agreed salary
@@ -190,6 +195,7 @@ public class CalculosNominaService {
      * @param pensionAlimentaria    optional fixed alimony deduction; null = no deduction
      * @param ccss                 current CCSS parameters
      * @param tasaAportePatronalAse employer ASE rate vigente for the period (decimal, e.g. 0.0533)
+     * @param tasaInsRiesgosTrabajo employer INS RT rate vigente for the period (decimal); null = not configured
      * @param tramos               income-tax brackets ordered by limiteInferior ASC
      * @param hijos                number of dependent children for tax credits
      * @param conyuge              whether the employee has a registered spouse credit
@@ -202,6 +208,7 @@ public class CalculosNominaService {
             BigDecimal pensionAlimentaria,
             ParametroCCSS ccss,
             BigDecimal tasaAportePatronalAse,
+            BigDecimal tasaInsRiesgosTrabajo,
             List<TramoImpuestoSalario> tramos,
             int hijos,
             boolean conyuge) {
@@ -209,14 +216,12 @@ public class CalculosNominaService {
         // 1. Prorated gross
         BigDecimal brutoProrrateado = prorratearBruto(salarioBase, horasAusentes);
 
-        // 2. Employee CCSS and INS
+        // 2. Employee CCSS
         BigDecimal ccssObrero = calcularCcssObrero(brutoProrrateado, ccss);
-        BigDecimal ins = calcularIns(brutoProrrateado);
 
         // 3. Taxable base
         BigDecimal baseGravable = brutoProrrateado
                 .subtract(ccssObrero)
-                .subtract(ins)
                 .setScale(2, RoundingMode.HALF_UP);
 
         // 4. Income tax and family credit
@@ -245,7 +250,6 @@ public class CalculosNominaService {
 
         // 6. Total deductions (employee-side only)
         BigDecimal totalDeducciones = ccssObrero
-                .add(ins)
                 .add(impuestoRenta)
                 .add(solidarista)
                 .add(pension)
@@ -263,10 +267,12 @@ public class CalculosNominaService {
         BigDecimal aportePatronalSolidarista = calcularAportePatronalSolidarista(
                 brutoProrrateado, porcentajeSolidarista, tasaAportePatronalAse);
 
+        // 10. Employer INS riesgos del trabajo (not deducted from employee, ADR-033)
+        BigDecimal insRiesgosPatronal = calcularInsRiesgosPatronal(brutoProrrateado, tasaInsRiesgosTrabajo);
+
         return new ResultadoCalculoNomina(
                 brutoProrrateado,
                 ccssObrero,
-                ins,
                 baseGravable,
                 impuestoRenta,
                 creditoFamiliar,
@@ -274,6 +280,7 @@ public class CalculosNominaService {
                 pension,
                 ccssPatronal,
                 aportePatronalSolidarista,
+                insRiesgosPatronal,
                 totalDeducciones,
                 salarioNeto
         );

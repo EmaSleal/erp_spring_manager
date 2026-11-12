@@ -56,7 +56,6 @@ public class NominaService {
             "NOMINA_GASTO_CARGAS_SOCIALES",
             "NOMINA_CCSS_PATRONAL_POR_PAGAR",
             "NOMINA_CCSS_POR_PAGAR",
-            "NOMINA_INS_POR_PAGAR",
             "NOMINA_RENTA_POR_PAGAR",
             "NOMINA_SALARIOS_POR_PAGAR"
     };
@@ -195,6 +194,7 @@ public class NominaService {
                     empleado.getMontoPensionAlimentaria(),
                     ccss,
                     parametroEmpresa.getPorcentajeAportePatronalAse(),
+                    parametroEmpresa.getPorcentajeInsRiesgosTrabajo(),
                     tramos,
                     empleado.getHijosCargaFamiliar() != null ? empleado.getHijosCargaFamiliar() : 0,
                     Boolean.TRUE.equals(empleado.getConyugeCargaFamiliar())
@@ -208,7 +208,7 @@ public class NominaService {
             detalle.setHorasAusentes(horasAusentes);
             detalle.setBrutoProrrateado(resultado.brutoProrrateado());
             detalle.setCcssObrero(resultado.ccssObrero());
-            detalle.setIns(resultado.ins());
+            detalle.setInsRiesgosPatronal(resultado.insRiesgosPatronal());
             detalle.setImpuestoRenta(resultado.impuestoRenta());
             detalle.setCreditoFamiliar(resultado.creditoFamiliar());
             detalle.setSolidarista(resultado.solidarista());
@@ -268,9 +268,9 @@ public class NominaService {
     /**
      * Validates parametros_contables and transitions nomina from APROBADA to CONTABILIZADA.
      *
-     * <p>Posts the payroll entry through AsientoContableService.generarAsientoNomina. The seven base
+     * <p>Posts the payroll entry through AsientoContableService.generarAsientoNomina. The six base
      * NOMINA_* keys (including NOMINA_GASTO_CARGAS_SOCIALES, ADR-017) are validated here; the
-     * solidarista, pensión and ASE keys (ADR-013) are resolved by generarAsientoNomina only when the
+     * solidarista, pensión, ASE (ADR-013) and INS riesgos del trabajo (ADR-033) keys are resolved by generarAsientoNomina only when the
      * payroll has those amounts, before any save.
      *
      * @throws IllegalStateException if estado is not APROBADA
@@ -286,7 +286,7 @@ public class NominaService {
                     "Estado actual no permite contabilizar: " + nomina.getEstado());
         }
 
-        // Validate all 7 base NOMINA_* accounting parameters exist before any side-effect
+        // Validate all 6 base NOMINA_* accounting parameters exist before any side-effect
         for (String clave : NOMINA_KEYS) {
             parametroContableRepository.findByClave(clave)
                     .orElseThrow(() -> new IllegalStateException(

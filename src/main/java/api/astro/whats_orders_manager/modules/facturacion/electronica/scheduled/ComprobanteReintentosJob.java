@@ -4,14 +4,16 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -30,6 +32,12 @@ public class ComprobanteReintentosJob {
     
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final ComprobanteElectronicoService comprobanteService;
+    private final Clock clock;
+
+    /** Consultas seguidas con ind-estado "error" tras las que un ERROR_HACIENDA deja de consultarse (revisar en ATV). */
+    @Value("${facturacion.hacienda.max-consultas-error:"
+        + ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO + "}")
+    private int maxConsultasErrorHacienda = ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
     
     private static final int MAX_INTENTOS = 5;
     
@@ -59,37 +67,25 @@ public class ComprobanteReintentosJob {
             
             for (ComprobanteElectronico comprobante : pendientes) {
                 try {
-                    // Verificar límite de intentos
+                    // Límite de intentos: se deja de reintentar sin cambiar el estado (sigue reenviable a mano).
+                    // No se marca ERROR: ERROR es solo una falla local antes de transmitir (ADR-030).
                     if (comprobante.getIntentosEnvio() >= MAX_INTENTOS) {
-                        log.warn("⚠️ Comprobante {} alcanzó límite de {} reintentos", 
+                        log.warn("⚠️ Comprobante {} alcanzó límite de {} reintentos",
                             comprobante.getId(), MAX_INTENTOS);
-                        
-                        comprobante.setEstado(EstadoComprobante.ERROR);
-                        comprobante.setUltimoError(
-                            String.format("Límite de %d reintentos alcanzado. Último error: %s", 
-                                MAX_INTENTOS, comprobante.getUltimoError())
-                        );
-                        comprobanteRepository.save(comprobante);
                         alcanzaronLimite++;
                         continue;
                     }
-                    
-                    log.info("🔄 Reintentando comprobante {} (intento {}/{})", 
-                        comprobante.getId(), 
-                        comprobante.getIntentosEnvio() + 1, 
+
+                    log.info("🔄 Reintentando comprobante {} ({}, intento {}/{})",
+                        comprobante.getId(),
+                        comprobante.getEstado(),
+                        comprobante.getIntentosEnvio() + 1,
                         MAX_INTENTOS);
-                    
-                    // Determinar qué hacer según el estado
-                    if (comprobante.getEstado() == EstadoComprobante.GENERADO) {
-                        // Necesita firma
-                        comprobanteService.firmar(comprobante.getId());
-                        comprobanteService.enviarAHacienda(comprobante.getId());
-                    } else if (comprobante.getEstado() == EstadoComprobante.FIRMADO || 
-                               comprobante.getEstado() == EstadoComprobante.ERROR) {
-                        // Solo necesita envío
-                        comprobanteService.reenviar(comprobante.getId());
-                    }
-                    
+
+                    // GENERADO, FIRMADO, ERROR o NO_TRANSMITIDO: reenviar regenera/firma si hace falta y envía
+                    // con la misma clave (ADR-030)
+                    comprobanteService.reenviar(comprobante.getId());
+
                     exitosos++;
                     log.info("✅ Comprobante {} reenviado exitosamente", comprobante.getId());
                     
@@ -125,12 +121,11 @@ public class ComprobanteReintentosJob {
         log.info("🔍 Iniciando consulta de estados pendientes");
         
         try {
-            // Buscar comprobantes enviados hace más de 5 minutos sin respuesta
-            List<ComprobanteElectronico> enviados = comprobanteRepository
-                .findByEstadoAndFechaEnvioLessThan(
-                    EstadoComprobante.ENVIADO,
-                    LocalDateTime.now().minusMinutes(5)
-                );
+            // Comprobantes recibidos por Hacienda (ENVIADO), en proceso o con ind-estado "error" (ERROR_HACIENDA,
+            // hasta el máximo de consultas seguidas), enviados hace más de 5 minutos. ENVIO_INCIERTO no se consulta
+            // aquí: se resuelve con "Consultar estado en Hacienda" (ADR-030, ADR-031).
+            List<ComprobanteElectronico> enviados = comprobanteRepository.findParaSondeo(
+                LocalDateTime.now(clock).minusMinutes(5), maxConsultasErrorHacienda);
             
             if (enviados.isEmpty()) {
                 log.info("✅ No hay estados pendientes de consultar");

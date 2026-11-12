@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.seguridad.config;
 
+import api.astro.whats_orders_manager.modules.seguridad.security.ApiSecurityErrorHandler;
 import api.astro.whats_orders_manager.modules.seguridad.security.AppLogoutSuccessHandler;
 import api.astro.whats_orders_manager.modules.seguridad.security.LoginFailureHandler;
 import api.astro.whats_orders_manager.modules.seguridad.security.LoginSuccessHandler;
@@ -15,17 +16,25 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.AccessDeniedHandlerImpl;
+import org.springframework.security.web.access.RequestMatcherDelegatingAccessDeniedHandler;
+import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.sql.DataSource;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @Configuration
@@ -45,7 +54,8 @@ public class SecurityConfig {
             HttpSecurity http,
             LoginFailureHandler loginFailureHandler,
             LoginSuccessHandler loginSuccessHandler,
-            AppLogoutSuccessHandler appLogoutSuccessHandler
+            AppLogoutSuccessHandler appLogoutSuccessHandler,
+            ApiSecurityErrorHandler apiSecurityErrorHandler
     ) throws Exception {
         http
                 // Configuración de autorización de requests
@@ -147,9 +157,11 @@ public class SecurityConfig {
                         .maxSessionsPreventsLogin(false)        // Permitir nuevo login (cierra sesión anterior)
                 )
                 
-                // Manejo de excepciones - Página 403 personalizada
+                // Manejo de excepciones (ADR-031 §2): API y AJAX en JSON (403 por CSRF o permisos, 401 sin sesión);
+                // las páginas siguen igual: 403 a /error/403 y sin sesión, redirect al login (P-008 aparte)
                 .exceptionHandling(exception -> exception
-                        .accessDeniedPage("/error/403")         // Redirigir a página 403 personalizada
+                        .accessDeniedHandler(accessDeniedHandler(apiSecurityErrorHandler))
+                        .authenticationEntryPoint(authenticationEntryPoint(apiSecurityErrorHandler))
                 )
                 
                 // Configuración de seguridad adicional — cabeceras HTTP de seguridad
@@ -177,6 +189,24 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         return http.build();
+    }
+
+    /** API y AJAX: JSON; el resto, la página 403 personalizada de siempre. */
+    private static AccessDeniedHandler accessDeniedHandler(ApiSecurityErrorHandler api) {
+        AccessDeniedHandlerImpl pagina = new AccessDeniedHandlerImpl();
+        pagina.setErrorPage("/error/403");
+        LinkedHashMap<RequestMatcher, AccessDeniedHandler> handlers = new LinkedHashMap<>();
+        handlers.put(ApiSecurityErrorHandler.PETICION_API, api);
+        return new RequestMatcherDelegatingAccessDeniedHandler(handlers, pagina);
+    }
+
+    /** API y AJAX: 401 JSON; el resto, el redirect al login que antes ponía formLogin para toda petición. */
+    private static AuthenticationEntryPoint authenticationEntryPoint(ApiSecurityErrorHandler api) {
+        LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
+        entryPoints.put(ApiSecurityErrorHandler.PETICION_API, api);
+        DelegatingAuthenticationEntryPoint entryPoint = new DelegatingAuthenticationEntryPoint(entryPoints);
+        entryPoint.setDefaultEntryPoint(new LoginUrlAuthenticationEntryPoint("/auth/login"));
+        return entryPoint;
     }
 
     /**

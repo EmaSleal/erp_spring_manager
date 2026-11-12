@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -61,6 +62,7 @@ class LineaFacturaServiceAsientoTest {
         ReflectionTestUtils.setField(service, "productoRepository", productoRepository);
         ReflectionTestUtils.setField(service, "totalesFacturaService",
                 new TotalesFacturaService(new CalculadoraImpuestoService(null), productoRepository));
+        ReflectionTestUtils.setField(service, "politicaMutabilidad", mock(PoliticaMutabilidadFactura.class));
 
         factura = new Factura();
         factura.setIdFactura(ID_FACTURA);

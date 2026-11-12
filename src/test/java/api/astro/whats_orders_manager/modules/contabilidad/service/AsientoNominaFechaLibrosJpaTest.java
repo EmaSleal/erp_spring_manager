@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
 import api.astro.whats_orders_manager.modules.nomina.enums.EstadoNomina;
 import api.astro.whats_orders_manager.modules.nomina.enums.TipoNomina;
+import api.astro.whats_orders_manager.modules.nomina.model.DetalleNomina;
 import api.astro.whats_orders_manager.modules.nomina.model.Nomina;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Import;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,6 +51,7 @@ class AsientoNominaFechaLibrosJpaTest {
 
     private CuentaContable gastoSueldos;
     private CuentaContable cargasSociales;
+    private CuentaContable insPorPagar;
 
     @BeforeEach
     void setUp() {
@@ -58,7 +61,7 @@ class AsientoNominaFechaLibrosJpaTest {
         param("NOMINA_GASTO_CARGAS_SOCIALES", cargasSociales);
         param("NOMINA_CCSS_PATRONAL_POR_PAGAR", cuenta("2.1.01.002", TipoCuenta.PASIVO));
         param("NOMINA_CCSS_POR_PAGAR", cuenta("2.1.01.003", TipoCuenta.PASIVO));
-        param("NOMINA_INS_POR_PAGAR", cuenta("2.1.01.004", TipoCuenta.PASIVO));
+        insPorPagar = cuenta("2.1.01.004", TipoCuenta.PASIVO);
         param("NOMINA_RENTA_POR_PAGAR", cuenta("2.1.01.005", TipoCuenta.PASIVO));
         param("NOMINA_SALARIOS_POR_PAGAR", cuenta("2.1.01.001", TipoCuenta.PASIVO));
         em.flush();
@@ -105,9 +108,38 @@ class AsientoNominaFechaLibrosJpaTest {
         assertThat(mayorCargas.get(0).getFecha()).isEqualTo(SEPT_FIN);
     }
 
+    @Test
+    @DisplayName("T-027 con INS RT > 0 el asiento incluye DR cargas sociales / CR INS por pagar y cuadra; con null no hay línea INS")
+    void asientoNomina_insRiesgos_lineasSoloConTasa() {
+        // Rate null (no INS key configured at all): no INS line, entry posts fine
+        AsientoContable sinIns = asientoService.generarAsientoNomina(nominaSeptiembre());
+        assertThat(sinIns.getDetalles()).extracting(d -> d.getDescripcion()).noneMatch(d -> d.contains("INS"));
+
+        // Rate > 0: NOMINA_INS_POR_PAGAR is required and resolved
+        param("NOMINA_INS_POR_PAGAR", insPorPagar);
+        em.flush();
+        Nomina conIns = nominaSeptiembre("NOM-2026-0010");
+        em.flush();
+        em.detach(conIns); // the transient detalle below only feeds the entry; it is never persisted
+        DetalleNomina d = new DetalleNomina();
+        d.setNomina(conIns);
+        d.setInsRiesgosPatronal(new BigDecimal("12500.00"));
+        conIns.setDetalles(new ArrayList<>(List.of(d)));
+        AsientoContable asiento = asientoService.generarAsientoNomina(conIns);
+
+        assertThat(asiento.getTotalDebe()).isEqualByComparingTo(asiento.getTotalHaber());
+        assertThat(asiento.getDetalles()).extracting(x -> x.getDescripcion())
+                .anyMatch(x -> x.startsWith("Carga patronal INS riesgos del trabajo —"))
+                .anyMatch(x -> x.startsWith("INS por pagar —"));
+    }
+
     private Nomina nominaSeptiembre() {
+        return nominaSeptiembre("NOM-2026-0009");
+    }
+
+    private Nomina nominaSeptiembre(String numero) {
         Nomina nomina = Nomina.builder()
-                .numero("NOM-2026-0009")
+                .numero(numero)
                 .periodoInicio(SEPT_INICIO)
                 .periodoFin(SEPT_FIN)
                 .fechaPago(SEPT_FIN.plusDays(5))

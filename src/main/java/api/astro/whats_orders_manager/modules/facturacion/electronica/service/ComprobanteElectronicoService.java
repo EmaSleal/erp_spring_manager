@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 
@@ -38,6 +39,20 @@ public interface ComprobanteElectronicoService {
      * Genera un comprobante electrónico desde una factura.
      */
     ComprobanteElectronicoDTO generarDesdeFactura(Long facturaId);
+
+    /**
+     * Reemite una factura cuyo comprobante vigente fue RECHAZADO: el rechazado queda como historial inmutable y se
+     * genera un comprobante nuevo, vigente, con consecutivo y clave nuevos (ADR-030).
+     *
+     * @param id id del comprobante RECHAZADO vigente
+     */
+    ComprobanteElectronicoDTO reemitir(Long id);
+
+    /**
+     * "Consultar estado en Hacienda" (ADR-031 §4) para un comprobante ENVIADO, PROCESANDO, ENVIO_INCIERTO o
+     * ERROR_HACIENDA, 1 vez cada 30 s: 404 según el estado de origen; otra respuesta → el estado informado.
+     */
+    ResultadoConsultaManualDTO consultarEstadoManual(Long id);
     
     /**
      * Obtiene comprobante por ID.
@@ -94,11 +109,6 @@ public interface ComprobanteElectronicoService {
      * Reenvía un comprobante que falló.
      */
     ComprobanteElectronicoDTO reenviar(Long id);
-    
-    /**
-     * Consulta estado de un comprobante en Hacienda.
-     */
-    ComprobanteElectronicoDTO consultarEstado(Long id);
     
     /**
      * Consulta estado en Hacienda y actualiza comprobante según respuesta.

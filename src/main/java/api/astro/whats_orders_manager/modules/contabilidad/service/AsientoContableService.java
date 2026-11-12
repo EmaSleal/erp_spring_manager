@@ -1361,24 +1361,26 @@ public class AsientoContableService {
      *   DR NOMINA_GASTO_SUELDOS                  — nomina.totalBruto
      *   DR NOMINA_GASTO_CARGAS_SOCIALES          — nomina.totalCcssPatronal (employer CCSS cost, ADR-017)
      *   DR NOMINA_APORTE_PATRONAL_ASE_GASTO      — sum(detalles.aportePatronalSolidarista) (ADR-013)
+     *   DR NOMINA_GASTO_CARGAS_SOCIALES          — sum(detalles.insRiesgosPatronal) (ADR-033)
      *   CR NOMINA_CCSS_POR_PAGAR                 — sum(detalles.ccssObrero)
-     *   CR NOMINA_INS_POR_PAGAR                  — sum(detalles.ins)
      *   CR NOMINA_RENTA_POR_PAGAR                — sum(detalles.impuestoRenta)
      *   CR NOMINA_SOLIDARISTA_POR_PAGAR          — sum(detalles.solidarista) (ADR-013)
      *   CR NOMINA_PENSION_ALIMENTARIA_POR_PAGAR  — sum(detalles.pensionAlimentaria) (ADR-013)
      *   CR NOMINA_SALARIOS_POR_PAGAR             — nomina.totalNeto
      *   CR NOMINA_CCSS_PATRONAL_POR_PAGAR        — nomina.totalCcssPatronal
      *   CR NOMINA_APORTE_PATRONAL_ASE_POR_PAGAR  — sum(detalles.aportePatronalSolidarista) (ADR-013)
+     *   CR NOMINA_INS_POR_PAGAR                  — sum(detalles.insRiesgosPatronal) (ADR-033)
      *
-     * Balance: totalBruto = ccssObrero + ins + renta + solidarista + pension + totalNeto; the
-     * employer CCSS and ASE contributions are posted as DR expense / CR liability pairs.
+     * Balance: totalBruto = ccssObrero + renta + solidarista + pension + totalNeto; the
+     * employer CCSS, ASE and INS riesgos del trabajo charges are posted as DR expense / CR liability pairs.
      *
      * The employer CCSS contribution is an expense of its own (5.1.02.003 Cargas Sociales Patronales,
-     * ADR-017), no longer debited to the salaries expense. INS is an employee deduction included in
-     * totalBruto, so there is no employer INS portion in this entry.
+     * ADR-017), no longer debited to the salaries expense. The employer INS riesgos del trabajo
+     * charge (ADR-033) is not an employee deduction: it is a separate DR/CR pair, present only when
+     * its total is greater than zero.
      *
-     * The seven base keys (including NOMINA_GASTO_CARGAS_SOCIALES) are always required. The
-     * solidarista, pensión and ASE keys are resolved only when the corresponding total is greater
+     * The six base keys (including NOMINA_GASTO_CARGAS_SOCIALES) are always required. The
+     * solidarista, pensión, ASE and INS keys are resolved only when the corresponding total is greater
      * than zero. Every key must point to a leaf account (see {@link #resolverCuenta(String)}).
      *
      * Date (ADR-014): the entry is dated with nomina.periodoFin (accrual date, the same date used to
@@ -1394,18 +1396,17 @@ public class AsientoContableService {
     public AsientoContable generarAsientoNomina(Nomina nomina) {
         LocalDate fecha = fechaEconomica(nomina.getPeriodoFin(), "La nómina " + nomina.getNumero(), "periodoFin");
 
-        // Resolve the 7 base accounts — fail fast if any missing
+        // Resolve the 6 base accounts — fail fast if any missing
         CuentaContable cuentaGastoSueldos  = resolverCuenta("NOMINA_GASTO_SUELDOS");
         CuentaContable cuentaCargasSociales = resolverCuenta("NOMINA_GASTO_CARGAS_SOCIALES");
         CuentaContable cuentaCcssPatronal  = resolverCuenta("NOMINA_CCSS_PATRONAL_POR_PAGAR");
         CuentaContable cuentaCcssObrero    = resolverCuenta("NOMINA_CCSS_POR_PAGAR");
-        CuentaContable cuentaIns           = resolverCuenta("NOMINA_INS_POR_PAGAR");
         CuentaContable cuentaRenta         = resolverCuenta("NOMINA_RENTA_POR_PAGAR");
         CuentaContable cuentaSalarios      = resolverCuenta("NOMINA_SALARIOS_POR_PAGAR");
 
         List<DetalleNomina> lineasNomina = nomina.getDetalles() != null ? nomina.getDetalles() : List.of();
         BigDecimal totalCcssObrero  = sumarDetallesNomina(lineasNomina, DetalleNomina::getCcssObrero);
-        BigDecimal totalIns         = sumarDetallesNomina(lineasNomina, DetalleNomina::getIns);
+        BigDecimal totalIns         = sumarDetallesNomina(lineasNomina, DetalleNomina::getInsRiesgosPatronal);
         BigDecimal totalRenta       = sumarDetallesNomina(lineasNomina, DetalleNomina::getImpuestoRenta);
         BigDecimal totalSolidarista = sumarDetallesNomina(lineasNomina, DetalleNomina::getSolidarista);
         BigDecimal totalPension     = sumarDetallesNomina(lineasNomina, DetalleNomina::getPensionAlimentaria);
@@ -1420,6 +1421,8 @@ public class AsientoContableService {
                 ? resolverCuenta("NOMINA_APORTE_PATRONAL_ASE_GASTO") : null;
         CuentaContable cuentaAsePorPagar = totalAporteAse.signum() > 0
                 ? resolverCuenta("NOMINA_APORTE_PATRONAL_ASE_POR_PAGAR") : null;
+        CuentaContable cuentaIns = totalIns.signum() > 0
+                ? resolverCuenta("NOMINA_INS_POR_PAGAR") : null;
 
         AsientoContable asiento = new AsientoContable();
         asiento.setNumero(generarNumeroAsiento());
@@ -1440,12 +1443,12 @@ public class AsientoContableService {
                 "Carga patronal CCSS — " + numero);
         agregarLineaNomina(detalles, asiento, cuentaAseGasto, totalAporteAse, true,
                 "Aporte patronal asociación solidarista — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaCargasSociales, totalIns, true,
+                "Carga patronal INS riesgos del trabajo — " + numero);
 
         // Credits
         agregarLineaNomina(detalles, asiento, cuentaCcssObrero, totalCcssObrero, false,
                 "CCSS obrero por pagar — " + numero);
-        agregarLineaNomina(detalles, asiento, cuentaIns, totalIns, false,
-                "INS por pagar — " + numero);
         agregarLineaNomina(detalles, asiento, cuentaRenta, totalRenta, false,
                 "Impuesto renta por pagar — " + numero);
         agregarLineaNomina(detalles, asiento, cuentaSolidarista, totalSolidarista, false,
@@ -1458,6 +1461,8 @@ public class AsientoContableService {
                 "CCSS patronal por pagar — " + numero);
         agregarLineaNomina(detalles, asiento, cuentaAsePorPagar, totalAporteAse, false,
                 "Aporte patronal asociación solidarista por pagar — " + numero);
+        agregarLineaNomina(detalles, asiento, cuentaIns, totalIns, false,
+                "INS por pagar — " + numero);
 
         asiento.setDetalles(detalles);
 

@@ -1,6 +1,9 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.controller;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.TendenciaEnviosDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
@@ -156,23 +159,64 @@ public class ComprobanteElectronicoController {
     }
     
     /**
-     * Consulta estado del comprobante en Hacienda.
-     * GET /api/facturacion/comprobantes/{id}/consultar-estado
+     * "Consultar estado en Hacienda" (ADR-031 §4; reemplaza a "verificar con Hacienda"): consulta de solo lectura para
+     * un comprobante ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA.
+     * POST /api/facturas/electronica/comprobantes/{id}/consultar-estado-hacienda
+     * 409 en otro estado; 429 si no pasaron 30 s desde la consulta manual anterior (con disponibleDesde).
      */
-    @GetMapping("/{id}/consultar-estado")
-    public ResponseEntity<Map<String, Object>> consultarEstado(@PathVariable Long id) {
-        log.info("Consultando estado de comprobante {}", id);
+    @PostMapping("/{id}/consultar-estado-hacienda")
+    public ResponseEntity<Map<String, Object>> consultarEstadoEnHacienda(@PathVariable Long id) {
+        log.info("Consulta manual de estado en Hacienda del comprobante {}", id);
         try {
-            ComprobanteElectronicoDTO actualizado = comprobanteService.consultarEstado(id);
+            ResultadoConsultaManualDTO resultado = comprobanteService.consultarEstadoManual(id);
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "comprobante", actualizado
+                "message", resultado.mensaje(),
+                "comprobante", resultado.comprobante()
             ));
+        } catch (ConsultaManualNoPermitidaException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (ConsultaManualDemasiadoProntoException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+                "success", false,
+                "message", e.getMessage(),
+                "disponibleDesde", e.getDisponibleDesde().toString()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
-            log.error("Error consultando estado: {}", e.getMessage(), e);
+            log.error("Error consultando el estado en Hacienda: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                "success", false,
+                "message", "No se pudo consultar a Hacienda: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Reemite la factura de un comprobante vigente RECHAZADO: comprobante nuevo con consecutivo y clave nuevos; el
+     * rechazado queda como historial (ADR-030).
+     * POST /api/facturas/electronica/comprobantes/{id}/reemitir
+     */
+    @PostMapping("/{id}/reemitir")
+    public ResponseEntity<Map<String, Object>> reemitir(@PathVariable Long id) {
+        log.info("Reemitiendo comprobante rechazado {}", id);
+        try {
+            ComprobanteElectronicoDTO nuevo = comprobanteService.reemitir(id);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "success", true,
+                "message", "Comprobante reemitido con la clave " + nuevo.getClaveNumerica(),
+                "comprobante", nuevo
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error reemitiendo comprobante: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "success", false,
-                "message", "Error consultando estado: " + e.getMessage()
+                "message", "Error reemitiendo comprobante: " + e.getMessage()
             ));
         }
     }
