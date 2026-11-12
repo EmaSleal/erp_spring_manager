@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.notificacion.service;
 
+import api.astro.whats_orders_manager.modules.notificacion.dto.PreferenciaTipoDTO;
 import api.astro.whats_orders_manager.modules.notificacion.model.PreferenciaNotificacion;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.notificacion.enums.CanalNotificacion;
@@ -150,8 +151,10 @@ public interface PreferenciaNotificacionService {
 
     /**
      * Verifica si un usuario acepta recibir un tipo de notificación por un canal
-     * Aplica lógica de prioridad: específica > tipo > canal > global
-     * 
+     * Aplica lógica de prioridad: específica > tipo > canal > global. Decide la fila aplicable más específica
+     * según su campo activa (una inactiva bloquea aunque haya otras menos específicas activas);
+     * notificacionesDesactivadasGlobal bloquea siempre y, sin ninguna fila aplicable, se rechaza.
+     *
      * @param usuario Usuario a validar
      * @param tipo Tipo de notificación
      * @param canal Canal de notificación
@@ -273,6 +276,26 @@ public interface PreferenciaNotificacionService {
             CanalNotificacion canal,
             Boolean activa
     );
+
+    /**
+     * Preferencias del usuario agrupadas por tipo (una entrada por cada TipoNotificacion), con el estado de cada
+     * canal configurable: activo solo si existe la fila específica (tipo, canal) y está activa.
+     *
+     * @param usuario Usuario propietario
+     * @return Una entrada por tipo, sin datos del usuario
+     */
+    List<PreferenciaTipoDTO> listarPorTipo(Usuario usuario);
+
+    /**
+     * Guarda las preferencias por tipo y canal: crea o actualiza la fila (usuario, tipo, canal) de cada canal
+     * configurable, sin duplicar. Valida todo antes de escribir y es transaccional: si algo falla no persiste nada.
+     *
+     * @param usuario Usuario propietario
+     * @param preferencias Un elemento por tipo, con todos los canales informados
+     * @return Las preferencias resultantes, como {@link #listarPorTipo(Usuario)}
+     * @throws IllegalArgumentException si el payload es inválido (tipo o canal ausente, o tipo repetido)
+     */
+    List<PreferenciaTipoDTO> guardarPorTipo(Usuario usuario, List<PreferenciaTipoDTO> preferencias);
 
     // ==================== CONFIGURACIÓN DE HORARIOS ====================
 

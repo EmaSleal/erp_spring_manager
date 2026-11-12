@@ -119,9 +119,16 @@ function toggleFacturaField() {
 }
 
 /**
+ * Contador de llamadas a cargarFacturasCliente: solo la más reciente puede poblar el select
+ * (T-031, P-040: una respuesta más lenta de una llamada anterior se descarta).
+ */
+let cargaFacturasSecuencia = 0;
+
+/**
  * Cargar facturas del cliente seleccionado
  */
 async function cargarFacturasCliente() {
+    const miLlamada = ++cargaFacturasSecuencia;
     const idCliente = document.getElementById('idCliente').value;
     const facturaSelect = document.getElementById('idFactura');
     const facturaInfo = document.querySelector('.alert-info');
@@ -141,6 +148,11 @@ async function cargarFacturasCliente() {
     try {
         const facturas = await httpGet(`/facturas/api/cliente/${idCliente}`, { showLoading: false });
 
+        // Hubo una llamada más reciente mientras esta esperaba: se descarta esta respuesta
+        if (miLlamada !== cargaFacturasSecuencia) {
+            return;
+        }
+
         if (facturas.length === 0) {
             showToast('info', 'El cliente no tiene facturas con saldo pendiente');
         }
@@ -148,7 +160,6 @@ async function cargarFacturasCliente() {
         facturas.forEach(factura => {
             const option = document.createElement('option');
             option.value = factura.idFactura;
-            option.textContent = `${factura.numeroFactura} - Saldo: ₡${formatNumber(factura.saldoPendiente, 2)}`;
             option.dataset.numeroFactura = factura.numeroFactura;
             option.dataset.totalFactura = factura.totalFactura;
             option.dataset.saldoPendiente = factura.saldoPendiente;

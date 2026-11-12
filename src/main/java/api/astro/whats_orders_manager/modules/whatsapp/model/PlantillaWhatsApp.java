@@ -92,7 +92,7 @@ public class PlantillaWhatsApp {
     // ========================================
     
     @CreatedDate
-    @Column(name = "", updatable = false)
+    @Column(name = "create_date", updatable = false)
     private LocalDateTime createDate;
 
     @LastModifiedDate

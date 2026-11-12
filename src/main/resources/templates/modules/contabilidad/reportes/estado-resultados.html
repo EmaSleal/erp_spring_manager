@@ -47,13 +47,13 @@
                                 <tr th:each="cuenta : ${estado.ingresos}">
                                     <td th:text="${cuenta.cuenta.codigo}">4.1</td>
                                     <td th:text="${cuenta.cuenta.nombre}">Cuenta</td>
-                                    <td class="text-end fw-semibold" th:text="'$' + ${#numbers.formatDecimal(cuenta.saldo, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end fw-semibold" th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(cuenta.saldo, 1, 'COMMA', 2, 'POINT')}">₡0.00</td>
                                 </tr>
                             </table>
                             <div class="border-top pt-2 mt-2">
                                 <div class="d-flex justify-content-between fw-bold">
                                     <span>Total Ingresos:</span>
-                                    <span th:text="'$' + ${#numbers.formatDecimal(estado.totalIngresos, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    <span th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(estado.totalIngresos, 1, 'COMMA', 2, 'POINT')}">₡0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -69,13 +69,13 @@
                                 <tr th:each="cuenta : ${estado.egresos}">
                                     <td th:text="${cuenta.cuenta.codigo}">5.1</td>
                                     <td th:text="${cuenta.cuenta.nombre}">Cuenta</td>
-                                    <td class="text-end fw-semibold" th:text="'$' + ${#numbers.formatDecimal(cuenta.saldo, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                                    <td class="text-end fw-semibold" th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(cuenta.saldo, 1, 'COMMA', 2, 'POINT')}">₡0.00</td>
                                 </tr>
                             </table>
                             <div class="border-top pt-2 mt-2">
                                 <div class="d-flex justify-content-between fw-bold">
                                     <span>Total Egresos:</span>
-                                    <span th:text="'$' + ${#numbers.formatDecimal(estado.totalEgresos, 1, 'COMMA', 2, 'POINT')}">$0.00</span>
+                                    <span th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(estado.totalEgresos, 1, 'COMMA', 2, 'POINT')}">₡0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -88,7 +88,7 @@
                                 <i th:class="${estado.totalIngresos - estado.totalEgresos >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'}"></i>
                                 <span th:text="${estado.totalIngresos - estado.totalEgresos >= 0 ? 'UTILIDAD NETA' : 'PÉRDIDA NETA'}">UTILIDAD NETA</span>
                             </h4>
-                            <h3 class="mb-0 fw-bold" th:text="'$' + ${#numbers.formatDecimal(estado.totalIngresos - estado.totalEgresos, 1, 'COMMA', 2, 'POINT')}">$0.00</h3>
+                            <h3 class="mb-0 fw-bold" th:text="${(simboloMoneda ?: '₡') + #numbers.formatDecimal(estado.totalIngresos - estado.totalEgresos, 1, 'COMMA', 2, 'POINT')}">₡0.00</h3>
                         </div>
                     </div>
                 </div>

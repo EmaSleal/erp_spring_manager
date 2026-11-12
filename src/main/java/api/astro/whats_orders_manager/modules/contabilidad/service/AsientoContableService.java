@@ -163,6 +163,8 @@ public class AsientoContableService {
     public AsientoContable crear(AsientoContable asiento) {
         log.info("Creando nuevo asiento");
         
+        validarTipoManual(asiento.getTipo());
+        
         // Generar número si no tiene
         if (asiento.getNumero() == null || asiento.getNumero().isEmpty()) {
             asiento.setNumero(generarNumeroAsiento());
@@ -194,6 +196,17 @@ public class AsientoContableService {
     }
     
     /**
+     * Un asiento creado o editado por un usuario no puede llevar un tipo automático: esos asientos los genera
+     * el sistema (generarAsiento*), que no pasa por crear/actualizar.
+     */
+    private void validarTipoManual(TipoAsiento tipo) {
+        if (tipo != null && tipo.esAutomatico()) {
+            throw new IllegalArgumentException(
+                "El tipo " + tipo.getNombre() + " es generado por el sistema y no se puede usar en un asiento manual");
+        }
+    }
+    
+    /**
      * Actualiza un asiento existente.
      * Solo se pueden actualizar asientos en borrador.
      * @param id ID del asiento
@@ -214,6 +227,7 @@ public class AsientoContableService {
         }
         
         validarFechaPresente(asientoActualizado.getFecha());
+        validarTipoManual(asientoActualizado.getTipo());
         
         // Actualizar campos
         asiento.setFecha(asientoActualizado.getFecha());

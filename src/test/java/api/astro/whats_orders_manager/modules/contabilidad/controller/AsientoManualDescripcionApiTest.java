@@ -194,6 +194,44 @@ class AsientoManualDescripcionApiTest {
         assertThat(asientoRepository.findById(id).orElseThrow().getEstado()).isEqualTo(EstadoAsiento.BORRADOR);
     }
 
+    @Test
+    @DisplayName("T-031 POST con tipo automático → 400 con el mensaje y nada guardado")
+    void post_tipoAutomatico_400() throws Exception {
+        String cuerpo = """
+                {"fecha": "2026-10-15", "tipo": "AUTOMATICO_VENTA", "concepto": "Intento",
+                 "detalles": [{"cuentaId": %d, "descripcion": "x", "debe": 10, "haber": 0}]}
+                """.formatted(gasto.getIdCuenta());
+
+        String respuesta = mockMvc.perform(post("/contabilidad/asientos/api")
+                        .with(user("admin")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpo))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(objectMapper.readTree(respuesta).get("error").asText()).contains("generado por el sistema");
+        assertThat(asientoRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("T-031 PUT que cambia el tipo a automático → 400 y el borrador conserva su tipo")
+    void put_tipoAutomatico_400() throws Exception {
+        long id = crearBorrador();
+
+        mockMvc.perform(put("/contabilidad/asientos/api/{id}", id)
+                        .with(user("admin")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fecha": "2026-10-15", "tipo": "AUTOMATICO_PAGO", "concepto": "Intento",
+                                 "detalles": []}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+
+        String tipoEnBd = tx.execute(s -> asientoRepository.findById(id).orElseThrow().getTipo().name());
+        assertThat(tipoEnBd).isEqualTo("MANUAL");
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private long crearBorrador() throws Exception {

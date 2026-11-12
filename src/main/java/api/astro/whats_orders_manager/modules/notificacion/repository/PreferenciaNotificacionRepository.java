@@ -161,39 +161,18 @@ public interface PreferenciaNotificacionRepository extends JpaRepository<Prefere
            "AND p.notificacionesDesactivadasGlobal = true")
     boolean tieneNotificacionesDesactivadasGlobalByUsuarioId(@Param("idUsuario") Integer idUsuario);
 
-    // ==================== VERIFICACIÓN DE ACEPTACIÓN ====================
-
-    /**
-     * Verifica si un usuario acepta notificaciones de un tipo y canal específicos
-     * Considera preferencias globales, por tipo, por canal y específicas
-     * 
-     * @param idUsuario ID del usuario
-     * @param tipo Tipo de notificación
-     * @param canal Canal de notificación
-     * @return true si el usuario acepta este tipo de notificación
-     */
-    @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END " +
-           "FROM PreferenciaNotificacion p WHERE p.usuario.idUsuario = :idUsuario " +
-           "AND p.activa = true " +
-           "AND p.notificacionesDesactivadasGlobal = false " +
-           "AND ((p.tipoNotificacion = :tipo AND p.canal = :canal) " +
-           "     OR (p.tipoNotificacion = :tipo AND p.canal IS NULL) " +
-           "     OR (p.tipoNotificacion IS NULL AND p.canal = :canal) " +
-           "     OR (p.tipoNotificacion IS NULL AND p.canal IS NULL))")
-    boolean usuarioAceptaNotificacion(
-            @Param("idUsuario") Integer idUsuario,
-            @Param("tipo") TipoNotificacion tipo,
-            @Param("canal") CanalNotificacion canal
-    );
+    // ==================== PREFERENCIAS APLICABLES ====================
+    // La aceptación se decide en PreferenciaNotificacionServiceImpl.aceptaSegunPreferencias (fila más específica).
 
     /**
      * Busca todas las preferencias aplicables para un tipo y canal
      * (específicas, por tipo, por canal y globales)
-     * 
+     *
      * @param idUsuario ID del usuario
      * @param tipo Tipo de notificación
      * @param canal Canal de notificación
-     * @return Lista de preferencias aplicables (ordenadas por especificidad)
+     * @return Lista de preferencias aplicables, ordenadas por especificidad y luego por id: la primera es la que
+     *         decide según la regla de aceptación
      */
     @Query("SELECT p FROM PreferenciaNotificacion p WHERE p.usuario.idUsuario = :idUsuario " +
            "AND ((p.tipoNotificacion = :tipo AND p.canal = :canal) " +
@@ -206,7 +185,7 @@ public interface PreferenciaNotificacionRepository extends JpaRepository<Prefere
            "    WHEN p.tipoNotificacion IS NOT NULL THEN 2 " +
            "    WHEN p.canal IS NOT NULL THEN 3 " +
            "    ELSE 4 " +
-           "  END")
+           "  END, p.idPreferencia")
     List<PreferenciaNotificacion> findPreferenciasAplicables(
             @Param("idUsuario") Integer idUsuario,
             @Param("tipo") TipoNotificacion tipo,
