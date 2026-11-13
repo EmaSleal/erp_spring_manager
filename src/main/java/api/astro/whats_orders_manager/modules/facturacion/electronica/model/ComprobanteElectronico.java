@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.model;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -27,6 +28,7 @@ import java.time.LocalDateTime;
 @Table(name = "comprobante_electronico", indexes = {
     @Index(name = "idx_clave_numerica", columnList = "clave_numerica", unique = true),
     @Index(name = "idx_factura", columnList = "factura_id"),
+    @Index(name = "idx_comprobante_nota_factura", columnList = "nota_factura_id"),
     @Index(name = "idx_estado", columnList = "estado"),
     @Index(name = "idx_fecha_emision", columnList = "fecha_emision")
 })
@@ -48,6 +50,17 @@ public class ComprobanteElectronico {
     @JoinColumn(name = "factura_id")
     @JsonIgnore
     private Factura factura;
+
+    /**
+     * Nota de crédito o débito que origina este comprobante (ADR-037 §2). Un comprobante tiene exactamente un documento
+     * de origen: la factura o la nota, nunca ambos (CHECK de V39). Una nota tiene N comprobantes y uno vigente.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nota_factura_id")
+    @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private NotaFactura notaFactura;
 
     /**
      * Comprobante vigente de su factura. Al reemitir tras un RECHAZADO, el rechazado deja de ser vigente y queda
@@ -201,6 +214,18 @@ public class ComprobanteElectronico {
     /**
      * Verifica si el comprobante puede ser (re)enviado con su clave: Hacienda no lo tiene (ADR-030).
      */
+    /** Documento que origina el comprobante (ADR-037 §2). */
+    public enum DocumentoOrigen { FACTURA, NOTA }
+
+    /** Documento de origen: NOTA si apunta a una nota; FACTURA en otro caso (incluidos los comprobantes previos). */
+    public DocumentoOrigen getDocumentoOrigen() {
+        return notaFactura != null ? DocumentoOrigen.NOTA : DocumentoOrigen.FACTURA;
+    }
+
+    public boolean esDeNota() {
+        return getDocumentoOrigen() == DocumentoOrigen.NOTA;
+    }
+
     public boolean puedeReenviar() {
         return estado.esReenviable();
     }

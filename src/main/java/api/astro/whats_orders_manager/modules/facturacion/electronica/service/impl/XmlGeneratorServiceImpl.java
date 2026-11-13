@@ -3,21 +3,32 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.service.i
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.DatosFeProducto;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.InformacionReferenciaXml;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -111,9 +122,28 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         return xml.toString();
     }
 
+    /**
+     * Nota de crédito electrónica v4.4 (T-032, ADR-037) en el orden de NotaCreditoElectronica_V4.4.xsd: Clave,
+     * ProveedorSistemas, CodigoActividadEmisor, CodigoActividadReceptor, NumeroConsecutivo, FechaEmision, Emisor,
+     * Receptor, CondicionVenta, CondicionVentaOtros, PlazoCredito, DetalleServicio, ResumenFactura e
+     * InformacionReferencia (la firma va al final).
+     *
+     * Hacienda verifica que los datos informativos de la nota correspondan al comprobante referenciado (apartado d):
+     * el emisor, el receptor, el código de actividad del receptor, la condición de venta, el plazo y el medio de pago
+     * se copian del comprobante ACEPTADO de la factura. La moneda y el tipo de cambio son los de la factura, guardados
+     * en la nota. El detalle y el resumen se calculan con las líneas de la nota.
+     */
     @Override
     public String generarXmlNotaCredito(ComprobanteElectronico comprobante) {
         log.info("Generando XML de nota de crédito: {}", comprobante.getClaveNumerica());
+
+        NotaFactura nota = comprobante.getNotaFactura();
+        if (nota == null) {
+            throw new IllegalStateException("El comprobante " + comprobante.getClaveNumerica()
+                + " no está asociado a una nota de crédito");
+        }
+        ComprobanteElectronico referencia = nota.getComprobanteReferencia();
+        Element original = raizDe(referencia.getXmlComprobante(), referencia.getClaveNumerica());
 
         String nsNC = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/notaCreditoElectronica";
         StringBuilder xml = new StringBuilder();
@@ -121,26 +151,108 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<NotaCreditoElectronica xmlns=\"").append(nsNC).append("\">");
 
         xml.append("<Clave>").append(comprobante.getClaveNumerica()).append("</Clave>");
+        xml.append("<ProveedorSistemas>").append(obtenerProveedorSistemas(comprobante)).append("</ProveedorSistemas>");
         xml.append("<CodigoActividadEmisor>").append(obtenerActividadEconomica(comprobante)).append("</CodigoActividadEmisor>");
+        copiarHijo(xml, original, "CodigoActividadReceptor");
         xml.append("<NumeroConsecutivo>").append(extraerConsecutivoDeClave(comprobante.getClaveNumerica())).append("</NumeroConsecutivo>");
         xml.append("<FechaEmision>").append(formatearFecha(comprobante.getFechaEmision())).append("</FechaEmision>");
 
-        xml.append("<InformacionReferencia>");
-        xml.append("<TipoDoc>01</TipoDoc>");
-        xml.append("<Numero>").append(comprobante.getFactura() != null ? comprobante.getFactura().getNumeroFactura() : "").append("</Numero>");
-        xml.append("<FechaEmision>").append(formatearFecha(comprobante.getFechaEmision())).append("</FechaEmision>");
-        xml.append("<Codigo>01</Codigo>");
-        xml.append("<Razon>Anulación</Razon>");
-        xml.append("</InformacionReferencia>");
+        if (!copiarHijo(xml, original, "Emisor")) {
+            throw new IllegalStateException("El comprobante referenciado " + referencia.getClaveNumerica()
+                + " no tiene Emisor en su XML");
+        }
+        copiarHijo(xml, original, "Receptor");
+        if (!copiarHijo(xml, original, "CondicionVenta")) {
+            xml.append("<CondicionVenta>01</CondicionVenta>");
+        }
+        copiarHijo(xml, original, "CondicionVentaOtros");
+        copiarHijo(xml, original, "PlazoCredito");
 
-        agregarEmisor(xml, comprobante);
-        agregarReceptor(xml, comprobante);
-        xml.append("<CondicionVenta>01</CondicionVenta>");
-        agregarDetalleFactura(xml, comprobante);
-        agregarResumen(xml, comprobante);
+        xml.append("<DetalleServicio>");
+        List<DesgloseImpuesto> desgloses = new ArrayList<>();
+        for (LineaNotaFactura linea : nota.getLineas()) {
+            DesgloseImpuesto desglose = new DesgloseImpuesto(linea.getSubtotal(), linea.getMontoIva(), linea.getTarifaIva());
+            desgloses.add(desglose);
+            escribirLineaDetalle(xml, linea.getNumeroLinea(), linea.getCodigoCabys(), linea.getCantidad(),
+                linea.getUnidadMedida(), linea.getDescripcion(), linea.getPrecioUnitario(), desglose);
+        }
+        xml.append("</DetalleServicio>");
+
+        escribirResumen(xml, desgloses, nota.getMoneda(), nota.getTipoCambio(), medioPagoDe(original));
+
+        xml.append(InformacionReferenciaXml.construir(InformacionReferenciaXml.TIPO_DOC_FACTURA_ELECTRONICA,
+            nota.getClaveReferencia(), nota.getFechaEmisionReferencia(), nota.getCodigoReferencia(), nota.getRazon()));
 
         xml.append("</NotaCreditoElectronica>");
-        return xml.toString();
+
+        String xmlGenerado = xml.toString();
+        if (!XmlValidator.validarXml(xmlGenerado)) {
+            throw new IllegalStateException("XML de nota de crédito generado no es válido");
+        }
+        return xmlGenerado;
+    }
+
+    /** Elemento raíz del XML (firmado) del comprobante referenciado. */
+    private static Element raizDe(String xml, String clave) {
+        if (xml == null || xml.isBlank()) {
+            throw new IllegalStateException("El comprobante referenciado " + clave + " no tiene XML");
+        }
+        try {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            dbf.setNamespaceAware(true);
+            dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            return dbf.newDocumentBuilder().parse(new InputSource(new StringReader(xml))).getDocumentElement();
+        } catch (Exception e) {
+            throw new IllegalStateException("No se pudo leer el XML del comprobante referenciado " + clave, e);
+        }
+    }
+
+    /** Primer hijo directo del elemento con ese nombre local, o null. */
+    private static Element hijo(Element padre, String nombre) {
+        for (Node n = padre.getFirstChild(); n != null; n = n.getNextSibling()) {
+            if (n instanceof Element e && nombre.equals(e.getLocalName())) {
+                return e;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Copia el hijo directo con ese nombre (con todo su contenido) al XML de la nota, en el espacio de nombres por
+     * defecto de la nota.
+     *
+     * @return false si el original no lo tiene
+     */
+    private boolean copiarHijo(StringBuilder xml, Element padre, String nombre) {
+        Element e = hijo(padre, nombre);
+        if (e == null) {
+            return false;
+        }
+        copiarElemento(xml, e);
+        return true;
+    }
+
+    private void copiarElemento(StringBuilder xml, Element e) {
+        xml.append('<').append(e.getLocalName()).append('>');
+        boolean tieneElementos = false;
+        for (Node n = e.getFirstChild(); n != null; n = n.getNextSibling()) {
+            if (n instanceof Element hijo) {
+                tieneElementos = true;
+                copiarElemento(xml, hijo);
+            }
+        }
+        if (!tieneElementos) {
+            xml.append(escaparXml(e.getTextContent()));
+        }
+        xml.append("</").append(e.getLocalName()).append('>');
+    }
+
+    /** TipoMedioPago del comprobante referenciado (ResumenFactura/MedioPago), o 01 si no lo declara. */
+    private static String medioPagoDe(Element original) {
+        Element resumen = hijo(original, "ResumenFactura");
+        Element medioPago = resumen != null ? hijo(resumen, "MedioPago") : null;
+        Element tipo = medioPago != null ? hijo(medioPago, "TipoMedioPago") : null;
+        return tipo != null && !tipo.getTextContent().isBlank() ? tipo.getTextContent().trim() : "01";
     }
 
     @Override
@@ -295,25 +407,7 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         for (LineaFactura linea : comprobante.getFactura().getLineas()) {
             var producto = linea.getProducto();
 
-            xml.append("<LineaDetalle>");
-            xml.append("<NumeroLinea>").append(numeroLinea++).append("</NumeroLinea>");
-
-            // CodigoCABYS — resolved via master with null-safe fallback to Producto (XML-1)
-            String cabysRaw = resolveCodigoCabys(producto);
-            String cabys = (cabysRaw != null && !cabysRaw.isEmpty()) ? cabysRaw : "8522000000000";
-            xml.append("<CodigoCABYS>").append(cabys).append("</CodigoCABYS>");
-
             BigDecimal cantidad = linea.getCantidad() != null ? BigDecimal.valueOf(linea.getCantidad()) : BigDecimal.ONE;
-            xml.append("<Cantidad>").append(fmt(cantidad, 3)).append("</Cantidad>");
-
-            String unidadMedida = "Unid";
-            if (producto.getPresentacion() != null && producto.getPresentacion().getCodigoUnidadFE() != null) {
-                unidadMedida = producto.getPresentacion().getCodigoUnidadFE();
-            }
-            xml.append("<UnidadMedida>").append(unidadMedida).append("</UnidadMedida>");
-            // descripcion — resolved via master with null-safe fallback (XML-1)
-            xml.append("<Detalle>").append(escaparXml(resolveDescripcion(producto))).append("</Detalle>");
-
             // ADR-009: desglose por línea con el mismo componente que la factura y el asiento.
             // Todos los montos salen del desglose a 2 decimales y se expresan con 5 decimales,
             // de modo que las sumas del resumen coinciden al céntimo con la factura.
@@ -323,27 +417,46 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
                 ? base.divide(cantidad, 5, RoundingMode.HALF_UP)
                 : base;
 
-            xml.append("<PrecioUnitario>").append(fmt(precioUnitarioSinIva, 5)).append("</PrecioUnitario>");
-            xml.append("<MontoTotal>").append(fmt(base, 5)).append("</MontoTotal>");
-            xml.append("<SubTotal>").append(fmt(base, 5)).append("</SubTotal>");
-            xml.append("<BaseImponible>").append(fmt(base, 5)).append("</BaseImponible>");
-
-            // Impuesto siempre presente — exento usa CodigoTarifaIVA=10, Tarifa=0
-            xml.append("<Impuesto>");
-            xml.append("<Codigo>01</Codigo>");
-            xml.append("<CodigoTarifaIVA>").append(resolverCodigoTarifaIVA(desglose.tarifa())).append("</CodigoTarifaIVA>");
-            xml.append("<Tarifa>").append(fmt(desglose.tarifa(), 2)).append("</Tarifa>");
-            xml.append("<Monto>").append(fmt(desglose.impuesto(), 5)).append("</Monto>");
-            xml.append("</Impuesto>");
-
-            xml.append("<ImpuestoAsumidoEmisorFabrica>0.00000</ImpuestoAsumidoEmisorFabrica>");
-            xml.append("<ImpuestoNeto>").append(fmt(desglose.impuesto(), 5)).append("</ImpuestoNeto>");
-            xml.append("<MontoTotalLinea>").append(fmt(desglose.total(), 5)).append("</MontoTotalLinea>");
-
-            xml.append("</LineaDetalle>");
+            // CAByS, unidad y descripción: resueltos desde el maestro con respaldo en Producto (XML-1)
+            escribirLineaDetalle(xml, numeroLinea++, DatosFeProducto.codigoCabys(producto), cantidad,
+                DatosFeProducto.unidadMedida(producto), DatosFeProducto.descripcion(producto), precioUnitarioSinIva,
+                desglose);
         }
 
         xml.append("</DetalleServicio>");
+    }
+
+    /** Una LineaDetalle (mismo formato en factura, tiquete y nota de crédito). */
+    private void escribirLineaDetalle(StringBuilder xml, int numeroLinea, String cabys, BigDecimal cantidad,
+                                      String unidadMedida, String detalle, BigDecimal precioUnitarioSinIva,
+                                      DesgloseImpuesto desglose) {
+        BigDecimal base = desglose.base();
+
+        xml.append("<LineaDetalle>");
+        xml.append("<NumeroLinea>").append(numeroLinea).append("</NumeroLinea>");
+        xml.append("<CodigoCABYS>").append(cabys).append("</CodigoCABYS>");
+        xml.append("<Cantidad>").append(fmt(cantidad, 3)).append("</Cantidad>");
+        xml.append("<UnidadMedida>").append(unidadMedida).append("</UnidadMedida>");
+        xml.append("<Detalle>").append(escaparXml(detalle)).append("</Detalle>");
+
+        xml.append("<PrecioUnitario>").append(fmt(precioUnitarioSinIva, 5)).append("</PrecioUnitario>");
+        xml.append("<MontoTotal>").append(fmt(base, 5)).append("</MontoTotal>");
+        xml.append("<SubTotal>").append(fmt(base, 5)).append("</SubTotal>");
+        xml.append("<BaseImponible>").append(fmt(base, 5)).append("</BaseImponible>");
+
+        // Impuesto siempre presente — exento usa CodigoTarifaIVA=10, Tarifa=0
+        xml.append("<Impuesto>");
+        xml.append("<Codigo>01</Codigo>");
+        xml.append("<CodigoTarifaIVA>").append(resolverCodigoTarifaIVA(desglose.tarifa())).append("</CodigoTarifaIVA>");
+        xml.append("<Tarifa>").append(fmt(desglose.tarifa(), 2)).append("</Tarifa>");
+        xml.append("<Monto>").append(fmt(desglose.impuesto(), 5)).append("</Monto>");
+        xml.append("</Impuesto>");
+
+        xml.append("<ImpuestoAsumidoEmisorFabrica>0.00000</ImpuestoAsumidoEmisorFabrica>");
+        xml.append("<ImpuestoNeto>").append(fmt(desglose.impuesto(), 5)).append("</ImpuestoNeto>");
+        xml.append("<MontoTotalLinea>").append(fmt(desglose.total(), 5)).append("</MontoTotalLinea>");
+
+        xml.append("</LineaDetalle>");
     }
 
     private void agregarResumen(StringBuilder xml, ComprobanteElectronico comprobante) {
@@ -352,13 +465,39 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         var factura = comprobante.getFactura();
 
         // ADR-009: totales = sumas del desglose por línea (mismo componente que la factura)
+        List<DesgloseImpuesto> desgloses = new ArrayList<>();
+        for (LineaFactura linea : factura.getLineas()) {
+            desgloses.add(desglosarLinea(linea));
+        }
+        BigDecimal totalComprobante = totalComprobante(desgloses);
+        if (factura.getTotal() != null && factura.getTotal().compareTo(totalComprobante) != 0) {
+            log.warn("Factura {}: total almacenado {} difiere del total desglosado por líneas {} — el XML declara el desglose",
+                factura.getNumeroFactura(), factura.getTotal(), totalComprobante);
+        }
+
+        String codigoMoneda = (factura.getMonedaFE() != null) ? factura.getMonedaFE().getCodigo() : "CRC";
+        BigDecimal tipoCambio = (factura.getTipoCambio() != null) ? factura.getTipoCambio() : BigDecimal.ONE;
+        String codigoMedioPago = (factura.getMedioPagoFE() != null) ? factura.getMedioPagoFE().getCodigo() : "01";
+        escribirResumen(xml, desgloses, codigoMoneda, tipoCambio, codigoMedioPago);
+    }
+
+    private static BigDecimal totalComprobante(List<DesgloseImpuesto> desgloses) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (DesgloseImpuesto desglose : desgloses) {
+            total = total.add(desglose.base()).add(desglose.gravado() ? desglose.impuesto() : BigDecimal.ZERO);
+        }
+        return total;
+    }
+
+    /** ResumenFactura a partir del desglose de cada línea (mismo formato en factura, tiquete y nota de crédito). */
+    private void escribirResumen(StringBuilder xml, List<DesgloseImpuesto> desgloses, String codigoMoneda,
+                                 BigDecimal tipoCambio, String codigoMedioPago) {
         BigDecimal totalMercanciasGravadas = BigDecimal.ZERO;
         BigDecimal totalMercanciasExentas = BigDecimal.ZERO;
         BigDecimal totalImpuesto = BigDecimal.ZERO;
         Map<String, BigDecimal> impuestoPorCodigoTarifa = new LinkedHashMap<>();
 
-        for (LineaFactura linea : factura.getLineas()) {
-            DesgloseImpuesto desglose = desglosarLinea(linea);
+        for (DesgloseImpuesto desglose : desgloses) {
             if (desglose.gravado()) {
                 totalMercanciasGravadas = totalMercanciasGravadas.add(desglose.base());
                 totalImpuesto = totalImpuesto.add(desglose.impuesto());
@@ -376,13 +515,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         BigDecimal totalVenta = totalGravado.add(totalExento);
         BigDecimal totalVentaNeta = totalVenta;
         BigDecimal totalComprobante = totalVentaNeta.add(totalImpuesto);
-        if (factura.getTotal() != null && factura.getTotal().compareTo(totalComprobante) != 0) {
-            log.warn("Factura {}: total almacenado {} difiere del total desglosado por líneas {} — el XML declara el desglose",
-                factura.getNumeroFactura(), factura.getTotal(), totalComprobante);
-        }
-
-        String codigoMoneda = (factura.getMonedaFE() != null) ? factura.getMonedaFE().getCodigo() : "CRC";
-        BigDecimal tipoCambio = (factura.getTipoCambio() != null) ? factura.getTipoCambio() : BigDecimal.ONE;
 
         xml.append("<ResumenFactura>");
         xml.append("<CodigoTipoMoneda>");
@@ -416,7 +548,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<TotalImpuesto>").append(fmt(totalImpuesto, 5)).append("</TotalImpuesto>");
 
         // MedioPago dentro de ResumenFactura como elemento complejo
-        String codigoMedioPago = (factura.getMedioPagoFE() != null) ? factura.getMedioPagoFE().getCodigo() : "01";
         xml.append("<MedioPago>");
         xml.append("<TipoMedioPago>").append(codigoMedioPago).append("</TipoMedioPago>");
         xml.append("<TotalMedioPago>").append(fmt(totalComprobante, 5)).append("</TotalMedioPago>");
@@ -429,25 +560,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     // =====================================================================
     // FE field resolvers — null-safe navigation through ArticuloMaestro (XML-1)
     // =====================================================================
-
-    /**
-     * Resolves descripcion: reads from master when present, falls back to deprecated Produto field.
-     * Transition safety guard — no NPE even when FK has not been backfilled yet.
-     */
-    @SuppressWarnings("deprecation")
-    private String resolveDescripcion(Producto produto) {
-        return Optional.ofNullable(produto.getArticuloMaestro())
-                .map(ArticuloMaestro::getDescripcion)
-                .orElse(produto.getDescripcion());
-    }
-
-    /** Resolves codigoCabys: reads from master when present, falls back to deprecated Produto field. */
-    @SuppressWarnings("deprecation")
-    private String resolveCodigoCabys(Producto produto) {
-        return Optional.ofNullable(produto.getArticuloMaestro())
-                .map(ArticuloMaestro::getCodigoCabys)
-                .orElse(produto.getCodigoCabys());
-    }
 
     /** Resolves descripcionCabys: reads from master when present, falls back to deprecated Producto field. */
     @SuppressWarnings("deprecation")

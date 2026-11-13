@@ -5,8 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
+import org.w3c.dom.bootstrap.DOMImplementationRegistry;
+import org.w3c.dom.ls.DOMImplementationLS;
+import org.w3c.dom.ls.LSInput;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -24,8 +29,11 @@ import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Utilidad para validación y manipulación de XML.
@@ -46,6 +54,8 @@ public class XmlValidator {
     private static final String XSD_PATH_TIQUETE = "xsd/TiqueteElectronico_V4.4.xsd";
     private static final String XSD_PATH_NOTA_CREDITO = "xsd/NotaCreditoElectronica_V4.4.xsd";
     private static final String XSD_PATH_NOTA_DEBITO = "xsd/NotaDebitoElectronica_V4.4.xsd";
+    private static final String XSD_PATH_XMLDSIG = "xsd/xmldsig-core-schema.xsd";
+    private static final String XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#";
     
     static {
         documentBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -87,8 +97,10 @@ public class XmlValidator {
             // Intentar cargar desde sistema de archivos
             File xsdFile = new File("src/main/resources/" + xsdPath);
             if (xsdFile.exists()) {
-                SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-                Schema schema = schemaFactory.newSchema(xsdFile);
+                Schema schema;
+                try (InputStream xsd = new java.io.FileInputStream(xsdFile)) {
+                    schema = crearSchema(xsd);
+                }
                 
                 Validator validator = schema.newValidator();
                 validator.validate(new StreamSource(new StringReader(xml)));
@@ -114,12 +126,87 @@ public class XmlValidator {
     }
     
     /**
+     * Errores de validación del XML contra el XSD oficial del tipo de comprobante (lista vacía si es válido). A
+     * diferencia de {@link #validarContraXsd(String, TipoComprobanteElectronico)}, exige que el XSD exista en el
+     * classpath: sin esquema no hay validación que reportar.
+     *
+     * @throws IllegalStateException si el XSD no está en el classpath o no se puede cargar
+     */
+    public static List<String> erroresContraXsd(String xml, TipoComprobanteElectronico tipoComprobante) {
+        String xsdPath = obtenerRutaXsd(tipoComprobante);
+        ClassPathResource resource = new ClassPathResource(xsdPath);
+        if (!resource.exists()) {
+            throw new IllegalStateException("Esquema XSD no encontrado en el classpath: " + xsdPath);
+        }
+        List<String> errores = new ArrayList<>();
+        try (InputStream xsd = resource.getInputStream()) {
+            Validator validator = crearSchema(xsd).newValidator();
+            validator.setErrorHandler(new ErrorHandler() {
+                @Override
+                public void warning(SAXParseException e) {
+                    // las advertencias no invalidan el documento
+                }
+
+                @Override
+                public void error(SAXParseException e) {
+                    errores.add("línea " + e.getLineNumber() + ", columna " + e.getColumnNumber() + ": " + e.getMessage());
+                }
+
+                @Override
+                public void fatalError(SAXParseException e) {
+                    error(e);
+                }
+            });
+            validator.validate(new StreamSource(new StringReader(xml)));
+        } catch (SAXException e) {
+            errores.add(e.getMessage());
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo cargar el esquema " + xsdPath, e);
+        }
+        return errores;
+    }
+
+    /**
+     * Esquema a partir del XSD de Hacienda. Los XSD oficiales importan la firma XML con una ruta relativa
+     * ({@code ../../xmldsig-core-schema.xsd}) que no existe en el classpath: el import se resuelve con la copia local
+     * {@value #XSD_PATH_XMLDSIG}, sin red.
+     */
+    private static Schema crearSchema(InputStream xsdStream) throws SAXException {
+        SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+        schemaFactory.setResourceResolver(XmlValidator::resolverRecurso);
+        return schemaFactory.newSchema(new StreamSource(xsdStream));
+    }
+
+    private static LSInput resolverRecurso(String type, String namespaceURI, String publicId, String systemId,
+                                           String baseURI) {
+        if (!XMLDSIG_NS.equals(namespaceURI)) {
+            return null;
+        }
+        ClassPathResource resource = new ClassPathResource(XSD_PATH_XMLDSIG);
+        if (!resource.exists()) {
+            log.warn("Esquema de firma XML no encontrado: {}", XSD_PATH_XMLDSIG);
+            return null;
+        }
+        try {
+            DOMImplementationLS ls = (DOMImplementationLS) DOMImplementationRegistry.newInstance()
+                .getDOMImplementation("LS");
+            LSInput input = ls.createLSInput();
+            input.setByteStream(resource.getInputStream());
+            input.setSystemId(resource.getURL().toString());
+            input.setPublicId(publicId);
+            return input;
+        } catch (Exception e) {
+            log.warn("No se pudo resolver el esquema de firma XML: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Valida XML contra XSD usando InputStream.
      */
     private static boolean validarContraXsd(String xml, java.io.InputStream xsdStream) {
         try {
-            SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-            Schema schema = schemaFactory.newSchema(new StreamSource(xsdStream));
+            Schema schema = crearSchema(xsdStream);
             
             Validator validator = schema.newValidator();
             validator.validate(new StreamSource(new StringReader(xml)));

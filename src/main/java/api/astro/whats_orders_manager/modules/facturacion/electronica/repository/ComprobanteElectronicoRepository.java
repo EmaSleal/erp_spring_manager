@@ -117,6 +117,9 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
      */
     Optional<ComprobanteElectronico> findFirstByFactura_IdFacturaAndVigenteTrue(Integer idFactura);
 
+    /** Comprobante vigente de una nota de crédito o débito (ADR-037 §2). */
+    Optional<ComprobanteElectronico> findFirstByNotaFactura_IdAndVigenteTrue(Long idNota);
+
     /**
      * Todos los comprobantes de una factura, vigente e historial, en orden de creación.
      */
