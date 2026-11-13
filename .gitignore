@@ -48,8 +48,14 @@ certificados/
 *.crt
 *.pem
 
-# Archivos XSD (mantener solo en docs/sprints/SPRINT_5/xsd/)
-src/main/resources/xsd/
+# Archivos XSD: solo se versionan los oficiales v4.4 de Hacienda y el de firma XML (T-032)
+src/main/resources/xsd/*
+!src/main/resources/xsd/README.md
+!src/main/resources/xsd/FacturaElectronica_V4.4.xsd
+!src/main/resources/xsd/TiqueteElectronico_V4.4.xsd
+!src/main/resources/xsd/NotaCreditoElectronica_V4.4.xsd
+!src/main/resources/xsd/NotaDebitoElectronica_V4.4.xsd
+!src/main/resources/xsd/xmldsig-core-schema.xsd
 !docs/sprints/SPRINT_5/xsd/
 
 # Configuraciones sensibles de Hacienda

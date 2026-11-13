@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.Compro
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,6 +40,15 @@ public interface ComprobanteElectronicoService {
      * Genera un comprobante electrónico desde una factura.
      */
     ComprobanteElectronicoDTO generarDesdeFactura(Long facturaId);
+
+    /**
+     * Genera y firma el comprobante de una nota de crédito (tipo 03, ADR-037): consecutivo propio del tipo, clave nueva
+     * y XML con la referencia al comprobante ACEPTADO de la factura. Se envía después con
+     * {@link #procesarFacturaAsync(Long)}, el mismo flujo de la factura.
+     *
+     * @return el comprobante vigente de la nota (FIRMADO, o ERROR si la firma falló)
+     */
+    ComprobanteElectronico generarYFirmarDesdeNota(NotaFactura nota);
 
     /**
      * Reemite una factura cuyo comprobante vigente fue RECHAZADO: el rechazado queda como historial inmutable y se
@@ -124,7 +134,10 @@ public interface ComprobanteElectronicoService {
     boolean enviarPorEmail(Long id, String emailAdicional);
     
     /**
-     * Anula un comprobante.
+     * Ya no anula: un comprobante ACEPTADO solo se anula con una nota de crédito total (ADR-037 §7,
+     * POST /api/facturas/notas-credito).
+     *
+     * @throws IllegalStateException siempre
      */
     ComprobanteElectronicoDTO anular(Long id, String motivo);
     

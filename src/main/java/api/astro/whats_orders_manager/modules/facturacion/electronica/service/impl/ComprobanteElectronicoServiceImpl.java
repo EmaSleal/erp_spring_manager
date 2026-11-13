@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.service.i
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.event.ComprobanteNotaResueltoEvent;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -16,7 +17,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.model.Conf
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.*;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.ClaveNumericaGenerator;
+import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
@@ -26,6 +29,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +81,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final EmailService emailService;
     private final Clock clock;
     private final LimiteConsultaManualHacienda limiteConsultaManual;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
@@ -255,6 +260,58 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         return mapper.toDTO(comprobante);
     }
     
+    @Override
+    @Transactional
+    public ComprobanteElectronico generarYFirmarDesdeNota(NotaFactura nota) {
+        TipoComprobanteElectronico tipo = nota.getTipo() == TipoNotaFactura.DEBITO
+            ? TipoComprobanteElectronico.NOTA_DEBITO : TipoComprobanteElectronico.NOTA_CREDITO;
+        log.info("Generando comprobante {} de la nota {} (factura {})", tipo, nota.getId(),
+            nota.getFactura().getIdFactura());
+
+        // Igual que la factura (ADR-030 §4): un solo vigente por nota; solo un RECHAZADO cede su lugar
+        repository.findFirstByNotaFactura_IdAndVigenteTrue(nota.getId()).ifPresent(vigente -> {
+            if (vigente.getEstado() != EstadoComprobante.RECHAZADO) {
+                throw new IllegalStateException("La nota ya tiene el comprobante vigente "
+                    + vigente.getClaveNumerica() + " en estado " + vigente.getEstado());
+            }
+            vigente.setVigente(false);
+            repository.saveAndFlush(vigente);
+        });
+
+        ConfiguracionEmpresa empresa = configuracionEmpresaService.obtenerConfiguracion()
+            .orElseThrow(() -> new IllegalStateException(
+                "No hay configuración de empresa; complétela en Configuración → Empresa."));
+        ConfiguracionHacienda config = configuracionActivaDe(empresa);
+        if (empresa.getRuc() == null || empresa.getRuc().isBlank()) {
+            throw new IllegalStateException(
+                "La empresa no tiene número de identificación (cédula jurídica) configurado.");
+        }
+
+        // Consecutivo propio del tipo 03 (o 02) y clave de ese tipo; la fecha de emisión es la de la nota
+        Long consecutivo = config.siguienteConsecutivo(tipo.getCodigo());
+        LocalDateTime fechaEmision = nota.getFechaEmision();
+        String claveNumerica = claveGenerator.generar(empresa.getRuc(), consecutivo, tipo, fechaEmision);
+
+        ComprobanteElectronico comprobante = ComprobanteElectronico.builder()
+            .notaFactura(nota)
+            .empresa(empresa)
+            .tipoComprobante(tipo)
+            .claveNumerica(claveNumerica)
+            .consecutivo(String.format("%020d", consecutivo))
+            .fechaEmision(fechaEmision)
+            .estado(EstadoComprobante.GENERADO)
+            .vigente(true)
+            .intentosEnvio(0)
+            .enviadoEmail(false)
+            .build();
+        comprobante.setXmlComprobante(generarXml(comprobante));
+        comprobante = repository.save(comprobante);
+        log.info("Comprobante de la nota {} generado con clave {}", nota.getId(), claveNumerica);
+
+        firmarInterno(comprobante);
+        return repository.save(comprobante);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Optional<ComprobanteElectronicoDTO> obtenerPorId(Long id) {
@@ -467,6 +524,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 + "este está en estado " + rechazado.getEstado());
         }
         if (rechazado.getFactura() == null) {
+            // El comprobante de una nota rechazada no se reemite: la nota queda RECHAZADA y se emite otra (T-032)
             throw new IllegalStateException("El comprobante no está asociado a una factura");
         }
         log.info("Reemitiendo la factura {} tras el rechazo de {}", rechazado.getFactura().getIdFactura(),
@@ -649,6 +707,10 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             }
         };
         comprobante.setEstado(estado);
+        if (comprobante.esDeNota() && (estado == EstadoComprobante.ACEPTADO || estado == EstadoComprobante.RECHAZADO)) {
+            // Efectos de la nota (ADR-037 §3) en esta misma transacción: si fallan, el estado tampoco se guarda
+            eventPublisher.publishEvent(new ComprobanteNotaResueltoEvent(comprobante));
+        }
         if (estado != EstadoComprobante.ERROR_HACIENDA) {
             comprobante.setConsultasErrorHacienda(0);
             return;
@@ -807,17 +869,9 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
         
-        if (comprobante.getEstado() != EstadoComprobante.ACEPTADO) {
-            throw new IllegalStateException("Solo se pueden anular comprobantes aceptados");
-        }
-        
-        // TODO: Generar nota de crédito para anular
-        
-        comprobante.setEstado(EstadoComprobante.ANULADO);
-        comprobante.setUltimoError("Anulado: " + motivo);
-        
-        comprobante = repository.save(comprobante);
-        return mapper.toDTO(comprobante);
+        // ADR-037 §7: marcarlo ANULADO no anula nada ante Hacienda. La única vía es la nota de crédito total.
+        throw new IllegalStateException("El comprobante " + comprobante.getClaveNumerica() + " no se anula "
+            + "directamente: emita una nota de crédito total sobre su factura (POST /api/facturas/notas-credito)");
     }
     
     @Override

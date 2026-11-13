@@ -52,6 +52,16 @@ public interface FacturaService {
     Factura anular(Integer id, String motivo);
 
     /**
+     * Ruta interna de anulación por una nota de crédito total ACEPTADA por Hacienda (ADR-037 §7): marca la factura
+     * anulada con el motivo dado, sin pasar por el bloqueo de PoliticaMutabilidadFactura (la factura tiene su
+     * comprobante ACEPTADO) ni revertir el asiento de venta, que revierte quien aplica la nota con la fecha que exige
+     * su código de referencia.
+     *
+     * @throws IllegalStateException si la factura ya está anulada
+     */
+    Factura anularPorNotaCredito(Factura factura, String motivo);
+
+    /**
      * Updates the delivery state of a factura, persisting via the repository directly
      * to avoid side effects from {@link #save(Factura)}.
      */

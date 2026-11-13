@@ -16,6 +16,7 @@ import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroC
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.nomina.model.DetalleNomina;
@@ -679,6 +680,22 @@ public class AsientoContableService {
      */
     @Transactional
     public AsientoContable generarAsientoReversion(AsientoContable original, String motivo) {
+        return generarAsientoReversion(original, motivo, LocalDate.now(), null);
+    }
+
+    /**
+     * Igual que {@link #generarAsientoReversion(AsientoContable, String)}, con la fecha indicada y, si la reversión
+     * la origina una nota de crédito aceptada, ligada a esa nota además de a la factura (ADR-037 §4).
+     *
+     * @param fecha fecha del asiento de reversión
+     * @param nota  nota que origina la reversión, o null
+     */
+    @Transactional
+    public AsientoContable generarAsientoReversion(AsientoContable original, String motivo, LocalDate fecha,
+                                                   NotaFactura nota) {
+        if (fecha == null) {
+            throw new IllegalArgumentException("La fecha de la reversión es obligatoria");
+        }
         if (original == null) {
             throw new IllegalArgumentException("El asiento a revertir es obligatorio");
         }
@@ -698,7 +715,7 @@ public class AsientoContableService {
 
         AsientoContable reversion = new AsientoContable();
         reversion.setNumero(generarNumeroAsiento());
-        reversion.setFecha(LocalDate.now());
+        reversion.setFecha(fecha);
         String sufijoMotivo = (motivo != null && !motivo.isBlank()) ? " - " + motivo.trim() : "";
         reversion.setConcepto(truncar("Reversión del asiento " + original.getNumero() + sufijoMotivo, 500));
         reversion.setTipo(original.getTipo());
@@ -709,6 +726,7 @@ public class AsientoContableService {
         reversion.setPagoProveedor(original.getPagoProveedor());
         reversion.setNomina(original.getNomina());
         reversion.setAsientoRevertido(original);
+        reversion.setNotaFactura(nota);
 
         List<DetalleAsiento> detalles = new ArrayList<>();
         for (DetalleAsiento linea : original.getDetalles()) {
@@ -739,6 +757,14 @@ public class AsientoContableService {
      * @param motivo  Motivo de la reversión
      * @return Asientos de reversión generados (vacío si no había asiento vigente)
      */
+    /**
+     * Asientos de venta vigentes (contabilizados y sin revertir) de la factura.
+     */
+    @Transactional(readOnly = true)
+    public List<AsientoContable> obtenerAsientosVentaVigentes(Factura factura) {
+        return asientoRepository.findAsientosVentaVigentes(factura.getIdFactura().longValue());
+    }
+
     @Transactional
     public List<AsientoContable> revertirAsientoVenta(Factura factura, String motivo) {
         List<AsientoContable> reversiones = new ArrayList<>();
