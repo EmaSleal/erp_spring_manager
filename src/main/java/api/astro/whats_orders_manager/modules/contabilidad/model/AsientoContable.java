@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.contabilidad.model;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.nomina.model.Nomina;
@@ -38,13 +39,15 @@ import java.util.List;
     @Index(name = "idx_asiento_tipo", columnList = "tipo"),
     @Index(name = "idx_asiento_estado", columnList = "estado"),
     @Index(name = "idx_asiento_factura", columnList = "factura_id"),
+    @Index(name = "idx_asiento_nota_factura", columnList = "nota_factura_id"),
     @Index(name = "idx_asiento_pago", columnList = "pago_id"),
     @Index(name = "idx_asiento_cpp", columnList = "cuenta_por_pagar_id"),
     @Index(name = "idx_asiento_pago_proveedor", columnList = "pago_proveedor_id")
 })
 @Getter
 @Setter
-@ToString(exclude = {"detalles", "factura", "pago", "cuentaPorPagar", "pagoProveedor", "nomina", "asientoRevertido"})
+@ToString(exclude = {"detalles", "factura", "notaFactura", "pago", "cuentaPorPagar", "pagoProveedor", "nomina",
+    "asientoRevertido"})
 @AllArgsConstructor
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -108,6 +111,14 @@ public class AsientoContable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factura_id")
     private Factura factura;
+
+    /**
+     * Nota de crédito que originó el asiento (reversión al aplicarse una nota aceptada, ADR-037 §4). El asiento sigue
+     * ligado también a su factura.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nota_factura_id")
+    private NotaFactura notaFactura;
     
     /**
      * Pago relacionado (si el asiento fue generado por un pago).

@@ -4,7 +4,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -105,6 +107,14 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
 
     //findById
     Optional<Factura> findByIdFactura(Integer idFactura);
+
+    /**
+     * Factura con bloqueo de escritura (SELECT ... FOR UPDATE) hasta el fin de la transacción: serializa la emisión de
+     * notas sobre una misma factura (T-032).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT f FROM Factura f WHERE f.idFactura = :idFactura")
+    Optional<Factura> findByIdParaActualizar(@Param("idFactura") Integer idFactura);
 
     //findByClienteId(idCliente)
     @Query("SELECT f FROM Factura f WHERE f.cliente.idCliente = :idCliente")

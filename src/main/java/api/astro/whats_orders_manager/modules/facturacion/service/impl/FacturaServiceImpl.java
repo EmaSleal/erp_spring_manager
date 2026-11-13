@@ -425,6 +425,19 @@ public class FacturaServiceImpl implements FacturaService {
         asientoContableService.revertirAsientoVenta(factura,
             "Anulación de factura " + factura.getNumeroFactura() + ": " + motivo.trim());
 
+        return marcarAnulada(factura, motivo);
+    }
+
+    @Override
+    @Transactional
+    public Factura anularPorNotaCredito(Factura factura, String motivo) {
+        if (factura.estaAnulada()) {
+            throw new IllegalStateException("La factura " + factura.getNumeroFactura() + " ya está anulada");
+        }
+        return marcarAnulada(factura, motivo);
+    }
+
+    private Factura marcarAnulada(Factura factura, String motivo) {
         factura.setAnulada(true);
         factura.setFechaAnulacion(LocalDateTime.now());
         factura.setMotivoAnulacion(motivo.trim().length() > 500 ? motivo.trim().substring(0, 500) : motivo.trim());

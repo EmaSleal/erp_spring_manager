@@ -44,9 +44,12 @@ public class ComprobanteReintentosJob {
     /**
      * Ejecuta cada 15 minutos para reintentar envíos fallidos.
      * Cron: 0 15 * * * * = cada 15 minutos
+     *
+     * Sin transacción de lote (T-032, criterio 29): cada reenvío corre en su propia transacción
+     * ({@link ComprobanteElectronicoService#reenviar}), de modo que un comprobante que falla no revierte los demás. El
+     * registro del fallo se guarda también en una transacción propia.
      */
     @Scheduled(cron = "0 */15 * * * *")
-    @Transactional
     public void reintentarEnviosPendientes() {
         log.info("🔄 Iniciando job de reintentos de comprobantes electrónicos");
         
@@ -114,9 +117,13 @@ public class ComprobanteReintentosJob {
      * Job que consulta estados de comprobantes enviados pero sin respuesta.
      * Ejecuta cada hora.
      * Cron: 0 0 * * * * = cada hora en punto
+     *
+     * Sin transacción de lote (T-032, criterio 27): cada consulta corre en su propia transacción
+     * ({@link ComprobanteElectronicoService#consultarYActualizarEstado}). Si al aceptarse una nota de crédito sus
+     * efectos fallan, solo ese comprobante se revierte (queda sin ACEPTADO y su nota EN_TRAMITE) y los demás se
+     * guardan; la siguiente corrida lo vuelve a consultar.
      */
     @Scheduled(cron = "0 0 * * * *")
-    @Transactional
     public void consultarEstadosPendientes() {
         log.info("🔍 Iniciando consulta de estados pendientes");
         
@@ -156,6 +163,9 @@ public class ComprobanteReintentosJob {
      * Limpieza de comprobantes muy antiguos con error.
      * Ejecuta diariamente a las 2:00 AM.
      * Cron: 0 0 2 * * * = todos los días a las 2:00 AM
+     *
+     * Conserva la transacción de lote: solo antepone una marca al último error de cada comprobante, sin lógica que
+     * pueda lanzar por elemento.
      */
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional

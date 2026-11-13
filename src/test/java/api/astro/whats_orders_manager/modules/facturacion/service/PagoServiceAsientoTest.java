@@ -25,6 +25,7 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.PagoReposit
 import api.astro.whats_orders_manager.modules.facturacion.repository.TipoCambioRepository;
 import api.astro.whats_orders_manager.modules.facturacion.enums.FuenteTipoCambio;
 import api.astro.whats_orders_manager.modules.facturacion.model.TipoCambio;
+import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.impl.PagoServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -75,6 +76,7 @@ import static org.mockito.Mockito.when;
 class PagoServiceAsientoTest {
 
     @Mock private PagoRepository pagoRepository;
+    @Mock private NotaFacturaRepository notaFacturaRepository;
     @Mock private FacturaRepository facturaRepository;
     @Mock private ClienteRepository clienteRepository;
     @Mock private NumeroPagoGeneratorService numeroPagoGenerator;
@@ -107,6 +109,9 @@ class PagoServiceAsientoTest {
         ReflectionTestUtils.setField(service, "asientoContableService", asientoService);
         ReflectionTestUtils.setField(service, "tipoCambioService", new TipoCambioService(tipoCambioRepository));
         ReflectionTestUtils.setField(service, "cuentaBancariaService", cuentaBancariaService);
+        // T-032: factura sin nota de crédito en trámite (sin filas en el repositorio simulado)
+        ReflectionTestUtils.setField(service, "notaFacturaPrecondiciones",
+                new NotaFacturaPrecondiciones(notaFacturaRepository));
 
         long id = 1;
         for (String clave : List.of("VENTA_CXC_CLIENTES", "COBRO_ANTICIPOS_CLIENTES",

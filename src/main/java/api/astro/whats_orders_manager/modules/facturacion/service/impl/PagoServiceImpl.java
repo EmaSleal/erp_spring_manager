@@ -19,6 +19,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.PagoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.NumeroPagoGeneratorService;
+import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaPrecondiciones;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
@@ -78,6 +79,9 @@ public class PagoServiceImpl implements PagoService {
 
     @Autowired
     private CuentaBancariaService cuentaBancariaService;
+
+    @Autowired
+    private NotaFacturaPrecondiciones notaFacturaPrecondiciones;
 
     // ==================== OPERACIONES CRUD ====================
     
@@ -187,6 +191,8 @@ public class PagoServiceImpl implements PagoService {
             if (factura.estaAnulada()) {
                 throw new IllegalStateException("No se pueden registrar pagos sobre una factura anulada");
             }
+            // ADR-037 §3: con una nota de crédito en trámite la factura no admite pagos (T-032)
+            notaFacturaPrecondiciones.exigirSinNotaEnTramite(factura.getIdFactura(), "registrar un pago");
 
             // Asignar la factura completa al pago
             pago.setFactura(factura);
@@ -302,6 +308,10 @@ public class PagoServiceImpl implements PagoService {
             return pago;
         }
         
+        if (pago.getFactura() != null) {
+            notaFacturaPrecondiciones.exigirSinNotaEnTramite(pago.getFactura().getIdFactura(), "confirmar el pago");
+        }
+
         EstadoPago estadoAnterior = pago.getEstado();
         pago.setEstado(EstadoPago.CONFIRMADO);
         Pago pagoConfirmado = pagoRepository.save(pago);
@@ -337,6 +347,10 @@ public class PagoServiceImpl implements PagoService {
             throw new IllegalStateException("No se puede conciliar un pago rechazado");
         }
         
+        if (pago.getFactura() != null) {
+            notaFacturaPrecondiciones.exigirSinNotaEnTramite(pago.getFactura().getIdFactura(), "conciliar el pago");
+        }
+
         EstadoPago estadoAnterior = pago.getEstado();
         pago.conciliar();
         Pago pagoConciliado = pagoRepository.save(pago);
