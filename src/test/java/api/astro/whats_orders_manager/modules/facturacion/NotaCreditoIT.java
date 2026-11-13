@@ -21,6 +21,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Tipo
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.scheduled.ComprobanteReintentosJob;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.FirmaDigitalService;
@@ -41,12 +42,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
@@ -90,6 +94,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -116,6 +121,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 })
 @AutoConfigureMockMvc
 @Testcontainers
+@ExtendWith(OutputCaptureExtension.class)
 @DisplayName("T-032 — nota de crédito electrónica total (MySQL)")
 class NotaCreditoIT {
 
@@ -162,6 +168,7 @@ class NotaCreditoIT {
     @Autowired private XmlGeneratorService xmlGenerator;
     @Autowired private NotaFacturaService notaService;
     @Autowired private RelojAjustable reloj;
+    @Autowired private ComprobanteReintentosJob reintentosJob;
 
     @TestConfiguration
     static class RelojDePrueba {
@@ -594,7 +601,119 @@ class NotaCreditoIT {
         assertThat(estadoComprobante(idComprobante)).isEqualTo("ACEPTADO");
     }
 
+    // ── Aislamiento del sondeo (criterios 27, 28 y 31) ───────────────────────
+
+    @Test
+    @DisplayName("job de sondeo: los efectos fallidos de una nota no revierten el lote; corregida la causa, se aplican "
+            + "una sola vez")
+    void sondeo_aislaElFalloDeUnaNota(CapturedOutput salida) throws Exception {
+        int facturaDeLaNota = facturaAceptada();
+        Nota nota = emitirOk(facturaDeLaNota, "01", "Anulación total");
+        jdbc.update("UPDATE comprobante_electronico SET estado = 'ENVIADO', fecha_envio = ? WHERE id = ?",
+                LocalDateTime.now().minusHours(1), nota.idComprobante());
+        int otraFactura = facturaConLineasAyB();
+        comprobanteDeFactura(otraFactura, EstadoComprobante.ENVIADO);
+        Long otroComprobante = comprobanteRepository.findFirstByFactura_IdFacturaAndVigenteTrue(otraFactura)
+                .orElseThrow().getId();
+        when(haciendaApi.consultarComprobante(anyString(), anyLong())).thenReturn(consulta("aceptado"));
+        // Causa del fallo: la factura de la nota tiene un pago aplicado (defensa del criterio 31)
+        doReturn(List.of(new Pago())).when(pagoService).findPagosValidosByFacturaId(facturaDeLaNota);
+
+        reintentosJob.consultarEstadosPendientes();
+
+        assertThat(estadoComprobante(otroComprobante)).isEqualTo("ACEPTADO");
+        assertThat(estadoComprobante(nota.idComprobante())).isEqualTo("ENVIADO");
+        assertThat(estadoNota(nota.id())).isEqualTo("EN_TRAMITE");
+        assertThat(reversionesDeLaNota(nota.id())).isZero();
+        assertThat(jdbc.queryForObject("SELECT anulada FROM factura WHERE id_factura = ?", Boolean.class,
+                facturaDeLaNota)).isFalse();
+        assertThat(salida.getAll()).contains("Efectos de la nota " + nota.id());
+
+        doCallRealMethod().when(pagoService).findPagosValidosByFacturaId(facturaDeLaNota);
+        reintentosJob.consultarEstadosPendientes();
+        reintentosJob.consultarEstadosPendientes();
+
+        assertThat(estadoComprobante(nota.idComprobante())).isEqualTo("ACEPTADO");
+        assertThat(estadoNota(nota.id())).isEqualTo("APLICADA");
+        assertThat(reversionesDeLaNota(nota.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT anulada FROM factura WHERE id_factura = ?", Boolean.class,
+                facturaDeLaNota)).isTrue();
+    }
+
+    // ── Pagos durante una nota en trámite (criterio 30) ──────────────────────
+
+    @Test
+    @DisplayName("con la nota EN_TRAMITE: registrar, confirmar, conciliar y conciliar en lote un pago → 409 que cita la nota")
+    void pagos_bloqueadosConNotaEnTramite() throws Exception {
+        int idFactura = facturaAceptada();
+        Long pendiente = idPago(registrarPago(idFactura));
+        Nota nota = emitirOk(idFactura, "01", "Anulación total");
+
+        List<MvcResult> bloqueadas = List.of(
+                registrarPago(idFactura),
+                mockMvc.perform(put("/pagos/" + pendiente + "/confirmar")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn(),
+                mockMvc.perform(put("/pagos/" + pendiente + "/conciliar")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn(),
+                mockMvc.perform(post("/pagos/conciliar-lote").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ids\":[" + pendiente + "]}")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn());
+
+        for (MvcResult r : bloqueadas) {
+            assertThat(r.getResponse().getStatus()).as(r.getRequest().getRequestURI()).isEqualTo(409);
+            assertThat(r.getResponse().getContentAsString()).contains("nota de crédito " + nota.id());
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pagos WHERE id_factura = ?", Integer.class, idFactura))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT estado FROM pagos WHERE id_pago = ?", String.class, pendiente))
+                .isEqualTo("PENDIENTE");
+    }
+
+    @Test
+    @DisplayName("con la nota RECHAZADA la factura vuelve a admitir pagos")
+    void pago_permitidoConNotaRechazada() throws Exception {
+        int idFactura = facturaAceptada();
+        Nota nota = emitirOk(idFactura, "01", "Anulación total");
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("rechazado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        assertThat(estadoNota(nota.id())).isEqualTo("RECHAZADA");
+
+        MvcResult result = registrarPago(idFactura);
+
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString()).isEqualTo(200);
+    }
+
     // ── Apoyo ────────────────────────────────────────────────────────────────
+
+    /** POST /pagos/registrar: pago PENDIENTE en efectivo (sin asiento) de 100 sobre la factura. */
+    private MvcResult registrarPago(int idFactura) throws Exception {
+        Integer idCliente = jdbc.queryForObject("SELECT id_cliente FROM factura WHERE id_factura = ?", Integer.class,
+                idFactura);
+        Map<String, Object> pago = new LinkedHashMap<>();
+        pago.put("idCliente", idCliente);
+        pago.put("idFactura", idFactura);
+        pago.put("tipoPago", "PARCIAL");
+        pago.put("monto", 100);
+        pago.put("metodoPago", "EFECTIVO");
+        pago.put("fechaPago", LocalDateTime.now().withNano(0).toString());
+        pago.put("estado", "PENDIENTE");
+        return mockMvc.perform(post("/pagos/registrar").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(pago))
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andReturn();
+    }
+
+    private Long idPago(MvcResult registrado) throws Exception {
+        assertThat(registrado.getResponse().getStatus()).as(registrado.getResponse().getContentAsString())
+                .isEqualTo(200);
+        return objectMapper.readTree(registrado.getResponse().getContentAsString()).get("data").get("idPago").asLong();
+    }
+
+    private int reversionesDeLaNota(Long idNota) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM asientos_contables WHERE nota_factura_id = ?", Integer.class,
+                idNota);
+    }
+
 
     record Nota(Long id, Long idComprobante, String clave) {
     }

@@ -7,6 +7,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.event.Comp
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.PeriodoEfectoNota;
+import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaEfectosException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
@@ -30,6 +31,8 @@ import java.util.List;
  *   <li>ACEPTADO: reversión espejo del asiento de venta vigente (fecha según el código de referencia), factura anulada
  *       por la ruta interna y nota APLICADA. Sin asiento de venta vigente (facturas históricas), la reversión se omite
  *       y se registra en el log.</li>
+ *   <li>Si la factura tiene pagos aplicados, o cualquier paso falla, se lanza: nada se persiste (tampoco el
+ *       ACEPTADO del comprobante) y la nota sigue EN_TRAMITE para el siguiente sondeo.</li>
  *   <li>RECHAZADO: nota RECHAZADA, sin efectos; la factura admite una nota nueva.</li>
  * </ul>
  */
@@ -41,6 +44,7 @@ public class NotaFacturaEfectos {
     private final NotaFacturaRepository notaRepository;
     private final AsientoContableService asientoContableService;
     private final FacturaService facturaService;
+    private final PagoService pagoService;
     private final Clock clock;
 
     @EventListener
@@ -57,7 +61,13 @@ public class NotaFacturaEfectos {
             return;
         }
         if (comprobante.getEstado() == EstadoComprobante.ACEPTADO) {
-            aplicar(nota, comprobante);
+            try {
+                aplicar(nota, comprobante);
+            } catch (RuntimeException e) {
+                log.error("Efectos de la nota {} (comprobante {}) no aplicados; la nota sigue EN_TRAMITE y el sondeo "
+                    + "volverá a intentarlo: {}", nota.getId(), comprobante.getClaveNumerica(), e.getMessage(), e);
+                throw e;
+            }
         } else if (comprobante.getEstado() == EstadoComprobante.RECHAZADO) {
             nota.setEstado(EstadoNotaFactura.RECHAZADA);
             notaRepository.save(nota);
@@ -68,6 +78,12 @@ public class NotaFacturaEfectos {
 
     private void aplicar(NotaFactura nota, ComprobanteElectronico comprobante) {
         Factura factura = nota.getFactura();
+        // Defensa (criterio 31): la nota total no se aplica sobre una factura con pagos; los pagos quedan bloqueados
+        // mientras la nota está en trámite (NotaFacturaPrecondiciones), así que esto solo pasa por datos previos
+        if (!pagoService.findPagosValidosByFacturaId(factura.getIdFactura()).isEmpty()) {
+            throw new NotaFacturaEfectosException("La factura " + factura.getNumeroFactura() + " tiene pagos aplicados: "
+                + "la nota de crédito total " + nota.getId() + " no se aplica hasta que se anulen");
+        }
         String motivo = "Nota de crédito " + nota.getId() + " (clave " + comprobante.getClaveNumerica()
             + ") aceptada por Hacienda, código " + nota.getCodigoReferencia() + ": " + nota.getRazon();
 

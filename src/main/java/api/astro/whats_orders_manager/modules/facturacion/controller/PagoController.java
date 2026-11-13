@@ -12,6 +12,7 @@ import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
+import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -247,6 +249,10 @@ public class PagoController {
             return ResponseEntity.ok(
                 ResponseDTO.success("Pago registrado exitosamente", responseDTO));
             
+        } catch (NotaFacturaConflictoException e) {
+            // ADR-037 §3: factura con una nota de crédito en trámite (T-032)
+            log.warn("Pago rechazado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             log.warn("Error de validación al registrar pago: {}", e.getMessage());
             return ResponseEntity.badRequest()
@@ -284,6 +290,10 @@ public class PagoController {
             return ResponseEntity.ok(
                 ResponseDTO.success("Pago confirmado exitosamente", responseDTO));
                 
+        } catch (NotaFacturaConflictoException e) {
+            // ADR-037 §3: factura con una nota de crédito en trámite (T-032)
+            log.warn("Pago rechazado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             log.warn("Error al confirmar pago: {}", e.getMessage());
             return ResponseEntity.badRequest()
@@ -321,6 +331,10 @@ public class PagoController {
             return ResponseEntity.ok(
                 ResponseDTO.success("Pago conciliado exitosamente", responseDTO));
                 
+        } catch (NotaFacturaConflictoException e) {
+            // ADR-037 §3: factura con una nota de crédito en trámite (T-032)
+            log.warn("Pago rechazado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (IllegalArgumentException | IllegalStateException e) {
             log.warn("Error al conciliar pago: {}", e.getMessage());
             return ResponseEntity.badRequest()
@@ -353,6 +367,10 @@ public class PagoController {
         try {
             List<Pago> conciliados = pagoService.conciliarPagosLote(ids);
             return ResponseEntity.ok(ResponseDTO.success(conciliados.size() + " pago(s) conciliados exitosamente"));
+        } catch (NotaFacturaConflictoException e) {
+            // ADR-037 §3: factura con una nota de crédito en trámite (T-032)
+            log.warn("Pago rechazado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (Exception e) {
             log.error("Error al conciliar lote: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(ResponseDTO.error("Error al conciliar los pagos"));

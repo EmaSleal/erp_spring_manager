@@ -2,7 +2,9 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.service.i
 
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.CondicionVentaFE;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MedioPagoFE;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
@@ -54,8 +56,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * T-032 (criterios 8, 10, 11, 26): XML de la nota de crédito total contra el XSD oficial
- * NotaCreditoElectronica_V4.4.xsd (src/main/resources/xsd, sin simular el validador).
+ * T-032 (criterios 8, 10, 11, 26 y 32): XML de la nota de crédito total contra el XSD oficial
+ * NotaCreditoElectronica_V4.4.xsd (src/main/resources/xsd, sin simular el validador), y regresión del XML firmado de
+ * factura y tiquete contra FacturaElectronica_V4.4.xsd y TiqueteElectronico_V4.4.xsd.
  *
  * La nota se arma con NotaFacturaService (repositorios simulados) a partir de una factura cuyo comprobante ACEPTADO
  * tiene el XML real de XmlGeneratorServiceImpl. El XSD exige ds:Signature, así que el XML de la nota se firma con
@@ -150,6 +153,41 @@ class NotaCreditoXmlTest {
         String xml = xmlFirmadoDeLaNota(codigo, "Anulación total por devolución del pedido");
 
         assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("regresión (criterio 32): la factura firmada del flujo real valida contra FacturaElectronica_V4.4.xsd")
+    void factura_validaContraXsd() {
+        assertThat(XmlValidator.erroresContraXsd(aceptado.getXmlComprobante(),
+                TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("regresión (criterio 32): factura a crédito en USD con transferencia valida contra su XSD")
+    void facturaCreditoUsd_validaContraXsd() {
+        factura.setMonedaFE(MonedaFE.USD);
+        factura.setTipoCambio(new BigDecimal("512.34000"));
+        factura.setCondicionVentaFE(CondicionVentaFE.CREDITO);
+        factura.setPlazoCredito(30);
+        factura.setMedioPagoFE(MedioPagoFE.TRANSFERENCIA_DEPOSITO);
+        String xml = firma.firmarXml(generador.generarXmlFactura(aceptado), p12.toString(), PIN);
+
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("regresión (criterio 32): el tiquete firmado del flujo real valida contra TiqueteElectronico_V4.4.xsd")
+    void tiquete_validaContraXsd() {
+        ComprobanteElectronico tiquete = ComprobanteElectronico.builder()
+                .factura(factura)
+                .empresa(empresa)
+                .tipoComprobante(TipoComprobanteElectronico.TIQUETE_ELECTRONICO)
+                .claveNumerica(CLAVE_FACTURA)
+                .fechaEmision(FECHA_FACTURA)
+                .build();
+        String xml = firma.firmarXml(generador.generarXmlTiquete(tiquete), p12.toString(), PIN);
+
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.TIQUETE_ELECTRONICO)).isEmpty();
     }
 
     @Test

@@ -7,8 +7,10 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.event.Comp
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaEfectosException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +25,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -43,8 +46,9 @@ class NotaFacturaEfectosTest {
     private final NotaFacturaRepository notaRepository = mock(NotaFacturaRepository.class);
     private final AsientoContableService asientoService = mock(AsientoContableService.class);
     private final FacturaService facturaService = mock(FacturaService.class);
+    private final PagoService pagoService = mock(PagoService.class);
     private final NotaFacturaEfectos efectos = new NotaFacturaEfectos(notaRepository, asientoService, facturaService,
-            Clock.fixed(AHORA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()));
+            pagoService, Clock.fixed(AHORA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()));
 
     private Factura factura;
     private AsientoContable venta;
@@ -121,6 +125,22 @@ class NotaFacturaEfectosTest {
         verify(asientoService, never()).generarAsientoReversion(any(), anyString(), any(), any());
         verify(facturaService).anularPorNotaCredito(eq(factura), any());
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
+    }
+
+    @Test
+    @DisplayName("defensa: factura con pagos aplicados → error controlado, sin asiento ni anulación, nota EN_TRAMITE")
+    void conPagosAplicados_noAplica() {
+        when(pagoService.findPagosValidosByFacturaId(9)).thenReturn(List.of(new Pago()));
+        NotaFactura nota = nota("01");
+
+        assertThatThrownBy(() -> efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO)))
+                .isInstanceOf(NotaFacturaEfectosException.class)
+                .hasMessageContaining("pagos aplicados").hasMessageContaining("nota de crédito total 5");
+
+        verify(asientoService, never()).generarAsientoReversion(any(), anyString(), any(), any());
+        verify(facturaService, never()).anularPorNotaCredito(any(), any());
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.EN_TRAMITE);
+        assertThat(nota.getFechaAplicacion()).isNull();
     }
 
     @Test

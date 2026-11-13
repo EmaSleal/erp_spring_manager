@@ -36,6 +36,7 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepo
 import api.astro.whats_orders_manager.modules.facturacion.repository.PagoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.NumeroPagoGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
+import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaPrecondiciones;
 import api.astro.whats_orders_manager.modules.facturacion.service.impl.PagoServiceImpl;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.MetodoPagoProveedor;
@@ -89,7 +90,7 @@ import static org.mockito.Mockito.when;
 })
 @Import({AsientoContableService.class, TipoCambioService.class, CuentaBancariaService.class,
         PagoServiceImpl.class, NumeroPagoGeneratorService.class, PagoMapper.class, FacturaMapper.class,
-        PagoProveedorServiceImpl.class, CuentaPorPagarServiceImpl.class})
+        PagoProveedorServiceImpl.class, CuentaPorPagarServiceImpl.class, NotaFacturaPrecondiciones.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("T-015 — cobros y pagos a proveedor contra la hoja de su cuenta bancaria (H2)")
 class CuentasBancariasAsientosJpaTest {

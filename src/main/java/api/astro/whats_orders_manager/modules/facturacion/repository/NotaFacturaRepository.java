@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface NotaFacturaRepository extends JpaRepository<NotaFactura, Long> {
@@ -14,4 +15,6 @@ public interface NotaFacturaRepository extends JpaRepository<NotaFactura, Long> 
     boolean existsByFactura_IdFacturaAndEstadoIn(Integer idFactura, Collection<EstadoNotaFactura> estados);
 
     List<NotaFactura> findByFactura_IdFacturaOrderByIdAsc(Integer idFactura);
+
+    Optional<NotaFactura> findFirstByFactura_IdFacturaAndEstado(Integer idFactura, EstadoNotaFactura estado);
 }
