@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.controller;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsecutivoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ConfiguracionHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ConfiguracionHaciendaMapper;
@@ -275,5 +276,11 @@ public class ConfiguracionHaciendaController {
         }
         String nombre = nombreOriginal.toLowerCase(Locale.ROOT);
         return EXTENSIONES_CERTIFICADO.stream().filter(nombre::endsWith).findFirst();
+    }
+
+    /** Consecutivo fuera de rango al crear o actualizar (T-033): 400 con el mensaje de validación. */
+    @ExceptionHandler(ConsecutivoInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> consecutivoInvalido(ConsecutivoInvalidoException e) {
+        return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
     }
 }

@@ -270,6 +270,88 @@ class NotaCreditoXmlTest {
         assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
     }
 
+    // ── T-033: resumen por servicios y mercancías, teléfono ──────────────────
+
+    @Test
+    @DisplayName("T-033 (criterios 5 a 7): factura mixta → servicios y mercancías por CAByS, totales cuadrados, XSD válido")
+    void facturaMixta_resumenPorServiciosYMercancias() throws Exception {
+        Producto servicioGravado = producto("Servicio gravado 13 %", "8311100000000", true);
+        factura.getLineas().clear();
+        factura.getLineas().add(linea(1, gravado, 1, "1130.00"));          // mercancía gravada: base 1000, IVA 130
+        factura.getLineas().add(linea(2, servicioGravado, 2, "2260.00")); // servicio gravado: base 2000, IVA 260
+        factura.getLineas().add(linea(3, producto("Servicio exento", "9876543210987", false), 1, "500.00"));
+        factura.getLineas().add(linea(4, producto("Mercancía exenta", "0123456789012", false), 1, "300.00"));
+        String xml = firma.firmarXml(generador.generarXmlFactura(aceptado), p12.toString(), PIN);
+
+        Element resumen = hijo(raiz(xml), "ResumenFactura");
+        assertThat(texto(resumen, "TotalServGravados")).isEqualTo("2000.00000");
+        assertThat(texto(resumen, "TotalServExentos")).isEqualTo("500.00000");
+        assertThat(texto(resumen, "TotalMercanciasGravadas")).isEqualTo("1000.00000");
+        assertThat(texto(resumen, "TotalMercanciasExentas")).isEqualTo("300.00000");
+        assertThat(texto(resumen, "TotalGravado")).isEqualTo("3000.00000");
+        assertThat(texto(resumen, "TotalExento")).isEqualTo("800.00000");
+        assertThat(texto(resumen, "TotalVenta")).isEqualTo("3800.00000");
+        assertThat(texto(resumen, "TotalVentaNeta")).isEqualTo("3800.00000");
+        assertThat(texto(resumen, "TotalImpuesto")).isEqualTo("390.00000");
+        assertThat(texto(resumen, "TotalComprobante")).isEqualTo("4190.00000");
+        assertThat(nombresDeHijos(resumen)).containsSubsequence("CodigoTipoMoneda", "TotalServGravados",
+                "TotalServExentos", "TotalMercanciasGravadas", "TotalMercanciasExentas", "TotalGravado", "TotalExento");
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("T-033: factura solo de servicios → sin campos de mercancía; solo de mercancías → sin campos de servicio")
+    void soloServiciosOSoloMercancias() throws Exception {
+        factura.getLineas().clear();
+        factura.getLineas().add(linea(1, producto("Servicio gravado 13 %", "8311100000000", true), 1, "1130.00"));
+        Element soloServicios = hijo(raiz(generador.generarXmlFactura(aceptado)), "ResumenFactura");
+        factura.getLineas().clear();
+        factura.getLineas().add(linea(1, gravado, 1, "1130.00"));
+        Element soloMercancias = hijo(raiz(generador.generarXmlFactura(aceptado)), "ResumenFactura");
+
+        assertThat(nombresDeHijos(soloServicios)).contains("TotalServGravados")
+                .doesNotContain("TotalMercanciasGravadas", "TotalMercanciasExentas", "TotalServExentos");
+        assertThat(nombresDeHijos(soloMercancias)).contains("TotalMercanciasGravadas")
+                .doesNotContain("TotalServGravados", "TotalServExentos", "TotalMercanciasExentas");
+    }
+
+    @Test
+    @DisplayName("T-033 (criterio 8): la nota de crédito de una factura con servicios reparte el resumen igual y valida")
+    void notaCredito_conServicios_validaContraXsd() throws Exception {
+        factura.getLineas().add(linea(3, producto("Servicio gravado 13 %", "8311100000000", true), 1, "1130.00"));
+        factura.setTotal(new BigDecimal("3890.00"));
+        aceptado.setXmlComprobante(firma.firmarXml(generador.generarXmlFactura(aceptado), p12.toString(), PIN));
+
+        String xml = xmlFirmadoDeLaNota("01", "Anulación total");
+
+        Element resumen = hijo(raiz(xml), "ResumenFactura");
+        assertThat(texto(resumen, "TotalServGravados")).isEqualTo("1000.00000");
+        assertThat(texto(resumen, "TotalServExentos")).isEqualTo("500.00000");
+        assertThat(texto(resumen, "TotalMercanciasGravadas")).isEqualTo("2000.00000");
+        assertThat(texto(resumen, "TotalComprobante")).isEqualTo("3890.00000");
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("T-033 (criterios 10 a 12): teléfono del emisor y del receptor sin 506; inválido se omite; en factura y tiquete")
+    void telefonoNormalizado() throws Exception {
+        empresa.setTelefono("+506 8629-6567");
+        factura.getCliente().setTelefono("50622223333");
+        Element fe = raiz(generador.generarXmlFactura(aceptado));
+        Element te = raiz(generador.generarXmlTiquete(aceptado));
+
+        assertThat(texto(hijo(hijo(fe, "Emisor"), "Telefono"), "NumTelefono")).isEqualTo("86296567");
+        assertThat(texto(hijo(hijo(fe, "Emisor"), "Telefono"), "CodigoPais")).isEqualTo("506");
+        assertThat(texto(hijo(hijo(fe, "Receptor"), "Telefono"), "NumTelefono")).isEqualTo("22223333");
+        assertThat(texto(hijo(hijo(te, "Emisor"), "Telefono"), "NumTelefono")).isEqualTo("86296567");
+
+        empresa.setTelefono("2222-333");
+        factura.getCliente().setTelefono("2222-333");
+        Element sinTelefono = raiz(generador.generarXmlFactura(aceptado));
+        assertThat(nombresDeHijos(hijo(sinTelefono, "Emisor"))).doesNotContain("Telefono");
+        assertThat(nombresDeHijos(hijo(sinTelefono, "Receptor"))).doesNotContain("Telefono");
+    }
+
     // ── Apoyo ────────────────────────────────────────────────────────────────
 
     private String xmlFirmadoDeLaNota(String codigo, String razon) {

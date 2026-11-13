@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.controlle
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.TendenciaEnviosDTO;
@@ -56,6 +57,12 @@ public class ComprobanteElectronicoController {
                 "message", "Factura enviada a Hacienda exitosamente",
                 "comprobante", comprobante
             ));
+        } catch (ProductosSinCabysException e) {
+            log.warn("Factura {} sin CAByS en {} producto(s)", facturaId, e.getProductos().size());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
         } catch (Exception e) {
             log.error("Error procesando factura {}: {}", facturaId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
@@ -79,6 +86,12 @@ public class ComprobanteElectronicoController {
                 "success", true,
                 "message", "Comprobante generado exitosamente",
                 "comprobante", comprobante
+            ));
+        } catch (ProductosSinCabysException e) {
+            log.warn("Factura {} sin CAByS en {} producto(s)", facturaId, e.getProductos().size());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
             ));
         } catch (Exception e) {
             log.error("Error generando comprobante: {}", e.getMessage(), e);
@@ -208,7 +221,7 @@ public class ComprobanteElectronicoController {
                 "message", "Comprobante reemitido con la clave " + nuevo.getClaveNumerica(),
                 "comprobante", nuevo
             ));
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException | ProductosSinCabysException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", e.getMessage()));

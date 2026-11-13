@@ -21,7 +21,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,6 +67,8 @@ class EmisionConfiguracionActivaTest {
         factura.setIdFactura(3);
         when(facturaRepository.findById(3)).thenReturn(Optional.of(factura));
         when(configuracionEmpresaService.obtenerConfiguracion()).thenReturn(Optional.of(empresaUnica));
+        // T-033: la fecha de emisión sale del reloj de la aplicación (HoraFiscal)
+        ReflectionTestUtils.setField(service, "clock", Clock.systemUTC());
     }
 
     private ConfiguracionHacienda sandboxDe(ConfiguracionEmpresa empresa) {

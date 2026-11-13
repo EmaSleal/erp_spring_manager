@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.model.Comp
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.DatosFeProducto;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
@@ -29,6 +30,7 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -130,7 +132,7 @@ public class NotaFacturaService {
             .codigoReferencia(codigo.getCodigo())
             .razon(razon.trim())
             .estado(EstadoNotaFactura.EN_TRAMITE)
-            .fechaEmision(LocalDateTime.now(clock))
+            .fechaEmision(HoraFiscal.ahora(clock))
             .comprobanteReferencia(aceptado)
             .claveReferencia(aceptado.getClaveNumerica())
             .fechaEmisionReferencia(aceptado.getFechaEmision())
@@ -170,6 +172,11 @@ public class NotaFacturaService {
      * el XML de la factura, y el desglose de IVA con el mismo componente (ADR-009). Totales = suma de las líneas.
      */
     private void fotografiarLineas(Factura factura, NotaFactura nota) {
+        List<String> sinCabys = DatosFeProducto.productosSinCabys(factura.getLineas());
+        if (!sinCabys.isEmpty()) {
+            throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura() + " tiene productos sin "
+                + "código CAByS: " + String.join(", ", sinCabys) + ". Regístrelo en cada producto antes de emitir la nota.");
+        }
         BigDecimal subtotal = BigDecimal.ZERO;
         BigDecimal impuesto = BigDecimal.ZERO;
         int numero = 1;

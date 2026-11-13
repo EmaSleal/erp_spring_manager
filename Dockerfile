@@ -40,6 +40,8 @@ EXPOSE 15808
 
 # Variables de entorno por defecto (serán sobreescritas por docker-compose)
 ENV SPRING_PROFILES_ACTIVE=prod
+# T-033: hora de Costa Rica como defensa; la hora fiscal de los comprobantes ya no depende de la zona de la JVM (HoraFiscal)
+ENV TZ=America/Costa_Rica
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
 # Comando de inicio
