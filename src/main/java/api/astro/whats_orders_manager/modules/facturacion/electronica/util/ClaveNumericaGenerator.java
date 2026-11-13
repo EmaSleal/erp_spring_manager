@@ -31,7 +31,8 @@ public class ClaveNumericaGenerator {
      * @param cedula Cédula jurídica del emisor (sin guiones)
      * @param consecutivo Consecutivo del comprobante
      * @param tipo Tipo de comprobante
-     * @param fechaEmision Fecha de emisión
+     * @param fechaEmision Fecha de emisión: la misma hora local de Costa Rica que lleva el comprobante
+     *                     ({@link HoraFiscal#ahora}); el segmento de fecha de la clave sale de ella (T-033)
      * @return Clave numérica de 50 dígitos
      */
     public String generar(String cedula, Long consecutivo, TipoComprobanteElectronico tipo, LocalDateTime fechaEmision) {

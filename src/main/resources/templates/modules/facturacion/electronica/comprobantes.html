@@ -283,6 +283,9 @@
                         ${comp.estado === 'ERROR_HACIENDA' && comp.mensajeRespuesta ? `
                             <div class="small text-danger mt-1">${escapeHtml(comp.mensajeRespuesta)}</div>
                         ` : ''}
+                        ${comp.estado === 'RECHAZADO' && comp.mensajeRespuesta ? `
+                            <div class="small text-danger mt-1 text-start" style="white-space:pre-wrap;max-height:8rem;overflow:auto">${comp.codigoRespuesta ? `Código ${escapeHtml(comp.codigoRespuesta)}: ` : ''}${escapeHtml(comp.mensajeRespuesta)}</div>
+                        ` : ''}
                     </td>
                     <td class="text-center">${formatearFecha(comp.fechaEmision)}</td>
                     <td class="text-center">
@@ -361,27 +364,41 @@
             });
         }
 
-        function decodeMensajeHacienda(base64) {
-            if (!base64) return null;
+        /**
+         * Motivo de Hacienda de un comprobante (T-033): el MensajeHacienda guardado en xmlRespuesta (texto plano, ya
+         * decodificado al guardarlo) o, si no está, mensajeRespuesta (DetalleMensaje en texto plano; en registros
+         * antiguos, el MensajeHacienda en base64). Devuelve { estado, codigo, detalle } o null.
+         */
+        function motivoHacienda(comp) {
+            const desdeXml = (xml) => {
+                if (!xml || xml.indexOf('MensajeHacienda') < 0) return null;
+                const doc = new DOMParser().parseFromString(xml, 'text/xml');
+                if (doc.getElementsByTagName('parsererror').length) return null;
+                return {
+                    estado: doc.querySelector('EstadoMensaje')?.textContent || '',
+                    codigo: doc.querySelector('Mensaje')?.textContent || '',
+                    detalle: (doc.querySelector('DetalleMensaje')?.textContent || '').replace(/\r/g, '').trim()
+                };
+            };
+            const xml = desdeXml(comp.xmlRespuesta);
+            if (xml) return xml;
+            const texto = comp.mensajeRespuesta;
+            if (!texto) return null;
             try {
-                const xml = atob(base64);
-                const xmlDoc = new DOMParser().parseFromString(xml, 'text/xml');
-                const estado  = xmlDoc.querySelector('EstadoMensaje')?.textContent  || '';
-                const detalle = xmlDoc.querySelector('DetalleMensaje')?.textContent || '';
-                return { estado, detalle };
-            } catch (e) {
-                return null;
-            }
+                const legado = desdeXml(atob(texto));
+                if (legado) return legado;
+            } catch (e) { /* no es base64: texto plano */ }
+            return { estado: comp.estado === 'ACEPTADO' ? 'Aceptado' : (comp.estado === 'RECHAZADO' ? 'Rechazado' : ''),
+                     codigo: comp.codigoRespuesta || '', detalle: texto };
         }
 
-        function renderMensajeHacienda(base64, cssClass = '') {
-            if (!base64) return '';
-            const msg = decodeMensajeHacienda(base64);
-            if (!msg) return `<div class="alert alert-secondary mb-0 ${cssClass}">${base64}</div>`;
-            const alertClass = msg.estado.toLowerCase() === 'aceptado' ? 'alert-success' : 'alert-danger';
+        function renderMensajeHacienda(comp, cssClass = '') {
+            const msg = motivoHacienda(comp);
+            if (!msg) return '';
+            const alertClass = msg.estado.toLowerCase().startsWith('aceptado') ? 'alert-success' : 'alert-danger';
             return `
                 <div class="alert ${alertClass} mb-0 ${cssClass}" style="white-space:pre-wrap">
-                    <strong>${msg.estado}</strong><br>${msg.detalle}
+                    <strong>${escapeHtml(msg.estado)}</strong>${msg.codigo ? ` (código ${escapeHtml(msg.codigo)})` : ''}<br>${escapeHtml(msg.detalle)}
                 </div>`;
         }
 
@@ -670,10 +687,10 @@
                                             <span class="badge bg-secondary">${comp.intentosEnvio}</span>
                                         </div>
                                     ` : ''}
-                                    ${comp.mensajeRespuesta ? `
+                                    ${motivoHacienda(comp) ? `
                                         <div class="col-12">
                                             <strong>Mensaje Hacienda:</strong><br>
-                                            ${renderMensajeHacienda(comp.mensajeRespuesta)}
+                                            ${renderMensajeHacienda(comp)}
                                         </div>
                                     ` : ''}
                                     ${comp.ultimoError ? `
@@ -808,7 +825,7 @@
                     titulo: esExitoso ? 'Aceptado por Hacienda' : 'Rechazado por Hacienda',
                     estado: comp.estado,
                     icono: esExitoso ? 'fa-check-circle' : 'fa-times-circle',
-                    descripcion: (() => { const m = decodeMensajeHacienda(comp.mensajeRespuesta); return m ? m.detalle : (esExitoso ? 'Comprobante aceptado' : 'Comprobante rechazado'); })()
+                    descripcion: (() => { const m = motivoHacienda(comp); return m && m.detalle ? m.detalle : (esExitoso ? 'Comprobante aceptado' : 'Comprobante rechazado'); })()
                 });
             }
             

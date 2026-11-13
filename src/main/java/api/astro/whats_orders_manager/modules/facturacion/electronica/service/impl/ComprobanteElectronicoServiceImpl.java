@@ -11,12 +11,16 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Resu
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.*;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.ClaveNumericaGenerator;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.DatosFeProducto;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
@@ -39,6 +43,9 @@ import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -199,6 +206,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         Factura factura = facturaRepository.findById(facturaId.intValue())
             .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada"));
 
+        // T-033: sin CAByS por defecto. Antes de tocar el vigente, el consecutivo o la clave
+        List<String> sinCabys = DatosFeProducto.productosSinCabys(factura.getLineas());
+        if (!sinCabys.isEmpty()) {
+            throw new ProductosSinCabysException(sinCabys);
+        }
+
         // ADR-030 §4: un solo comprobante vigente por factura. Solo un RECHAZADO cede su lugar (reemisión con
         // consecutivo y clave nuevos); el rechazado queda como historial, sin otros cambios.
         repository.findFirstByFactura_IdFacturaAndVigenteTrue(factura.getIdFactura()).ifPresent(vigente -> {
@@ -226,7 +239,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         // Generar consecutivo y clave numérica
         Long consecutivo = config.siguienteConsecutivo(tipo.getCodigo());
-        LocalDateTime fechaEmision = LocalDateTime.now();
+        // T-033: hora de Costa Rica del reloj, misma fuente para la fecha de emisión y la fecha de la clave
+        LocalDateTime fechaEmision = HoraFiscal.ahora(clock);
 
         String claveNumerica = claveGenerator.generar(
             empresa.getRuc(),
@@ -687,11 +701,11 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
         if (respuesta.getXmlRespuesta() != null && !respuesta.getXmlRespuesta().isBlank()) {
             try {
-                comprobante.setXmlRespuesta(new String(
-                    Base64.getDecoder().decode(respuesta.getXmlRespuesta()), StandardCharsets.UTF_8));
+                comprobante.setXmlRespuesta(textoDelMensajeHacienda(Base64.getDecoder().decode(respuesta.getXmlRespuesta())));
             } catch (IllegalArgumentException e) {
                 comprobante.setXmlRespuesta(respuesta.getXmlRespuesta());
             }
+            adoptarMotivoDelMensajeHacienda(comprobante);
         }
         String indicador = respuesta.getIndicadorEstado() != null
             ? respuesta.getIndicadorEstado().trim().toLowerCase() : "";
@@ -723,6 +737,42 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                     ? " Último mensaje de Hacienda: " + respuesta.getMensaje() : ""));
             log.warn("Comprobante {}: {} consultas seguidas con ind-estado 'error'; se deja de consultar (revisar en ATV)",
                 comprobante.getClaveNumerica(), consultas);
+        }
+    }
+
+    /**
+     * Texto del MensajeHacienda decodificado. Declara UTF-8, pero en SANDBOX llegó con los acentos en ISO-8859-1
+     * (la BD guardaba el carácter de reemplazo U+FFFD en vez de cada acento): si los bytes no son UTF-8 válido se leen como ISO-8859-1 (T-033).
+     */
+    static String textoDelMensajeHacienda(byte[] bytes) {
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(bytes))
+                .toString();
+        } catch (CharacterCodingException e) {
+            return new String(bytes, StandardCharsets.ISO_8859_1);
+        }
+    }
+
+    /**
+     * El JSON de GET /recepcion/{clave} no trae el motivo: viene solo en el MensajeHacienda de respuesta-xml (T-033).
+     * Su código (Mensaje: 1 aceptado, 2 aceptado parcial, 3 rechazado) pasa a codigoRespuesta y su DetalleMensaje, con
+     * los códigos de cada validación fallida, a mensajeRespuesta, para que la pantalla los muestre sin abrir el XML.
+     */
+    static void adoptarMotivoDelMensajeHacienda(ComprobanteElectronico comprobante) {
+        String xml = comprobante.getXmlRespuesta();
+        if (xml == null || !xml.contains("MensajeHacienda")) {
+            return;
+        }
+        String codigo = XmlValidator.extraerValorNodo(xml, "Mensaje");
+        String detalle = XmlValidator.extraerValorNodo(xml, "DetalleMensaje");
+        if (codigo != null && !codigo.isBlank()) {
+            comprobante.setCodigoRespuesta(codigo.trim());
+        }
+        if (detalle != null && !detalle.isBlank()) {
+            comprobante.setMensajeRespuesta(detalle.replace("\r", "").trim());
         }
     }
 

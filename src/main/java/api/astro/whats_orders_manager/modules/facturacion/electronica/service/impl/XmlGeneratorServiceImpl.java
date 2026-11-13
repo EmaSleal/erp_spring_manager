@@ -4,7 +4,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Tipo
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.DatosFeProducto;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.InformacionReferenciaXml;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.TelefonoFe;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
@@ -24,8 +26,6 @@ import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,8 +41,6 @@ import java.util.Optional;
 public class XmlGeneratorServiceImpl implements XmlGeneratorService {
 
     private static final String NAMESPACE = "https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/facturaElectronica";
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
-    private static final ZoneOffset CR_ZONE_OFFSET = ZoneOffset.of("-06:00");
 
     /** Componente único de desglose de IVA (ADR-009): mismo cálculo que la factura y el asiento. */
     private final CalculadoraImpuestoService calculadoraImpuestoService;
@@ -169,16 +167,16 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         copiarHijo(xml, original, "PlazoCredito");
 
         xml.append("<DetalleServicio>");
-        List<DesgloseImpuesto> desgloses = new ArrayList<>();
+        List<LineaResumen> lineasResumen = new ArrayList<>();
         for (LineaNotaFactura linea : nota.getLineas()) {
             DesgloseImpuesto desglose = new DesgloseImpuesto(linea.getSubtotal(), linea.getMontoIva(), linea.getTarifaIva());
-            desgloses.add(desglose);
+            lineasResumen.add(new LineaResumen(desglose, linea.getCodigoCabys()));
             escribirLineaDetalle(xml, linea.getNumeroLinea(), linea.getCodigoCabys(), linea.getCantidad(),
                 linea.getUnidadMedida(), linea.getDescripcion(), linea.getPrecioUnitario(), desglose);
         }
         xml.append("</DetalleServicio>");
 
-        escribirResumen(xml, desgloses, nota.getMoneda(), nota.getTipoCambio(), medioPagoDe(original));
+        escribirResumen(xml, lineasResumen, nota.getMoneda(), nota.getTipoCambio(), medioPagoDe(original));
 
         xml.append(InformacionReferenciaXml.construir(InformacionReferenciaXml.TIPO_DOC_FACTURA_ELECTRONICA,
             nota.getClaveReferencia(), nota.getFechaEmisionReferencia(), nota.getCodigoReferencia(), nota.getRazon()));
@@ -338,12 +336,7 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<OtrasSenas>").append(escaparXml(otrasSenas.trim())).append("</OtrasSenas>");
         xml.append("</Ubicacion>");
 
-        if (empresa.getTelefono() != null && !empresa.getTelefono().isBlank()) {
-            xml.append("<Telefono>");
-            xml.append("<CodigoPais>506</CodigoPais>");
-            xml.append("<NumTelefono>").append(empresa.getTelefono().replaceAll("[^0-9]", "")).append("</NumTelefono>");
-            xml.append("</Telefono>");
-        }
+        agregarTelefono(xml, empresa.getTelefono());
 
         xml.append("<CorreoElectronico>").append(empresa.getEmail() != null ? empresa.getEmail() : "").append("</CorreoElectronico>");
         xml.append("</Emisor>");
@@ -384,18 +377,26 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             xml.append("</Ubicacion>");
         }
 
-        if (cliente.getTelefono() != null && !cliente.getTelefono().isBlank()) {
-            xml.append("<Telefono>");
-            xml.append("<CodigoPais>506</CodigoPais>");
-            xml.append("<NumTelefono>").append(cliente.getTelefono().replaceAll("[^0-9]", "")).append("</NumTelefono>");
-            xml.append("</Telefono>");
-        }
+        agregarTelefono(xml, cliente.getTelefono());
 
         if (cliente.getEmail() != null) {
             xml.append("<CorreoElectronico>").append(cliente.getEmail()).append("</CorreoElectronico>");
         }
 
         xml.append("</Receptor>");
+    }
+
+    /**
+     * Nodo Telefono del emisor o del receptor (T-033): NumTelefono solo con dígitos y sin el código de país; si el
+     * número no queda con 8 a 20 dígitos, el nodo (opcional) se omite.
+     */
+    private void agregarTelefono(StringBuilder xml, String telefono) {
+        TelefonoFe.normalizar(telefono).ifPresent(numero -> {
+            xml.append("<Telefono>");
+            xml.append("<CodigoPais>").append(TelefonoFe.CODIGO_PAIS).append("</CodigoPais>");
+            xml.append("<NumTelefono>").append(numero).append("</NumTelefono>");
+            xml.append("</Telefono>");
+        });
     }
 
     private void agregarDetalleFactura(StringBuilder xml, ComprobanteElectronico comprobante) {
@@ -430,6 +431,10 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     private void escribirLineaDetalle(StringBuilder xml, int numeroLinea, String cabys, BigDecimal cantidad,
                                       String unidadMedida, String detalle, BigDecimal precioUnitarioSinIva,
                                       DesgloseImpuesto desglose) {
+        if (cabys == null || cabys.isBlank()) {
+            // Sin CAByS por defecto (T-033): la emisión se rechaza antes, en ComprobanteElectronicoServiceImpl
+            throw new IllegalStateException("La línea " + numeroLinea + " (" + detalle + ") no tiene código CAByS");
+        }
         BigDecimal base = desglose.base();
 
         xml.append("<LineaDetalle>");
@@ -465,11 +470,11 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         var factura = comprobante.getFactura();
 
         // ADR-009: totales = sumas del desglose por línea (mismo componente que la factura)
-        List<DesgloseImpuesto> desgloses = new ArrayList<>();
+        List<LineaResumen> lineasResumen = new ArrayList<>();
         for (LineaFactura linea : factura.getLineas()) {
-            desgloses.add(desglosarLinea(linea));
+            lineasResumen.add(new LineaResumen(desglosarLinea(linea), DatosFeProducto.codigoCabys(linea.getProducto())));
         }
-        BigDecimal totalComprobante = totalComprobante(desgloses);
+        BigDecimal totalComprobante = totalComprobante(lineasResumen);
         if (factura.getTotal() != null && factura.getTotal().compareTo(totalComprobante) != 0) {
             log.warn("Factura {}: total almacenado {} difiere del total desglosado por líneas {} — el XML declara el desglose",
                 factura.getNumeroFactura(), factura.getTotal(), totalComprobante);
@@ -478,30 +483,56 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         String codigoMoneda = (factura.getMonedaFE() != null) ? factura.getMonedaFE().getCodigo() : "CRC";
         BigDecimal tipoCambio = (factura.getTipoCambio() != null) ? factura.getTipoCambio() : BigDecimal.ONE;
         String codigoMedioPago = (factura.getMedioPagoFE() != null) ? factura.getMedioPagoFE().getCodigo() : "01";
-        escribirResumen(xml, desgloses, codigoMoneda, tipoCambio, codigoMedioPago);
+        escribirResumen(xml, lineasResumen, codigoMoneda, tipoCambio, codigoMedioPago);
     }
 
-    private static BigDecimal totalComprobante(List<DesgloseImpuesto> desgloses) {
+    /** Desglose de una línea y su CAByS, que decide si suma como servicio o como mercancía en el resumen. */
+    private record LineaResumen(DesgloseImpuesto desglose, String cabys) {
+        boolean servicio() {
+            if (cabys == null || cabys.isBlank()) {
+                throw new IllegalStateException("Línea sin código CAByS: no se puede clasificar en el resumen");
+            }
+            return DatosFeProducto.esServicio(cabys);
+        }
+    }
+
+    private static BigDecimal totalComprobante(List<LineaResumen> lineas) {
         BigDecimal total = BigDecimal.ZERO;
-        for (DesgloseImpuesto desglose : desgloses) {
+        for (LineaResumen linea : lineas) {
+            DesgloseImpuesto desglose = linea.desglose();
             total = total.add(desglose.base()).add(desglose.gravado() ? desglose.impuesto() : BigDecimal.ZERO);
         }
         return total;
     }
 
-    /** ResumenFactura a partir del desglose de cada línea (mismo formato en factura, tiquete y nota de crédito). */
-    private void escribirResumen(StringBuilder xml, List<DesgloseImpuesto> desgloses, String codigoMoneda,
+    /**
+     * ResumenFactura a partir del desglose de cada línea (mismo formato en factura, tiquete y notas). Los totales
+     * gravados y exentos se reparten entre servicios y mercancías según el CAByS de cada línea (T-033, rechazos -110 y
+     * -111); los parciales en cero se omiten (son opcionales en el XSD). Exonerado y no sujeto no se usan en este
+     * sistema: sus totales van en cero como hasta ahora.
+     */
+    private void escribirResumen(StringBuilder xml, List<LineaResumen> lineas, String codigoMoneda,
                                  BigDecimal tipoCambio, String codigoMedioPago) {
+        BigDecimal totalServGravados = BigDecimal.ZERO;
+        BigDecimal totalServExentos = BigDecimal.ZERO;
         BigDecimal totalMercanciasGravadas = BigDecimal.ZERO;
         BigDecimal totalMercanciasExentas = BigDecimal.ZERO;
         BigDecimal totalImpuesto = BigDecimal.ZERO;
         Map<String, BigDecimal> impuestoPorCodigoTarifa = new LinkedHashMap<>();
 
-        for (DesgloseImpuesto desglose : desgloses) {
+        for (LineaResumen linea : lineas) {
+            DesgloseImpuesto desglose = linea.desglose();
+            boolean servicio = linea.servicio();
             if (desglose.gravado()) {
-                totalMercanciasGravadas = totalMercanciasGravadas.add(desglose.base());
+                if (servicio) {
+                    totalServGravados = totalServGravados.add(desglose.base());
+                } else {
+                    totalMercanciasGravadas = totalMercanciasGravadas.add(desglose.base());
+                }
                 totalImpuesto = totalImpuesto.add(desglose.impuesto());
                 impuestoPorCodigoTarifa.merge(resolverCodigoTarifaIVA(desglose.tarifa()), desglose.impuesto(), BigDecimal::add);
+            } else if (servicio) {
+                totalServExentos = totalServExentos.add(desglose.base());
             } else {
                 totalMercanciasExentas = totalMercanciasExentas.add(desglose.base());
             }
@@ -510,8 +541,8 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             impuestoPorCodigoTarifa.put("10", BigDecimal.ZERO); // exento por defecto
         }
 
-        BigDecimal totalGravado = totalMercanciasGravadas;
-        BigDecimal totalExento = totalMercanciasExentas;
+        BigDecimal totalGravado = totalServGravados.add(totalMercanciasGravadas);
+        BigDecimal totalExento = totalServExentos.add(totalMercanciasExentas);
         BigDecimal totalVenta = totalGravado.add(totalExento);
         BigDecimal totalVentaNeta = totalVenta;
         BigDecimal totalComprobante = totalVentaNeta.add(totalImpuesto);
@@ -522,6 +553,12 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<TipoCambio>").append(fmt(tipoCambio, 5)).append("</TipoCambio>");
         xml.append("</CodigoTipoMoneda>");
 
+        if (totalServGravados.compareTo(BigDecimal.ZERO) > 0) {
+            xml.append("<TotalServGravados>").append(fmt(totalServGravados, 5)).append("</TotalServGravados>");
+        }
+        if (totalServExentos.compareTo(BigDecimal.ZERO) > 0) {
+            xml.append("<TotalServExentos>").append(fmt(totalServExentos, 5)).append("</TotalServExentos>");
+        }
         if (totalMercanciasGravadas.compareTo(BigDecimal.ZERO) > 0) {
             xml.append("<TotalMercanciasGravadas>").append(fmt(totalMercanciasGravadas, 5)).append("</TotalMercanciasGravadas>");
         }
@@ -611,9 +648,9 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         return value.setScale(decimals, RoundingMode.HALF_UP).toPlainString();
     }
 
+    /** La fecha de emisión es la hora local de Costa Rica (HoraFiscal); se expresa con su desfase real (T-033). */
     private String formatearFecha(LocalDateTime fechaEmision) {
-        if (fechaEmision == null) throw new IllegalStateException("Fecha de emisión no disponible");
-        return fechaEmision.atOffset(CR_ZONE_OFFSET).format(DATE_FORMATTER);
+        return HoraFiscal.formatear(fechaEmision);
     }
 
     private String obtenerProveedorSistemas(ComprobanteElectronico comprobante) {

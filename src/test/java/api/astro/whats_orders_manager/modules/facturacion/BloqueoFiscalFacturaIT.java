@@ -935,6 +935,7 @@ class BloqueoFiscalFacturaIT {
         Producto p = new Producto();
         p.setCodigo("T25-" + UUID.randomUUID().toString().substring(0, 8));
         p.setDescripcion(descripcion);
+        p.setCodigoCabys("1234567890123"); // T-033: sin CAByS no se emite comprobante
         p.setPrecioInstitucional(new BigDecimal(precio));
         p.setPrecioMayorista(new BigDecimal(precio));
         p.setActive(true);
