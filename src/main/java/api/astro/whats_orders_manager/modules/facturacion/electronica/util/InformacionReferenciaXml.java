@@ -1,8 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.util;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Bloque InformacionReferencia de los comprobantes v4.4 (apartado d del Anexo; etiquetas del XSD). Lo usa la nota de
@@ -23,16 +21,13 @@ public final class InformacionReferenciaXml {
     /** Nota 10: factura electrónica. */
     public static final String TIPO_DOC_FACTURA_ELECTRONICA = "01";
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
-    private static final ZoneOffset CR_ZONE_OFFSET = ZoneOffset.of("-06:00");
-
     private InformacionReferenciaXml() {
     }
 
     /**
      * @param tipoDocIR      código de la nota 10
      * @param numero         clave numérica (o consecutivo) del documento referenciado
-     * @param fechaEmisionIR fecha de emisión del documento referenciado (hora de Costa Rica)
+     * @param fechaEmisionIR fecha de emisión del documento referenciado (hora local de Costa Rica, HoraFiscal)
      * @param codigo         código de la nota 9
      * @param razon          razón de la referencia; se escapa
      * @return el elemento InformacionReferencia, sin declaración de espacio de nombres (hereda el del documento)
@@ -45,7 +40,7 @@ public final class InformacionReferenciaXml {
         return "<InformacionReferencia>"
             + "<TipoDocIR>" + escapar(tipoDocIR) + "</TipoDocIR>"
             + "<Numero>" + escapar(numero) + "</Numero>"
-            + "<FechaEmisionIR>" + fechaEmisionIR.atOffset(CR_ZONE_OFFSET).format(DATE_FORMATTER) + "</FechaEmisionIR>"
+            + "<FechaEmisionIR>" + HoraFiscal.formatear(fechaEmisionIR) + "</FechaEmisionIR>"
             + "<Codigo>" + escapar(codigo) + "</Codigo>"
             + "<Razon>" + escapar(razon) + "</Razon>"
             + "</InformacionReferencia>";

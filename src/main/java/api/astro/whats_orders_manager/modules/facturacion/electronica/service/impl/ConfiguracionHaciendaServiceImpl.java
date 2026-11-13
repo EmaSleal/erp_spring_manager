@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionE
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ConfiguracionHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsecutivoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ConfiguracionHaciendaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository;
@@ -58,10 +59,10 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
             .rutaCertificado(dto.getRutaCertificado())
             .pinCertificado(dto.getPinCertificado())
             .activa(activa)
-            .consecutivoFactura(1L)
-            .consecutivoTiquete(1L)
-            .consecutivoNotaCredito(1L)
-            .consecutivoNotaDebito(1L)
+            .consecutivoFactura(consecutivoValido(dto.getConsecutivoFactura(), 1L, "factura"))
+            .consecutivoTiquete(consecutivoValido(dto.getConsecutivoTiquete(), 1L, "tiquete"))
+            .consecutivoNotaCredito(consecutivoValido(dto.getConsecutivoNotaCredito(), 1L, "nota de crédito"))
+            .consecutivoNotaDebito(consecutivoValido(dto.getConsecutivoNotaDebito(), 1L, "nota de débito"))
             .build();
         
         configuracion = repository.save(configuracion);
@@ -91,6 +92,17 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         if (dto.getPinCertificado() != null && !ConfiguracionHaciendaMapper.MASK.equals(dto.getPinCertificado())) {
             configuracion.setPinCertificado(dto.getPinCertificado());
         }
+
+        // T-033: el siguiente consecutivo de cada tipo se puede fijar (p. ej. por encima del mayor ya usado en el
+        // ambiente, rechazo -99 de Hacienda). Sin valor, se conserva.
+        configuracion.setConsecutivoFactura(
+            fijarConsecutivo(configuracion.getConsecutivoFactura(), dto.getConsecutivoFactura(), "factura", id));
+        configuracion.setConsecutivoTiquete(
+            fijarConsecutivo(configuracion.getConsecutivoTiquete(), dto.getConsecutivoTiquete(), "tiquete", id));
+        configuracion.setConsecutivoNotaCredito(fijarConsecutivo(configuracion.getConsecutivoNotaCredito(),
+            dto.getConsecutivoNotaCredito(), "nota de crédito", id));
+        configuracion.setConsecutivoNotaDebito(fijarConsecutivo(configuracion.getConsecutivoNotaDebito(),
+            dto.getConsecutivoNotaDebito(), "nota de débito", id));
         
         configuracion = repository.save(configuracion);
         log.info("Configuración actualizada: {}", id);
@@ -258,5 +270,35 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
 
     private static String idsDe(List<ConfiguracionHacienda> configuraciones) {
         return configuraciones.stream().map(c -> String.valueOf(c.getId())).collect(Collectors.joining(", "));
+    }
+
+    /** Mayor consecutivo que cabe en la clave: 10 dígitos (ClaveNumericaGenerator). */
+    static final long CONSECUTIVO_MAXIMO = 9_999_999_999L;
+
+    /**
+     * Siguiente consecutivo pedido para un tipo de comprobante, o el valor por defecto si no se indica.
+     *
+     * @throws ConsecutivoInvalidoException si no está entre 1 y 9 999 999 999
+     */
+    static Long consecutivoValido(Long pedido, Long porDefecto, String tipo) {
+        if (pedido == null) {
+            return porDefecto;
+        }
+        if (pedido < 1 || pedido > CONSECUTIVO_MAXIMO) {
+            throw new ConsecutivoInvalidoException("El consecutivo de " + tipo + " debe estar entre 1 y " + CONSECUTIVO_MAXIMO);
+        }
+        return pedido;
+    }
+
+    /** Fija el siguiente consecutivo; bajarlo se permite (cambio de ambiente) pero queda en el log. */
+    private static Long fijarConsecutivo(Long actual, Long pedido, String tipo, Long idConfiguracion) {
+        Long nuevo = consecutivoValido(pedido, actual, tipo);
+        if (actual != null && nuevo < actual) {
+            log.warn("Configuración {}: el consecutivo de {} baja de {} a {}; los números ya usados en el ambiente "
+                + "serán rechazados por Hacienda", idConfiguracion, tipo, actual, nuevo);
+        } else if (!nuevo.equals(actual)) {
+            log.info("Configuración {}: consecutivo de {} fijado en {} (era {})", idConfiguracion, tipo, nuevo, actual);
+        }
+        return nuevo;
     }
 }
