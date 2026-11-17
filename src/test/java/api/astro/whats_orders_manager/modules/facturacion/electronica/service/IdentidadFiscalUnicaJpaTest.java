@@ -36,7 +36,8 @@ import static org.mockito.Mockito.when;
         "spring.jpa.hibernate.ddl-auto=create-only",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
 })
-@Import({ConfiguracionHaciendaServiceImpl.class, ConfiguracionHaciendaMapper.class, ConfiguracionEmpresaServiceImpl.class})
+@Import({ConfiguracionHaciendaServiceImpl.class, ConfiguracionHaciendaMapper.class, ConfiguracionEmpresaServiceImpl.class,
+        api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("T-018 — identidad fiscal única y una sola configuración de Hacienda activa (H2)")
 class IdentidadFiscalUnicaJpaTest {
@@ -141,7 +142,6 @@ class IdentidadFiscalUnicaJpaTest {
         dto.setAmbiente(AmbienteHacienda.PRODUCCION);
         dto.setUsuarioHacienda("usuario-de-prueba");
         dto.setPasswordHacienda("clave-de-prueba");
-        dto.setRutaCertificado("/tmp/certificado-de-prueba.p12");
         dto.setActiva(true);
 
         ConfiguracionHaciendaDTO creada = haciendaService.crear(dto);

@@ -222,6 +222,18 @@
                 });
         }
 
+        function escaparHtml(valor) {
+            const d = document.createElement('div');
+            d.textContent = valor === null || valor === undefined ? '' : String(valor);
+            return d.innerHTML;
+        }
+
+        function textoCertificado(config) {
+            if (!config.certificadoVencimiento) return '';
+            return 'Certificado vigente hasta ' + config.certificadoVencimiento
+                + (config.certificadoTitular ? ' \u00b7 Titular: ' + config.certificadoTitular : '');
+        }
+
         function mostrarConfigActiva(config) {
             const content = document.getElementById('configActivaContent');
             content.innerHTML = `
@@ -242,6 +254,11 @@
                         '<span class="badge bg-warning text-dark px-3 py-2"><i class="fas fa-exclamation-triangle me-1"></i>Renovar</span>'
                     }
                 </div>
+                ${config.certificadoVencimiento ? `
+                <div class="col-md-12">
+                    <strong class="text-muted d-block mb-1">Certificado</strong>
+                    <span>${escaparHtml(textoCertificado(config))}</span>
+                </div>` : ''}
                 <div class="col-md-12 mt-3">
                     <div class="d-flex gap-2">
                         <button class="btn btn-sm btn-outline-secondary" onclick="renovarToken(${config.id})">
@@ -407,18 +424,34 @@
             })
             .then(res => {
                 if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    // T-035: el servidor responde 400 con un mensaje fijo (certificado, consecutivos...)
+                    return res.json().catch(() => ({})).then(body => {
+                        const e = new Error(body && body.message ? body.message : `HTTP ${res.status}: ${res.statusText}`);
+                        e.mostrarTal = true;
+                        throw e;
+                    });
                 }
                 return res.json();
             })
             .then(result => {
-                mostrarAlerta(id ? 'Configuración actualizada' : 'Configuración creada', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('configuracionModal')).hide();
                 cargarConfiguraciones();
+                const resumen = textoCertificado(result);
+                if (resumen || result.certificadoAviso) {
+                    // text (no html): los valores vienen del certificado
+                    Swal.fire({
+                        icon: result.certificadoAviso ? 'warning' : 'success',
+                        title: id ? 'Configuración actualizada' : 'Configuración creada',
+                        html: '<p>' + escaparHtml(resumen) + '</p>'
+                            + (result.certificadoAviso ? '<p class="text-warning">' + escaparHtml(result.certificadoAviso) + '</p>' : '')
+                    });
+                } else {
+                    mostrarAlerta(id ? 'Configuración actualizada' : 'Configuración creada', 'success');
+                }
             })
             .catch(err => {
-                console.error('Error guardando configuración:', err);
-                mostrarAlerta('Error guardando configuración: ' + err.message, 'danger');
+                console.error('Error guardando configuración:', err.message);
+                Swal.fire({ icon: 'error', title: 'No se guardó la configuración', text: err.message });
             });
         }
 
