@@ -59,6 +59,10 @@ bootstrap:
 
 app:
   base-url: http://127.0.0.1:15808
+  # T-037: sin @Scheduled ni TaskScheduler en las pruebas: ningún job ni sondeo en segundo plano muta filas entre pruebas
+  # (las pruebas llaman a los jobs y al sondeo de forma explícita)
+  scheduling:
+    enabled: false
   cors:
     allowed-origins: http://127.0.0.1:15808
   certificados:

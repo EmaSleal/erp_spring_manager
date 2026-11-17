@@ -7,7 +7,10 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.model.Comp
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.query.Procedure;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -100,6 +103,31 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
      */
     boolean existsByClaveNumerica(String claveNumerica);
     
+    /**
+     * Comprobante con bloqueo de fila (SELECT ... FOR UPDATE) para la etapa de preparación del envío (T-037, ADR-043
+     * §1a): dos envíos del mismo comprobante preparan uno detrás del otro, y la preparación del segundo ve el estado que
+     * dejó el primero.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE c.id = :id")
+    Optional<ComprobanteElectronico> findByIdParaEnvio(@Param("id") Long id);
+
+    /**
+     * Marca previa al POST (T-037, ADR-043 §1b y §4): pasa el comprobante vigente de un estado transmisible a
+     * ENVIO_INCIERTO, con la fecha del envío y un intento más, en un único UPDATE condicional. Si devuelve 0, otro
+     * proceso ya lo está enviando (o Hacienda pudo recibirlo) y no se transmite.
+     *
+     * @return filas actualizadas: 1 si este proceso tomó el envío, 0 si no
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE ComprobanteElectronico c SET c.estado = :marca, c.fechaEnvio = :ahora, "
+        + "c.intentosEnvio = COALESCE(c.intentosEnvio, 0) + 1 "
+        + "WHERE c.id = :id AND c.vigente = true AND c.estado IN :transmisibles")
+    int marcarEnvioEnCurso(@Param("id") Long id,
+                           @Param("ahora") LocalDateTime ahora,
+                           @Param("marca") EstadoComprobante marca,
+                           @Param("transmisibles") java.util.Collection<EstadoComprobante> transmisibles);
+
     /**
      * Encuentra comprobantes vigentes pendientes de reintento: los que Hacienda no tiene (GENERADO, FIRMADO, ERROR
      * o NO_TRANSMITIDO, ADR-030) y no alcanzaron el límite de intentos. Nunca ENVIO_INCIERTO, ENVIADO, PROCESANDO

@@ -41,6 +41,10 @@ import java.util.UUID;
 @Slf4j
 public class ConfiguracionHaciendaController {
 
+    /** Mensaje fijo cuando Hacienda no entrega un token (P-088); el detalle queda en el log. */
+    static final String MENSAJE_TOKEN_NO_RENOVADO = "No se pudo obtener un token de Hacienda. Revise el usuario, la "
+        + "contraseña y el ambiente de la configuración, y la conexión con Hacienda; luego intente de nuevo.";
+
     /** T-030 (ADR-035): toda escritura de la configuración de Hacienda y del certificado es solo para ADMIN. */
     static final String SOLO_ADMIN = "hasRole('ADMIN')";
 
@@ -156,19 +160,33 @@ public class ConfiguracionHaciendaController {
     @PostMapping("/{id}/renovar-token")
     public ResponseEntity<Map<String, Object>> renovarToken(@PathVariable Long id) {
         log.info("Renovando token OAuth2 para configuración {}", id);
+        // P-088 (T-037): 200 solo con un token nuevo y vigente; si la autenticación falla, 502 con mensaje fijo
         try {
-            configuracionService.renovarToken(id);
+            boolean renovado = configuracionService.renovarToken(id);
+            var vigenteHasta = renovado
+                ? configuracionService.obtenerPorId(id)
+                    .filter(c -> Boolean.TRUE.equals(c.getTokenValido()))
+                    .map(ConfiguracionHaciendaDTO::getTokenExpira)
+                    .orElse(null)
+                : null;
+            if (vigenteHasta == null) {
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                    "success", false,
+                    "message", MENSAJE_TOKEN_NO_RENOVADO
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Token renovado exitosamente"
+                "message", "Token renovado; vigente hasta "
+                    + vigenteHasta.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
             ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Configuración de Hacienda no encontrada"));
         } catch (Exception e) {
-            log.error("Error renovando token: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                        "success", false,
-                        "message", "Error renovando token: " + e.getMessage()
-                    ));
+            log.error("Error renovando token: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("success", false, "message", MENSAJE_TOKEN_NO_RENOVADO));
         }
     }
     

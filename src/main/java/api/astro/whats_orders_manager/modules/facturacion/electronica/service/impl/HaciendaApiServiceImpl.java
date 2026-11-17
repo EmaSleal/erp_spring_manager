@@ -12,7 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.*;
@@ -23,6 +22,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -43,13 +43,24 @@ import java.util.Map;
  * @since Sprint 5 - Fase 3
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class HaciendaApiServiceImpl implements HaciendaApiService {
     
     private final ConfiguracionHaciendaRepository configuracionRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+
+    /**
+     * @param restTemplate el cliente exclusivo de Hacienda ({@code haciendaRestTemplate}, timeouts por propiedades,
+     *                     T-037)
+     */
+    public HaciendaApiServiceImpl(ConfiguracionHaciendaRepository configuracionRepository,
+                                  @Qualifier("haciendaRestTemplate") RestTemplate restTemplate,
+                                  ObjectMapper objectMapper) {
+        this.configuracionRepository = configuracionRepository;
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
     
     private static final String GRANT_TYPE_PASSWORD = "password";
     private static final String GRANT_TYPE_REFRESH = "refresh_token";

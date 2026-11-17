@@ -9,6 +9,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.Tenden
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,37 +44,31 @@ import java.util.stream.Collectors;
 public class ComprobanteElectronicoController {
     
     private final ComprobanteElectronicoService comprobanteService;
+    private final EnvioHaciendaService envioService;
     private final FacturaRepository facturaRepository;
     
     /**
-     * Procesa una factura completa: genera, firma y envía a Hacienda.
-     * POST /api/facturas/comprobantes/procesar/{facturaId}
+     * Emite una factura: genera, firma, valida y envía a Hacienda en etapas cortas (T-037, ADR-043). Responde cuando
+     * Hacienda contestó el POST (o falló), sin esperar el sondeo. Mensajes fijos por resultado.
+     * POST /api/facturas/electronica/comprobantes/procesar/{facturaId}
      */
     @PostMapping("/procesar/{facturaId}")
     public ResponseEntity<Map<String, Object>> procesarFacturaCompleta(@PathVariable Long facturaId) {
         log.info("Procesando factura completa {} para facturación electrónica", facturaId);
         try {
-            ComprobanteElectronicoDTO comprobante = comprobanteService.procesarFactura(facturaId);
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Factura enviada a Hacienda exitosamente",
-                "comprobante", comprobante
-            ));
+            return respuestaDeEnvio(envioService.emitirFactura(facturaId));
         } catch (ProductosSinCabysException e) {
             log.warn("Factura {} sin CAByS en {} producto(s)", facturaId, e.getProductos().size());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                "success", false,
-                "message", e.getMessage()
-            ));
+            return error(HttpStatus.CONFLICT, ProductosSinCabysException.mensajePara(e.getProductos()));
+        } catch (EmisionNoPermitidaException e) {
+            log.warn("Factura {} no se puede emitir: {}", facturaId, e.getMensajeUsuario());
+            return error(HttpStatus.CONFLICT, e.getMensajeUsuario());
         } catch (Exception e) {
             log.error("Error procesando factura {}: {}", facturaId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Error: " + e.getMessage()
-            ));
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
         }
     }
-    
+
     /**
      * Genera comprobante electrónico desde una factura.
      * POST /api/facturacion/comprobantes/generar
@@ -90,19 +86,15 @@ public class ComprobanteElectronicoController {
             ));
         } catch (ProductosSinCabysException e) {
             log.warn("Factura {} sin CAByS en {} producto(s)", facturaId, e.getProductos().size());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                "success", false,
-                "message", e.getMessage()
-            ));
+            return error(HttpStatus.CONFLICT, ProductosSinCabysException.mensajePara(e.getProductos()));
+        } catch (EmisionNoPermitidaException e) {
+            return error(HttpStatus.CONFLICT, e.getMensajeUsuario());
         } catch (Exception e) {
             log.error("Error generando comprobante: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Error generando comprobante: " + e.getMessage()
-            ));
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
         }
     }
-    
+
     /**
      * Firma un comprobante electrónico.
      * POST /api/facturacion/comprobantes/{id}/firmar
@@ -112,6 +104,13 @@ public class ComprobanteElectronicoController {
         log.info("Firmando comprobante {}", id);
         try {
             ComprobanteElectronicoDTO firmado = comprobanteService.firmar(id);
+            if (firmado.getEstado() == EstadoComprobante.ERROR) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
+                    "success", false,
+                    "message", MensajesEnvioHacienda.ERROR_LOCAL,
+                    "comprobante", firmado
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Comprobante firmado exitosamente",
@@ -119,73 +118,57 @@ public class ComprobanteElectronicoController {
             ));
         } catch (Exception e) {
             log.error("Error firmando comprobante: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Error firmando comprobante: " + e.getMessage()
-            ));
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
         }
     }
-    
+
     /**
-     * Envía comprobante a Hacienda.
+     * Envía comprobante a Hacienda (mismo servicio de envío que la emisión y el job, T-037).
      * POST /api/facturacion/comprobantes/{id}/enviar
      */
     @PostMapping("/{id}/enviar")
     public ResponseEntity<Map<String, Object>> enviarAHacienda(@PathVariable Long id) {
         log.info("Enviando comprobante {} a Hacienda", id);
         try {
-            ComprobanteElectronicoDTO enviado = comprobanteService.enviarAHacienda(id);
-            if (esXmlInvalidoSegunXsd(enviado)) {
-                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
-                    "success", false,
-                    "message", ComprobanteElectronicoServiceImpl.MENSAJE_XML_INVALIDO_XSD,
-                    "comprobante", enviado
-                ));
-            }
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Comprobante enviado exitosamente",
-                "comprobante", enviado
-            ));
+            return respuestaDeEnvio(envioService.enviar(id));
+        } catch (EnvioHaciendaService.ComprobanteNoEnviableException e) {
+            return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.noEnviable(e.getEstado(), false));
         } catch (Exception e) {
             log.error("Error enviando comprobante: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Error enviando comprobante: " + e.getMessage()
-            ));
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
         }
     }
-    
+
     /**
-     * Reenvía comprobante que tuvo error.
+     * Reenvía un comprobante que Hacienda no tiene (GENERADO, FIRMADO, ERROR o NO_TRANSMITIDO), con la misma clave.
      * POST /api/facturacion/comprobantes/{id}/reenviar
      */
     @PostMapping("/{id}/reenviar")
     public ResponseEntity<Map<String, Object>> reenviar(@PathVariable Long id) {
         log.info("Reenviando comprobante {}", id);
         try {
-            ComprobanteElectronicoDTO reenviado = comprobanteService.reenviar(id);
-            if (esXmlInvalidoSegunXsd(reenviado)) {
-                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
-                    "success", false,
-                    "message", ComprobanteElectronicoServiceImpl.MENSAJE_XML_INVALIDO_XSD,
-                    "comprobante", reenviado
-                ));
-            }
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Comprobante reenviado exitosamente",
-                "comprobante", reenviado
-            ));
+            return respuestaDeEnvio(envioService.reenviar(id));
+        } catch (EnvioHaciendaService.ComprobanteNoEnviableException e) {
+            return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.noEnviable(e.getEstado(), true));
         } catch (Exception e) {
             log.error("Error reenviando comprobante: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Error reenviando comprobante: " + e.getMessage()
-            ));
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
         }
     }
-    
+
+    /** Respuesta de un envío: mensaje fijo y código según el estado en que quedó (ADR-043 «Errores al usuario»). */
+    private static ResponseEntity<Map<String, Object>> respuestaDeEnvio(ComprobanteElectronicoDTO comprobante) {
+        return ResponseEntity.status(MensajesEnvioHacienda.estadoHttp(comprobante)).body(Map.of(
+            "success", MensajesEnvioHacienda.recibido(comprobante),
+            "message", MensajesEnvioHacienda.mensaje(comprobante),
+            "comprobante", comprobante
+        ));
+    }
+
+    private static ResponseEntity<Map<String, Object>> error(HttpStatus status, String mensaje) {
+        return ResponseEntity.status(status).body(Map.of("success", false, "message", mensaje));
+    }
+
     /**
      * "Consultar estado en Hacienda" (ADR-031 §4; reemplaza a "verificar con Hacienda"): consulta de solo lectura para
      * un comprobante ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA.
@@ -728,9 +711,4 @@ public class ComprobanteElectronicoController {
         }
     }
 
-    /** ERROR local por XML que no cumple el XSD v4.4 (T-036): no se transmitió; el detalle está en ultimoError. */
-    private static boolean esXmlInvalidoSegunXsd(ComprobanteElectronicoDTO comprobante) {
-        return comprobante.getEstado() == EstadoComprobante.ERROR && comprobante.getUltimoError() != null
-            && comprobante.getUltimoError().startsWith(ComprobanteElectronicoServiceImpl.ENCABEZADO_XML_INVALIDO_XSD);
-    }
 }
