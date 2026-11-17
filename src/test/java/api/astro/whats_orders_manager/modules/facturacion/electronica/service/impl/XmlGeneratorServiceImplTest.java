@@ -81,8 +81,8 @@ class XmlGeneratorServiceImplTest {
     // =========================================================================
 
     @Test
-    @DisplayName("When articuloMaestro is null, must use Producto deprecated fields without NPE")
-    void testResolve_masterNull_fallsBackToProductoFieldsWithoutNpe() {
+    @DisplayName("When articuloMaestro is null there is no CAByS (ADR-040): clear error, no NPE")
+    void testResolve_masterNull_noCabysWithoutNpe() {
         // Arrange
         Producto producto = new Producto();
         producto.setDescripcion("Producto Sin Maestro");
@@ -92,17 +92,10 @@ class XmlGeneratorServiceImplTest {
 
         ComprobanteElectronico comprobante = buildTiqueteWith(producto);
 
-        // Act — must never throw NullPointerException
-        String xml = assertDoesNotThrow(
-                () -> service.generarXmlTiquete(comprobante),
-                "generarXmlTiquete must not throw NPE when articuloMaestro is null"
-        );
-
-        // Assert — fallback fields used
-        assertTrue(xml.contains("<Detalle>Producto Sin Maestro</Detalle>"),
-                "XML must contain the fallback Producto descripcion");
-        assertTrue(xml.contains("<CodigoCABYS>1234567890001</CodigoCABYS>"),
-                "XML must contain the fallback Producto codigoCabys");
+        // Act — ADR-040: sin maestro no hay CAByS (Producto.codigoCabys ya no es fuente); falla con un error claro, sin NPE
+        IllegalStateException ex = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> service.generarXmlTiquete(comprobante));
+        assertTrue(ex.getMessage().contains("CAByS"));
     }
 
     // =========================================================================

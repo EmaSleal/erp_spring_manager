@@ -418,9 +418,9 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
                 ? base.divide(cantidad, 5, RoundingMode.HALF_UP)
                 : base;
 
-            // CAByS, unidad y descripción: resueltos desde el maestro con respaldo en Producto (XML-1)
+            // CAByS (solo del maestro, ADR-040), unidad y Detalle (ADR-041): resolución única en DatosFeProducto
             escribirLineaDetalle(xml, numeroLinea++, DatosFeProducto.codigoCabys(producto), cantidad,
-                DatosFeProducto.unidadMedida(producto), DatosFeProducto.descripcion(producto), precioUnitarioSinIva,
+                DatosFeProducto.unidadMedida(producto), DatosFeProducto.detalle(producto), precioUnitarioSinIva,
                 desglose);
         }
 
@@ -597,14 +597,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     // =====================================================================
     // FE field resolvers — null-safe navigation through ArticuloMaestro (XML-1)
     // =====================================================================
-
-    /** Resolves descripcionCabys: reads from master when present, falls back to deprecated Producto field. */
-    @SuppressWarnings("deprecation")
-    private String resolveDescripcionCabys(Producto produto) {
-        return Optional.ofNullable(produto.getArticuloMaestro())
-                .map(ArticuloMaestro::getDescripcionCabys)
-                .orElse(produto.getDescripcionCabys());
-    }
 
     /** Resolves aplicaOtroImpuesto: reads from master when present, falls back to deprecated Producto field. */
     @SuppressWarnings("deprecation")

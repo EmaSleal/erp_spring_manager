@@ -140,68 +140,21 @@
                             </h6>
                         </div>
 
-                        <!-- Buscar Código CABYS -->
+                        <!-- CAByS del artículo maestro (solo lectura, ADR-040) -->
                         <div class="col-12">
                             <label class="form-label">
-                                <i class="fas fa-search text-module-productos me-1"></i>
-                                Buscar Código CABYS
+                                <i class="fas fa-hashtag text-module-productos me-1"></i>
+                                Código CAByS del artículo
                             </label>
-                            <div class="input-group">
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="cabysBusqueda" 
-                                       placeholder="Ej: jugo de tomate, café, papel">
-                                <button type="button"
-                                        class="btn btn-outline-secondary"
-                                        id="btnBuscarCabys"
-                                        onclick="buscarCabys()">
-                                    <i class="fas fa-search me-1"></i>
-                                    Buscar
-                                </button>
+                            <div class="form-control-plaintext" id="cabysMaestroResumen">
+                                <span id="cabysMaestroCodigo" class="badge bg-warning text-dark"></span>
+                                <span id="cabysMaestroDescripcion" class="ms-1"></span>
+                                <span id="cabysMaestroVacio" class="text-muted">Sin CAByS asignado</span>
                             </div>
                             <small class="text-muted">
-                                Busque el producto en el catálogo oficial de Hacienda para obtener el código CABYS
+                                El CAByS se mantiene en el artículo maestro.
+                                <a id="cabysMaestroEnlace" href="/articulos">Editar el CAByS en el artículo</a>
                             </small>
-                        </div>
-
-                        <!-- Resultados CABYS -->
-                        <div class="col-12" id="cabysResultados" style="display: none;">
-                            <div class="list-group" id="cabysListGroup">
-                                <!-- Se llenarán dinámicamente con JavaScript -->
-                            </div>
-                        </div>
-
-                        <!-- Código CABYS (13 dígitos) -->
-                        <div class="col-md-4">
-                            <label for="codigoCabys" class="form-label">
-                                <i class="fas fa-hashtag text-module-productos me-1"></i>
-                                Código CABYS
-                            </label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="codigoCabys" 
-                                   name="codigoCabys" 
-                                   maxlength="13"
-                                   pattern="\d{13}"
-                                   placeholder="1234567890123"
-                                   readonly>
-                            <small class="text-muted">13 dígitos del catálogo CABYS</small>
-                        </div>
-
-                        <!-- Descripción CABYS (oficial para XML) -->
-                        <div class="col-md-8">
-                            <label for="descripcionCabys" class="form-label">
-                                <i class="fas fa-tag text-module-productos me-1"></i>
-                                Descripción CABYS
-                            </label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="descripcionCabys" 
-                                   name="descripcionCabys" 
-                                   maxlength="200"
-                                   placeholder="Descripción oficial del catálogo"
-                                   readonly>
-                            <small class="text-muted">Descripción oficial que se usará en el XML</small>
                         </div>
 
                         <!-- Gravado (checkbox) -->

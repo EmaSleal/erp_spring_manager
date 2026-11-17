@@ -193,13 +193,15 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
             
             return CabysBusquedaDTO.builder()
                 .exitosa(false)
-                .mensajeError("Error al conectar con API CABYS: " + e.getMessage())
+                .fallaServicio(true)
+                .mensajeError("Error al conectar con API CABYS")
                 .build();
         } catch (Exception e) {
             log.error("Error inesperado al buscar CABYS: {}", e.getMessage(), e);
             return CabysBusquedaDTO.builder()
                 .exitosa(false)
-                .mensajeError("Error inesperado: " + e.getMessage())
+                .fallaServicio(true)
+                .mensajeError("Error inesperado al buscar CABYS")
                 .build();
         }
     }

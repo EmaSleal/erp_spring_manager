@@ -29,4 +29,14 @@ public interface ArticuloMaestroRepository extends JpaRepository<ArticuloMaestro
      */
     @Query("SELECT a.idArticuloMaestro, COUNT(v) FROM ArticuloMaestro a LEFT JOIN a.variantes v GROUP BY a.idArticuloMaestro")
     List<Object[]> countVariantesByMaestro();
+
+    /**
+     * Active masters without a CAByS (null or blank). SQL equivalent of the counter:
+     * SELECT COUNT(*) FROM articulo_maestro WHERE active = 1 AND (codigo_cabys IS NULL OR TRIM(codigo_cabys) = '')
+     */
+    @Query("SELECT a FROM ArticuloMaestro a WHERE a.active = true AND (a.codigoCabys IS NULL OR TRIM(a.codigoCabys) = '') ORDER BY a.descripcion")
+    List<ArticuloMaestro> findActivosSinCabys();
+
+    @Query("SELECT COUNT(a) FROM ArticuloMaestro a WHERE a.active = true AND (a.codigoCabys IS NULL OR TRIM(a.codigoCabys) = '')")
+    long countActivosSinCabys();
 }

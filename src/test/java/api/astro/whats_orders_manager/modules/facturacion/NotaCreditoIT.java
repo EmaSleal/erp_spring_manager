@@ -35,6 +35,8 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepo
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
+import api.astro.whats_orders_manager.modules.producto.repository.ArticuloMaestroRepository;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -160,6 +162,7 @@ class NotaCreditoIT {
     @Autowired private AsientoContableRepository asientoRepository;
     @Autowired private ClienteRepository clienteRepository;
     @Autowired private ProductoRepository productoRepository;
+    @Autowired private ArticuloMaestroRepository articuloMaestroRepository;
     @Autowired private CuentaContableRepository cuentaRepository;
     @Autowired private ParametroContableRepository parametroRepository;
     @Autowired private ConfiguracionEmpresaRepository empresaRepository;
@@ -563,7 +566,7 @@ class NotaCreditoIT {
         tx.executeWithoutResult(s -> {
             Producto p = productoRepository.findById(gravado13.getIdProducto()).orElseThrow();
             p.setDescripcion("Descripción cambiada después de la nota");
-            p.setCodigoCabys("1111111111111");
+            p.getArticuloMaestro().setCodigoCabys("1111111111111");
             p.setPorcentajeImpuesto(new BigDecimal("4"));
             productoRepository.save(p);
         });
@@ -911,7 +914,13 @@ class NotaCreditoIT {
         Producto p = new Producto();
         p.setCodigo("T32-" + UUID.randomUUID().toString().substring(0, 8));
         p.setDescripcion(descripcion);
-        p.setCodigoCabys(gravado ? "1234567890123" : "9876543210987");
+        // ADR-040: el CAByS vive solo en el artículo maestro
+        // (la BD de la clase no se limpia entre pruebas y la descripción del maestro es única: se reutiliza)
+        ArticuloMaestro maestro = articuloMaestroRepository.findByDescripcionContainingIgnoreCase(descripcion).stream()
+                .filter(m -> descripcion.equals(m.getDescripcion())).findFirst().orElseGet(ArticuloMaestro::new);
+        maestro.setDescripcion(descripcion);
+        maestro.setCodigoCabys(gravado ? "1234567890123" : "9876543210987");
+        p.setArticuloMaestro(articuloMaestroRepository.save(maestro));
         p.setPrecioInstitucional(new BigDecimal(precio));
         p.setPrecioMayorista(new BigDecimal(precio));
         p.setActive(true);

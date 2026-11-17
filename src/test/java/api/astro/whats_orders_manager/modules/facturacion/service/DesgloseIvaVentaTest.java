@@ -139,7 +139,10 @@ class DesgloseIvaVentaTest {
         maestro.setGravado(true);
         maestro.setPorcentajeImpuesto(new BigDecimal("13.00"));
         productos.put(5, producto(5, maestro, true, null));
-        productos.put(6, producto(6, null, true, null));
+        ArticuloMaestro maestroSinTarifa = new ArticuloMaestro();
+        maestroSinTarifa.setDescripcion("Producto 6");
+        maestroSinTarifa.setCodigoCabys("3530100000100");
+        productos.put(6, producto(6, maestroSinTarifa, true, null));
         productos.forEach((idProducto, p) -> when(productoRepository.findById(idProducto)).thenReturn(Optional.of(p)));
 
         Cliente cliente = new Cliente();

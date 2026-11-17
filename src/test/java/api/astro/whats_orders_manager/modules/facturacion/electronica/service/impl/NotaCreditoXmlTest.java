@@ -20,6 +20,7 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFactura
 import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -300,6 +301,70 @@ class NotaCreditoXmlTest {
     }
 
     @Test
+    @DisplayName("T-034 (criterio 15): Alivion 2 x «200 g» y 1 x «50 g» → UnidadMedida Unid, Detalle por presentación; «Litro» → L; XSD válido")
+    void alivionPorPresentacion_unidadYDetalle() throws Exception {
+        Producto alivion200 = alivion("200 g", true, "Kg");
+        Producto alivion50 = alivion("50 g", true, "Kg");
+        Producto litro = alivion("Litro", false, "L");
+        factura.getLineas().clear();
+        factura.getLineas().add(linea(1, alivion200, 2, "2260.00"));
+        factura.getLineas().add(linea(2, alivion50, 1, "1130.00"));
+        factura.getLineas().add(linea(3, litro, 1, "1130.00"));
+        String xml = firma.firmarXml(generador.generarXmlFactura(aceptado), p12.toString(), PIN);
+
+        List<Element> lineas = new ArrayList<>();
+        for (Node n = hijo(raiz(xml), "DetalleServicio").getFirstChild(); n != null; n = n.getNextSibling()) {
+            if (n instanceof Element e && "LineaDetalle".equals(e.getLocalName())) lineas.add(e);
+        }
+        assertThat(lineas).hasSize(3);
+        assertThat(texto(lineas.get(0), "UnidadMedida")).isEqualTo("Unid");
+        assertThat(texto(lineas.get(0), "Cantidad")).startsWith("2");
+        assertThat(texto(lineas.get(0), "Detalle")).isEqualTo("Alivion 200 g");
+        assertThat(texto(lineas.get(1), "UnidadMedida")).isEqualTo("Unid");
+        assertThat(texto(lineas.get(1), "Cantidad")).startsWith("1");
+        assertThat(texto(lineas.get(1), "Detalle")).isEqualTo("Alivion 50 g");
+        assertThat(texto(lineas.get(2), "UnidadMedida")).isEqualTo("L");
+        assertThat(texto(lineas.get(2), "Detalle")).isEqualTo("Alivion");
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+
+        // la nota de crédito toma la misma resolución (foto de líneas); el comprobante aceptado refleja las nuevas líneas
+        factura.setTotal(new BigDecimal("4520.00"));
+        aceptado.setXmlComprobante(xml);
+        NotaFactura nota = nota("01", "Anulación total");
+        assertThat(nota.getLineas()).extracting("unidadMedida").containsExactly("Unid", "Unid", "L");
+        assertThat(nota.getLineas()).extracting("descripcion")
+                .containsExactly("Alivion 200 g", "Alivion 50 g", "Alivion");
+        assertThat(XmlValidator.erroresContraXsd(firma.firmarXml(
+                generador.generarXmlNotaCredito(comprobanteDeLaNota(nota)), p12.toString(), PIN),
+                TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("T-034 (criterio 8): sin CAByS en el maestro la emisión falla aunque Producto.codigoCabys tenga valor")
+    @SuppressWarnings("deprecation")
+    void cabysSoloDelMaestro() {
+        Producto sinMaestro = producto("Sin maestro", "1234567890123", true);
+        sinMaestro.setArticuloMaestro(null);
+        sinMaestro.setCodigoCabys("1234567890123");
+        factura.getLineas().clear();
+        factura.getLineas().add(linea(1, sinMaestro, 1, "1130.00"));
+
+        assertThat(org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> generador.generarXmlFactura(aceptado)).getMessage()).contains("CAByS");
+    }
+
+    private static Producto alivion(String presentacion, boolean empacado, String codigoUnidad) {
+        Producto p = producto("Alivion", "1234567890123", true);
+        api.astro.whats_orders_manager.modules.configuracion.model.Presentacion pr =
+                new api.astro.whats_orders_manager.modules.configuracion.model.Presentacion();
+        pr.setNombre(presentacion);
+        pr.setEmpacado(empacado);
+        pr.setCodigoUnidadFE(codigoUnidad);
+        p.setPresentacion(pr);
+        return p;
+    }
+
+    @Test
     @DisplayName("T-033: factura solo de servicios → sin campos de mercancía; solo de mercancías → sin campos de servicio")
     void soloServiciosOSoloMercancias() throws Exception {
         factura.getLineas().clear();
@@ -406,7 +471,10 @@ class NotaCreditoXmlTest {
     private static Producto producto(String descripcion, String cabys, boolean esGravado) {
         Producto p = new Producto();
         p.setDescripcion(descripcion);
-        p.setCodigoCabys(cabys);
+        ArticuloMaestro maestro = new ArticuloMaestro();
+        maestro.setDescripcion(descripcion);
+        maestro.setCodigoCabys(cabys);
+        p.setArticuloMaestro(maestro);
         p.setGravado(esGravado);
         p.setPorcentajeImpuesto(esGravado ? new BigDecimal("13") : BigDecimal.ZERO);
         p.setPrecioIncluyeIva(true);

@@ -1,7 +1,9 @@
 package api.astro.whats_orders_manager.modules.configuracion.controller;
 
+import api.astro.whats_orders_manager.shared.exception.ValidacionException;
 import api.astro.whats_orders_manager.modules.configuracion.model.Presentacion;
 import api.astro.whats_orders_manager.modules.configuracion.service.PresentacionService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.UnidadMedidaFe;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,7 +21,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PresentacionRestController {
 
+    private static final String MENSAJE_ERROR = "No se pudo completar la operación con la presentación";
+
     private final PresentacionService presentacionService;
+
+    /** Códigos válidos de unidad de medida (enum UnidadMedidaType del XSD, en su orden). */
+    @GetMapping("/unidades-fe")
+    public ResponseEntity<?> unidadesFe() {
+        return ResponseEntity.ok(Map.of("success", true, "data", UnidadMedidaFe.valores()));
+    }
 
     @GetMapping
     public ResponseEntity<?> findAll() {
@@ -34,7 +44,7 @@ public class PresentacionRestController {
         } catch (Exception e) {
             log.error("Error al obtener presentaciones", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", MENSAJE_ERROR));
         }
     }
 
@@ -49,7 +59,7 @@ public class PresentacionRestController {
         } catch (Exception e) {
             log.error("Error al obtener presentacion {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", MENSAJE_ERROR));
         }
     }
 
@@ -60,10 +70,12 @@ public class PresentacionRestController {
             Presentacion saved = presentacionService.save(presentacion);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of("success", true, "data", saved));
+        } catch (ValidacionException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error al crear presentacion", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", MENSAJE_ERROR));
         }
     }
 
@@ -78,10 +90,12 @@ public class PresentacionRestController {
             presentacion.setIdPresentacion(id);
             Presentacion updated = presentacionService.save(presentacion);
             return ResponseEntity.ok(Map.of("success", true, "data", updated));
+        } catch (ValidacionException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error al actualizar presentacion {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", MENSAJE_ERROR));
         }
     }
 
@@ -98,7 +112,7 @@ public class PresentacionRestController {
         } catch (Exception e) {
             log.error("Error al eliminar presentacion {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", MENSAJE_ERROR));
         }
     }
 }
