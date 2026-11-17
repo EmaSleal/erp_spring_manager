@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.producto.service.impl;
 
+import api.astro.whats_orders_manager.shared.exception.ValidacionException;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.repository.ArticuloMaestroRepository;
@@ -30,6 +31,16 @@ public class ArticuloMaestroServiceImpl implements ArticuloMaestroService {
     }
 
     @Override
+    public List<ArticuloMaestro> findActivosSinCabys() {
+        return maestroRepository.findActivosSinCabys();
+    }
+
+    @Override
+    public long countActivosSinCabys() {
+        return maestroRepository.countActivosSinCabys();
+    }
+
+    @Override
     public Optional<ArticuloMaestro> findById(Integer id) {
         return maestroRepository.findById(id);
     }
@@ -45,6 +56,7 @@ public class ArticuloMaestroServiceImpl implements ArticuloMaestroService {
     @Override
     @SuppressWarnings("deprecation") // Intentional write-through to deprecated Producto fields
     public ArticuloMaestro save(ArticuloMaestro maestro) {
+        normalizarCabys(maestro);
         ArticuloMaestro saved = maestroRepository.save(maestro);
         if (saved.getIdArticuloMaestro() != null) {
             List<Producto> variantes = productoRepository
@@ -64,6 +76,27 @@ public class ArticuloMaestroServiceImpl implements ArticuloMaestroService {
             }
         }
         return saved;
+    }
+
+    /** Mensaje fijo devuelto como 400 cuando el código CAByS no tiene 13 dígitos. */
+    public static final String MSG_CABYS_INVALIDO = "El código CAByS debe tener exactamente 13 dígitos";
+
+    /**
+     * Blank codigoCabys is stored as null (article without CAByS, and descripcionCabys cleared);
+     * a non-blank one must be exactly 13 digits (ADR-040).
+     */
+    private static void normalizarCabys(ArticuloMaestro maestro) {
+        String codigo = maestro.getCodigoCabys();
+        if (codigo == null || codigo.isBlank()) {
+            maestro.setCodigoCabys(null);
+            maestro.setDescripcionCabys(null);
+            return;
+        }
+        codigo = codigo.trim();
+        if (!codigo.matches("\\d{13}")) {
+            throw new ValidacionException(MSG_CABYS_INVALIDO);
+        }
+        maestro.setCodigoCabys(codigo);
     }
 
     /**

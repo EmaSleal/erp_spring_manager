@@ -133,6 +133,13 @@
                         </button>
                     </li>
 
+                    <!-- Enlace a mantenimiento de Presentaciones (página aparte) -->
+                    <li class="nav-item" role="presentation" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" th:href="@{/configuracion/presentaciones}">
+                            <i class="fas fa-box me-2"></i> Presentaciones
+                        </a>
+                    </li>
+
                     <!-- Tab Usuarios (Próximamente) -->
                     <li class="nav-item" role="presentation">
                         <button class="nav-link disabled" 

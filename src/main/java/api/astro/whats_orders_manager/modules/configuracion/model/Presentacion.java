@@ -33,7 +33,12 @@ public class Presentacion {
     @Column(name = "codigo_unidad_fe", length = 10)
     private String codigoUnidadFE;
 
-    // Getters y Setters
+    /**
+     * ADR-041: true si se vende por envase (la cantidad cuenta envases y la unidad del XML es 'Unid'); false si se
+     * vende en la magnitud exacta y entonces rige codigoUnidadFE. Nuevas presentaciones: true.
+     */
+    @Column(name = "empacado", nullable = false)
+    private Boolean empacado = true;
 
     @CreatedDate
     @Column(name = "createDate", updatable = false)

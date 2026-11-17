@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.DatosFeProducto;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
@@ -273,13 +274,11 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
         if (lineas != null) {
             for (LineaFactura linea : lineas) {
-                String um = "";
-                if (linea.getProducto() != null && linea.getProducto().getPresentacion() != null) {
-                    um = safe(linea.getProducto().getPresentacion().getNombre());
-                }
-                String codigoCabys = linea.getProducto() != null ? safe(resolveCodigoCabys(linea.getProducto())) : "";
+                // UM: la misma unidad que va en el XML (ADR-041), no el nombre de la presentación
+                String um = linea.getProducto() != null ? safe(DatosFeProducto.unidadMedida(linea.getProducto())) : "";
+                String codigoCabys = linea.getProducto() != null ? safe(DatosFeProducto.codigoCabys(linea.getProducto())) : "";
                 String codigo = linea.getProducto() != null ? safe(linea.getProducto().getCodigo()) : "";
-                String detalle = linea.getProducto() != null ? safe(resolveDescripcion(linea.getProducto())) : "";
+                String detalle = linea.getProducto() != null ? safe(DatosFeProducto.detalle(linea.getProducto())) : "";
                 String cantidad = linea.getCantidad() != null
                         ? String.format("%.2f", linea.getCantidad().doubleValue())
                         : "0.00";
@@ -428,20 +427,6 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     private String safe(String value) {
         return value != null ? value : "";
-    }
-
-    @SuppressWarnings("deprecation")
-    private String resolveDescripcion(api.astro.whats_orders_manager.modules.producto.model.Producto p) {
-        return Optional.ofNullable(p.getArticuloMaestro())
-                .map(ArticuloMaestro::getDescripcion)
-                .orElse(p.getDescripcion());
-    }
-
-    @SuppressWarnings("deprecation")
-    private String resolveCodigoCabys(api.astro.whats_orders_manager.modules.producto.model.Producto p) {
-        return Optional.ofNullable(p.getArticuloMaestro())
-                .map(ArticuloMaestro::getCodigoCabys)
-                .orElse(p.getCodigoCabys());
     }
 
     @SuppressWarnings("deprecation")

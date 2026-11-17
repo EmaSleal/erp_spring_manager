@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.producto.service;
 
+import api.astro.whats_orders_manager.shared.exception.ValidacionException;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.repository.ArticuloMaestroRepository;
@@ -266,5 +267,50 @@ class ArticuloMaestroServiceImplTest {
 
         assertDoesNotThrow(() -> service.deleteVariante(1, 10));
         verify(productoRepository).deleteById(10);
+    }
+
+    // =========================================================================
+    // save() — CAByS validation (T-034 criterion 6)
+    // =========================================================================
+
+    private ArticuloMaestro maestroConCabys(String codigo, String descripcion) {
+        ArticuloMaestro m = new ArticuloMaestro();
+        m.setDescripcion("Articulo");
+        m.setCodigoCabys(codigo);
+        m.setDescripcionCabys(descripcion);
+        return m;
+    }
+
+    @Test
+    @DisplayName("save() rejects a CAByS that is not exactly 13 digits")
+    void testSave_invalidCabys_rejected() {
+        for (String invalido : new String[]{"123", "21321000001001", "21321000001AB", "2132 1000001 0"}) {
+            ArticuloMaestro m = maestroConCabys(invalido, "x");
+            ValidacionException ex = assertThrows(ValidacionException.class, () -> service.save(m));
+            assertEquals(ArticuloMaestroServiceImpl.MSG_CABYS_INVALIDO, ex.getMessage());
+        }
+        verify(maestroRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("save() stores blank CAByS as null and clears its description")
+    void testSave_blankCabys_storedAsNull() {
+        for (String blank : new String[]{null, "", "   "}) {
+            ArticuloMaestro m = maestroConCabys(blank, "desc");
+            when(maestroRepository.save(m)).thenReturn(m);
+            service.save(m);
+            assertNull(m.getCodigoCabys());
+            assertNull(m.getDescripcionCabys());
+        }
+    }
+
+    @Test
+    @DisplayName("save() accepts a 13-digit CAByS (trimmed)")
+    void testSave_validCabys_accepted() {
+        ArticuloMaestro m = maestroConCabys(" 2132100000100 ", "desc");
+        when(maestroRepository.save(m)).thenReturn(m);
+        service.save(m);
+        assertEquals("2132100000100", m.getCodigoCabys());
+        assertEquals("desc", m.getDescripcionCabys());
     }
 }

@@ -47,6 +47,11 @@ public class CabysBusquedaDTO {
      * Mensaje de error si la búsqueda falló
      */
     private String mensajeError;
+
+    /**
+     * true cuando la API de Hacienda no respondió o falló (distinto de "sin resultados")
+     */
+    private Boolean fallaServicio;
     
     /**
      * Verifica si hay resultados

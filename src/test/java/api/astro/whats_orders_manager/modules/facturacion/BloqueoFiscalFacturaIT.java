@@ -34,6 +34,8 @@ import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaSe
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
+import api.astro.whats_orders_manager.modules.producto.repository.ArticuloMaestroRepository;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -157,6 +159,7 @@ class BloqueoFiscalFacturaIT {
     @Autowired private LineaFacturaRepository lineaFacturaRepository;
     @Autowired private ClienteRepository clienteRepository;
     @Autowired private ProductoRepository productoRepository;
+    @Autowired private ArticuloMaestroRepository articuloMaestroRepository;
     @Autowired private CuentaContableRepository cuentaRepository;
     @Autowired private ParametroContableRepository parametroRepository;
     @Autowired private AsientoContableRepository asientoRepository;
@@ -935,7 +938,13 @@ class BloqueoFiscalFacturaIT {
         Producto p = new Producto();
         p.setCodigo("T25-" + UUID.randomUUID().toString().substring(0, 8));
         p.setDescripcion(descripcion);
-        p.setCodigoCabys("1234567890123"); // T-033: sin CAByS no se emite comprobante
+        // ADR-040: el CAByS vive solo en el artículo maestro
+        // (la BD de la clase no se limpia entre pruebas y la descripción del maestro es única: se reutiliza)
+        ArticuloMaestro maestro = articuloMaestroRepository.findByDescripcionContainingIgnoreCase(descripcion).stream()
+                .filter(m -> descripcion.equals(m.getDescripcion())).findFirst().orElseGet(ArticuloMaestro::new);
+        maestro.setDescripcion(descripcion);
+        maestro.setCodigoCabys("1234567890123");
+        p.setArticuloMaestro(articuloMaestroRepository.save(maestro));
         p.setPrecioInstitucional(new BigDecimal(precio));
         p.setPrecioMayorista(new BigDecimal(precio));
         p.setActive(true);
