@@ -34,9 +34,4 @@ public interface XmlGeneratorService {
      * Genera XML de nota de débito.
      */
     String generarXmlNotaDebito(ComprobanteElectronico comprobante);
-    
-    /**
-     * Valida XML contra esquema XSD de Hacienda.
-     */
-    boolean validarXml(String xml, String tipoComprobante);
 }

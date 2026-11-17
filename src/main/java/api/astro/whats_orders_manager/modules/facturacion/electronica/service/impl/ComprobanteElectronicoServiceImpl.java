@@ -89,12 +89,23 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final Clock clock;
     private final LimiteConsultaManualHacienda limiteConsultaManual;
     private final ApplicationEventPublisher eventPublisher;
+    private final ValidadorXsdComprobante validadorXsd;
 
     /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
      * Hacienda no lo tiene (NO_TRANSMITIDO). Antes, el 404 no cambia el estado (ADR-030 §2, ADR-031 §4).
      */
     public static final long MINUTOS_ANTES_DE_VERIFICAR = 15;
+
+    /** Mensaje fijo al usuario cuando el XML firmado no cumple el XSD (el detalle va en ultimoError). */
+    public static final String MENSAJE_XML_INVALIDO_XSD =
+        "El XML del comprobante no cumple el esquema de Hacienda. Revise los errores en el detalle del comprobante.";
+
+    /** Encabezado de ultimoError cuando el XML firmado no cumple el XSD; después, un error por línea. */
+    public static final String ENCABEZADO_XML_INVALIDO_XSD = "XML inválido según el XSD v4.4:";
+
+    /** Máximo de errores del validador que se guardan en el comprobante. */
+    static final int MAX_ERRORES_XSD_GUARDADOS = 50;
 
     /** Estados en los que se puede "Consultar estado en Hacienda" (ADR-031 §4). */
     public static final Set<EstadoComprobante> CONSULTABLES_A_MANO = EnumSet.of(EstadoComprobante.ENVIADO,
@@ -439,6 +450,11 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             return mapper.toDTO(repository.save(comprobante));
         }
 
+        // XSD v4.4: ningún XML inválido sale hacia Hacienda (ni siquiera se pide el token). ERROR local, misma clave
+        if (!xmlFirmadoValidoContraXsd(comprobante)) {
+            return mapper.toDTO(repository.save(comprobante));
+        }
+
         ConfiguracionHacienda config;
         try {
             config = configuracionActivaDe(comprobante.getEmpresa());
@@ -485,6 +501,42 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
 
         return mapper.toDTO(repository.save(comprobante));
+    }
+
+    /**
+     * Valida el XML firmado contra el XSD del tipo. Si no cumple, el comprobante queda en ERROR (falla local, ADR-030:
+     * misma clave y consecutivo, editable), con los errores del validador en ultimoError, y cuenta un intento para que
+     * el job de reintentos se detenga tras {@code intentosEnvio < 5}.
+     *
+     * @return false si quedó en ERROR
+     */
+    private boolean xmlFirmadoValidoContraXsd(ComprobanteElectronico comprobante) {
+        List<String> errores;
+        try {
+            errores = validadorXsd.validar(comprobante.getXmlComprobante(), comprobante.getTipoComprobante());
+        } catch (Exception e) {
+            log.error("No se pudo validar el XML de {} contra el XSD: {}", comprobante.getClaveNumerica(),
+                e.getMessage());
+            comprobante.setEstado(EstadoComprobante.ERROR);
+            comprobante.setUltimoError(ENCABEZADO_XML_INVALIDO_XSD + "\nNo se pudo ejecutar la validación: "
+                + e.getMessage());
+            comprobante.incrementarIntentos();
+            return false;
+        }
+        if (errores.isEmpty()) {
+            return true;
+        }
+        StringBuilder detalle = new StringBuilder(ENCABEZADO_XML_INVALIDO_XSD);
+        errores.stream().limit(MAX_ERRORES_XSD_GUARDADOS).forEach(e -> detalle.append('\n').append(e));
+        if (errores.size() > MAX_ERRORES_XSD_GUARDADOS) {
+            detalle.append("\n... y ").append(errores.size() - MAX_ERRORES_XSD_GUARDADOS).append(" errores más");
+        }
+        log.warn("XML de {} inválido según el XSD ({} errores); no se transmite", comprobante.getClaveNumerica(),
+            errores.size());
+        comprobante.setEstado(EstadoComprobante.ERROR);
+        comprobante.setUltimoError(detalle.toString());
+        comprobante.incrementarIntentos();
+        return false;
     }
 
     /**

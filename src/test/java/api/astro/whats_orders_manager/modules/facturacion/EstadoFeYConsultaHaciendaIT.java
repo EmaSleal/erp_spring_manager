@@ -129,6 +129,8 @@ class EstadoFeYConsultaHaciendaIT {
     private static final String CONSULTAR = "/api/facturas/electronica/comprobantes/%d/consultar-estado-hacienda";
 
     @MockitoBean private HaciendaApiService haciendaApi;
+    /** T-036: los stubs de generador y firma no producen XML válido según el XSD; la validación se prueba aparte. */
+    @MockitoBean private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ValidadorXsdComprobante validadorXsd;
     @MockitoBean private FirmaDigitalService firmaDigital;
     @MockitoBean private XmlGeneratorService xmlGenerator;
     @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;

@@ -7,6 +7,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.TendenciaEnviosDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
@@ -134,6 +135,13 @@ public class ComprobanteElectronicoController {
         log.info("Enviando comprobante {} a Hacienda", id);
         try {
             ComprobanteElectronicoDTO enviado = comprobanteService.enviarAHacienda(id);
+            if (esXmlInvalidoSegunXsd(enviado)) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
+                    "success", false,
+                    "message", ComprobanteElectronicoServiceImpl.MENSAJE_XML_INVALIDO_XSD,
+                    "comprobante", enviado
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Comprobante enviado exitosamente",
@@ -157,6 +165,13 @@ public class ComprobanteElectronicoController {
         log.info("Reenviando comprobante {}", id);
         try {
             ComprobanteElectronicoDTO reenviado = comprobanteService.reenviar(id);
+            if (esXmlInvalidoSegunXsd(reenviado)) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
+                    "success", false,
+                    "message", ComprobanteElectronicoServiceImpl.MENSAJE_XML_INVALIDO_XSD,
+                    "comprobante", reenviado
+                ));
+            }
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Comprobante reenviado exitosamente",
@@ -711,5 +726,11 @@ public class ComprobanteElectronicoController {
             log.error("Error exportando a PDF: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /** ERROR local por XML que no cumple el XSD v4.4 (T-036): no se transmitió; el detalle está en ultimoError. */
+    private static boolean esXmlInvalidoSegunXsd(ComprobanteElectronicoDTO comprobante) {
+        return comprobante.getEstado() == EstadoComprobante.ERROR && comprobante.getUltimoError() != null
+            && comprobante.getUltimoError().startsWith(ComprobanteElectronicoServiceImpl.ENCABEZADO_XML_INVALIDO_XSD);
     }
 }

@@ -149,6 +149,8 @@ class NotaCreditoIT {
     private static final String USUARIO = "admin.bootstrap@example.invalid";
 
     @MockitoBean private HaciendaApiService haciendaApi;
+    /** T-036: los stubs de generador y firma no producen XML válido según el XSD; la validación se prueba aparte. */
+    @MockitoBean private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ValidadorXsdComprobante validadorXsd;
     @MockitoBean private FirmaDigitalService firmaDigital;
     @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;
     @MockitoSpyBean private PagoService pagoService;

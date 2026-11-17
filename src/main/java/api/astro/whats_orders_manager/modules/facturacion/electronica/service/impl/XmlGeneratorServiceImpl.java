@@ -278,28 +278,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         return xml.toString();
     }
 
-    @Override
-    public boolean validarXml(String xml, String tipoComprobante) {
-        try {
-            TipoComprobanteElectronico tipo;
-            if (xml.contains("<FacturaElectronica")) {
-                tipo = TipoComprobanteElectronico.FACTURA_ELECTRONICA;
-            } else if (xml.contains("<TiqueteElectronico")) {
-                tipo = TipoComprobanteElectronico.TIQUETE_ELECTRONICO;
-            } else if (xml.contains("<NotaCreditoElectronica")) {
-                tipo = TipoComprobanteElectronico.NOTA_CREDITO;
-            } else if (xml.contains("<NotaDebitoElectronica")) {
-                tipo = TipoComprobanteElectronico.NOTA_DEBITO;
-            } else {
-                return XmlValidator.validarXml(xml);
-            }
-            return XmlValidator.validarContraXsd(xml, tipo);
-        } catch (Exception e) {
-            log.error("Error validando XML: {}", e.getMessage());
-            return false;
-        }
-    }
-
     // =====================================================================
     // Secciones comunes
     // =====================================================================

@@ -116,6 +116,9 @@ app:
     directorio: ${SELLOS_DIR:/app/sellos}
   uploads:
     directorio: ${UPLOADS_DIR:/app/uploads}
+  # T-036: false apaga todos los métodos @Scheduled (SchedulingConfig). Verificaciones locales: APP_SCHEDULING_ENABLED=false
+  scheduling:
+    enabled: ${APP_SCHEDULING_ENABLED:true}
 
 # ========================================
 # CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA

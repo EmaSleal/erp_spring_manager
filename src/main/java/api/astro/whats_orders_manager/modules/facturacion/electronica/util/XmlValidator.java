@@ -27,13 +27,14 @@ import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Utilidad para validación y manipulación de XML.
@@ -77,70 +78,22 @@ public class XmlValidator {
         }
     }
     
+    /** Schema compilado por tipo de comprobante: se compila una vez y se comparte (el Schema es thread-safe). */
+    private static final Map<TipoComprobanteElectronico, Schema> SCHEMAS = new ConcurrentHashMap<>();
+
     /**
-     * Valida XML contra el esquema XSD correspondiente según el tipo de comprobante.
-     * 
-     * @param xml XML a validar
-     * @param tipoComprobante Tipo de comprobante electrónico
-     * @return true si el XML es válido según el XSD, false en caso contrario
-     */
-    public static boolean validarContraXsd(String xml, TipoComprobanteElectronico tipoComprobante) {
-        String xsdPath = obtenerRutaXsd(tipoComprobante);
-        
-        try {
-            // Intentar cargar desde classpath primero
-            ClassPathResource resource = new ClassPathResource(xsdPath);
-            if (resource.exists()) {
-                return validarContraXsd(xml, resource.getInputStream());
-            }
-            
-            // Intentar cargar desde sistema de archivos
-            File xsdFile = new File("src/main/resources/" + xsdPath);
-            if (xsdFile.exists()) {
-                Schema schema;
-                try (InputStream xsd = new java.io.FileInputStream(xsdFile)) {
-                    schema = crearSchema(xsd);
-                }
-                
-                Validator validator = schema.newValidator();
-                validator.validate(new StreamSource(new StringReader(xml)));
-                
-                log.info("XML validado exitosamente contra XSD: {}", xsdPath);
-                return true;
-            }
-            
-            // XSD no encontrado - log warning pero no fallar
-            log.warn("Esquema XSD no encontrado: {}. Validando solo estructura básica.", xsdPath);
-            log.warn("Para habilitar validación completa, descargue los XSD según: src/main/resources/xsd/README.md");
-            
-            // Validar solo que esté bien formado
-            return validarXml(xml);
-            
-        } catch (SAXException e) {
-            log.error("XML no cumple con el esquema XSD {}: {}", xsdPath, e.getMessage());
-            return false;
-        } catch (Exception e) {
-            log.error("Error validando XML contra XSD: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-    
-    /**
-     * Errores de validación del XML contra el XSD oficial del tipo de comprobante (lista vacía si es válido). A
-     * diferencia de {@link #validarContraXsd(String, TipoComprobanteElectronico)}, exige que el XSD exista en el
-     * classpath: sin esquema no hay validación que reportar.
+     * Errores de validación del XML contra el XSD oficial del tipo de comprobante (lista vacía si es válido). Exige
+     * que el XSD exista en el classpath: sin esquema no hay validación que reportar. El Schema se compila una sola
+     * vez por tipo y se reutiliza; cada validación usa su propio Validator (no es thread-safe).
      *
      * @throws IllegalStateException si el XSD no está en el classpath o no se puede cargar
      */
     public static List<String> erroresContraXsd(String xml, TipoComprobanteElectronico tipoComprobante) {
-        String xsdPath = obtenerRutaXsd(tipoComprobante);
-        ClassPathResource resource = new ClassPathResource(xsdPath);
-        if (!resource.exists()) {
-            throw new IllegalStateException("Esquema XSD no encontrado en el classpath: " + xsdPath);
-        }
         List<String> errores = new ArrayList<>();
-        try (InputStream xsd = resource.getInputStream()) {
-            Validator validator = crearSchema(xsd).newValidator();
+        try {
+            Validator validator = schemaDe(tipoComprobante).newValidator();
+            validator.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            validator.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
             validator.setErrorHandler(new ErrorHandler() {
                 @Override
                 public void warning(SAXParseException e) {
@@ -161,18 +114,37 @@ public class XmlValidator {
         } catch (SAXException e) {
             errores.add(e.getMessage());
         } catch (IOException e) {
-            throw new IllegalStateException("No se pudo cargar el esquema " + xsdPath, e);
+            throw new IllegalStateException("No se pudo validar el XML contra el esquema", e);
         }
         return errores;
+    }
+
+    /** Schema compartido del tipo (package-private para las pruebas de reutilización). */
+    static Schema schemaDe(TipoComprobanteElectronico tipo) {
+        String xsdPath = obtenerRutaXsd(tipo);
+        return SCHEMAS.computeIfAbsent(tipo, t -> {
+            ClassPathResource resource = new ClassPathResource(xsdPath);
+            if (!resource.exists()) {
+                throw new IllegalStateException("Esquema XSD no encontrado en el classpath: " + xsdPath);
+            }
+            try (InputStream xsd = resource.getInputStream()) {
+                return crearSchema(xsd);
+            } catch (SAXException | IOException e) {
+                throw new IllegalStateException("No se pudo cargar el esquema " + xsdPath, e);
+            }
+        });
     }
 
     /**
      * Esquema a partir del XSD de Hacienda. Los XSD oficiales importan la firma XML con una ruta relativa
      * ({@code ../../xmldsig-core-schema.xsd}) que no existe en el classpath: el import se resuelve con la copia local
-     * {@value #XSD_PATH_XMLDSIG}, sin red.
+     * {@value #XSD_PATH_XMLDSIG}, sin red. Sin acceso externo (DTD ni esquemas) y con procesamiento seguro.
      */
     private static Schema crearSchema(InputStream xsdStream) throws SAXException {
         SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+        schemaFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
         schemaFactory.setResourceResolver(XmlValidator::resolverRecurso);
         return schemaFactory.newSchema(new StreamSource(xsdStream));
     }
@@ -201,27 +173,6 @@ public class XmlValidator {
         }
     }
 
-    /**
-     * Valida XML contra XSD usando InputStream.
-     */
-    private static boolean validarContraXsd(String xml, java.io.InputStream xsdStream) {
-        try {
-            Schema schema = crearSchema(xsdStream);
-            
-            Validator validator = schema.newValidator();
-            validator.validate(new StreamSource(new StringReader(xml)));
-            
-            log.info("XML validado exitosamente contra XSD desde classpath");
-            return true;
-        } catch (SAXException e) {
-            log.error("XML no cumple con el esquema XSD: {}", e.getMessage());
-            return false;
-        } catch (Exception e) {
-            log.error("Error validando XML: {}", e.getMessage());
-            return false;
-        }
-    }
-    
     /**
      * Obtiene la ruta del XSD según el tipo de comprobante.
      */
