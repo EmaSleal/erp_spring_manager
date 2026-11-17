@@ -156,7 +156,7 @@ class FechaEmisionCostaRicaTest {
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository,
                 facturaRepository, null, configuracionService, empresaService, generador, null, null,
                 new ClaveNumericaGenerator(), mock(ComprobanteElectronicoMapper.class), null, null,
-                Clock.fixed(instante, ZoneOffset.UTC), null, null);
+                Clock.fixed(instante, ZoneOffset.UTC), null, null, null);
         service.generarDesdeFactura(3L);
         ArgumentCaptor<ComprobanteElectronico> guardado = ArgumentCaptor.forClass(ComprobanteElectronico.class);
         verify(repository, atLeastOnce()).save(guardado.capture());

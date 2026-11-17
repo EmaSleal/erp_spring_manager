@@ -477,7 +477,8 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
         
         return switch (codigo.toLowerCase()) {
             case "aceptado", "1" -> MensajeHacienda.ACEPTADO;
-            case "rechazado", "2" -> MensajeHacienda.RECHAZADO;
+            case "aceptado parcialmente", "aceptado_parcial", "2" -> MensajeHacienda.ACEPTADO_PARCIAL;
+            case "rechazado", "3" -> MensajeHacienda.RECHAZADO;
             case "procesando", "recibido", "0" -> MensajeHacienda.PROCESANDO;
             default -> MensajeHacienda.ERROR;
         };

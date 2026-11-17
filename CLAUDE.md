@@ -27,3 +27,49 @@ Contexto general, estructura y comandos: ver `agents.md`. Comando de pruebas: `.
 
 - Toda actualización de Spring Boot o Hibernate exige BloqueoFiscalFacturaIT en verde antes de integrarse
   (PoliticaMutabilidadFactura usa PersistenceContext, SPI interna). Las *IT corren con `./mvnw verify`.
+
+## Protocolo de verificación (smoke tests)
+
+Aplica a cualquier arranque de la aplicación para verificar un cambio (T-036; complementa «Reglas de ejecución»).
+
+1. **Copia sin secretos.** Trabajar en una copia sin `.env`/`.env.local` (`git worktree add --detach` o `git archive`),
+   nunca en la raíz del repositorio.
+2. **Base de datos propia.** MySQL en un contenedor con nombre de la tarea y `tmpfs` (por ejemplo
+   `docker run --name tNNN-mysql --tmpfs /var/lib/mysql ...`). Nunca `SELECT *` sobre `configuracion_hacienda` ni
+   `configuracion_email`. Al terminar, `docker rm -f tNNN-mysql`: el estado de Docker queda igual al inicial.
+3. **Jobs apagados.** Arrancar con `app.scheduling.enabled=false` (variable `APP_SCHEDULING_ENABLED=false`): ningún método
+   `@Scheduled` se ejecuta (reintentos de comprobantes, recordatorios, tipo de cambio, alertas de inventario, caché).
+   Ya no se usan ventanas de tiempo para evitar los jobs.
+4. **Sin salida a hosts externos.** Arrancar con `-Djdk.net.hosts.file=<archivo>`; el archivo solo resuelve localhost:
+
+   ```
+   127.0.0.1 localhost
+   ::1 localhost
+   ```
+
+   Con esa opción de la JVM ningún otro nombre resuelve (falla con `UnknownHostException`): ni `api.hacienda.go.cr`
+   ni las URL de recepción e IdP de Hacienda fijas en el enum `AmbienteHacienda`, que apuntar las URL configurables a
+   127.0.0.1 no bloquearía.
+
+Comando completo (desde la copia, con el jar ya construido). Las variables obligatorias son `DB_URL`, `DB_USERNAME`,
+`DB_PASSWORD`, `META_WEBHOOK_VERIFY_TOKEN`, `APP_BASE_URL` y `CORS_ALLOWED_ORIGINS` (sin ellas la app falla con
+«Faltan variables de entorno obligatorias»); `HACIENDA_CRYPTO_KEY` debe ser base64 de 32 bytes. Los directorios por
+defecto (`/app/certificados`, `/app/sellos`, `/app/uploads`) no son escribibles fuera de Docker: se apuntan a un
+directorio temporal. Sustituir solo lo que va entre `<>`; el resto son valores desechables:
+
+```
+S="$(mktemp -d)"; mkdir -p "$S"/{certificados,sellos,uploads,comprobantes}
+printf '127.0.0.1 localhost\n::1 localhost\n' > "$S/hosts-solo-localhost"
+env -i PATH="$PATH" HOME="$HOME" \
+  DB_URL='jdbc:mysql://127.0.0.1:<puerto-mysql>/<base>' DB_USERNAME=<usuario> DB_PASSWORD=<clave> \
+  META_WEBHOOK_VERIFY_TOKEN=smoke-test-token \
+  APP_BASE_URL=http://127.0.0.1:<puerto-app> CORS_ALLOWED_ORIGINS=http://127.0.0.1:<puerto-app> \
+  SERVER_PORT=<puerto-app> \
+  CERTIFICADOS_DIR="$S/certificados" SELLOS_DIR="$S/sellos" UPLOADS_DIR="$S/uploads" \
+  FACTURACION_DIRECTORIO_BASE="$S/comprobantes" \
+  HACIENDA_CRYPTO_KEY="$(openssl rand -base64 32)" \
+  APP_SCHEDULING_ENABLED=false TIPO_CAMBIO_SYNC_ENABLED=false \
+  java -Djdk.net.hosts.file="$S/hosts-solo-localhost" -jar target/*.jar
+```
+
+Al terminar, borrar `$S` (directorio temporal propio).
