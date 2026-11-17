@@ -107,6 +107,22 @@ class MensajesEnvioHaciendaApiTest {
     }
 
     @Test
+    @DisplayName("review 1 (D2): reemitir o generar que chocan con el vigente único de la factura → 409 fijo, no 500")
+    void choqueDelVigenteUnico_409() throws Exception {
+        var choque = new org.springframework.dao.DataIntegrityViolationException("could not execute statement",
+            new java.sql.SQLIntegrityConstraintViolationException(
+                "Duplicate entry '7' for key 'comprobante_electronico.uk_comprobante_un_vigente_por_factura'"));
+        when(comprobantes.reemitir(5L)).thenThrow(choque);
+        when(comprobantes.generarDesdeFactura(7L)).thenThrow(choque);
+        for (var pedido : java.util.List.of(post("/api/facturas/electronica/comprobantes/5/reemitir"),
+                post("/api/facturas/electronica/comprobantes/generar").param("facturaId", "7"))) {
+            mvc.perform(pedido)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO));
+        }
+    }
+
+    @Test
     @DisplayName("reenviar un comprobante en ENVIO_INCIERTO (marca de envío): 409 «no puede ser reenviado»")
     void reenviarMarcado_409() throws Exception {
         when(envio.reenviar(5L)).thenThrow(

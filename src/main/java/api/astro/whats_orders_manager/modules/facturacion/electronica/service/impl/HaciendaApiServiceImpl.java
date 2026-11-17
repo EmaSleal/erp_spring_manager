@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MensajeHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
@@ -83,7 +84,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             // Preparar body con credenciales
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("grant_type", GRANT_TYPE_PASSWORD);
-            body.add("client_id", "api-stag"); // Cliente por defecto para sandbox
+            body.add("client_id", clientId(config)); // api-stag (SANDBOX) o api-prod (PRODUCCION), Anexo 3
             body.add("client_secret", ""); // Sin secret para sandbox
             body.add("username", config.getUsuarioHacienda());
             body.add("password", config.getPasswordHacienda());
@@ -138,7 +139,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("grant_type", GRANT_TYPE_REFRESH);
-            body.add("client_id", "api-stag");
+            body.add("client_id", clientId(config));
             body.add("client_secret", "");
             body.add("refresh_token", refreshToken);
             
@@ -193,7 +194,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
         try {
             config = configuracionRepository.findById(configuracionId)
                 .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
-            urlRecepcion = urlBase(config) + "/recepcion/v1/recepcion";
+            urlRecepcion = urlBase(config) + AmbienteHacienda.RUTA_RECEPCION;
 
             String xmlBase64 = Base64.getEncoder().encodeToString(xml.getBytes(StandardCharsets.UTF_8));
             String fechaEmision = OffsetDateTime.now(ZoneId.of("America/Costa_Rica"))
@@ -287,6 +288,11 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
     protected String urlToken(ConfiguracionHacienda config) {
         return config.getAmbiente().getUrlToken();
     }
+
+    /** Client Id del IdP según el ambiente de la configuración (P-091): api-stag o api-prod. */
+    static String clientId(ConfiguracionHacienda config) {
+        return config.getAmbiente().getClientId();
+    }
     
     @Override
     @CircuitBreaker(name = "haciendaAPI", fallbackMethod = "consultarComprobanteFallback")
@@ -301,8 +307,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             // Obtener token
             TokenResponse token = autenticar(configuracionId);
             
-            String urlConsulta = urlBase(config) +
-                "/recepcion/v1/recepcion/" + claveNumerica;
+            String urlConsulta = urlBase(config) + AmbienteHacienda.RUTA_RECEPCION + "/" + claveNumerica;
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();
@@ -370,8 +375,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             TokenResponse token = autenticar(configuracionId);
             
             // URL de mensajes
-            String urlMensajes = config.getAmbiente().getUrlBase() +
-                "/mensajes-receptor/v1/mensajes/" + config.getEmpresa().getRuc();
+            String urlMensajes = urlBase(config) + AmbienteHacienda.RUTA_MENSAJES_RECEPTOR + config.getEmpresa().getRuc();
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();

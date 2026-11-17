@@ -75,6 +75,31 @@ Se eliminaron `procesarFacturaAsync` (con su `@Async` sin efecto y el `Thread.sl
 - **Peor caso de la petición del usuario al emitir** (factura, nota o reenvío). Las etapas a, b y d son operaciones cortas de BD. El token es una petición al IdP: `enviarComprobante` llama a `autenticar` dentro de la misma clase, así que no usa la caché. El POST es otra petición. Total: 2 × (5 s + 15 s) = **40 s < 60 s**. A eso se suma la resolución DNS del sistema operativo, que los timeouts de la JVM no acotan.
 - La consulta manual de estado (no es parte de la emisión) puede llegar a 3 × 20 s + 2 s + 4 s = 66 s por el retry de la consulta. Queda igual que antes.
 
+### Constantes por ambiente (review 1, P-091)
+Todas las constantes del cliente de Hacienda que dependen del ambiente están en `AmbienteHacienda`. Ningún otro archivo tiene literales de client_id, realm o URL de Hacienda (`EnvioHaciendaEstructuraTest.constantesDelAmbienteSoloEnElEnum`). `autenticar` (grant_type password) y `renovarToken` (grant_type refresh_token) toman de ahí el client_id y la URL del realm (`TokenPorAmbienteTest`).
+
+| | SANDBOX | PRODUCCION |
+|---|---|---|
+| IdP | https://idp.comprobanteselectronicos.go.cr/auth | igual |
+| Realm | rut-stag | rut |
+| URL del token | …/auth/realms/rut-stag/protocol/openid-connect/token | …/auth/realms/rut/protocol/openid-connect/token |
+| Client Id | api-stag | api-prod |
+| API base | https://api-sandbox.comprobanteselectronicos.go.cr | https://api.comprobanteselectronicos.go.cr |
+| Recepción (POST) y consulta (GET …/{clave}) | base + /recepcion/v1/recepcion | igual |
+| Mensajes del receptor | base + /mensajes-receptor/v1/mensajes/{cédula} | igual |
+
+Fuente: Anexo 3 (`docs/referencias/ANEXOS_Y_ESTRUCTURAS_V4.4/anexo-3-api-comprobantes.md`), l.25 (API de recepción de producción), l.39 (IdP) y l.60-62 (realm rut, Client Id api-prod).
+- El Anexo no da el client_id ni el realm de pruebas. Para SANDBOX se conservan api-stag y rut-stag, con los que la aplicación ya emite y Hacienda acepta.
+- Para la API de pruebas el Anexo menciona https://api.comprobanteselectronicos.go.cr/recepcion-sandbox/v1/ (l.31). Se conserva la URL base api-sandbox, la que está en uso y responde.
+
+### Doble clic sobre la misma factura (review 1)
+- `generarParaEmision` (y `generarDesdeFactura` cuando se llama directo, desde /generar o la reemisión) toma como **primera sentencia** de la etapa a el bloqueo de la fila de la factura (`FacturaRepository.findByIdParaActualizar`, `SELECT ... FOR UPDATE`).
+- En MySQL (REPEATABLE READ) la vista de lectura nace con la primera lectura no bloqueante. Por eso el chequeo del comprobante vigente, que viene después, ve el que confirmó la emisión anterior.
+- Si hay un vigente que no es RECHAZADO, la segunda emisión responde 409 «La factura ya tiene un comprobante en curso o emitido» (`EmisionNoPermitidaException`), antes de tomar el consecutivo.
+- Orden de bloqueos: factura, luego configuracion_hacienda; es el mismo que la nota de crédito, que ya bloquea la factura (T-032).
+- No se usa una lectura bloqueante del comprobante: sin filas que la cumplan, toma bloqueos de hueco que se cruzaban con el INSERT de otra factura (deadlock observado en las IT de concurrencia).
+- Última defensa: si aun así chocara `uk_comprobante_un_vigente_por_factura`, `EnvioHaciendaServiceImpl.emitirFactura` lo traduce al mismo 409.
+
 ### app.scheduling.enabled=false
 - Sin `@EnableScheduling` no existe el bean `taskScheduler`, así que el envío no programa el sondeo y lo deja en el log. La respuesta al usuario no cambia.
 - El estado se resuelve después con «Consultar estado en Hacienda» o con el job horario, cuando vuelva a estar activo.

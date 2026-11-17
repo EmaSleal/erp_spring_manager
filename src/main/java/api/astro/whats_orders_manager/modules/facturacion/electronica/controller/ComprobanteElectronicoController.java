@@ -89,6 +89,8 @@ public class ComprobanteElectronicoController {
             return error(HttpStatus.CONFLICT, ProductosSinCabysException.mensajePara(e.getProductos()));
         } catch (EmisionNoPermitidaException e) {
             return error(HttpStatus.CONFLICT, e.getMensajeUsuario());
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            return vigenteUnico(e);
         } catch (Exception e) {
             log.error("Error generando comprobante: {}", e.getMessage(), e);
             return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
@@ -165,6 +167,18 @@ public class ComprobanteElectronicoController {
         ));
     }
 
+    /**
+     * Choque con uk_comprobante_un_vigente_por_factura (otra emisión de la misma factura ganó): el mismo 409 fijo que el
+     * chequeo previo. Cualquier otra violación de integridad es un error inesperado.
+     */
+    private static ResponseEntity<Map<String, Object>> vigenteUnico(org.springframework.dao.DataIntegrityViolationException e) {
+        if (String.valueOf(e.getMostSpecificCause().getMessage()).contains("uk_comprobante_un_vigente_por_factura")) {
+            return error(HttpStatus.CONFLICT, ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO);
+        }
+        log.error("Violación de integridad al generar el comprobante: {}", e.getMessage(), e);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
+    }
+
     private static ResponseEntity<Map<String, Object>> error(HttpStatus status, String mensaje) {
         return ResponseEntity.status(status).body(Map.of("success", false, "message", mensaje));
     }
@@ -219,6 +233,9 @@ public class ComprobanteElectronicoController {
                 "message", "Comprobante reemitido con la clave " + nuevo.getClaveNumerica(),
                 "comprobante", nuevo
             ));
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Review 1 (D2): dos reemisiones simultáneas del mismo rechazado chocan con el vigente único → 409 fijo
+            return vigenteUnico(e);
         } catch (IllegalStateException | ProductosSinCabysException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
         } catch (IllegalArgumentException e) {

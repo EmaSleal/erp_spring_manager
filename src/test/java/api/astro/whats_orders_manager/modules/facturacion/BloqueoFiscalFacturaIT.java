@@ -1034,6 +1034,59 @@ class BloqueoFiscalFacturaIT {
         verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
     }
 
+    @Test
+    @DisplayName("T-037 review 1, c.25-26: doble clic, dos hilos emiten la misma factura → 1 vigente, 1 consecutivo, 1 POST y 409")
+    void dobleClic_mismaFactura_unSoloComprobante() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        long antes = jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId());
+        java.util.concurrent.atomic.AtomicInteger posts = new java.util.concurrent.atomic.AtomicInteger();
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenAnswer(inv -> {
+            posts.incrementAndGet();
+            return recibidoTrasDemora(200);
+        });
+        java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+        List<String> resultados = new java.util.ArrayList<>();
+        try {
+            List<java.util.concurrent.Future<String>> futuros = new java.util.ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                futuros.add(hilos.submit(() -> {
+                    autenticar();
+                    salida.await();
+                    try {
+                        return envioService.emitirFactura((long) idFactura).getEstado().name();
+                    } catch (api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException e) {
+                        return "409:" + e.getMensajeUsuario();
+                    }
+                }));
+            }
+            salida.countDown();
+            for (var f : futuros) {
+                resultados.add(f.get(60, java.util.concurrent.TimeUnit.SECONDS));
+            }
+        } finally {
+            hilos.shutdownNow();
+        }
+
+        assertThat(resultados).containsExactlyInAnyOrder("ENVIADO",
+                "409:" + api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE factura_id = ?", Integer.class,
+                idFactura)).as("un solo comprobante").isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE factura_id = ? AND vigente = 1",
+                Integer.class, idFactura)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId())).as("un solo consecutivo consumido").isEqualTo(antes + 1);
+        assertThat(posts.get()).isEqualTo(1);
+
+        // La segunda petición por HTTP: 409 con el mensaje fijo
+        mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/" + idFactura)
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO));
+    }
+
     private void autenticar() {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(USUARIO, null,
                 AuthorityUtils.createAuthorityList("ROLE_ADMIN")));

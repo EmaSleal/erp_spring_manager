@@ -11,7 +11,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.service.Co
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
 import lombok.extern.slf4j.Slf4j;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -91,7 +93,18 @@ public class EnvioHaciendaServiceImpl implements EnvioHaciendaService {
     @Override
     public ComprobanteElectronicoDTO emitirFactura(Long facturaId) {
         // Etapa a (1/2): cliente, CAByS (409 sin consumir consecutivo), vigente, consecutivo con bloqueo, clave y XML
-        ComprobanteElectronicoDTO generado = nueva.execute(st -> comprobanteService.generarParaEmision(facturaId));
+        ComprobanteElectronicoDTO generado;
+        try {
+            generado = nueva.execute(st -> comprobanteService.generarParaEmision(facturaId));
+        } catch (DataIntegrityViolationException e) {
+            // Última defensa (review 1): si dos emisiones de la misma factura llegaran a insertar, la BD admite un solo
+            // vigente (uk_comprobante_un_vigente_por_factura); se responde como el chequeo previo, sin 500
+            if (String.valueOf(e.getMostSpecificCause().getMessage()).contains("uk_comprobante_un_vigente_por_factura")) {
+                log.warn("Factura {}: otra emisión ya creó su comprobante vigente", facturaId);
+                throw new EmisionNoPermitidaException(ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO);
+            }
+            throw e;
+        }
         return enviarComprobante(generado.getId(), false);
     }
 

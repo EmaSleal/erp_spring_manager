@@ -219,6 +219,19 @@ class EnvioHaciendaServiceImplTest {
         assertThat(comprobante.getIntentosEnvio()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("review 1, c.26: si dos emisiones de la misma factura chocan con uk_comprobante_un_vigente_por_factura → 409 fijo")
+    void choqueDelVigenteUnico_mismo409() {
+        when(comprobantes.generarParaEmision(7L)).thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+            "could not execute statement", new java.sql.SQLIntegrityConstraintViolationException(
+                "Duplicate entry '7' for key 'comprobante_electronico.uk_comprobante_un_vigente_por_factura'")));
+
+        assertThatThrownBy(() -> EnvioHaciendaDePrueba.crear(repository, comprobantes, hacienda, clock).emitirFactura(7L))
+            .isInstanceOf(api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException.class)
+            .hasMessage(ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO);
+        verifyNoInteractions(hacienda);
+    }
+
     /** TaskScheduler controlable: guarda las tareas y su instante, sin hilos ni esperas reales. */
     static final class ProgramadorDePrueba implements TaskScheduler {
         final List<Runnable> tareas = new ArrayList<>();

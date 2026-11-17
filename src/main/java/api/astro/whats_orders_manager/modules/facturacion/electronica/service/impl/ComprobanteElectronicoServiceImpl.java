@@ -101,6 +101,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
      */
     public static final long MINUTOS_ANTES_DE_VERIFICAR = 15;
 
+    /**
+     * Mensaje fijo cuando la factura (o la nota) ya tiene un comprobante vigente que no fue rechazado, p. ej. un doble
+     * clic en «Emitir» (T-037, review 1). Se responde 409 sin consumir consecutivo.
+     */
+    public static final String MENSAJE_COMPROBANTE_EN_CURSO = "La factura ya tiene un comprobante en curso o emitido";
+
     /** Mensaje fijo al usuario cuando el XML firmado no cumple el XSD (el detalle va en ultimoError). */
     public static final String MENSAJE_XML_INVALIDO_XSD =
         "El XML del comprobante no cumple el esquema de Hacienda. Revise los errores en el detalle del comprobante.";
@@ -140,6 +146,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     public ComprobanteElectronicoDTO generarParaEmision(Long facturaId) {
         log.info("🚀 Generando el comprobante para emitir la factura ID: {}", facturaId);
 
+        // T-037 (review 1): serializa las emisiones de una misma factura (doble clic) con el bloqueo de su fila. Es la
+        // primera sentencia de la transacción: en MySQL (REPEATABLE READ) la vista de lectura nace con la primera
+        // lectura no bloqueante, así que todo lo que se lea después del bloqueo ve lo que confirmó la emisión anterior
+        // (su comprobante vigente). Orden de bloqueos: factura, luego configuración (igual que la nota de crédito).
+        facturaRepository.findByIdParaActualizar(facturaId.intValue());
+
         // VALIDAR que el cliente requiera facturación electrónica
         Factura factura = facturaRepository.findByIdFactura(facturaId.intValue())
             .orElseThrow(() -> new EntityNotFoundException("Factura no encontrada con ID: " + facturaId));
@@ -163,6 +175,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     @Transactional
     public ComprobanteElectronicoDTO generarDesdeFactura(Long facturaId) {
         log.info("Generando comprobante electrónico desde factura ID: {}", facturaId);
+        // T-037 (review 1): bloqueo de la factura como primera sentencia (ver generarParaEmision); reentrante
+        facturaRepository.findByIdParaActualizar(facturaId.intValue());
         
         TipoComprobanteElectronico tipo = TipoComprobanteElectronico.FACTURA_ELECTRONICA;
 
@@ -177,11 +191,15 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         // ADR-030 §4: un solo comprobante vigente por factura. Solo un RECHAZADO cede su lugar (reemisión con
         // consecutivo y clave nuevos); el rechazado queda como historial, sin otros cambios.
+        // T-037 (review 1): el chequeo corre con la fila de la factura bloqueada (generarParaEmision, o al inicio de este
+        // método para /generar y la reemisión) y antes de tomar el consecutivo: una segunda emisión de la misma factura
+        // ve el vigente de la primera y responde 409 sin consumir numeración. No se usa una lectura bloqueante del
+        // comprobante: sin filas toma bloqueos de hueco que se cruzan con el INSERT de otra factura (deadlock).
         repository.findFirstByFactura_IdFacturaAndVigenteTrue(factura.getIdFactura()).ifPresent(vigente -> {
             if (vigente.getEstado() != EstadoComprobante.RECHAZADO) {
-                throw new EmisionNoPermitidaException("La factura ya tiene el comprobante vigente "
-                    + vigente.getClaveNumerica() + " en estado " + vigente.getEstado()
-                    + "; solo se emite uno nuevo si el vigente fue RECHAZADO");
+                log.warn("La factura {} ya tiene el comprobante vigente {} en estado {}", factura.getIdFactura(),
+                    vigente.getClaveNumerica(), vigente.getEstado());
+                throw new EmisionNoPermitidaException(MENSAJE_COMPROBANTE_EN_CURSO);
             }
             vigente.setVigente(false);
             repository.saveAndFlush(vigente); // antes del INSERT del nuevo: la BD admite un solo vigente
@@ -247,10 +265,13 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             nota.getFactura().getIdFactura());
 
         // Igual que la factura (ADR-030 §4): un solo vigente por nota; solo un RECHAZADO cede su lugar
+        // La emisión de la nota ya bloquea la fila de la factura (NotaFacturaService, T-032): este chequeo y el
+        // consecutivo corren serializados por factura
         repository.findFirstByNotaFactura_IdAndVigenteTrue(nota.getId()).ifPresent(vigente -> {
             if (vigente.getEstado() != EstadoComprobante.RECHAZADO) {
-                throw new IllegalStateException("La nota ya tiene el comprobante vigente "
-                    + vigente.getClaveNumerica() + " en estado " + vigente.getEstado());
+                log.warn("La nota {} ya tiene el comprobante vigente {} en estado {}", nota.getId(),
+                    vigente.getClaveNumerica(), vigente.getEstado());
+                throw new EmisionNoPermitidaException("La nota ya tiene un comprobante en curso o emitido");
             }
             vigente.setVigente(false);
             repository.saveAndFlush(vigente);

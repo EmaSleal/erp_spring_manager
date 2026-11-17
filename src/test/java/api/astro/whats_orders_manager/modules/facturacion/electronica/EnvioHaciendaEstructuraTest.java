@@ -64,4 +64,44 @@ class EnvioHaciendaEstructuraTest {
             assertThat(leer(p)).as(p.toString()).doesNotContain("@Async");
         }
     }
+
+    @Test
+    @DisplayName("review 1 (P-091): ningún literal de client_id, realm ni URL del IdP o la API de Hacienda fuera de AmbienteHacienda")
+    void constantesDelAmbienteSoloEnElEnum() throws IOException {
+        Pattern literal = Pattern.compile("\"(api-stag|api-prod)\"|rut-stag|realms/rut\\b|(idp|api|api-sandbox)\\.comprobanteselectronicos\\.go\\.cr"
+            + "|/recepcion/v1|mensajes-receptor/v1");
+        List<String> conLiterales = fuentes(FUENTES).stream()
+            .filter(p -> !p.getFileName().toString().equals("AmbienteHacienda.java"))
+            .filter(p -> literal.matcher(sinComentarios(leer(p))).find())
+            .map(p -> p.getFileName().toString())
+            .toList();
+        assertThat(conLiterales).isEmpty();
+    }
+
+    /**
+     * Quita los comentarios de bloque y los de línea que empiezan la línea (javadoc, //...). No toca el "//" de una URL
+     * dentro de un literal: así un literal "https://idp.comprobanteselectronicos.go.cr/..." sí se detecta (review 1, D1).
+     */
+    static String sinComentarios(String codigo) {
+        return codigo.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("(?m)^\\s*//.*$", "");
+    }
+
+    @Test
+    @DisplayName("control negativo del filtro: detecta client_id, realm y URLs completas de Hacienda en literales")
+    void filtroDetectaLiteralesDeUrl() {
+        Pattern literal = Pattern.compile("\"(api-stag|api-prod)\"|rut-stag|realms/rut\\b|(idp|api|api-sandbox)\\.comprobanteselectronicos\\.go\\.cr"
+            + "|/recepcion/v1|mensajes-receptor/v1");
+        for (String codigo : List.of(
+                "String u = \"https://idp.comprobanteselectronicos.go.cr/auth/realms/rut/protocol/openid-connect/token\";",
+                "String b = \"https://api.comprobanteselectronicos.go.cr\"; // base",
+                "body.add(\"client_id\", \"api-prod\");",
+                "String r = base + \"/recepcion/v1/recepcion\";")) {
+            assertThat(literal.matcher(sinComentarios(codigo)).find()).as(codigo).isTrue();
+        }
+        // Los namespaces XML (cdn.comprobanteselectronicos.go.cr) no dependen del ambiente
+        assertThat(literal.matcher("String ns = \"https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/x\";").find())
+            .isFalse();
+        assertThat(literal.matcher(sinComentarios("// https://api.comprobanteselectronicos.go.cr en un comentario\n"
+            + "/* realm rut-stag */ int x = 1;")).find()).isFalse();
+    }
 }
