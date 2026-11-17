@@ -42,7 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureDataJpa
 @AutoConfigureTestDatabase
-@Import({ConfiguracionHaciendaServiceImpl.class, ConfiguracionHaciendaMapper.class})
+@Import({ConfiguracionHaciendaServiceImpl.class, ConfiguracionHaciendaMapper.class,
+        api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator.class})
 @DisplayName("T-021 — la API de configuración de Hacienda no expone credenciales")
 class ConfiguracionHaciendaExposicionApiTest {
 

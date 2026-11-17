@@ -36,7 +36,7 @@ services:
       # T-033: hora de Costa Rica (defensa; la hora fiscal no depende de la zona de la JVM)
       TZ: America/Costa_Rica
       # Configuración de Base de Datos (apunta al contenedor MySQL)
-      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:?DB_NAME is required}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:?DB_NAME is required}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
       DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
 

@@ -24,6 +24,11 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # T-035: charset explicito, independiente de DB_URL (la app y Flyway comparten este DataSource).
+    hikari:
+      data-source-properties:
+        characterEncoding: UTF-8
+        connectionCollation: utf8mb4_0900_ai_ci
   
   flyway:
     enabled: true

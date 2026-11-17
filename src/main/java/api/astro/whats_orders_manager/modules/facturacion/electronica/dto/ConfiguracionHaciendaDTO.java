@@ -61,6 +61,14 @@ public class ConfiguracionHaciendaDTO {
     
     private Long consecutivoNotaDebito;
     
+    /** Solo respuesta (T-035): vencimiento del certificado (ISO yyyy-MM-dd), titular (CN) y aviso no bloqueante. */
+    private String certificadoVencimiento;
+
+    private String certificadoTitular;
+
+    /** Aviso si la identificación del certificado no contiene la cédula de la identidad fiscal; null si todo bien. */
+    private String certificadoAviso;
+
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;

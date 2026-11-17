@@ -37,7 +37,8 @@ class ConsecutivoConfigurableTest {
     private final ConfiguracionHaciendaRepository repository = mock(ConfiguracionHaciendaRepository.class);
     private final ConfiguracionEmpresaRepository empresaRepository = mock(ConfiguracionEmpresaRepository.class);
     private final ConfiguracionHaciendaServiceImpl service = new ConfiguracionHaciendaServiceImpl(repository,
-            empresaRepository, new ConfiguracionHaciendaMapper(), mock(HaciendaApiService.class));
+            empresaRepository, new ConfiguracionHaciendaMapper(), mock(HaciendaApiService.class),
+            new api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator());
 
     private ConfiguracionHacienda guardada;
 
