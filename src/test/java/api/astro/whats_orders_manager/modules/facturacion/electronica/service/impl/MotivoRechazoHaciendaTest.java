@@ -70,7 +70,7 @@ class MotivoRechazoHaciendaTest {
                 .codigoHttp(200).build());
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository, null, null,
                 configuracion, null, null, null, hacienda, null, mock(ComprobanteElectronicoMapper.class), null, null,
-                Clock.systemUTC(), null, null);
+                Clock.systemUTC(), null, null, null);
 
         service.consultarYActualizarEstado(3L);
 

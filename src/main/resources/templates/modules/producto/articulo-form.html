@@ -39,6 +39,7 @@
                 </div>
                 <div class="card-body">
                     <form id="maestroForm" novalidate>
+                        <div id="maestroError" class="alert alert-danger" style="display:none" role="alert"></div>
                         <div class="row g-3">
 
                             <!-- Descripción -->
@@ -77,6 +78,26 @@
                                 </h6>
                             </div>
 
+                            <!-- Búsqueda en el catálogo CAByS de Hacienda -->
+                            <div class="col-12">
+                                <label for="cabysBusqueda" class="form-label">
+                                    <i class="fas fa-search text-module-productos me-1"></i>Buscar en el catálogo CAByS
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="cabysBusqueda"
+                                           placeholder="Descripción o palabra clave (ej. jugo de naranja)"
+                                           autocomplete="off">
+                                    <button type="button" class="btn btn-module-productos" id="btnBuscarCabys">
+                                        <i class="fas fa-search me-1"></i>Buscar
+                                    </button>
+                                </div>
+                                <div id="cabysMensaje" class="mt-2" style="display:none"></div>
+                                <div id="cabysAviso" class="mt-2" style="display:none"></div>
+                                <div id="cabysResultados" class="mt-2" style="display:none">
+                                    <div class="list-group" id="cabysListGroup"></div>
+                                </div>
+                            </div>
+
                             <!-- Código CABYS -->
                             <div class="col-md-4">
                                 <label for="codigoCabys" class="form-label">
@@ -90,7 +111,7 @@
                                        maxlength="13"
                                        pattern="\d{13}"
                                        placeholder="1234567890123">
-                                <small class="text-muted">13 dígitos del catálogo CABYS</small>
+                                <small class="text-muted">13 dígitos del catálogo CABYS (vacío = sin CAByS)</small>
                             </div>
 
                             <!-- Descripción CABYS -->
@@ -296,6 +317,7 @@
     <!-- Scripts base -->
     <th:block th:replace="~{shared/layout :: scripts}"></th:block>
 
+    <script th:src="@{/modules/producto/js/cabys-utils.js}"></script>
     <script th:inline="javascript">
         const MAESTRO_ID = parseInt(document.getElementById('maestroId').value, 10);
         const CSRF_TOKEN = document.getElementById('csrfToken').value;
@@ -328,6 +350,7 @@
         // =====================================================================
 
         document.getElementById('btnGuardarMaestro').addEventListener('click', function () {
+            document.getElementById('maestroError').style.display = 'none';
             const payload = {
                 descripcion: document.getElementById('descripcion').value,
                 active: document.getElementById('active').checked,
@@ -352,11 +375,18 @@
                             window.location.href = '/articulos';
                         }
                     } else {
-                        alert('Error: ' + data.message);
+                        mostrarErrorMaestro(data.message || 'No se pudo guardar el artículo.');
                     }
                 })
-                .catch(err => alert('Error de red: ' + err));
+                .catch(() => mostrarErrorMaestro('Error de red al guardar el artículo.'));
         });
+
+        function mostrarErrorMaestro(texto) {
+            const box = document.getElementById('maestroError');
+            box.textContent = texto;
+            box.style.display = 'block';
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
 
         // =====================================================================
         // Variants table — only present in edit mode (MAESTRO_ID > 0)

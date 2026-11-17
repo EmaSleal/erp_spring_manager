@@ -32,15 +32,20 @@ public class ArticuloMaestroController {
     private final PresentacionService presentacionService;
 
     /**
-     * List all master articles.
+     * List all master articles, or only the active ones without CAByS with ?sinCabys=true.
      *
-     * GET /articulos
+     * GET /articulos[?sinCabys=true]
      */
     @GetMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRODUCTO_VER')")
-    public String listar(Model model, Authentication authentication) {
-        log.info("GET /articulos - listando artículos maestro");
-        List<ArticuloMaestro> maestros = articuloMaestroService.findAll();
+    public String listar(@RequestParam(name = "sinCabys", defaultValue = "false") boolean sinCabys,
+                         Model model, Authentication authentication) {
+        log.info("GET /articulos - listando artículos maestro (sinCabys={})", sinCabys);
+        List<ArticuloMaestro> maestros = sinCabys
+                ? articuloMaestroService.findActivosSinCabys()
+                : articuloMaestroService.findAll();
+        model.addAttribute("sinCabys", sinCabys);
+        model.addAttribute("totalSinCabys", articuloMaestroService.countActivosSinCabys());
         Map<Integer, Long> varianteCounts = articuloMaestroService.getVarianteCounts();
         model.addAttribute("maestros", maestros);
         model.addAttribute("varianteCounts", varianteCounts);

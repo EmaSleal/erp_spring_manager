@@ -55,4 +55,10 @@ public interface ArticuloMaestroService {
      * Used by the list view to avoid lazy-loading the variantes collection in the template.
      */
     Map<Integer, Long> getVarianteCounts();
+
+    /** Active masters whose codigoCabys is null or blank (ADR-040, "Sin CAByS" filter). */
+    List<ArticuloMaestro> findActivosSinCabys();
+
+    /** Number of active masters without CAByS. */
+    long countActivosSinCabys();
 }

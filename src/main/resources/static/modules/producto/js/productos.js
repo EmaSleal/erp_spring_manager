@@ -86,11 +86,7 @@ function openAddModal() {
     document.getElementById('porcentajeImpuesto').value = '13.00';
     document.getElementById('aplicaOtroImpuesto').checked = false;
     
-    // Limpiar resultados CABYS si están visibles
-    const divResultados = document.getElementById('cabysResultados');
-    if (divResultados) {
-        divResultados.style.display = 'none';
-    }
+    mostrarCabysMaestro(null);
     
     // Actualizar visibilidad de campos de impuesto
     if (typeof toggleImpuesto === 'function') {
@@ -101,6 +97,47 @@ function openAddModal() {
     productoModal.show();
 }
 
+
+/**
+ * Muestra el CAByS del artículo maestro en solo lectura (ADR-040) con un enlace para editarlo allí.
+ * Se escribe con textContent; el producto no envía ni edita el CAByS.
+ */
+function mostrarCabysMaestro(producto) {
+    const codigo = producto && producto.codigoCabysMaestro ? producto.codigoCabysMaestro : '';
+    const descripcion = producto && producto.descripcionCabysMaestro ? producto.descripcionCabysMaestro : '';
+    const idMaestro = producto && producto.idArticuloMaestro ? producto.idArticuloMaestro : null;
+    document.getElementById('cabysMaestroCodigo').textContent = codigo;
+    document.getElementById('cabysMaestroCodigo').style.display = codigo ? '' : 'none';
+    document.getElementById('cabysMaestroDescripcion').textContent = descripcion;
+    document.getElementById('cabysMaestroVacio').style.display = codigo ? 'none' : '';
+    const enlace = document.getElementById('cabysMaestroEnlace');
+    enlace.href = idMaestro ? '/articulos/' + idMaestro + '/editar' : '/articulos';
+}
+
+/**
+ * Mostrar/ocultar el porcentaje de impuesto según el checkbox gravado.
+ */
+function toggleImpuesto() {
+    const gravado = document.getElementById('gravado');
+    const divPorcentaje = document.getElementById('divPorcentajeImpuesto');
+    if (!gravado || !divPorcentaje) return;
+    const porcentaje = document.getElementById('porcentajeImpuesto');
+    if (gravado.checked) {
+        divPorcentaje.style.display = 'block';
+        if (!porcentaje.value || porcentaje.value === '0') porcentaje.value = '13.00';
+    } else {
+        divPorcentaje.style.display = 'none';
+        porcentaje.value = '0';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const gravado = document.getElementById('gravado');
+    if (gravado) {
+        toggleImpuesto();
+        gravado.addEventListener('change', toggleImpuesto);
+    }
+});
 
 function openEditModal(idProducto, codigo, descripcion, presentacionId, precioInst, precioMay, activo) {
     // Cambiar título del modal
@@ -124,8 +161,7 @@ function openEditModal(idProducto, codigo, descripcion, presentacionId, precioIn
     
     // Llenar campos de Facturación Electrónica si existen
     if (producto) {
-        document.getElementById('codigoCabys').value = producto.codigoCabys || '';
-        document.getElementById('descripcionCabys').value = producto.descripcionCabys || '';
+        mostrarCabysMaestro(producto);
         document.getElementById('gravado').checked = producto.gravado !== false; // true por defecto
         document.getElementById('porcentajeImpuesto').value = producto.porcentajeImpuesto || '13.00';
         document.getElementById('aplicaOtroImpuesto').checked = producto.aplicaOtroImpuesto || false;
@@ -163,8 +199,6 @@ function guardarProducto() {
         precioInstitucional: parseFloat(document.getElementById('precioInstitucional').value) || null,
         precioMayorista: parseFloat(document.getElementById('precioMayorista').value) || null,
         active: document.getElementById('active').checked,
-        codigoCabys: document.getElementById('codigoCabys').value || null,
-        descripcionCabys: document.getElementById('descripcionCabys').value || null,
         gravado: document.getElementById('gravado').checked,
         porcentajeImpuesto: parseFloat(document.getElementById('porcentajeImpuesto').value) || null,
         aplicaOtroImpuesto: document.getElementById('aplicaOtroImpuesto').checked

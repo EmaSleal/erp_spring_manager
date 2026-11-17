@@ -2,6 +2,9 @@ package api.astro.whats_orders_manager.modules.producto.model;
 
 import api.astro.whats_orders_manager.modules.configuracion.model.Presentacion;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.hibernate.Hibernate;
+import org.hibernate.proxy.HibernateProxy;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -186,4 +189,29 @@ public class Producto {
     private Integer updateBy;
 
     // Getters y Setters
+
+    // ========== Read-only view of the master's CAByS (ADR-040) ==========
+
+    /** Id of the master article (read-only, for the "edit CAByS in the article" link). */
+    @JsonProperty(value = "idArticuloMaestro", access = JsonProperty.Access.READ_ONLY)
+    public Integer getIdArticuloMaestro() {
+        if (articuloMaestro instanceof HibernateProxy proxy) {
+            return (Integer) proxy.getHibernateLazyInitializer().getIdentifier();
+        }
+        return articuloMaestro != null ? articuloMaestro.getIdArticuloMaestro() : null;
+    }
+
+    /** Master's CAByS code; null when there is no master or it is not loaded (never triggers a lazy load). */
+    @JsonProperty(value = "codigoCabysMaestro", access = JsonProperty.Access.READ_ONLY)
+    public String getCodigoCabysMaestro() {
+        return articuloMaestro != null && Hibernate.isInitialized(articuloMaestro)
+                ? articuloMaestro.getCodigoCabys() : null;
+    }
+
+    /** Master's CAByS description; same loading rules as {@link #getCodigoCabysMaestro()}. */
+    @JsonProperty(value = "descripcionCabysMaestro", access = JsonProperty.Access.READ_ONLY)
+    public String getDescripcionCabysMaestro() {
+        return articuloMaestro != null && Hibernate.isInitialized(articuloMaestro)
+                ? articuloMaestro.getDescripcionCabys() : null;
+    }
 }

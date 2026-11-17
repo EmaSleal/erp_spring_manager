@@ -696,7 +696,7 @@
                                     ${comp.ultimoError ? `
                                         <div class="col-12">
                                             <strong>Último Error:</strong><br>
-                                            <div class="alert alert-danger mb-0">${comp.ultimoError}</div>
+                                            <div class="alert alert-danger mb-0" style="white-space:pre-wrap;max-height:16rem;overflow:auto">${escapeHtml(comp.ultimoError)}</div>
                                         </div>
                                     ` : ''}
                                 </div>
@@ -825,7 +825,7 @@
                     titulo: esExitoso ? 'Aceptado por Hacienda' : 'Rechazado por Hacienda',
                     estado: comp.estado,
                     icono: esExitoso ? 'fa-check-circle' : 'fa-times-circle',
-                    descripcion: (() => { const m = motivoHacienda(comp); return m && m.detalle ? m.detalle : (esExitoso ? 'Comprobante aceptado' : 'Comprobante rechazado'); })()
+                    descripcion: (() => { const m = motivoHacienda(comp); return m && m.detalle ? escapeHtml(m.detalle) : (esExitoso ? 'Comprobante aceptado' : 'Comprobante rechazado'); })()
                 });
             }
             
@@ -845,7 +845,7 @@
                     titulo: 'Error Detectado',
                     estado: 'ERROR',
                     icono: 'fa-exclamation-triangle',
-                    descripcion: comp.ultimoError
+                    descripcion: escapeHtml(comp.ultimoError)
                 });
             }
             
@@ -868,7 +868,7 @@
                                     <i class="fas fa-clock me-1"></i>${formatearFecha(evento.fecha)}
                                 </small>
                             </div>
-                            <p class="mb-0 text-muted">${evento.descripcion}</p>
+                            <p class="mb-0 text-muted" style="white-space:pre-wrap">${evento.descripcion}</p>
                         </div>
                     </div>
                 `;

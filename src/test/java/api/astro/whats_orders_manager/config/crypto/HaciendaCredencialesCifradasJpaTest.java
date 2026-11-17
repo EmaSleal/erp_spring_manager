@@ -40,7 +40,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
 })
 @Import({HaciendaCredencialesCifradoRunner.class, CredencialCipherConfig.class,
-        ConfiguracionHaciendaServiceImpl.class, ConfiguracionHaciendaMapper.class})
+        ConfiguracionHaciendaServiceImpl.class, ConfiguracionHaciendaMapper.class,
+        api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("T-021 — credenciales de Hacienda cifradas en reposo (H2)")
 class HaciendaCredencialesCifradasJpaTest {

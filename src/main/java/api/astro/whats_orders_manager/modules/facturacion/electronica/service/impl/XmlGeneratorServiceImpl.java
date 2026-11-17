@@ -278,28 +278,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         return xml.toString();
     }
 
-    @Override
-    public boolean validarXml(String xml, String tipoComprobante) {
-        try {
-            TipoComprobanteElectronico tipo;
-            if (xml.contains("<FacturaElectronica")) {
-                tipo = TipoComprobanteElectronico.FACTURA_ELECTRONICA;
-            } else if (xml.contains("<TiqueteElectronico")) {
-                tipo = TipoComprobanteElectronico.TIQUETE_ELECTRONICO;
-            } else if (xml.contains("<NotaCreditoElectronica")) {
-                tipo = TipoComprobanteElectronico.NOTA_CREDITO;
-            } else if (xml.contains("<NotaDebitoElectronica")) {
-                tipo = TipoComprobanteElectronico.NOTA_DEBITO;
-            } else {
-                return XmlValidator.validarXml(xml);
-            }
-            return XmlValidator.validarContraXsd(xml, tipo);
-        } catch (Exception e) {
-            log.error("Error validando XML: {}", e.getMessage());
-            return false;
-        }
-    }
-
     // =====================================================================
     // Secciones comunes
     // =====================================================================
@@ -418,9 +396,9 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
                 ? base.divide(cantidad, 5, RoundingMode.HALF_UP)
                 : base;
 
-            // CAByS, unidad y descripción: resueltos desde el maestro con respaldo en Producto (XML-1)
+            // CAByS (solo del maestro, ADR-040), unidad y Detalle (ADR-041): resolución única en DatosFeProducto
             escribirLineaDetalle(xml, numeroLinea++, DatosFeProducto.codigoCabys(producto), cantidad,
-                DatosFeProducto.unidadMedida(producto), DatosFeProducto.descripcion(producto), precioUnitarioSinIva,
+                DatosFeProducto.unidadMedida(producto), DatosFeProducto.detalle(producto), precioUnitarioSinIva,
                 desglose);
         }
 
@@ -597,14 +575,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     // =====================================================================
     // FE field resolvers — null-safe navigation through ArticuloMaestro (XML-1)
     // =====================================================================
-
-    /** Resolves descripcionCabys: reads from master when present, falls back to deprecated Producto field. */
-    @SuppressWarnings("deprecation")
-    private String resolveDescripcionCabys(Producto produto) {
-        return Optional.ofNullable(produto.getArticuloMaestro())
-                .map(ArticuloMaestro::getDescripcionCabys)
-                .orElse(produto.getDescripcionCabys());
-    }
 
     /** Resolves aplicaOtroImpuesto: reads from master when present, falls back to deprecated Producto field. */
     @SuppressWarnings("deprecation")

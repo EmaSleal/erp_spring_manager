@@ -175,7 +175,7 @@ public class NotaFacturaService {
         List<String> sinCabys = DatosFeProducto.productosSinCabys(factura.getLineas());
         if (!sinCabys.isEmpty()) {
             throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura() + " tiene productos sin "
-                + "código CAByS: " + String.join(", ", sinCabys) + ". Regístrelo en cada producto antes de emitir la nota.");
+                + "código CAByS: " + String.join(", ", sinCabys) + ". Regístrelo en el artículo maestro antes de emitir la nota.");
         }
         BigDecimal subtotal = BigDecimal.ZERO;
         BigDecimal impuesto = BigDecimal.ZERO;
@@ -191,7 +191,7 @@ public class NotaFacturaService {
                 .lineaFactura(linea)
                 .producto(producto)
                 .numeroLinea(numero++)
-                .descripcion(truncar(DatosFeProducto.descripcion(producto), 200))
+                .descripcion(DatosFeProducto.detalle(producto))
                 .codigoCabys(DatosFeProducto.codigoCabys(producto))
                 .unidadMedida(DatosFeProducto.unidadMedida(producto))
                 .cantidad(cantidad)
@@ -243,8 +243,4 @@ public class NotaFacturaService {
         }
     }
 
-    private static String truncar(String texto, int max) {
-        if (texto == null) return "";
-        return texto.length() > max ? texto.substring(0, max) : texto;
-    }
 }

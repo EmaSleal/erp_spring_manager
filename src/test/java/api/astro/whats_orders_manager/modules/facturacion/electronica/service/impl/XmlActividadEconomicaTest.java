@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.model.Comp
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,10 @@ class XmlActividadEconomicaTest {
                 .build();
         Producto producto = new Producto();
         producto.setDescripcion("Producto de prueba");
-        producto.setCodigoCabys("1234567890001");
+        ArticuloMaestro maestro = new ArticuloMaestro();
+        maestro.setDescripcion("Producto de prueba");
+        maestro.setCodigoCabys("1234567890001");
+        producto.setArticuloMaestro(maestro);
         producto.setGravado(false);
         LineaFactura linea = new LineaFactura();
         linea.setProducto(producto);

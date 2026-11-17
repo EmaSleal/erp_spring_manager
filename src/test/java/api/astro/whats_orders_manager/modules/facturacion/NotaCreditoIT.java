@@ -18,6 +18,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mens
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
@@ -35,6 +36,8 @@ import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepo
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
+import api.astro.whats_orders_manager.modules.producto.repository.ArticuloMaestroRepository;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -95,6 +98,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -109,8 +113,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * (aceptado, rechazado, 404 en la verificación, timeout de lectura) y efectos al aceptarse.
  *
  * Base: MySQL 8 en Testcontainers (t032-it-mysql, tmpfs, sin volúmenes); esquema de Hibernate y rutinas de
- * database/routines, como BloqueoFiscalFacturaIT. El generador de XML es el real; la firma, el cliente de Hacienda y
- * la configuración de Hacienda están simulados: ninguna prueba llama a Hacienda. El envío simulado responde como un
+ * database/routines, como BloqueoFiscalFacturaIT. El generador de XML, la firma (certificado de prueba) y el
+ * validador XSD son los reales; el cliente y la configuración de Hacienda están simulados: ninguna prueba llama a Hacienda. El envío simulado responde como un
  * timeout de lectura (ENVIO_INCIERTO) salvo que la prueba diga otra cosa, para no entrar en el sondeo con esperas del
  * envío asíncrono.
  */
@@ -147,7 +151,7 @@ class NotaCreditoIT {
     private static final String USUARIO = "admin.bootstrap@example.invalid";
 
     @MockitoBean private HaciendaApiService haciendaApi;
-    @MockitoBean private FirmaDigitalService firmaDigital;
+    /** T-036: generador, firma y validador XSD son los reales; el certificado es uno de prueba generado con keytool. */
     @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;
     @MockitoSpyBean private PagoService pagoService;
 
@@ -160,12 +164,14 @@ class NotaCreditoIT {
     @Autowired private AsientoContableRepository asientoRepository;
     @Autowired private ClienteRepository clienteRepository;
     @Autowired private ProductoRepository productoRepository;
+    @Autowired private ArticuloMaestroRepository articuloMaestroRepository;
     @Autowired private CuentaContableRepository cuentaRepository;
     @Autowired private ParametroContableRepository parametroRepository;
     @Autowired private ConfiguracionEmpresaRepository empresaRepository;
     @Autowired private ComprobanteElectronicoRepository comprobanteRepository;
     @Autowired private ComprobanteElectronicoService comprobanteService;
     @Autowired private XmlGeneratorService xmlGenerator;
+    @Autowired private FirmaDigitalService firmaDigital;
     @Autowired private NotaFacturaService notaService;
     @Autowired private RelojAjustable reloj;
     @Autowired private ComprobanteReintentosJob reintentosJob;
@@ -229,16 +235,20 @@ class NotaCreditoIT {
             empresa.setNumeroIdentificacion("3101234567");
             empresa.setCodigoActividad("4773.0");
             empresa.setEmail("facturacion@t032.example");
+            empresa.setCodigoProvincia("1");
+            empresa.setCanton("01");
+            empresa.setDistrito("01");
+            empresa.setTelefono("22223333");
             empresa.setOtrasSenas("Avenida Central, San José");
             empresa = empresaRepository.save(empresa);
             if (configHacienda == null) {
-                configHacienda = ConfiguracionHacienda.builder().id(1L).empresa(empresa).build();
+                configHacienda = ConfiguracionHacienda.builder().id(1L).empresa(empresa)
+                        .rutaCertificado(CertificadoDePrueba.ruta()).pinCertificado(CertificadoDePrueba.PIN).build();
             }
             when(configuracionHaciendaService.obtenerConfiguracionActiva()).thenReturn(configHacienda);
             gravado13 = producto("Producto A gravado 13 %", "1130.00", true);
             exento = producto("Producto B exento", "500.00", false);
         });
-        when(firmaDigital.firmarXml(anyString(), any(), any())).thenAnswer(inv -> inv.getArgument(0) + "<!--firmado-->");
         when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenReturn(timeoutDeLectura());
     }
 
@@ -286,11 +296,37 @@ class NotaCreditoIT {
         String xml = (String) comp.get("xml_comprobante");
         assertThat(xml).startsWith("<?xml").contains("<NotaCreditoElectronica")
                 .contains("<Numero>" + claveFactura + "</Numero>").contains("<Codigo>01</Codigo>")
-                .contains("<TotalComprobante>1630.00000</TotalComprobante>").endsWith("<!--firmado-->");
+                .contains("<TotalComprobante>1630.00000</TotalComprobante>").contains("<ds:Signature");
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO))
+                .as("XML firmado de la nota según el validador XSD real").isEmpty();
+        // el timeout simulado deja "Read timed out"; lo que no debe haber es un error de XSD
+        assertThat(String.valueOf(comp.get("ultimo_error")))
+                .doesNotContain(api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl.ENCABEZADO_XML_INVALIDO_XSD);
         // Timeout de lectura simulado: el envío queda incierto y la nota sigue en trámite
         assertThat(comp.get("estado")).isEqualTo("ENVIO_INCIERTO");
         assertThat(data.get("estadoComprobante").asText()).isEqualTo("ENVIO_INCIERTO");
         verify(haciendaApi).enviarComprobante(anyString(), eq(claveNota), anyLong());
+    }
+
+    @Test
+    @DisplayName("T-036: nota con código 13 de punta a punta: XML firmado válido según el XSD real y enviado a Hacienda")
+    void emitir_codigo13_xmlRealValido_enviado() throws Exception {
+        int idFactura = facturaAceptada();
+        clearInvocations(haciendaApi);
+
+        Nota nota = emitirOk(idFactura, "13", "Error material en el cliente");
+
+        Map<String, Object> comp = jdbc.queryForMap("SELECT * FROM comprobante_electronico WHERE clave_numerica = ?",
+                nota.clave());
+        String xml = (String) comp.get("xml_comprobante");
+        assertThat(xml).contains("<NotaCreditoElectronica").contains("<Codigo>13</Codigo>").contains("<ds:Signature");
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO))
+                .as("XML firmado de la nota (13) según el validador XSD real").isEmpty();
+        // el timeout simulado deja "Read timed out"; lo que no debe haber es un error de XSD
+        assertThat(String.valueOf(comp.get("ultimo_error")))
+                .doesNotContain(api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl.ENCABEZADO_XML_INVALIDO_XSD);
+        assertThat(comp.get("estado")).isNotEqualTo("ERROR");
+        verify(haciendaApi).enviarComprobante(anyString(), eq(nota.clave()), anyLong());
     }
 
     @Test
@@ -563,7 +599,7 @@ class NotaCreditoIT {
         tx.executeWithoutResult(s -> {
             Producto p = productoRepository.findById(gravado13.getIdProducto()).orElseThrow();
             p.setDescripcion("Descripción cambiada después de la nota");
-            p.setCodigoCabys("1111111111111");
+            p.getArticuloMaestro().setCodigoCabys("1111111111111");
             p.setPorcentajeImpuesto(new BigDecimal("4"));
             productoRepository.save(p);
         });
@@ -760,7 +796,8 @@ class NotaCreditoIT {
                     .estado(estado)
                     .vigente(true)
                     .build();
-            c.setXmlComprobante(xmlGenerator.generarXmlFactura(c) + "<!--firmado-->");
+            c.setXmlComprobante(firmaDigital.firmarXml(xmlGenerator.generarXmlFactura(c), configHacienda.getRutaCertificado(),
+                    configHacienda.getPinCertificado()));
             comprobanteRepository.save(c);
         });
     }
@@ -769,7 +806,9 @@ class NotaCreditoIT {
         int idFactura = tx.execute(s -> {
             Cliente cliente = new Cliente();
             cliente.setNombre("Cliente T032 " + UUID.randomUUID());
+            cliente.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_FISICA);
             cliente.setNumeroIdentificacion("109990999");
+            cliente.setTelefono("88887777");
             cliente.setEmail("cliente@t032.example");
             cliente = clienteRepository.save(cliente);
             Factura factura = new Factura();
@@ -911,7 +950,13 @@ class NotaCreditoIT {
         Producto p = new Producto();
         p.setCodigo("T32-" + UUID.randomUUID().toString().substring(0, 8));
         p.setDescripcion(descripcion);
-        p.setCodigoCabys(gravado ? "1234567890123" : "9876543210987");
+        // ADR-040: el CAByS vive solo en el artículo maestro
+        // (la BD de la clase no se limpia entre pruebas y la descripción del maestro es única: se reutiliza)
+        ArticuloMaestro maestro = articuloMaestroRepository.findByDescripcionContainingIgnoreCase(descripcion).stream()
+                .filter(m -> descripcion.equals(m.getDescripcion())).findFirst().orElseGet(ArticuloMaestro::new);
+        maestro.setDescripcion(descripcion);
+        maestro.setCodigoCabys(gravado ? "1234567890123" : "9876543210987");
+        p.setArticuloMaestro(articuloMaestroRepository.save(maestro));
         p.setPrecioInstitucional(new BigDecimal(precio));
         p.setPrecioMayorista(new BigDecimal(precio));
         p.setActive(true);

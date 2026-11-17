@@ -8,6 +8,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ConfiguracionHaciendaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator.InfoCertificado;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.CertificadoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +39,7 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     private final ConfiguracionEmpresaRepository configuracionEmpresaRepository;
     private final ConfiguracionHaciendaMapper mapper;
     private final HaciendaApiService haciendaApiService;
+    private final CertificadoHaciendaValidator certificadoValidator;
     
     @Override
     @Transactional
@@ -44,6 +48,9 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         
         ConfiguracionEmpresa empresa = configuracionEmpresaRepository.findById(dto.getEmpresaId().intValue())
             .orElseThrow(() -> new IllegalArgumentException("ConfiguracionEmpresa no encontrada"));
+
+        // T-035: se abre el keystore con el PIN antes de cambiar nada (sin ruta no hay certificado que validar)
+        InfoCertificado certificado = validarCertificado(dto.getRutaCertificado(), dto.getPinCertificado());
 
         // ADR-021: una configuración nueva marcada como activa desactiva las demás en la misma transacción
         boolean activa = Boolean.TRUE.equals(dto.getActiva());
@@ -68,7 +75,7 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         configuracion = repository.save(configuracion);
         log.info("Configuración creada con ID: {}", configuracion.getId());
         
-        return mapper.toDTO(configuracion);
+        return conCertificado(mapper.toDTO(configuracion), certificado, empresa);
     }
     
     @Override
@@ -79,6 +86,17 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         ConfiguracionHacienda configuracion = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
         
+        // T-035: si cambia la ruta o llega un PIN nuevo, se valida con la ruta y el PIN efectivos antes de modificar
+        // nada. El PIN guardado ya viene descifrado por CredencialCifradaConverter.
+        boolean pinNuevo = dto.getPinCertificado() != null
+            && !ConfiguracionHaciendaMapper.MASK.equals(dto.getPinCertificado());
+        boolean rutaCambia = !java.util.Objects.equals(dto.getRutaCertificado(), configuracion.getRutaCertificado());
+        InfoCertificado certificado = null;
+        if (rutaCambia || pinNuevo) {
+            certificado = validarCertificado(dto.getRutaCertificado(),
+                pinNuevo ? dto.getPinCertificado() : configuracion.getPinCertificado());
+        }
+
         configuracion.setAmbiente(dto.getAmbiente());
         configuracion.setUsuarioHacienda(dto.getUsuarioHacienda());
         
@@ -107,7 +125,7 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         configuracion = repository.save(configuracion);
         log.info("Configuración actualizada: {}", id);
         
-        return mapper.toDTO(configuracion);
+        return conCertificado(mapper.toDTO(configuracion), certificado, configuracion.getEmpresa());
     }
     
     @Override
@@ -252,7 +270,42 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
 
     @Override
     public Optional<ConfiguracionHaciendaDTO> obtenerConfiguracionActiva(Integer empresaId) {
-        return repository.findActivaByEmpresaId(empresaId).map(mapper::toDTO);
+        return repository.findActivaByEmpresaId(empresaId).map(config -> conCertificado(mapper.toDTO(config),
+            infoMejorEsfuerzo(config), config.getEmpresa()));
+    }
+
+    /** Valida solo si hay ruta; lanza {@link CertificadoInvalidoException} con mensaje fijo por causa. */
+    private InfoCertificado validarCertificado(String ruta, String pin) {
+        if (ruta == null || ruta.isBlank()) {
+            return null;
+        }
+        return certificadoValidator.validar(ruta, pin);
+    }
+
+    /** Para la pantalla: vencimiento y titular de la configuración guardada; cualquier fallo deja los campos nulos. */
+    private InfoCertificado infoMejorEsfuerzo(ConfiguracionHacienda config) {
+        try {
+            return validarCertificado(config.getRutaCertificado(), config.getPinCertificado());
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** Agrega a la respuesta vencimiento, titular y el aviso (no bloqueante) de cédula distinta (ADR-019/021). */
+    private static ConfiguracionHaciendaDTO conCertificado(ConfiguracionHaciendaDTO dto, InfoCertificado info,
+                                                           ConfiguracionEmpresa empresa) {
+        if (info == null) {
+            return dto;
+        }
+        dto.setCertificadoVencimiento(info.fechaVencimiento());
+        dto.setCertificadoTitular(info.titular());
+        String cedula = empresa == null || empresa.getNumeroIdentificacion() == null ? ""
+            : empresa.getNumeroIdentificacion().replaceAll("\\D", "");
+        if (!cedula.isEmpty() && !info.identificacion().contains(cedula)) {
+            dto.setCertificadoAviso("La identificación del certificado no coincide con la cédula de la empresa ("
+                + cedula + "). Verifique que sea el certificado correcto.");
+        }
+        return dto;
     }
 
     /**

@@ -12,15 +12,14 @@ import lombok.Getter;
 @Getter
 public enum MensajeHacienda {
     
-    // Mensajes de éxito (1xx)
     ACEPTADO("1", "Aceptado"),
     
     // Estado procesando
     PROCESANDO("0", "En procesamiento"),
     
-    // Mensajes de rechazo (2xx - 3xx)
-    RECHAZADO("2", "Rechazado"),
-    RECHAZADO_PARCIAL("3", "Aceptación parcial"),
+    // Códigos del campo Mensaje del Anexo v4.4 (nota 11): 1 aceptado, 2 aceptación parcial, 3 rechazado
+    ACEPTADO_PARCIAL("2", "Aceptación parcial"),
+    RECHAZADO("3", "Rechazado"),
     
     // Errores de validación XML (100-199)
     ERROR_XML_MAL_FORMADO("100", "XML mal formado"),
@@ -80,13 +79,14 @@ public enum MensajeHacienda {
      * Verifica si el mensaje indica rechazo.
      */
     public boolean esRechazo() {
-        return this == RECHAZADO || this == RECHAZADO_PARCIAL;
+        return this == RECHAZADO;
     }
     
     /**
-     * Verifica si el mensaje indica error técnico.
+     * Verifica si el mensaje indica error técnico: los códigos de tres dígitos 2xx (autenticación) y 3xx (servicio).
+     * Los códigos 2 y 3 del Anexo (aceptación parcial, rechazado) son respuestas de Hacienda, no errores técnicos.
      */
     public boolean esErrorTecnico() {
-        return codigo.startsWith("2") || codigo.startsWith("3");
+        return codigo.length() == 3 && (codigo.startsWith("2") || codigo.startsWith("3"));
     }
 }

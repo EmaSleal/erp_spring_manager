@@ -15,6 +15,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService;
+import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -139,7 +140,7 @@ class FechaEmisionCostaRicaTest {
     @DisplayName("producto sin CAByS → error que lo nombra, sin consecutivo ni comprobante (criterio 14)")
     void sinCabys_noConsumeConsecutivo() {
         Producto sinCabys = producto(null);
-        sinCabys.setDescripcion("Servicio de instalación");
+        sinCabys.getArticuloMaestro().setDescripcion("Servicio de instalación");
         factura.getLineas().add(linea(sinCabys));
 
         assertThatThrownBy(() -> emitirEn(INSTANTE_SANDBOX))
@@ -155,7 +156,7 @@ class FechaEmisionCostaRicaTest {
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository,
                 facturaRepository, null, configuracionService, empresaService, generador, null, null,
                 new ClaveNumericaGenerator(), mock(ComprobanteElectronicoMapper.class), null, null,
-                Clock.fixed(instante, ZoneOffset.UTC), null, null);
+                Clock.fixed(instante, ZoneOffset.UTC), null, null, null);
         service.generarDesdeFactura(3L);
         ArgumentCaptor<ComprobanteElectronico> guardado = ArgumentCaptor.forClass(ComprobanteElectronico.class);
         verify(repository, atLeastOnce()).save(guardado.capture());
@@ -166,7 +167,10 @@ class FechaEmisionCostaRicaTest {
     private static Producto producto(String cabys) {
         Producto p = new Producto();
         p.setDescripcion("Producto T-033");
-        p.setCodigoCabys(cabys);
+        ArticuloMaestro maestro = new ArticuloMaestro();
+        maestro.setDescripcion("Producto T-033");
+        maestro.setCodigoCabys(cabys);
+        p.setArticuloMaestro(maestro);
         p.setGravado(true);
         p.setPorcentajeImpuesto(new BigDecimal("13"));
         p.setPrecioIncluyeIva(true);

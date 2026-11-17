@@ -124,3 +124,9 @@ validator.validate(new StreamSource(new StringReader(xml)));
 **Error: Namespace mismatch**
 - Verificar que el namespace en el XML sea exactamente:
   `https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/facturaElectronica`
+
+## Actualización de los XSD
+
+El procedimiento completo (origen oficial, pruebas a correr y registro en la memoria) está en
+`docs/referencias/ACTUALIZAR_XSD_HACIENDA.md`. Desde T-036 estos esquemas se aplican al XML firmado antes de enviarlo
+a Hacienda.

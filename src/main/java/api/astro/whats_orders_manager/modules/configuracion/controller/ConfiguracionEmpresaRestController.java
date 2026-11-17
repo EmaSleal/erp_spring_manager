@@ -1,6 +1,5 @@
 package api.astro.whats_orders_manager.modules.configuracion.controller;
 
-import api.astro.whats_orders_manager.modules.configuracion.dto.CabysBusquedaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.dto.ConfiguracionEmpresaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaConsultaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.dto.mapper.ConfiguracionEmpresaMapper;
@@ -56,44 +55,6 @@ public class ConfiguracionEmpresaRestController {
     private static final String EMPRESA_SUBDIR = "empresa";
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
     private static final String[] ALLOWED_IMG_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"};
-
-    /**
-     * Busca códigos CABYS por descripción o palabra clave
-     *
-     * GET /api/configuracion/empresa/hacienda/cabys/buscar?q={termino}&top={cantidad}
-     */
-    @GetMapping("/hacienda/cabys/buscar")
-    public ResponseEntity<?> buscarCabys(
-            @RequestParam("q") String termino,
-            @RequestParam(value = "top", defaultValue = "10") Integer top) {
-        try {
-            log.info("GET /api/configuracion/empresa/hacienda/cabys/buscar?q={}&top={}", termino, top);
-
-            CabysBusquedaDTO resultado = haciendaConsultaService.buscarCabys(termino, top);
-
-            if (resultado.getExitosa() && resultado.tieneResultados()) {
-                return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", resultado
-                ));
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                        "success", false,
-                        "message", resultado.getMensajeError() != null ?
-                            resultado.getMensajeError() : "No se encontraron resultados"
-                    ));
-            }
-
-        } catch (Exception e) {
-            log.error("Error al buscar códigos CABYS", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "success", false,
-                    "message", "Error al buscar códigos CABYS: " + e.getMessage()
-                ));
-        }
-    }
 
     /**
      * Consulta datos de un contribuyente en la API de Hacienda Costa Rica

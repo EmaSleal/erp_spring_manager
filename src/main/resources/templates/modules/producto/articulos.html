@@ -32,6 +32,18 @@
                 </div>
             </div>
 
+            <!-- Filtro Sin CAByS (ADR-040) -->
+            <div class="mb-3 d-flex align-items-center gap-2" id="filtroSinCabys">
+                <a th:href="@{/articulos}" class="btn btn-sm"
+                   th:classappend="${sinCabys} ? 'btn-outline-secondary' : 'btn-secondary'">Todos</a>
+                <a th:href="@{/articulos(sinCabys=true)}" class="btn btn-sm"
+                   th:classappend="${sinCabys} ? 'btn-warning' : 'btn-outline-warning'">
+                    <i class="fas fa-exclamation-triangle me-1"></i>Sin CAByS
+                    <span class="badge bg-dark ms-1" id="contadorSinCabys" th:text="${totalSinCabys}">0</span>
+                </a>
+                <small class="text-muted" th:if="${sinCabys}">Artículos activos sin código CAByS</small>
+            </div>
+
             <!-- Table Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body">

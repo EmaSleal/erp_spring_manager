@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.producto.controller;
 
+import api.astro.whats_orders_manager.shared.exception.ValidacionException;
 import api.astro.whats_orders_manager.modules.configuracion.model.Presentacion;
 import api.astro.whats_orders_manager.modules.configuracion.service.PresentacionService;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
@@ -88,10 +89,13 @@ public class ArticuloMaestroRestController {
             ArticuloMaestro saved = articuloMaestroService.save(maestro);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of("success", true, "data", saved, "message", "Artículo creado exitosamente"));
+        } catch (ValidacionException e) {
+            log.warn("Artículo maestro inválido: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error al crear artículo maestro", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", "No se pudo guardar el artículo"));
         }
     }
 
@@ -107,10 +111,13 @@ public class ArticuloMaestroRestController {
             maestro.setIdArticuloMaestro(id);
             ArticuloMaestro saved = articuloMaestroService.save(maestro);
             return ResponseEntity.ok(Map.of("success", true, "data", saved, "message", "Artículo actualizado exitosamente"));
+        } catch (ValidacionException e) {
+            log.warn("Artículo maestro {} inválido: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error al actualizar artículo maestro {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", "No se pudo guardar el artículo"));
         }
     }
 
