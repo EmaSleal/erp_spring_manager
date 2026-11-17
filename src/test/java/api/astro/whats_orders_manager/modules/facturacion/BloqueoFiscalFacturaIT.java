@@ -23,9 +23,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.exception.FacturaBloqueadaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.scheduled.ComprobanteReintentosJob;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.service.FirmaDigitalService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
@@ -82,6 +80,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -108,8 +108,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * respuesta es 409 y la factura, sus líneas y el asiento vigente quedan iguales.
  *
  * Base: MySQL 8 en Testcontainers (t025-it-mysql, tmpfs, sin volúmenes); esquema de Hibernate y rutinas de
- * database/routines, como en LineaFacturaSincronizacionIT. El cliente de Hacienda, la firma, el generador de XML y
- * la configuración de Hacienda están simulados (@MockitoBean): ninguna prueba llama a Hacienda.
+ * database/routines, como en LineaFacturaSincronizacionIT. El cliente de Hacienda y la configuración de Hacienda
+ * están simulados (@MockitoBean); generador, firma (certificado de prueba) y validador XSD son los reales: ninguna prueba llama a Hacienda.
  */
 @SpringBootTest(properties = {
         "spring.flyway.enabled=false",
@@ -147,10 +147,7 @@ class BloqueoFiscalFacturaIT {
             "ERROR_HACIENDA");
 
     @MockitoBean private HaciendaApiService haciendaApi;
-    /** T-036: los stubs de generador y firma no producen XML válido según el XSD; la validación se prueba aparte. */
-    @MockitoBean private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ValidadorXsdComprobante validadorXsd;
-    @MockitoBean private FirmaDigitalService firmaDigital;
-    @MockitoBean private XmlGeneratorService xmlGenerator;
+    /** T-036: generador, firma y validador XSD son los reales; el certificado es uno de prueba generado con keytool. */
     @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;
 
     @Autowired private MockMvc mockMvc;
@@ -169,6 +166,7 @@ class BloqueoFiscalFacturaIT {
     @Autowired private ComprobanteReintentosJob reintentosJob;
     @Autowired private LineaFacturaService lineaFacturaService;
     @Autowired private ComprobanteElectronicoRepository comprobanteRepository;
+    @Autowired private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService comprobanteService;
     @Autowired private RelojAjustable reloj;
 
     /**
@@ -216,6 +214,10 @@ class BloqueoFiscalFacturaIT {
     private Producto gravado13;
     private Producto exento;
     private Integer idEmpresa;
+    /** Configuración de Hacienda activa simulada; una sola por clase para que los consecutivos no se repitan. */
+    private ConfiguracionHacienda configHacienda;
+    /** XML firmado real (generador + firma + XSD) que las filas insertadas por SQL llevan en vez de un stub. */
+    private String xmlFirmadoReal;
 
     @AfterEach
     void tearDown() {
@@ -237,21 +239,25 @@ class BloqueoFiscalFacturaIT {
             }
             ConfiguracionEmpresa empresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
                     .orElseGet(() -> ConfiguracionEmpresa.builder().razonSocial("Empresa T025 S.A.").build());
-            if (empresa.getNumeroIdentificacion() == null) {
-                empresa.setNumeroIdentificacion("3101234567");
-            }
+            empresa.setNumeroIdentificacion("3101234567");
+            empresa.setCodigoActividad("4773.0");
+            empresa.setCodigoProvincia("1");
+            empresa.setCanton("01");
+            empresa.setDistrito("01");
+            empresa.setTelefono("22223333");
+            empresa.setEmail("facturacion@t025.example");
+            empresa.setOtrasSenas("Avenida Central, San José");
             empresa = empresaRepository.save(empresa);
             idEmpresa = empresa.getIdConfiguracion();
             // Configuración de Hacienda activa simulada, de la misma empresa (ADR-021)
-            ConfiguracionHacienda config = ConfiguracionHacienda.builder().id(1L).empresa(empresa).build();
-            when(configuracionHaciendaService.obtenerConfiguracionActiva()).thenReturn(config);
+            if (configHacienda == null) {
+                configHacienda = ConfiguracionHacienda.builder().id(1L).empresa(empresa)
+                        .rutaCertificado(CertificadoDePrueba.ruta()).pinCertificado(CertificadoDePrueba.PIN).build();
+            }
+            when(configuracionHaciendaService.obtenerConfiguracionActiva()).thenReturn(configHacienda);
             gravado13 = producto("Producto A gravado 13 %", "1130.00", true);
             exento = producto("Producto B exento", "500.00", false);
         });
-        when(xmlGenerator.generarXmlFactura(any())).thenAnswer(inv ->
-                "<FacturaElectronica><Clave>" + ((ComprobanteElectronico) inv.getArgument(0)).getClaveNumerica()
-                        + "</Clave></FacturaElectronica>");
-        when(firmaDigital.firmarXml(anyString(), any(), any())).thenAnswer(inv -> inv.getArgument(0) + "<!--firmado-->");
         when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenReturn(RespuestaHaciendaDTO.builder()
                 .resultadoEnvio(ResultadoEnvioHacienda.RECIBIDO).codigoHttp(202).exitoso(false)
                 .mensaje("Comprobante recibido por Hacienda, en procesamiento").build());
@@ -505,9 +511,32 @@ class BloqueoFiscalFacturaIT {
                 .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn();
         ComprobanteBd enviado = comprobanteBd(idComprobante);
         assertThat(enviado.clave()).isEqualTo(antes.clave());
-        assertThat(enviado.xml()).contains("<Clave>" + antes.clave() + "</Clave>").contains("<!--firmado-->");
+        assertThat(enviado.xml()).contains("<Clave>" + antes.clave() + "</Clave>").contains("<ds:Signature");
         assertThat(enviado.estado()).isEqualTo("ENVIADO");
         verify(haciendaApi).enviarComprobante(anyString(), eq(antes.clave()), anyLong());
+    }
+
+    // ── T-036: emisión de punta a punta con generador, firma y validador XSD reales ──
+
+    @Test
+    @DisplayName("T-036: factura 01 persistida → generador, firma y XSD reales → envío simulado a Hacienda con XML válido")
+    void emitirFactura_xmlRealValidoSegunXsd_seEnvia() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        autenticar();
+        clearInvocations(haciendaApi);
+
+        Long id = comprobanteService.generarDesdeFactura((long) idFactura).getId();
+        comprobanteService.firmar(id);
+        comprobanteService.enviarAHacienda(id);
+
+        ComprobanteBd enviado = comprobanteBd(id);
+        assertThat(enviado.estado()).isEqualTo("ENVIADO");
+        assertThat(enviado.xml()).contains("<FacturaElectronica").contains("<ds:Signature");
+        assertThat(XmlValidator.erroresContraXsd(enviado.xml(), TipoComprobanteElectronico.FACTURA_ELECTRONICA))
+                .as("XML firmado según el validador XSD real").isEmpty();
+        assertThat(jdbc.queryForObject("SELECT ultimo_error FROM comprobante_electronico WHERE id = ?", String.class, id))
+                .isNull();
+        verify(haciendaApi).enviarComprobante(anyString(), eq(enviado.clave()), anyLong());
     }
 
     // ── RECHAZADO: se edita y se reemite con clave nueva; el rechazado queda intacto ──
@@ -837,6 +866,10 @@ class BloqueoFiscalFacturaIT {
         int idFactura = tx.execute(s -> {
             Cliente cliente = new Cliente();
             cliente.setNombre("Cliente T025 " + UUID.randomUUID());
+            cliente.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_FISICA);
+            cliente.setNumeroIdentificacion("109990999");
+            cliente.setTelefono("88887777");
+            cliente.setEmail("cliente@t025.example");
             cliente = clienteRepository.save(cliente);
             Factura factura = new Factura();
             factura.setCliente(cliente);
@@ -875,10 +908,33 @@ class BloqueoFiscalFacturaIT {
                         + "enviado_email, xml_comprobante, ruta_archivo_xml) "
                         + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), ?, 'FACTURA_ELECTRONICA', ?, ?, b'1', 0, b'0', ?, ?)",
                 clave(), String.format("%020d", ThreadLocalRandom.current().nextLong(1, 1_000_000_000L)), estado,
-                fechaEnvio, idEmpresa, idFactura, "<FacturaElectronica>T025</FacturaElectronica>",
+                fechaEnvio, idEmpresa, idFactura, xmlFirmadoReal(),
                 "comprobantes/t025.xml");
         return jdbc.queryForObject("SELECT MAX(id) FROM comprobante_electronico WHERE factura_id = ?", Long.class,
                 idFactura);
+    }
+
+    /**
+     * XML firmado de una factura de la clase, producido por el flujo real (persistida → generador → firma) y validado
+     * por el validador XSD real; las filas insertadas por SQL (NO_TRANSMITIDO, etc.) lo llevan para que el reintento
+     * del job transmita un XML válido, no un texto de relleno.
+     */
+    private String xmlFirmadoReal() {
+        if (xmlFirmadoReal == null) {
+            try {
+                int idFactura = facturaConLineasAyB();
+                autenticar();
+                Long id = comprobanteService.generarDesdeFactura((long) idFactura).getId();
+                comprobanteService.firmar(id);
+                xmlFirmadoReal = comprobanteBd(id).xml();
+                jdbc.update("DELETE FROM comprobante_electronico WHERE id = ?", id);
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+            assertThat(XmlValidator.erroresContraXsd(xmlFirmadoReal, TipoComprobanteElectronico.FACTURA_ELECTRONICA))
+                    .as("el XML firmado del fixture valida contra el XSD").isEmpty();
+        }
+        return xmlFirmadoReal;
     }
 
     /** Factura en CRC sin líneas ni asiento (como la deja POST /facturas/guardar antes de cargar las líneas). */
@@ -886,6 +942,10 @@ class BloqueoFiscalFacturaIT {
         return tx.execute(s -> {
             Cliente cliente = new Cliente();
             cliente.setNombre("Cliente T025 " + UUID.randomUUID());
+            cliente.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_FISICA);
+            cliente.setNumeroIdentificacion("109990999");
+            cliente.setTelefono("88887777");
+            cliente.setEmail("cliente@t025.example");
             cliente = clienteRepository.save(cliente);
             Factura factura = new Factura();
             factura.setCliente(cliente);

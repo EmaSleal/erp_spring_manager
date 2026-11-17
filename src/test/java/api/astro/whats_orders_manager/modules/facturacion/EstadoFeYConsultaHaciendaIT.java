@@ -19,9 +19,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.model.Conf
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.scheduled.ComprobanteReintentosJob;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.service.FirmaDigitalService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
@@ -94,8 +92,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *   <li>PARTE E — "Consultar estado en Hacienda": estados permitidos, 1 consulta cada 30 s, regla del 404 según el
  *       estado de origen y reinicio del contador de ERROR_HACIENDA.</li>
  * </ul>
- * Base: MySQL 8 en Testcontainers (t026-it-mysql, tmpfs, sin volúmenes), como BloqueoFiscalFacturaIT. Hacienda, la
- * firma, el XML y la configuración de Hacienda están simulados (@MockitoBean): ninguna prueba llama a Hacienda.
+ * Base: MySQL 8 en Testcontainers (t026-it-mysql, tmpfs, sin volúmenes), como BloqueoFiscalFacturaIT. Solo el cliente
+ * de Hacienda y la configuración de Hacienda están simulados (@MockitoBean): ninguna prueba llama a Hacienda.
  */
 @SpringBootTest(properties = {
         "spring.flyway.enabled=false",
@@ -129,10 +127,11 @@ class EstadoFeYConsultaHaciendaIT {
     private static final String CONSULTAR = "/api/facturas/electronica/comprobantes/%d/consultar-estado-hacienda";
 
     @MockitoBean private HaciendaApiService haciendaApi;
-    /** T-036: los stubs de generador y firma no producen XML válido según el XSD; la validación se prueba aparte. */
-    @MockitoBean private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ValidadorXsdComprobante validadorXsd;
-    @MockitoBean private FirmaDigitalService firmaDigital;
-    @MockitoBean private XmlGeneratorService xmlGenerator;
+    /**
+     * T-036: generador, firma y validador XSD son los reales (no se simulan). Ninguna prueba de esta clase transmite un
+     * XML: solo consultan el estado en Hacienda y transicionan estados, así que el XML de las filas insertadas por SQL
+     * no interviene; la validez del XML de punta a punta se prueba en BloqueoFiscalFacturaIT y NotaCreditoIT.
+     */
     @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;
 
     @Autowired private MockMvc mockMvc;
@@ -209,19 +208,21 @@ class EstadoFeYConsultaHaciendaIT {
             }
             ConfiguracionEmpresa empresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
                     .orElseGet(() -> ConfiguracionEmpresa.builder().razonSocial("Empresa T026 S.A.").build());
-            if (empresa.getNumeroIdentificacion() == null) {
-                empresa.setNumeroIdentificacion("3101234567");
-            }
+            empresa.setNumeroIdentificacion("3101234567");
+            empresa.setCodigoActividad("4773.0");
+            empresa.setCodigoProvincia("1");
+            empresa.setCanton("01");
+            empresa.setDistrito("01");
+            empresa.setTelefono("22223333");
+            empresa.setEmail("facturacion@t026.example");
+            empresa.setOtrasSenas("Avenida Central, San José");
             empresa = empresaRepository.save(empresa);
             idEmpresa = empresa.getIdConfiguracion();
-            ConfiguracionHacienda config = ConfiguracionHacienda.builder().id(1L).empresa(empresa).build();
+            ConfiguracionHacienda config = ConfiguracionHacienda.builder().id(1L).empresa(empresa)
+                    .rutaCertificado(CertificadoDePrueba.ruta()).pinCertificado(CertificadoDePrueba.PIN).build();
             when(configuracionHaciendaService.obtenerConfiguracionActiva()).thenReturn(config);
             gravado13 = producto("Producto T026 gravado 13 %", "1130.00");
         });
-        when(xmlGenerator.generarXmlFactura(any())).thenAnswer(inv ->
-                "<FacturaElectronica><Clave>" + ((ComprobanteElectronico) inv.getArgument(0)).getClaveNumerica()
-                        + "</Clave></FacturaElectronica>");
-        when(firmaDigital.firmarXml(anyString(), any(), any())).thenAnswer(inv -> inv.getArgument(0) + "<!--firmado-->");
     }
 
     // ── PARTE C: createDate ──────────────────────────────────────────────────
@@ -509,6 +510,10 @@ class EstadoFeYConsultaHaciendaIT {
         Cliente cliente = tx.execute(s -> {
             Cliente c = new Cliente();
             c.setNombre("Cliente T026 " + UUID.randomUUID());
+            c.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_FISICA);
+            c.setNumeroIdentificacion("109990999");
+            c.setTelefono("88887777");
+            c.setEmail("cliente@t026.example");
             return clienteRepository.save(c);
         });
         Map<String, Object> f = new LinkedHashMap<>();
@@ -584,6 +589,10 @@ class EstadoFeYConsultaHaciendaIT {
         return tx.execute(s -> {
             Cliente cliente = new Cliente();
             cliente.setNombre("Cliente T026 " + UUID.randomUUID());
+            cliente.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_FISICA);
+            cliente.setNumeroIdentificacion("109990999");
+            cliente.setTelefono("88887777");
+            cliente.setEmail("cliente@t026.example");
             cliente = clienteRepository.save(cliente);
             Factura factura = new Factura();
             factura.setCliente(cliente);
