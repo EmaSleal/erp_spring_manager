@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
@@ -52,6 +53,9 @@ class EmisionConfiguracionActivaTest {
     @org.mockito.Spy private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConsecutivoHacienda
             consecutivos = new ConsecutivoSinBloqueo();
 
+    @org.mockito.Spy private api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeValidator
+            datosFeValidator = api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba.validador();
+
     @InjectMocks private ComprobanteElectronicoServiceImpl service;
 
     private ConfiguracionEmpresa empresaUnica;
@@ -65,6 +69,7 @@ class EmisionConfiguracionActivaTest {
                 .numeroIdentificacion("118200878")
                 .codigoActividad("4773.0")
                 .build();
+        DatosFeDePrueba.emisor(empresaUnica);
         factura = new Factura();
         factura.setIdFactura(3);
         when(facturaRepository.findById(3)).thenReturn(Optional.of(factura));

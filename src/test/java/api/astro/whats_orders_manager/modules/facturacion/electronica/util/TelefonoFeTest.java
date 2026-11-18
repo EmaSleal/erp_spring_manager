@@ -21,10 +21,18 @@ class TelefonoFeTest {
     }
 
     @ParameterizedTest(name = "«{0}» → se omite")
-    @ValueSource(strings = {"2222-333", "506", "", "   ", "abc", "123456789012345678901"})
+    @ValueSource(strings = {"2222-333", "506", "", "   ", "abc", "123456789012345678901", "0000000000", "00000000", "+506 0000-0000",
+            "00000099"})
     @DisplayName("si no quedan 8 a 20 dígitos el nodo Telefono se omite")
     void omite(String telefono) {
         assertThat(TelefonoFe.normalizar(telefono)).isEmpty();
+    }
+
+    @ParameterizedTest(name = "«{0}» → {1}")
+    @CsvSource({"00000100,00000100", "00000000100,00000000100", "99999999999999999999,99999999999999999999"})
+    @DisplayName("T-038: el valor mínimo del XSD es 100: 100 pasa, 99 no")
+    void valorMinimo(String telefono, String esperado) {
+        assertThat(TelefonoFe.normalizar(telefono)).contains(esperado);
     }
 
     @Test

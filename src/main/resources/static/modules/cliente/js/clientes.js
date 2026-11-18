@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     cliente.tipoIdentificacion,
                     cliente.numeroIdentificacion,
                     cliente.codigoActividad,
-                    cliente.provincia.codigo,
+                    cliente.provincia?.codigo || '',
                     cliente.canton,
                     cliente.distrito,
                     cliente.otrasSenas
@@ -50,6 +50,8 @@ document.getElementById('open-modal')?.addEventListener('click', function () {
     document.getElementById('modal-title').innerText = 'Agregar Cliente';
     document.getElementById('clienteForm').reset();
     document.getElementById('idCliente').value = '';
+    limpiarErroresCliente(document.getElementById('clienteForm'));
+    limpiarResultadoHacienda();
     
     // Establecer valor por defecto para Facturación Electrónica
     const requiereFECheckbox = document.getElementById('requiereFacturaElectronica');
@@ -70,6 +72,8 @@ function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFactura
     httpGet(`/clientes/detalle/${clienteId}`, {
         showLoading: false,
         onSuccess: (cliente) => {
+            limpiarErroresCliente(document.getElementById('clienteForm'));
+            limpiarResultadoHacienda();
             document.getElementById('modal-title').innerText = 'Editar Cliente';
             document.getElementById('idCliente').value = cliente.idCliente || '';
             document.getElementById('nombre').value = cliente.nombre || '';
@@ -118,82 +122,100 @@ function openEditModal(clienteId, nombre, telefono, tipoCliente, requiereFactura
     });
 }
 
-// Consultar datos de Hacienda para clientes
-document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click', function() {
-    const numeroIdentificacion = document.getElementById('numeroIdentificacionCliente').value.trim();
-    
-    if (!numeroIdentificacion || numeroIdentificacion.length < 9) {
-        showToast('warning', 'Ingrese un número de identificación válido (mínimo 9 dígitos)');
+// ============================================================================
+// Verificar en Hacienda (T-038, ADR-044 §5)
+// Consulta el padrón de contribuyentes con un endpoint de clientes (CLIENTE_CREAR/CLIENTE_EDITAR).
+// No guarda nada ni copia solo: ofrece «Copiar al formulario». Una falla de la API no impide guardar.
+// ============================================================================
+let verificacionHacienda = null; // {nombre, tipoIdentificacionEnum} de la última verificación con resultado
+
+function mostrarResultadoHacienda(texto, tipoAlerta, copiable) {
+    const caja = document.getElementById('resultadoHaciendaCliente');
+    const cuerpo = document.getElementById('resultadoHaciendaTexto');
+    const btnCopiar = document.getElementById('btnCopiarHaciendaCliente');
+    if (!caja || !cuerpo) return;
+    cuerpo.textContent = texto; // texto del servidor: siempre textContent
+    caja.className = 'alert alert-' + tipoAlerta + ' border py-2 px-3 mt-2 small';
+    caja.style.display = 'block';
+    if (btnCopiar) btnCopiar.style.display = copiable ? 'inline-block' : 'none';
+}
+
+function limpiarResultadoHacienda() {
+    verificacionHacienda = null;
+    const caja = document.getElementById('resultadoHaciendaCliente');
+    if (caja) caja.style.display = 'none';
+    const bloque = document.getElementById('actividadesHaciendaBloque');
+    if (bloque) bloque.style.display = 'none';
+    const lista = document.getElementById('actividadesHaciendaCliente');
+    if (lista) lista.textContent = '';
+    const cuerpo = document.getElementById('resultadoHaciendaTexto');
+    if (cuerpo) cuerpo.textContent = '';
+}
+
+document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click', async function() {
+    const numero = document.getElementById('numeroIdentificacionCliente').value.replace(/[\s-]/g, '');
+
+    if (!/^\d{9,12}$/.test(numero)) {
+        showToast('warning', 'Ingrese una identificación de 9 a 12 dígitos, sin guiones.');
         return;
     }
 
-    // Mostrar loading
-    showToast('info', 'Consultando Hacienda...');
-    
-    // Consultar API
-    httpGet(`/api/configuracion/empresa/hacienda/consultar/${numeroIdentificacion}`, {
-        showLoading: false,
-        onSuccess: (data) => {
-            if (data.data) {
-                const hacienda = data.data;
+    limpiarResultadoHacienda();
+    mostrarResultadoHacienda('Consultando a Hacienda...', 'light', false);
+    const boton = this;
+    boton.disabled = true;
+    try {
+        const response = await fetch('/api/clientes/hacienda/contribuyente/' + encodeURIComponent(numero), {
+            headers: { 'Accept': 'application/json' }
+        });
+        let datos = {};
+        try { datos = await response.json(); } catch (e) { datos = {}; }
 
-                console.log('Datos recibidos de Hacienda:', hacienda);
-
-                // Autocompletar nombre si no está lleno
-                const inputNombre = document.getElementById('nombre');
-                if (!inputNombre.value || inputNombre.value.trim() === '') {
-                    inputNombre.value = hacienda.nombre;
-                }
-
-                // Tipo de identificación
-                if (hacienda.tipoIdentificacion) {
-                    const selectTipo = document.getElementById('tipoIdentificacionCliente');
-                    const mapping = {'01': 'CEDULA_FISICA', '02': 'CEDULA_JURIDICA', '03': 'DIMEX', '04': 'NITE'};
-                    if (mapping[hacienda.tipoIdentificacion]) {
-                        selectTipo.value = mapping[hacienda.tipoIdentificacion];
-                    }
-                }
-
-                // Código de actividad principal
-                if (hacienda.actividades && hacienda.actividades.length > 0) {
-                    const actividadPrincipal = hacienda.actividades.find(a => a.tipo === 'P' && a.estado === 'A')
-                        || hacienda.actividades[0];
-
-                    if (actividadPrincipal && actividadPrincipal.codigo) {
-                        const inputCodigoActividad = document.getElementById('codigoActividadCliente');
-                        if (inputCodigoActividad) {
-                            inputCodigoActividad.value = actividadPrincipal.codigo;
-                        }
-                    }
-                }
-
-                // Mostrar éxito
-                showToast('success', '¡Datos autocompletados!');
-
-                // Advertencia si no está al día
-                if (!hacienda.estaAlDia || !hacienda.estaInscrito) {
-                    setTimeout(() => {
-                        let mensaje = 'Situación Tributaria:';
-                        if (!hacienda.estaInscrito) {
-                            mensaje += ' No inscrito en Hacienda.';
-                        }
-                        if (hacienda.situacion) {
-                            if (hacienda.situacion.moroso === 'SI') {
-                                mensaje += ' Estado: MOROSO.';
-                            }
-                            if (hacienda.situacion.omiso === 'SI') {
-                                mensaje += ' Estado: OMISO.';
-                            }
-                        }
-                        showToast('warning', mensaje);
-                    }, 500);
-                }
-            }
-        },
-        onError: () => {
-            showToast('error', 'Error al consultar Hacienda');
+        if (response.status === 502) {
+            // La API no responde: se avisa, pero el cliente se puede guardar igual.
+            mostrarResultadoHacienda(datos.mensaje || 'No se pudo consultar a Hacienda en este momento. Puede guardar el cliente y verificar más tarde.', 'warning', false);
+        } else if (!response.ok) {
+            mostrarResultadoHacienda(datos.mensaje || 'No se pudo verificar la identificación. Puede guardar el cliente igualmente.', 'warning', false);
+        } else if (datos.existe === true) {
+            verificacionHacienda = { nombre: datos.nombre || '', tipoIdentificacionEnum: datos.tipoIdentificacionEnum || null };
+            const tipo = datos.tipoIdentificacion ? ' | Tipo de identificación: ' + datos.tipoIdentificacion : '';
+            mostrarResultadoHacienda('La identificación existe en Hacienda. Nombre: ' + (datos.nombre || '(sin nombre)') + tipo, 'success', true);
+            // Actividad económica: se ofrece elegir una; solo se copia al campo con el botón, sin guardar.
+            const bloque = document.getElementById('actividadesHaciendaBloque');
+            const cantidad = pintarActividadesHacienda(document.getElementById('actividadesHaciendaCliente'), datos.actividades);
+            if (bloque) bloque.style.display = 'block';
+            const btnActividad = document.getElementById('btnCopiarActividadCliente');
+            if (btnActividad) btnActividad.style.display = cantidad > 0 ? 'inline-block' : 'none';
+        } else {
+            mostrarResultadoHacienda(datos.mensaje || 'La identificación no aparece en el padrón de Hacienda.', 'warning', false);
         }
-    });
+    } catch (e) {
+        mostrarResultadoHacienda('No se pudo consultar a Hacienda en este momento. Puede guardar el cliente y verificar más tarde.', 'warning', false);
+    } finally {
+        boton.disabled = false;
+    }
+});
+
+// Copia nombre y tipo al formulario solo cuando el usuario lo pide; no guarda nada.
+document.getElementById('btnCopiarHaciendaCliente')?.addEventListener('click', function() {
+    if (!verificacionHacienda) return;
+    if (verificacionHacienda.nombre) {
+        document.getElementById('nombre').value = verificacionHacienda.nombre;
+    }
+    if (verificacionHacienda.tipoIdentificacionEnum) {
+        document.getElementById('tipoIdentificacionCliente').value = verificacionHacienda.tipoIdentificacionEnum;
+    }
+    showToast('success', 'Datos copiados al formulario. Revíselos y guarde el cliente.');
+});
+
+// Copia la actividad elegida al campo del formulario solo cuando el usuario lo pide; no guarda nada.
+document.getElementById('btnCopiarActividadCliente')?.addEventListener('click', function() {
+    if (copiarActividadHacienda(document.getElementById('actividadesHaciendaCliente'),
+            document.getElementById('codigoActividadCliente'))) {
+        showToast('success', 'Actividad copiada al formulario. Revísela y guarde el cliente.');
+    } else {
+        showToast('warning', 'Elija una actividad para copiarla.');
+    }
 });
 
 // Cerrar modal (opcional - Bootstrap ya maneja esto)
@@ -227,13 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
         event.stopPropagation();
 
-        const otrasSenas = (document.getElementById('otrasSenasCliente')?.value || '').trim();
-        if (otrasSenas.length > 0 && otrasSenas.length < 5) {
-            document.getElementById('otrasSenasCliente').classList.add('is-invalid');
-            showToast('warning', 'Otras señas debe tener al menos 5 caracteres o dejarlo vacío.');
-            return;
-        }
-        document.getElementById('otrasSenasCliente')?.classList.remove('is-invalid');
+        limpiarErroresCliente(form);
 
         const btnGuardar = document.querySelector('[form="clienteForm"]');
         const originalHtml = btnGuardar ? btnGuardar.innerHTML : '';
@@ -271,7 +287,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => location.reload(), 2000);
             },
             onError: (data) => {
-                showToast('error', data.error || 'Ocurrió un error al guardar el cliente');
+                // 400 con errores por campo: se pintan junto a cada campo; los que no tienen contenedor van al aviso.
+                const sinContenedor = data && Array.isArray(data.errores) ? pintarErroresCliente(form, data.errores) : [];
+                if (sinContenedor.length > 0) {
+                    showToast('error', sinContenedor.map(e => e.mensaje).join(' '));
+                }
             }
         }).finally(() => {
             if (btnGuardar) {

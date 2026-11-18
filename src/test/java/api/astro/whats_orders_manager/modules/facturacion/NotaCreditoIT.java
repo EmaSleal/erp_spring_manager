@@ -236,6 +236,7 @@ class NotaCreditoIT {
             ConfiguracionEmpresa empresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
                     .orElseGet(() -> ConfiguracionEmpresa.builder().razonSocial("Empresa T032 S.A.").build());
             empresa.setNumeroIdentificacion("3101234567");
+            empresa.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_JURIDICA);
             empresa.setCodigoActividad("4773.0");
             empresa.setEmail("facturacion@t032.example");
             empresa.setCodigoProvincia("1");
@@ -243,6 +244,7 @@ class NotaCreditoIT {
             empresa.setDistrito("01");
             empresa.setTelefono("22223333");
             empresa.setOtrasSenas("Avenida Central, San José");
+            api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionSembrado.sembrar(jdbc);
             empresa = empresaRepository.save(empresa);
             if (configHacienda == null) {
                 // T-037: persistida, porque el consecutivo se toma con bloqueo de su fila (SELECT ... FOR UPDATE).

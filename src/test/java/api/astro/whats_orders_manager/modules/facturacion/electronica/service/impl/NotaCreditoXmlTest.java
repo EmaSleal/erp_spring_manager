@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.CondicionVentaFE;
@@ -79,7 +81,8 @@ class NotaCreditoXmlTest {
     static Path dir;
     private static Path p12;
 
-    private final XmlGeneratorServiceImpl generador = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null));
+    private final XmlGeneratorServiceImpl generador = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null),
+            CatalogoUbicacionDePrueba.validador());
     private final FirmaDigitalServiceImpl firma = new FirmaDigitalServiceImpl();
 
     private ConfiguracionEmpresa empresa;
@@ -113,11 +116,13 @@ class NotaCreditoXmlTest {
                 .email("facturacion@empresa-t032.example")
                 .telefono("22223333")
                 .build();
+        DatosFeDePrueba.emisor(empresa);
 
         Cliente cliente = new Cliente();
         cliente.setNombre("Cliente T032 & Hijos <Ltda>");
         cliente.setNumeroIdentificacion("109990999");
         cliente.setEmail("cliente@t032.example");
+        DatosFeDePrueba.cliente(cliente);
 
         gravado = producto("Producto gravado 13 %", "1234567890123", true);
         Producto exento = producto("Producto exento", "9876543210987", false);
@@ -238,6 +243,21 @@ class NotaCreditoXmlTest {
                 .isEqualTo("2760.00000");
         assertThat(hijo(nota, "DetalleServicio").getTextContent())
                 .isEqualTo(hijo(original, "DetalleServicio").getTextContent());
+    }
+
+    @Test
+    @DisplayName("T-038: la nota no revalida emisor ni receptor: copia los del original aunque el cliente y la empresa hayan cambiado a datos inválidos")
+    void notaNoRevalidaDatosActuales() throws Exception {
+        String receptorOriginal = hijo(raiz(aceptado.getXmlComprobante()), "Receptor").getTextContent();
+        factura.getCliente().setNumeroIdentificacion("123");
+        factura.getCliente().setNombre("");
+        empresa.setDistrito(null);
+        empresa.setTelefono("0000000000");
+
+        Element nota = raiz(xmlFirmadoDeLaNota("01", "Anulación total"));
+
+        assertThat(hijo(nota, "Receptor").getTextContent()).isEqualTo(receptorOriginal);
+        assertThat(nombresDeHijos(hijo(hijo(nota, "Emisor"), "Ubicacion"))).contains("Distrito");
     }
 
     @Test
@@ -410,11 +430,14 @@ class NotaCreditoXmlTest {
         assertThat(texto(hijo(hijo(fe, "Receptor"), "Telefono"), "NumTelefono")).isEqualTo("22223333");
         assertThat(texto(hijo(hijo(te, "Emisor"), "Telefono"), "NumTelefono")).isEqualTo("86296567");
 
-        empresa.setTelefono("2222-333");
+        // T-038: el teléfono del receptor inválido se omite; el del emisor inválido ya no se omite en silencio:
+        // la emisión lo bloquea (409) y, si llegara al generador, falla localmente (ERROR)
         factura.getCliente().setTelefono("2222-333");
         Element sinTelefono = raiz(generador.generarXmlFactura(aceptado));
-        assertThat(nombresDeHijos(hijo(sinTelefono, "Emisor"))).doesNotContain("Telefono");
         assertThat(nombresDeHijos(hijo(sinTelefono, "Receptor"))).doesNotContain("Telefono");
+        empresa.setTelefono("2222-333");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> generador.generarXmlFactura(aceptado))
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("telefono");
     }
 
     // ── Apoyo ────────────────────────────────────────────────────────────────

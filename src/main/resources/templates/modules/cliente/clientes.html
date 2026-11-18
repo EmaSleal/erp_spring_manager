@@ -26,6 +26,15 @@
                 <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-users', 'primary-dark', 'Gestión de', 'Clientes', 'Administra tu base de clientes')}"></div>
                 <div class="page-header-actions">
                     <a th:replace="~{shared/fragments/back-button :: backButton('/dashboard', 'Volver a Dashboard', 'Volver al Dashboard')}"></a>
+                    <a id="filtro-fe-invalidos"
+                       th:href="${filtroFeInvalidos} ? @{/clientes} : @{/clientes(filtro='feInvalidos')}"
+                       th:classappend="${filtroFeInvalidos} ? 'btn-warning' : 'btn-outline-warning'"
+                       class="btn"
+                       title="Clientes con facturación electrónica activa y datos FE inválidos">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        <span class="d-none d-sm-inline">Datos FE inválidos</span>
+                        <span class="badge bg-dark ms-1" id="contador-fe-invalidos" th:text="${contadorFeInvalidos}">0</span>
+                    </a>
                     <button id="open-modal" class="btn btn-primary"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR')"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Agregar nuevo cliente">
@@ -69,6 +78,14 @@
                                                     <small class="text-muted">
                                                         <span class="badge bg-light text-dark" th:text="${cliente.tipoCliente}"></span>
                                                     </small>
+                                                    <ul class="small text-danger mb-0 ps-3 problemas-fe"
+                                                        th:if="${filtroFeInvalidos and problemasPorCliente.get(cliente.idCliente) != null}">
+                                                        <li th:each="p : ${problemasPorCliente.get(cliente.idCliente)}">
+                                                            <strong th:text="${p.campo}">campo</strong>:
+                                                            <span th:text="${p.mensaje}">mensaje</span>
+                                                            <span class="badge bg-secondary" th:unless="${p.obligatorio}">opcional</span>
+                                                        </li>
+                                                    </ul>
                                                 </div>
                                             </div>
                                         </td>
@@ -99,7 +116,14 @@
                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_ELIMINAR')">
                                                     <i class="fas fa-trash"></i> Eliminar
                                                 </a>
-                                                <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
+                                                <a th:if="${filtroFeInvalidos}"
+                                                   th:href="@{/clientes(edit=${cliente.idCliente})}"
+                                                   class="btn btn-sm btn-primary editar-fe-invalido"
+                                                   sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
+                                                    <i class="fas fa-edit"></i> Corregir
+                                                </a>
+                                                <button th:unless="${filtroFeInvalidos}"
+                                                        th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
                                                         class="btn btn-sm btn-primary"
                                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
                                                     <i class="fas fa-edit"></i> Editar
@@ -141,6 +165,13 @@
 
                                 <!-- Body con información -->
                                 <div class="mobile-card-body">
+                                    <ul class="small text-danger mb-2 ps-3 problemas-fe"
+                                        th:if="${filtroFeInvalidos and problemasPorCliente.get(cliente.idCliente) != null}">
+                                        <li th:each="p : ${problemasPorCliente.get(cliente.idCliente)}">
+                                            <strong th:text="${p.campo}">campo</strong>:
+                                            <span th:text="${p.mensaje}">mensaje</span>
+                                        </li>
+                                    </ul>
                                     <!-- ID -->
                                     <div class="mobile-card-row">
                                         <span class="mobile-card-label">ID Cliente</span>
@@ -186,7 +217,14 @@
 
                                 <!-- Footer con acciones -->
                                 <div class="mobile-card-footer ">
-                                    <button th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
+                                    <a th:if="${filtroFeInvalidos}"
+                                       th:href="@{/clientes(edit=${cliente.idCliente})}"
+                                       class="btn btn-sm btn-primary"
+                                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
+                                        <i class="fas fa-edit me-1"></i> Corregir
+                                    </a>
+                                    <button th:unless="${filtroFeInvalidos}"
+                                            th:attr="onclick=|openEditModal('${cliente.idCliente}', '${cliente.nombre}', '${cliente.telefono}', '${cliente.tipoCliente}', ${cliente.requiereFacturaElectronica})|"
                                             class="btn btn-sm btn-primary"
                                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CLIENTE_EDITAR')">
                                         <i class="fas fa-edit me-1"></i> Editar
@@ -210,7 +248,7 @@
                     <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'clientes', '/clientes', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir})}"></div>
+                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'clientes', '/clientes', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir} + (${filtroFeInvalidos} ? '&amp;filtro=feInvalidos' : ''))}"></div>
                 </div>
             </div>
         </div>
@@ -223,6 +261,8 @@
     <th:block th:replace="~{shared/layout :: scripts}"></th:block>
     
     <!-- JavaScript específico de página -->
+    <script th:src="@{/modules/cliente/js/cliente-errores.js}"></script>
+    <script th:src="@{/modules/cliente/js/cliente-hacienda.js}"></script>
     <script th:src="@{/modules/cliente/js/clientes.js}"></script>
     <script th:src="@{/shared/js/ubicacion.js}"></script>
 </body>

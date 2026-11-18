@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -44,7 +46,8 @@ class XmlGeneratorServiceImplTest {
     void setUp() {
         // T-006: el generador usa el componente único de desglose de IVA (ADR-009).
         // Sin ParametroSistemaService la tarifa general es el respaldo de 13 %.
-        service = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null));
+        service = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null),
+            CatalogoUbicacionDePrueba.validador());
 
         empresa = ConfiguracionEmpresa.builder()
                 .razonSocial("Empresa Test SA")
@@ -55,6 +58,7 @@ class XmlGeneratorServiceImplTest {
                 .distrito("01")
                 .otrasSenas("Avenida Central San Jose Costa Rica")
                 .build();
+        DatosFeDePrueba.emisor(empresa);
     }
 
     // =========================================================================

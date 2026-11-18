@@ -209,6 +209,7 @@ class EstadoFeYConsultaHaciendaIT {
             ConfiguracionEmpresa empresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
                     .orElseGet(() -> ConfiguracionEmpresa.builder().razonSocial("Empresa T026 S.A.").build());
             empresa.setNumeroIdentificacion("3101234567");
+            empresa.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_JURIDICA);
             empresa.setCodigoActividad("4773.0");
             empresa.setCodigoProvincia("1");
             empresa.setCanton("01");
@@ -216,6 +217,7 @@ class EstadoFeYConsultaHaciendaIT {
             empresa.setTelefono("22223333");
             empresa.setEmail("facturacion@t026.example");
             empresa.setOtrasSenas("Avenida Central, San José");
+            api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionSembrado.sembrar(jdbc);
             empresa = empresaRepository.save(empresa);
             idEmpresa = empresa.getIdConfiguracion();
             ConfiguracionHacienda config = ConfiguracionHacienda.builder().id(1L).empresa(empresa)

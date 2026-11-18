@@ -2,12 +2,16 @@ package api.astro.whats_orders_manager.modules.cliente.controller;
 
 import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
+import api.astro.whats_orders_manager.modules.cliente.dto.ClienteConProblemasFe;
+import api.astro.whats_orders_manager.modules.cliente.exception.DatosClienteInvalidosException;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.ProblemaDatoFe;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +21,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.Optional;
@@ -29,6 +34,10 @@ import org.springframework.http.HttpStatus;
 @Slf4j
 public class ClienteController {
 
+    /** Valor de ?filtro= que muestra solo los clientes con datos FE inválidos (T-038). */
+    public static final String FILTRO_FE_INVALIDOS = "feInvalidos";
+    public static final String MSG_DATOS_INVALIDOS = "Los datos del cliente no son válidos.";
+
     private final ClienteService clienteService;
 
     @GetMapping
@@ -38,13 +47,31 @@ public class ClienteController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "idCliente") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String filtro,
             Model model,
             Authentication authentication
     ) {
         try {
             Pageable pageable = PaginacionUtil.buildPageable(page, size, sortBy, sortDir,
                     Set.of("idCliente", "nombre", "email", "telefono"), "idCliente");
-            Page<Cliente> clientesPage = clienteService.findAll(pageable);
+            boolean soloFeInvalidos = FILTRO_FE_INVALIDOS.equals(filtro);
+            Page<Cliente> clientesPage;
+            if (soloFeInvalidos) {
+                // Reporte en memoria (pocos clientes); se pagina la lista ya filtrada, ordenada por id.
+                List<ClienteConProblemasFe> reporte = clienteService.clientesConDatosFeInvalidos();
+                int desde = (int) Math.min(pageable.getOffset(), reporte.size());
+                int hasta = Math.min(desde + pageable.getPageSize(), reporte.size());
+                List<ClienteConProblemasFe> pagina = reporte.subList(desde, hasta);
+                Map<Integer, List<ProblemaDatoFe>> problemas = new LinkedHashMap<>();
+                pagina.forEach(r -> problemas.put(r.cliente().getIdCliente(), r.problemas()));
+                model.addAttribute("problemasPorCliente", problemas);
+                clientesPage = new PageImpl<>(pagina.stream().map(ClienteConProblemasFe::cliente).toList(),
+                        pageable, reporte.size());
+            } else {
+                clientesPage = clienteService.findAll(pageable);
+            }
+            model.addAttribute("filtroFeInvalidos", soloFeInvalidos);
+            model.addAttribute("contadorFeInvalidos", clienteService.contarClientesConDatosFeInvalidos());
 
             PaginacionDTO<Cliente> paginacion = PaginacionUtil.fromPage(clientesPage);
             PaginacionUtil.agregarAtributosConOrdenamiento(model, paginacion, "clientes", sortBy, sortDir);
@@ -66,7 +93,7 @@ public class ClienteController {
 
     @PostMapping("/guardar")
     @PreAuthorize("@permisoService.tieneAlgunPermisoPorCodigo(#authentication.name, 'CLIENTE_CREAR', 'CLIENTE_EDITAR')")
-    public ResponseEntity<Map<String, String>> guardarCliente(
+    public ResponseEntity<Map<String, Object>> guardarCliente(
             @RequestBody Cliente cliente,
             Authentication authentication
     ) {
@@ -74,9 +101,16 @@ public class ClienteController {
             Cliente clienteGuardado = clienteService.save(cliente);
             return ResponseEntity.ok(Map.of("success", "Cliente guardado exitosamente: " + clienteGuardado.getNombre()));
 
+        } catch (DatosClienteInvalidosException e) {
+            List<Map<String, String>> errores = e.getProblemas().stream()
+                    .map(p -> Map.of("campo", p.campo(), "mensaje", p.mensaje()))
+                    .toList();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", DatosClienteInvalidosException.RESUMEN, "errores", errores));
+
         } catch (IllegalArgumentException e) {
             log.warn("Error de validación al guardar cliente: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", MSG_DATOS_INVALIDOS));
 
         } catch (Exception e) {
             log.error("Error inesperado al guardar cliente: {}", e.getMessage(), e);
