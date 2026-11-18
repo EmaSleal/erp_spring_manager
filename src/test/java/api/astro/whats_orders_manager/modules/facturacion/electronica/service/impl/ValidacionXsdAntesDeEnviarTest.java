@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.model.Presentacion;
@@ -72,7 +74,8 @@ class ValidacionXsdAntesDeEnviarTest {
     private static Path p12;
 
     private final XmlGeneratorServiceImpl generadorReal =
-        new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null));
+        new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null),
+            CatalogoUbicacionDePrueba.validador());
     private final ComprobanteElectronicoRepository repository = mock(ComprobanteElectronicoRepository.class);
     private final ConfiguracionHaciendaService configuracion = mock(ConfiguracionHaciendaService.class);
     private final HaciendaApiService hacienda = mock(HaciendaApiService.class);
@@ -100,10 +103,12 @@ class ValidacionXsdAntesDeEnviarTest {
             .razonSocial("Empresa T036 S.A.").numeroIdentificacion("3101234567").codigoActividad("4773.0")
             .codigoProvincia("1").canton("01").distrito("01").otrasSenas("Avenida Central, San José")
             .email("facturacion@empresa-t036.example").telefono("22223333").build();
+        DatosFeDePrueba.emisor(empresa);
         Cliente cliente = new Cliente();
         cliente.setNombre("Cliente T036");
         cliente.setNumeroIdentificacion("109990999");
         cliente.setEmail("cliente@t036.example");
+        DatosFeDePrueba.cliente(cliente);
 
         Producto producto = new Producto();
         producto.setDescripcion("Aceite");
@@ -166,7 +171,8 @@ class ValidacionXsdAntesDeEnviarTest {
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository, null, null,
             configuracion, null, generador, new FirmaDigitalServiceImpl(), hacienda, null,
             new ComprobanteElectronicoMapper(), null, null, Clock.fixed(Instant.parse("2026-11-17T15:00:00Z"),
-            ZoneOffset.UTC), null, null, new ValidadorXsdComprobante(), (c, t) -> c.siguienteConsecutivo(t));
+            ZoneOffset.UTC), null, null, new ValidadorXsdComprobante(), (c, t) -> c.siguienteConsecutivo(t),
+            CatalogoUbicacionDePrueba.validador());
         org.springframework.test.util.ReflectionTestUtils.setField(service, "directorioBase",
             dir.resolve("comprobantes-" + UUID.randomUUID()).toString());
         return service;
@@ -237,7 +243,8 @@ class ValidacionXsdAntesDeEnviarTest {
             .mapToObj(i -> "línea " + i + ", columna 1: error " + i).toList());
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository, null, null,
             configuracion, null, mock(XmlGeneratorService.class), new FirmaDigitalServiceImpl(), hacienda, null,
-            new ComprobanteElectronicoMapper(), null, null, Clock.systemUTC(), null, null, validador, (c, t) -> c.siguienteConsecutivo(t));
+            new ComprobanteElectronicoMapper(), null, null, Clock.systemUTC(), null, null, validador, (c, t) -> c.siguienteConsecutivo(t),
+            CatalogoUbicacionDePrueba.validador());
         comprobante.setEstado(EstadoComprobante.FIRMADO);
         comprobante.setXmlComprobante("<x/>");
 
@@ -304,7 +311,8 @@ class ValidacionXsdAntesDeEnviarTest {
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository, null, null,
             configuracion, null, generador, new FirmaDigitalServiceImpl(), hacienda, null,
             new ComprobanteElectronicoMapper(), null, null, Clock.systemUTC(), null, null,
-            new ValidadorXsdComprobante(), (c, t) -> c.siguienteConsecutivo(t));
+            new ValidadorXsdComprobante(), (c, t) -> c.siguienteConsecutivo(t),
+            CatalogoUbicacionDePrueba.validador());
         org.springframework.test.util.ReflectionTestUtils.setField(service, "directorioBase",
             dir.resolve("tiquetes").toString());
 

@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -27,7 +29,8 @@ class XmlActividadEconomicaTest {
 
     private static final String CLAVE_50 = "50601042612345678901200110000011000010000100000001";
 
-    private final XmlGeneratorServiceImpl service = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null));
+    private final XmlGeneratorServiceImpl service = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null),
+            CatalogoUbicacionDePrueba.validador());
 
     private ComprobanteElectronico comprobanteCon(String codigoActividad) {
         ConfiguracionEmpresa empresa = ConfiguracionEmpresa.builder()
@@ -39,6 +42,8 @@ class XmlActividadEconomicaTest {
                 .distrito("04")
                 .otrasSenas("Alajuela, el roble")
                 .build();
+        DatosFeDePrueba.emisor(empresa);
+        empresa.setCodigoActividad(codigoActividad); // el fixture completa la actividad; aquí se prueba justo su ausencia
         Producto producto = new Producto();
         producto.setDescripcion("Producto de prueba");
         ArticuloMaestro maestro = new ArticuloMaestro();
