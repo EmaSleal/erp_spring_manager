@@ -2,7 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
@@ -80,13 +80,13 @@ class NotaCreditoRestControllerTest {
         }
 
         @Bean
-        ComprobanteElectronicoService comprobanteElectronicoService() {
-            return mock(ComprobanteElectronicoService.class);
+        EnvioHaciendaService envioHaciendaService() {
+            return mock(EnvioHaciendaService.class);
         }
 
         @Bean
-        NotaCreditoRestController notaCreditoRestController(NotaFacturaService n, ComprobanteElectronicoService c) {
-            return new NotaCreditoRestController(n, c);
+        NotaCreditoRestController notaCreditoRestController(NotaFacturaService n, EnvioHaciendaService e) {
+            return new NotaCreditoRestController(n, e);
         }
     }
 
@@ -96,13 +96,13 @@ class NotaCreditoRestControllerTest {
     @Autowired private WebApplicationContext context;
     @Autowired private PermisoService permisoService;
     @Autowired private NotaFacturaService notaService;
-    @Autowired private ComprobanteElectronicoService comprobanteService;
+    @Autowired private EnvioHaciendaService envioService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        reset(permisoService, notaService, comprobanteService);
+        reset(permisoService, notaService, envioService);
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         when(permisoService.tienePermisoPorCodigo("gerente", "FACTURA_ANULAR")).thenReturn(true);
         when(permisoService.tienePermisoPorCodigo("gerente", "FACTURA_VER")).thenReturn(true);
@@ -142,7 +142,7 @@ class NotaCreditoRestControllerTest {
                 .andExpect(jsonPath("$.data.claveComprobante").value("506CLAVE"))
                 .andExpect(jsonPath("$.data.estadoComprobante").value("ENVIADO"));
 
-        verify(comprobanteService).procesarFacturaAsync(30L);
+        verify(envioService).enviar(30L);
     }
 
     @Test
@@ -218,7 +218,7 @@ class NotaCreditoRestControllerTest {
                 .andExpect(jsonPath("$.data.idFactura").value(7));
         mockMvc.perform(get("/api/facturas/notas-credito/6").with(user("gerente").roles("USER")))
                 .andExpect(status().isNotFound());
-        verify(comprobanteService, never()).procesarFacturaAsync(anyLong());
+        verify(envioService, never()).enviar(anyLong());
     }
 
     private static NotaFactura nota() {

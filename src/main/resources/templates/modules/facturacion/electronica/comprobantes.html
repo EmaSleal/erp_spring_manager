@@ -220,6 +220,7 @@
     <div th:replace="~{shared/layout :: scripts}"></div>
 
     <!-- Scripts personalizados -->
+    <script th:src="@{/modules/facturacion/electronica/js/estado-envio.js}"></script>
     <script th:inline="javascript">
         const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
         const csrfToken  = /*[[${_csrf.token}]]*/ '';
@@ -279,7 +280,7 @@
                     </td>
                     <td>${comp.tipoComprobanteDescripcion}</td>
                     <td class="text-center">
-                        ${getEstadoBadge(comp.estado)}
+                        ${getEstadoBadge(comp.estado, comp.fechaEnvio)}
                         ${comp.estado === 'ERROR_HACIENDA' && comp.mensajeRespuesta ? `
                             <div class="small text-danger mt-1">${escapeHtml(comp.mensajeRespuesta)}</div>
                         ` : ''}
@@ -335,7 +336,11 @@
         }
 
         // Helper: Badge de estado
-        function getEstadoBadge(estado) {
+        function getEstadoBadge(estado, fechaEnvio) {
+            // T-037: ENVIO_INCIERTO reciente (< 2 min desde fecha_envio) es un envío en curso
+            if (window.EstadoEnvio && EstadoEnvio.estaEnviando(estado, fechaEnvio)) {
+                return '<span class="badge bg-info text-dark"><i class="fas fa-spinner fa-spin me-1"></i>Enviando…</span>';
+            }
             const badges = {
                 'ACEPTADO': '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Aceptado</span>',
                 'PROCESANDO': '<span class="badge bg-warning text-dark"><i class="fas fa-spinner me-1"></i>Procesando</span>',
@@ -655,7 +660,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <strong>Estado:</strong><br>
-                                        ${getEstadoBadge(comp.estado)}
+                                        ${getEstadoBadge(comp.estado, comp.fechaEnvio)}
                                     </div>
                                     <div class="col-md-6">
                                         <strong>Fecha Emisión:</strong><br>

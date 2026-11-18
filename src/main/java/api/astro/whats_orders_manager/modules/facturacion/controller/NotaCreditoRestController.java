@@ -3,7 +3,9 @@ package api.astro.whats_orders_manager.modules.facturacion.controller;
 import api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest;
 import api.astro.whats_orders_manager.modules.facturacion.dto.NotaFacturaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.controller.MensajesEnvioHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
@@ -43,7 +45,7 @@ public class NotaCreditoRestController {
         + "administrador";
 
     private final NotaFacturaService notaService;
-    private final ComprobanteElectronicoService comprobanteService;
+    private final EnvioHaciendaService envioService;
 
     @PostMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ANULAR')")
@@ -56,13 +58,21 @@ public class NotaCreditoRestController {
             pedido.codigoReferencia(), pedido.razon(), authentication.getName());
 
         NotaFacturaDTO emitida = consultar(nota.getId());
+        String mensaje = "Nota de crédito emitida";
         if (emitida.idComprobante() != null && emitida.estadoComprobante() == EstadoComprobante.FIRMADO) {
-            // Mismo flujo que la factura: envío a Hacienda y sondeo; clasifica su propio resultado y no lanza
-            comprobanteService.procesarFacturaAsync(emitida.idComprobante());
+            // Mismo servicio de envío que la factura (T-037): etapas cortas, sondeo en segundo plano
+            try {
+                ComprobanteElectronicoDTO enviado = envioService.enviar(emitida.idComprobante());
+                mensaje = "Nota de crédito emitida. " + MensajesEnvioHacienda.mensaje(enviado);
+            } catch (RuntimeException e) {
+                // La nota ya está emitida y su comprobante, firmado: el job lo reintenta
+                log.error("Nota {} emitida; su envío a Hacienda falló: {}", nota.getId(), e.getMessage(), e);
+                mensaje = "Nota de crédito emitida. " + MensajesEnvioHacienda.NO_TRANSMITIDO;
+            }
             emitida = consultar(nota.getId());
         }
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ResponseDTO.success("Nota de crédito emitida", emitida));
+            .body(ResponseDTO.success(mensaje, emitida));
     }
 
     @GetMapping("/{id}")

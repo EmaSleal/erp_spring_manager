@@ -147,9 +147,15 @@ class ValidacionXsdAntesDeEnviarTest {
             .rutaCertificado(p12.toString()).pinCertificado(PIN).build();
         when(configuracion.obtenerConfiguracionActiva()).thenReturn(config);
         when(repository.findById(5L)).thenAnswer(inv -> Optional.of(comprobante));
+        EnvioHaciendaDePrueba.simularBloqueoYMarca(repository, () -> comprobante);
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(hacienda.enviarComprobante(anyString(), anyString(), anyLong())).thenReturn(RespuestaHaciendaDTO.builder()
             .codigoHttp(202).resultadoEnvio(ResultadoEnvioHacienda.RECIBIDO).build());
+    }
+
+    /** El único servicio de envío (T-037) sobre el servicio de comprobantes de la prueba, sin BD ni TaskScheduler. */
+    private EnvioHaciendaServiceImpl envio(ComprobanteElectronicoServiceImpl service) {
+        return EnvioHaciendaDePrueba.crear(repository, service, hacienda, Clock.systemUTC());
     }
 
     /** Servicio con generador real cuyo XML se puede alterar (para producir XML fuera del XSD) y firma real. */
@@ -160,7 +166,7 @@ class ValidacionXsdAntesDeEnviarTest {
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository, null, null,
             configuracion, null, generador, new FirmaDigitalServiceImpl(), hacienda, null,
             new ComprobanteElectronicoMapper(), null, null, Clock.fixed(Instant.parse("2026-11-17T15:00:00Z"),
-            ZoneOffset.UTC), null, null, new ValidadorXsdComprobante());
+            ZoneOffset.UTC), null, null, new ValidadorXsdComprobante(), (c, t) -> c.siguienteConsecutivo(t));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "directorioBase",
             dir.resolve("comprobantes-" + UUID.randomUUID()).toString());
         return service;
@@ -171,7 +177,7 @@ class ValidacionXsdAntesDeEnviarTest {
     @Test
     @DisplayName("XML firmado válido contra el XSD: se transmite una vez con la clave del comprobante")
     void xmlValido_seTransmite() {
-        ComprobanteElectronicoDTO resultado = servicio().enviarAHacienda(5L);
+        ComprobanteElectronicoDTO resultado = envio(servicio()).enviar(5L);
 
         assertThat(resultado.getEstado()).isEqualTo(EstadoComprobante.ENVIADO);
         assertThat(XmlValidator.erroresContraXsd(comprobante.getXmlComprobante(),
@@ -190,7 +196,7 @@ class ValidacionXsdAntesDeEnviarTest {
             return xml.replace(condicion, "").replaceFirst("(</Clave>)", "$1" + condicion);
         };
 
-        ComprobanteElectronicoDTO resultado = servicio().enviarAHacienda(5L);
+        ComprobanteElectronicoDTO resultado = envio(servicio()).enviar(5L);
 
         verificarRechazoLocalPorXsd(resultado, "CondicionVenta");
     }
@@ -200,7 +206,7 @@ class ValidacionXsdAntesDeEnviarTest {
     void unidadFueraDelEnum_noSeTransmite() {
         presentacion.setCodigoUnidadFE("l");
 
-        ComprobanteElectronicoDTO resultado = servicio().enviarAHacienda(5L);
+        ComprobanteElectronicoDTO resultado = envio(servicio()).enviar(5L);
 
         assertThat(comprobante.getXmlComprobante()).contains("<UnidadMedida>l</UnidadMedida>");
         verificarRechazoLocalPorXsd(resultado, "UnidadMedida");
@@ -231,11 +237,11 @@ class ValidacionXsdAntesDeEnviarTest {
             .mapToObj(i -> "línea " + i + ", columna 1: error " + i).toList());
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository, null, null,
             configuracion, null, mock(XmlGeneratorService.class), new FirmaDigitalServiceImpl(), hacienda, null,
-            new ComprobanteElectronicoMapper(), null, null, Clock.systemUTC(), null, null, validador);
+            new ComprobanteElectronicoMapper(), null, null, Clock.systemUTC(), null, null, validador, (c, t) -> c.siguienteConsecutivo(t));
         comprobante.setEstado(EstadoComprobante.FIRMADO);
         comprobante.setXmlComprobante("<x/>");
 
-        service.enviarAHacienda(5L);
+        envio(service).enviar(5L);
 
         assertThat(comprobante.getUltimoError().lines().count()).isEqualTo(1 + 50 + 1);
         assertThat(comprobante.getUltimoError()).contains("error 50").doesNotContain("error 51")
@@ -250,12 +256,12 @@ class ValidacionXsdAntesDeEnviarTest {
     void corregidoElDato_reenviaConLaMismaClave() {
         ComprobanteElectronicoServiceImpl service = servicio();
         presentacion.setCodigoUnidadFE("l");
-        service.enviarAHacienda(5L);
+        envio(service).enviar(5L);
         assertThat(comprobante.getEstado()).isEqualTo(EstadoComprobante.ERROR);
         verifyNoInteractions(hacienda);
 
         presentacion.setCodigoUnidadFE("L");
-        ComprobanteElectronicoDTO reenviado = service.reenviar(5L);
+        ComprobanteElectronicoDTO reenviado = envio(service).reenviar(5L);
 
         verify(hacienda, times(1)).enviarComprobante(
             org.mockito.ArgumentMatchers.contains("<UnidadMedida>L</UnidadMedida>"),
@@ -274,7 +280,7 @@ class ValidacionXsdAntesDeEnviarTest {
     void mensajeFijoAlUsuario() {
         presentacion.setCodigoUnidadFE("l");
         ComprobanteElectronicoServiceImpl service = servicio();
-        ComprobanteElectronicoController controller = new ComprobanteElectronicoController(service, null);
+        ComprobanteElectronicoController controller = new ComprobanteElectronicoController(service, envio(service), null);
 
         for (ResponseEntity<Map<String, Object>> r : java.util.List.of(controller.enviarAHacienda(5L),
                 controller.reenviar(5L))) {
@@ -298,11 +304,11 @@ class ValidacionXsdAntesDeEnviarTest {
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository, null, null,
             configuracion, null, generador, new FirmaDigitalServiceImpl(), hacienda, null,
             new ComprobanteElectronicoMapper(), null, null, Clock.systemUTC(), null, null,
-            new ValidadorXsdComprobante());
+            new ValidadorXsdComprobante(), (c, t) -> c.siguienteConsecutivo(t));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "directorioBase",
             dir.resolve("tiquetes").toString());
 
-        service.enviarAHacienda(5L);
+        envio(service).enviar(5L);
 
         assertThat(comprobante.getEstado()).isEqualTo(EstadoComprobante.ERROR);
         assertThat(comprobante.getUltimoError()).contains("CondicionVenta");

@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MensajeHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
@@ -12,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.*;
@@ -23,6 +23,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -43,13 +44,24 @@ import java.util.Map;
  * @since Sprint 5 - Fase 3
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class HaciendaApiServiceImpl implements HaciendaApiService {
     
     private final ConfiguracionHaciendaRepository configuracionRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+
+    /**
+     * @param restTemplate el cliente exclusivo de Hacienda ({@code haciendaRestTemplate}, timeouts por propiedades,
+     *                     T-037)
+     */
+    public HaciendaApiServiceImpl(ConfiguracionHaciendaRepository configuracionRepository,
+                                  @Qualifier("haciendaRestTemplate") RestTemplate restTemplate,
+                                  ObjectMapper objectMapper) {
+        this.configuracionRepository = configuracionRepository;
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
     
     private static final String GRANT_TYPE_PASSWORD = "password";
     private static final String GRANT_TYPE_REFRESH = "refresh_token";
@@ -72,7 +84,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             // Preparar body con credenciales
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("grant_type", GRANT_TYPE_PASSWORD);
-            body.add("client_id", "api-stag"); // Cliente por defecto para sandbox
+            body.add("client_id", clientId(config)); // api-stag (SANDBOX) o api-prod (PRODUCCION), Anexo 3
             body.add("client_secret", ""); // Sin secret para sandbox
             body.add("username", config.getUsuarioHacienda());
             body.add("password", config.getPasswordHacienda());
@@ -127,7 +139,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("grant_type", GRANT_TYPE_REFRESH);
-            body.add("client_id", "api-stag");
+            body.add("client_id", clientId(config));
             body.add("client_secret", "");
             body.add("refresh_token", refreshToken);
             
@@ -182,7 +194,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
         try {
             config = configuracionRepository.findById(configuracionId)
                 .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
-            urlRecepcion = urlBase(config) + "/recepcion/v1/recepcion";
+            urlRecepcion = urlBase(config) + AmbienteHacienda.RUTA_RECEPCION;
 
             String xmlBase64 = Base64.getEncoder().encodeToString(xml.getBytes(StandardCharsets.UTF_8));
             String fechaEmision = OffsetDateTime.now(ZoneId.of("America/Costa_Rica"))
@@ -276,6 +288,11 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
     protected String urlToken(ConfiguracionHacienda config) {
         return config.getAmbiente().getUrlToken();
     }
+
+    /** Client Id del IdP según el ambiente de la configuración (P-091): api-stag o api-prod. */
+    static String clientId(ConfiguracionHacienda config) {
+        return config.getAmbiente().getClientId();
+    }
     
     @Override
     @CircuitBreaker(name = "haciendaAPI", fallbackMethod = "consultarComprobanteFallback")
@@ -290,8 +307,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             // Obtener token
             TokenResponse token = autenticar(configuracionId);
             
-            String urlConsulta = urlBase(config) +
-                "/recepcion/v1/recepcion/" + claveNumerica;
+            String urlConsulta = urlBase(config) + AmbienteHacienda.RUTA_RECEPCION + "/" + claveNumerica;
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();
@@ -359,8 +375,7 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             TokenResponse token = autenticar(configuracionId);
             
             // URL de mensajes
-            String urlMensajes = config.getAmbiente().getUrlBase() +
-                "/mensajes-receptor/v1/mensajes/" + config.getEmpresa().getRuc();
+            String urlMensajes = urlBase(config) + AmbienteHacienda.RUTA_MENSAJES_RECEPTOR + config.getEmpresa().getRuc();
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();

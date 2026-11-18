@@ -49,6 +49,8 @@ class EmisionConfiguracionActivaTest {
     @Mock private XmlGeneratorService xmlGenerator;
     @Mock private ClaveNumericaGenerator claveGenerator;
     @Mock private ComprobanteElectronicoMapper mapper;
+    @org.mockito.Spy private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConsecutivoHacienda
+            consecutivos = new ConsecutivoSinBloqueo();
 
     @InjectMocks private ComprobanteElectronicoServiceImpl service;
 
@@ -124,5 +126,15 @@ class EmisionConfiguracionActivaTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("ids 3, 4");
         verify(repository, never()).save(any());
+    }
+
+    /** El cálculo del consecutivo sin la BD (el bloqueo lo prueban las IT con MySQL). */
+    static class ConsecutivoSinBloqueo
+            implements api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConsecutivoHacienda {
+        @Override
+        public Long siguiente(api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda c,
+                              String tipo) {
+            return c.siguienteConsecutivo(tipo);
+        }
     }
 }

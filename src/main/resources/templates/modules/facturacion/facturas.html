@@ -516,8 +516,9 @@
                         timerProgressBar: true
                     });
                     
+                    // T-037: recibido (success) o no transmitido / incierto (aviso), con el mensaje fijo del servidor
                     await Toast.fire({
-                        icon: 'success',
+                        icon: data.success ? 'success' : 'warning',
                         title: data.message || '¡Enviado exitosamente!'
                     });
                     

@@ -327,8 +327,9 @@ async function enviarAHacienda(button) {
     if (confirmed.isConfirmed && confirmed.value) {
         const comprobante = confirmed.value.comprobante;
 
-        // Mostrar resultado
-        showToast('success', 'Comprobante enviado exitosamente');
+        // Mostrar resultado: mensaje fijo del servidor según cómo quedó el envío (T-037)
+        showToast(confirmed.value.success ? 'success' : 'warning',
+            confirmed.value.message || 'Comprobante procesado');
 
         // Redirigir a comprobantes
         setTimeout(() => {
@@ -635,8 +636,9 @@ function enviarFacturaAHacienda() {
                 const data = await response.json();
                 
                 if (data.success || response.ok) {
-                    // Éxito
-                    showToast('success', data.message || 'El comprobante ha sido enviado exitosamente a Hacienda');
+                    // Recibido (success) o no transmitido / incierto (aviso), con el mensaje fijo del servidor (T-037)
+                    showToast(data.success ? 'success' : 'warning',
+                        data.message || 'El comprobante ha sido enviado exitosamente a Hacienda');
 
                     // Cerrar modal y recargar
                     const modal = bootstrap.Modal.getInstance(document.getElementById('facturaModal'));

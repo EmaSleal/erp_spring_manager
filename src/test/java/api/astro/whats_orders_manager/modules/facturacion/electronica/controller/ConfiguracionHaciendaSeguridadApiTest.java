@@ -107,6 +107,9 @@ class ConfiguracionHaciendaSeguridadApiTest {
         when(service.activar(anyLong())).thenReturn(dto);
         when(service.desactivar(anyLong())).thenReturn(dto);
         when(service.renovarToken(anyLong())).thenReturn(true);
+        // T-037 (P-088): 200 solo con un token nuevo y vigente
+        when(service.obtenerPorId(anyLong())).thenReturn(java.util.Optional.of(ConfiguracionHaciendaDTO.builder().id(1L)
+                .tokenValido(true).tokenExpira(java.time.LocalDateTime.now().plusMinutes(5)).build()));
     }
 
     private static MockMultipartFile p12(String nombre) {

@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.controlle
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,13 +23,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class EmisionSinCabysApiTest {
 
     private final ComprobanteElectronicoService service = mock(ComprobanteElectronicoService.class);
+    private final EnvioHaciendaService envio = mock(EnvioHaciendaService.class);
     private final MockMvc mockMvc = MockMvcBuilders
-            .standaloneSetup(new ComprobanteElectronicoController(service, mock(FacturaRepository.class))).build();
+            .standaloneSetup(new ComprobanteElectronicoController(service, envio, mock(FacturaRepository.class))).build();
 
     @Test
     @DisplayName("POST /procesar/{id} → 409 con los productos sin código")
     void procesar_409() throws Exception {
-        when(service.procesarFactura(7L)).thenThrow(new ProductosSinCabysException(List.of("Servicio de instalación")));
+        when(envio.emitirFactura(7L)).thenThrow(new ProductosSinCabysException(List.of("Servicio de instalación")));
 
         mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/7"))
                 .andExpect(status().isConflict())
