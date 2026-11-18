@@ -201,6 +201,9 @@ public class FacturaServiceImpl implements FacturaService {
                 factura.setAnulada(existente.getAnulada());
                 factura.setFechaAnulacion(existente.getFechaAnulacion());
                 factura.setMotivoAnulacion(existente.getMotivoAnulacion());
+                factura.setFacturaSustituida(existente.getFacturaSustituida());
+                factura.setRazonSustitucion(existente.getRazonSustitucion());
+                factura.setCodigoSustitucion(existente.getCodigoSustitucion());
             });
         }
 

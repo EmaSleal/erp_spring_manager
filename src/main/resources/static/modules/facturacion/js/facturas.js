@@ -246,6 +246,27 @@ function openModal(button) {
             
             buttonsContainer.innerHTML = buttonsHTML;
 
+            // T-039 (ADR-045): vínculos de sustitución (textContent, sin HTML con datos) y botón solo cuando procede
+            mostrarVinculoSustitucion('modal-sustituye-row', 'modal-sustituye-link',
+                typeof SustitucionFactura !== 'undefined' ? SustitucionFactura.textoSustituye(data.sustituye) : '',
+                data.sustituye && data.sustituye.idFactura);
+            mostrarVinculoSustitucion('modal-sustituida-por-row', 'modal-sustituida-por-link',
+                typeof SustitucionFactura !== 'undefined' ? SustitucionFactura.textoSustituidaPor(data.sustituidaPor) : '',
+                data.sustituidaPor && data.sustituidaPor.idFactura);
+            if (typeof SustitucionFactura !== 'undefined' && SustitucionFactura.puedeEmitir(data)
+                && (USER_ROLE === 'ADMIN' || USER_ROLE === 'USER' || USER_ROLE === 'VENDEDOR')) {
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'btn btn-success me-2';
+                boton.id = 'modal-boton-sustituta';
+                const icono = document.createElement('i');
+                icono.className = 'bi bi-files me-1';
+                boton.appendChild(icono);
+                boton.appendChild(document.createTextNode('Emitir factura sustituta'));
+                boton.addEventListener('click', () => emitirFacturaSustituta(data.idFactura, boton));
+                buttonsContainer.insertBefore(boton, buttonsContainer.firstChild);
+            }
+
             // Mostrar el modal con Bootstrap
             facturaModal.show();
         },
@@ -376,6 +397,52 @@ async function deleteFactura(idFactura) {
             successMessage: 'La factura ha sido eliminada correctamente.',
             reloadOnSuccess: true
         });
+    }
+}
+
+/** Muestra u oculta una fila de vínculo de sustitución; el enlace abre el detalle de la otra factura. */
+function mostrarVinculoSustitucion(filaId, enlaceId, texto, idOtra) {
+    const fila = document.getElementById(filaId);
+    const enlace = document.getElementById(enlaceId);
+    if (!fila || !enlace) return;
+    if (!texto || !idOtra) {
+        fila.style.display = 'none';
+        enlace.textContent = '';
+        return;
+    }
+    enlace.textContent = texto;
+    enlace.onclick = (ev) => {
+        ev.preventDefault();
+        openModal({ getAttribute: () => String(idOtra) });
+    };
+    fila.style.display = '';
+}
+
+/** POST /api/facturas/{id}/sustituta y abre la sustituta para editarla (T-039, ADR-045). */
+async function emitirFacturaSustituta(idFactura, boton) {
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+    const headers = { 'Content-Type': 'application/json' };
+    if (csrfHeader && csrfToken) {
+        headers[csrfHeader] = csrfToken;
+    }
+    if (boton) boton.disabled = true;
+    try {
+        const response = await fetch(`/api/facturas/${idFactura}/sustituta`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(SustitucionFactura.cuerpoPedido())
+        });
+        const cuerpo = await response.json().catch(() => null);
+        if (!response.ok || !cuerpo || !cuerpo.data || !cuerpo.data.idFactura) {
+            showToast('error', SustitucionFactura.mensajeDeError(cuerpo));
+            if (boton) boton.disabled = false;
+            return;
+        }
+        editFactura(cuerpo.data.idFactura);
+    } catch (e) {
+        showToast('error', SustitucionFactura.mensajeDeError(null));
+        if (boton) boton.disabled = false;
     }
 }
 

@@ -821,6 +821,125 @@ class NotaCreditoIT {
     }
 
 
+    // ── T-039: factura sustituta (ADR-045), de punta a punta ─────────────────
+
+    @ParameterizedTest(name = "nota {0} → sustituta {1}")
+    @org.junit.jupiter.params.provider.CsvSource({"13,15,2026-09-29", "01,07,"})
+    @DisplayName("T-039: factura aceptada → nota aceptada → sustituta por el endpoint → emitida con 07/15, XML válido "
+            + "contra el XSD y un solo asiento de venta (15: en el periodo de la original; 07: con su fecha)")
+    void sustituta_puntaAPunta(String codigoNota, String codigoSustituta, String fechaOriginal) throws Exception {
+        int idFactura = facturaAceptada();
+        if (fechaOriginal != null) {
+            jdbc.update("UPDATE comprobante_electronico SET fecha_emision = ? WHERE factura_id = ? AND vigente = b'1'",
+                    fechaOriginal + " 10:15:30", idFactura);
+        }
+        String claveOriginal = claveVigente(idFactura);
+        Nota nota = emitirOk(idFactura, codigoNota, "Anulación para sustituir");
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        assertThat(estadoNota(nota.id())).isEqualTo("APLICADA");
+        String numeroOriginal = jdbc.queryForObject("SELECT numero_factura FROM factura WHERE id_factura = ?",
+                String.class, idFactura);
+
+        MvcResult creada = sustituta(idFactura, null);
+
+        assertThat(creada.getResponse().getStatus()).as(creada.getResponse().getContentAsString()).isEqualTo(201);
+        JsonNode data = objectMapper.readTree(creada.getResponse().getContentAsString()).get("data");
+        int idSustituta = data.get("idFactura").asInt();
+        assertThat(data.get("numeroFactura").asText()).isNotBlank().isNotEqualTo(numeroOriginal);
+        Map<String, Object> fila = jdbc.queryForMap("SELECT sustituye_factura_id, codigo_sustitucion, "
+                + "razon_sustitucion, total, anulada FROM factura WHERE id_factura = ?", idSustituta);
+        assertThat(((Number) fila.get("sustituye_factura_id")).intValue()).isEqualTo(idFactura);
+        assertThat(fila.get("codigo_sustitucion")).isEqualTo(codigoSustituta);
+        assertThat((String) fila.get("razon_sustitucion")).startsWith("Sustituye la factura " + numeroOriginal
+                + " anulada por la nota ");
+        assertThat((BigDecimal) fila.get("total")).isEqualByComparingTo("1630.00");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM linea_factura WHERE id_factura = ?", Integer.class,
+                idSustituta)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE factura_id = ?",
+                Integer.class, idSustituta)).isZero();
+
+        // Exactamente un asiento de venta, fechado según el código
+        List<Map<String, Object>> ventas = jdbc.queryForList("SELECT fecha FROM asientos_contables "
+                + "WHERE factura_id = ? AND tipo = 'AUTOMATICO_VENTA'", idSustituta);
+        assertThat(ventas).hasSize(1);
+        LocalDate esperada = fechaOriginal != null ? LocalDate.parse(fechaOriginal) : LocalDate.now(reloj);
+        assertThat(ventas.get(0).get("fecha").toString()).isEqualTo(esperada.toString());
+
+        // Una segunda sustituta de la misma original: 409 con el número de la primera y nada nuevo
+        MvcResult segunda = sustituta(idFactura, null);
+        assertThat(segunda.getResponse().getStatus()).isEqualTo(409);
+        assertThat(objectMapper.readTree(segunda.getResponse().getContentAsString()).get("message").asText())
+                .isEqualTo("La factura ya tiene una sustituta: " + data.get("numeroFactura").asText());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM factura WHERE sustituye_factura_id = ?", Integer.class,
+                idFactura)).isEqualTo(1);
+
+        // Emisión: el XML firmado lleva la referencia y valida contra el XSD real
+        mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/" + idSustituta)
+                .with(user(USUARIO).roles("ADMIN")).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andReturn();
+        String xml = jdbc.queryForObject("SELECT xml_comprobante FROM comprobante_electronico WHERE factura_id = ? "
+                + "AND vigente = b'1'", String.class, idSustituta);
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("<InformacionReferencia>(.*?)</InformacionReferencia>")
+                .matcher(xml);
+        assertThat(m.find()).isTrue();
+        String referencia = m.group(1);
+        assertThat(referencia).contains("<TipoDocIR>01</TipoDocIR>")
+                .contains("<Numero>" + claveOriginal + "</Numero>")
+                .contains("<Codigo>" + codigoSustituta + "</Codigo>")
+                .contains("<Razon>Sustituye la factura " + numeroOriginal + " anulada por la nota ")
+                .contains("<FechaEmisionIR>" + (fechaOriginal != null ? fechaOriginal + "T10:15:30" : ""));
+        assertThat(m.find()).as("una sola referencia").isFalse();
+    }
+
+    @Test
+    @DisplayName("T-039: con la nota todavía en trámite (factura no anulada) no se crea la sustituta: 409 y nada nuevo")
+    void sustituta_conNotaEnTramite_409() throws Exception {
+        int idFactura = facturaAceptada();
+        emitirOk(idFactura, "13", "Anulación para sustituir");
+
+        MvcResult r = sustituta(idFactura, null);
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(objectMapper.readTree(r.getResponse().getContentAsString()).get("message").asText())
+                .isEqualTo("La factura no está anulada por una nota de crédito total aceptada");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM factura WHERE sustituye_factura_id = ?", Integer.class,
+                idFactura)).isZero();
+    }
+
+    @Test
+    @DisplayName("T-039 (criterio 6): si la original deja de cumplir antes de emitir, 409 sin consumir consecutivo")
+    void sustituta_originalRota_409SinConsecutivo() throws Exception {
+        int idFactura = facturaAceptada();
+        Nota nota = emitirOk(idFactura, "13", "Anulación para sustituir");
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        int idSustituta = objectMapper.readTree(sustituta(idFactura, "Corrige el precio").getResponse()
+                .getContentAsString()).get("data").get("idFactura").asInt();
+        jdbc.update("UPDATE nota_factura SET estado = 'RECHAZADA' WHERE id = ?", nota.id());
+        long antes = configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
+                .getConsecutivoFactura();
+
+        MvcResult r = mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/" + idSustituta)
+                .with(user(USUARIO).roles("ADMIN")).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andReturn();
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
+                .getConsecutivoFactura()).isEqualTo(antes);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE factura_id = ?",
+                Integer.class, idSustituta)).isZero();
+    }
+
+    private MvcResult sustituta(int idFactura, String razon) throws Exception {
+        var req = post("/api/facturas/" + idFactura + "/sustituta").with(user(USUARIO).roles("ADMIN")).with(csrf());
+        if (razon != null) {
+            req = req.contentType(MediaType.APPLICATION_JSON).content("{\"razon\":\"" + razon + "\"}");
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
     record Nota(Long id, Long idComprobante, String clave) {
     }
 
