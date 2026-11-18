@@ -20,22 +20,24 @@ import java.util.Optional;
 public interface ComprobanteElectronicoService {
     
     /**
-     * Procesa una factura completa: genera, firma y envía a Hacienda.
-     * Proceso completo integrado para facturación electrónica.
-     * 
-     * @param facturaId ID de la factura a procesar
-     * @return Comprobante procesado
+     * Etapa a de la emisión de una factura (ADR-043 §1a): valida el cliente y genera el comprobante (consecutivo con
+     * bloqueo, clave, XML) en una transacción corta. No firma ni envía: eso lo hace
+     * {@link EnvioHaciendaService#emitirFactura(Long)}.
+     *
+     * @param facturaId ID de la factura a emitir
+     * @return el comprobante GENERADO
      */
-    ComprobanteElectronicoDTO procesarFactura(Long facturaId);
-    
+    ComprobanteElectronicoDTO generarParaEmision(Long facturaId);
+
     /**
-     * Procesa una factura de forma asíncrona.
-     * Envía a Hacienda en segundo plano y consulta estado después de 30s.
-     * 
-     * @param comprobanteId ID del comprobante a procesar
+     * Etapa a del envío de un comprobante existente (ADR-043 §1a), dentro de la transacción del llamador y sobre la
+     * entidad que este cargó con bloqueo: regenera y firma si hace falta, valida contra el XSD y comprueba la
+     * configuración. Ante una falla local deja ERROR (ADR-030). No guarda ni transmite.
+     *
+     * @return id de la configuración de Hacienda con la que se envía, o null si quedó en ERROR
      */
-    void procesarFacturaAsync(Long comprobanteId);
-    
+    Long prepararParaEnvio(ComprobanteElectronico comprobante);
+
     /**
      * Genera un comprobante electrónico desde una factura.
      */
@@ -44,7 +46,7 @@ public interface ComprobanteElectronicoService {
     /**
      * Genera y firma el comprobante de una nota de crédito (tipo 03, ADR-037): consecutivo propio del tipo, clave nueva
      * y XML con la referencia al comprobante ACEPTADO de la factura. Se envía después con
-     * {@link #procesarFacturaAsync(Long)}, el mismo flujo de la factura.
+     * {@link EnvioHaciendaService#enviar(Long)}, el mismo flujo de la factura.
      *
      * @return el comprobante vigente de la nota (FIRMADO, o ERROR si la firma falló)
      */
@@ -109,16 +111,6 @@ public interface ComprobanteElectronicoService {
      * Firma digitalmente un comprobante.
      */
     ComprobanteElectronicoDTO firmar(Long id);
-    
-    /**
-     * Envía comprobante a Hacienda.
-     */
-    ComprobanteElectronicoDTO enviarAHacienda(Long id);
-    
-    /**
-     * Reenvía un comprobante que falló.
-     */
-    ComprobanteElectronicoDTO reenviar(Long id);
     
     /**
      * Consulta estado en Hacienda y actualiza comprobante según respuesta.

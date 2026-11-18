@@ -11,9 +11,14 @@ public class ProductosSinCabysException extends RuntimeException {
     private final List<String> productos;
 
     public ProductosSinCabysException(List<String> productos) {
-        super("No se puede emitir el comprobante electrónico: estos productos no tienen código CAByS: "
-            + String.join(", ", productos) + ". Regístrelo en el artículo maestro y vuelva a intentarlo.");
+        super(mensajePara(productos));
         this.productos = List.copyOf(productos);
+    }
+
+    /** Mensaje para el usuario (fijo salvo la lista de productos), el mismo de la excepción. */
+    public static String mensajePara(List<String> productos) {
+        return "No se puede emitir el comprobante electrónico: estos productos no tienen código CAByS: "
+            + String.join(", ", productos) + ". Regístrelo en el artículo maestro y vuelva a intentarlo.";
     }
 
     public List<String> getProductos() {

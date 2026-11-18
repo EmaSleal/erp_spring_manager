@@ -98,6 +98,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * T-025 (ADR-030, P-048) — los campos fiscales de una factura no se pueden modificar mientras su comprobante
@@ -165,8 +167,11 @@ class BloqueoFiscalFacturaIT {
     @Autowired private ConfiguracionEmpresaRepository empresaRepository;
     @Autowired private ComprobanteReintentosJob reintentosJob;
     @Autowired private LineaFacturaService lineaFacturaService;
-    @Autowired private ComprobanteElectronicoRepository comprobanteRepository;
+    // T-037: espía para simular que la BD falla al registrar el resultado del envío (etapa d)
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private ComprobanteElectronicoRepository comprobanteRepository;
     @Autowired private api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService comprobanteService;
+    @Autowired private api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService envioService;
     @Autowired private RelojAjustable reloj;
 
     /**
@@ -216,6 +221,7 @@ class BloqueoFiscalFacturaIT {
     private Integer idEmpresa;
     /** Configuración de Hacienda activa simulada; una sola por clase para que los consecutivos no se repitan. */
     private ConfiguracionHacienda configHacienda;
+    @Autowired private api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository configuracionHaciendaRepository;
     /** XML firmado real (generador + firma + XSD) que las filas insertadas por SQL llevan en vez de un stub. */
     private String xmlFirmadoReal;
 
@@ -251,10 +257,20 @@ class BloqueoFiscalFacturaIT {
             idEmpresa = empresa.getIdConfiguracion();
             // Configuración de Hacienda activa simulada, de la misma empresa (ADR-021)
             if (configHacienda == null) {
-                configHacienda = ConfiguracionHacienda.builder().id(1L).empresa(empresa)
-                        .rutaCertificado(CertificadoDePrueba.ruta()).pinCertificado(CertificadoDePrueba.PIN).build();
+                // T-037: persistida, porque el consecutivo se toma con bloqueo de su fila (SELECT ... FOR UPDATE).
+                // Una sola por clase (la BD del contenedor se comparte entre pruebas): sus consecutivos siguen
+                final ConfiguracionEmpresa empresaDeLaConfig = empresa;
+                configHacienda = configuracionHaciendaRepository.findByActivaTrueOrderByIdAsc().stream().findFirst()
+                        .orElseGet(() -> configuracionHaciendaRepository.save(ConfiguracionHacienda.builder().empresa(empresaDeLaConfig)
+                        .ambiente(api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.SANDBOX)
+                        .usuarioHacienda("cpj-3-101-234567@stag.comprobanteselectronicos.go.cr")
+                        .passwordHacienda("clave-de-prueba").activa(true)
+                        .rutaCertificado(CertificadoDePrueba.ruta()).pinCertificado(CertificadoDePrueba.PIN).build()));
             }
-            when(configuracionHaciendaService.obtenerConfiguracionActiva()).thenReturn(configHacienda);
+            Long idConfigHacienda = configHacienda.getId();
+            // La configuración activa se lee de la BD en cada llamada, como el servicio real
+            when(configuracionHaciendaService.obtenerConfiguracionActiva())
+                    .thenAnswer(inv -> configuracionHaciendaRepository.findById(idConfigHacienda).orElseThrow());
             gravado13 = producto("Producto A gravado 13 %", "1130.00", true);
             exento = producto("Producto B exento", "500.00", false);
         });
@@ -527,7 +543,7 @@ class BloqueoFiscalFacturaIT {
 
         Long id = comprobanteService.generarDesdeFactura((long) idFactura).getId();
         comprobanteService.firmar(id);
-        comprobanteService.enviarAHacienda(id);
+        envioService.enviar(id);
 
         ComprobanteBd enviado = comprobanteBd(id);
         assertThat(enviado.estado()).isEqualTo("ENVIADO");
@@ -841,6 +857,234 @@ class BloqueoFiscalFacturaIT {
         assertThat(comprobanteBd(id).estado()).isEqualTo("PROCESANDO");
         assertThat(jdbc.queryForObject("SELECT consultas_error_hacienda FROM comprobante_electronico WHERE id = ?",
                 Integer.class, id)).isZero();
+    }
+
+    // ── T-037: envío en etapas cortas (ADR-043) ──────────────────────────────
+
+    private static RespuestaHaciendaDTO recibidoTrasDemora(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return RespuestaHaciendaDTO.builder().resultadoEnvio(ResultadoEnvioHacienda.RECIBIDO).codigoHttp(202)
+                .exitoso(false).mensaje("Comprobante recibido por Hacienda, en procesamiento").build();
+    }
+
+    @Test
+    @DisplayName("T-037 c.6: dos hilos envían el mismo comprobante a la vez → exactamente 1 POST; reenviar con la marca → 409")
+    void marca_dosHilos_unSoloPost() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        autenticar();
+        Long id = comprobanteService.generarParaEmision((long) idFactura).getId();
+        java.util.concurrent.atomic.AtomicInteger posts = new java.util.concurrent.atomic.AtomicInteger();
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenAnswer(inv -> {
+            posts.incrementAndGet();
+            return recibidoTrasDemora(500);
+        });
+        java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            List<java.util.concurrent.Future<String>> resultados = new java.util.ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                resultados.add(hilos.submit(() -> {
+                    autenticar();
+                    salida.await();
+                    try {
+                        return envioService.enviar(id).getEstado().name();
+                    } catch (api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService.ComprobanteNoEnviableException e) {
+                        return "NO_ENVIABLE:" + e.getEstado();
+                    }
+                }));
+            }
+            salida.countDown();
+            List<String> estados = new java.util.ArrayList<>();
+            for (var r : resultados) {
+                estados.add(r.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            assertThat(posts.get()).as("un solo POST de recepción").isEqualTo(1);
+            assertThat(estados).contains("ENVIADO");
+        } finally {
+            hilos.shutdownNow();
+        }
+        assertThat(comprobanteBd(id).estado()).isEqualTo("ENVIADO");
+        assertThat(jdbc.queryForObject("SELECT intentos_envio FROM comprobante_electronico WHERE id = ?", Integer.class, id))
+                .isEqualTo(1);
+
+        // Reenvío manual sobre un comprobante en marca (ENVIO_INCIERTO): el mensaje actual de «no se puede reenviar»
+        jdbc.update("UPDATE comprobante_electronico SET estado = 'ENVIO_INCIERTO' WHERE id = ?", id);
+        mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + id + "/reenviar")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Comprobante no puede ser reenviado en estado ENVIO_INCIERTO"));
+        assertThat(posts.get()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("T-037 c.7: el POST lanza una excepción no clasificada → ENVIO_INCIERTO; +15 min y 404 → NO_TRANSMITIDO → reenvío con la misma clave")
+    void caida_trasLaMarca_seRecuperaConLaMismaClave() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        autenticar();
+        Long id = comprobanteService.generarParaEmision((long) idFactura).getId();
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong()))
+                .thenThrow(new IllegalStateException("el proceso murió a mitad del POST"));
+
+        envioService.enviar(id);
+
+        ComprobanteBd incierto = comprobanteBd(id);
+        assertThat(incierto.estado()).isEqualTo("ENVIO_INCIERTO");
+        assertThat(jdbc.queryForObject("SELECT fecha_envio FROM comprobante_electronico WHERE id = ?",
+                java.sql.Timestamp.class, id)).isNotNull();
+
+        reloj.adelantar(Duration.ofMinutes(16));
+        when(haciendaApi.consultarComprobante(eq(incierto.clave()), anyLong()))
+                .thenReturn(RespuestaHaciendaDTO.builder().documentoNoExiste(true).codigoHttp(404).build());
+        comprobanteService.consultarYActualizarEstado(id);
+        assertThat(comprobanteBd(id).estado()).isEqualTo("NO_TRANSMITIDO");
+
+        org.mockito.Mockito.reset(haciendaApi);
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenReturn(recibidoTrasDemora(0));
+        envioService.reenviar(id);
+
+        verify(haciendaApi, times(1)).enviarComprobante(anyString(), eq(incierto.clave()), anyLong());
+        ComprobanteBd reenviado = comprobanteBd(id);
+        assertThat(reenviado.estado()).isEqualTo("ENVIADO");
+        assertThat(reenviado.clave()).isEqualTo(incierto.clave());
+        assertThat(reenviado.consecutivo()).isEqualTo(incierto.consecutivo());
+    }
+
+    @Test
+    @DisplayName("T-037 c.8: la BD falla al registrar el resultado (etapa d) → la marca queda: ENVIO_INCIERTO, nunca transmisible")
+    void registroFalla_quedaLaMarca() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        autenticar();
+        Long id = comprobanteService.generarParaEmision((long) idFactura).getId();
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenReturn(recibidoTrasDemora(0));
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("BD caída"))
+                .when(comprobanteRepository).save(org.mockito.ArgumentMatchers.<ComprobanteElectronico>argThat(
+                        c -> c != null && c.getId() != null && c.getId().equals(id)
+                                && c.getEstado() == EstadoComprobante.ENVIADO));
+
+        var resultado = envioService.enviar(id);
+
+        assertThat(resultado.getEstado()).isEqualTo(EstadoComprobante.ENVIO_INCIERTO);
+        assertThat(comprobanteBd(id).estado()).isEqualTo("ENVIO_INCIERTO");
+        verify(haciendaApi, times(1)).enviarComprobante(anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("T-037 c.10: 6 emisiones concurrentes de facturas distintas → consecutivos distintos y sin huecos")
+    void consecutivo_emisionesConcurrentes_sinRepetirNiHuecos() throws Exception {
+        int n = 6;
+        List<Integer> facturas = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            facturas.add(facturaConLineasAyB());
+        }
+        long antes = jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId());
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenAnswer(inv -> recibidoTrasDemora(50));
+        java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(n);
+        List<Long> ids = new java.util.ArrayList<>();
+        try {
+            List<java.util.concurrent.Future<Long>> futuros = new java.util.ArrayList<>();
+            for (Integer idFactura : facturas) {
+                futuros.add(hilos.submit(() -> {
+                    autenticar();
+                    salida.await();
+                    return envioService.emitirFactura((long) idFactura).getId();
+                }));
+            }
+            salida.countDown();
+            for (var f : futuros) {
+                ids.add(f.get(60, java.util.concurrent.TimeUnit.SECONDS));
+            }
+        } finally {
+            hilos.shutdownNow();
+        }
+        List<Long> consecutivos = ids.stream().map(id -> Long.parseLong(comprobanteBd(id).consecutivo())).sorted().toList();
+        assertThat(consecutivos).as("distintos y seguidos").isEqualTo(
+                java.util.stream.LongStream.range(antes, antes + n).boxed().toList());
+        assertThat(jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId())).isEqualTo(antes + n);
+        assertThat(ids.stream().map(id -> comprobanteBd(id).estado()).distinct().toList()).containsExactly("ENVIADO");
+    }
+
+    @Test
+    @DisplayName("T-037 c.12 y c.2: Hacienda tarda 3 s → POST /procesar responde en menos de 6 s con ENVIADO; el POST corre sin transacción")
+    void procesar_respondeEnSegundos_postSinTransaccion() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        java.util.concurrent.atomic.AtomicBoolean postSinTransaccion = new java.util.concurrent.atomic.AtomicBoolean();
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenAnswer(inv -> {
+            postSinTransaccion.set(!org.springframework.transaction.support.TransactionSynchronizationManager
+                    .isActualTransactionActive());
+            return recibidoTrasDemora(3000);
+        });
+
+        long inicio = System.nanoTime();
+        mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/" + idFactura)
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.comprobante.estado").value("ENVIADO"));
+        long ms = Duration.ofNanos(System.nanoTime() - inicio).toMillis();
+
+        assertThat(ms).as("responde sin esperar el sondeo").isLessThan(6000);
+        assertThat(postSinTransaccion).as("token + POST sin transacción activa (MySQL real)").isTrue();
+        verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("T-037 review 1, c.25-26: doble clic, dos hilos emiten la misma factura → 1 vigente, 1 consecutivo, 1 POST y 409")
+    void dobleClic_mismaFactura_unSoloComprobante() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        long antes = jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId());
+        java.util.concurrent.atomic.AtomicInteger posts = new java.util.concurrent.atomic.AtomicInteger();
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenAnswer(inv -> {
+            posts.incrementAndGet();
+            return recibidoTrasDemora(200);
+        });
+        java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+        List<String> resultados = new java.util.ArrayList<>();
+        try {
+            List<java.util.concurrent.Future<String>> futuros = new java.util.ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                futuros.add(hilos.submit(() -> {
+                    autenticar();
+                    salida.await();
+                    try {
+                        return envioService.emitirFactura((long) idFactura).getEstado().name();
+                    } catch (api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException e) {
+                        return "409:" + e.getMensajeUsuario();
+                    }
+                }));
+            }
+            salida.countDown();
+            for (var f : futuros) {
+                resultados.add(f.get(60, java.util.concurrent.TimeUnit.SECONDS));
+            }
+        } finally {
+            hilos.shutdownNow();
+        }
+
+        assertThat(resultados).containsExactlyInAnyOrder("ENVIADO",
+                "409:" + api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE factura_id = ?", Integer.class,
+                idFactura)).as("un solo comprobante").isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE factura_id = ? AND vigente = 1",
+                Integer.class, idFactura)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId())).as("un solo consecutivo consumido").isEqualTo(antes + 1);
+        assertThat(posts.get()).isEqualTo(1);
+
+        // La segunda petición por HTTP: 409 con el mensaje fijo
+        mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/" + idFactura)
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl.MENSAJE_COMPROBANTE_EN_CURSO));
     }
 
     private void autenticar() {

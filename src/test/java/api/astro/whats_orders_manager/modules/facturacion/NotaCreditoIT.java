@@ -31,6 +31,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.service.Xm
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaService;
@@ -102,6 +103,7 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -217,6 +219,7 @@ class NotaCreditoIT {
     private Producto gravado13;
     private Producto exento;
     private ConfiguracionHacienda configHacienda;
+    @Autowired private api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository configuracionHaciendaRepository;
 
     @BeforeEach
     void setUp() {
@@ -242,10 +245,20 @@ class NotaCreditoIT {
             empresa.setOtrasSenas("Avenida Central, San José");
             empresa = empresaRepository.save(empresa);
             if (configHacienda == null) {
-                configHacienda = ConfiguracionHacienda.builder().id(1L).empresa(empresa)
-                        .rutaCertificado(CertificadoDePrueba.ruta()).pinCertificado(CertificadoDePrueba.PIN).build();
+                // T-037: persistida, porque el consecutivo se toma con bloqueo de su fila (SELECT ... FOR UPDATE).
+                // Una sola por clase (la BD del contenedor se comparte entre pruebas): sus consecutivos siguen
+                final ConfiguracionEmpresa empresaDeLaConfig = empresa;
+                configHacienda = configuracionHaciendaRepository.findByActivaTrueOrderByIdAsc().stream().findFirst()
+                        .orElseGet(() -> configuracionHaciendaRepository.save(ConfiguracionHacienda.builder().empresa(empresaDeLaConfig)
+                        .ambiente(api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.SANDBOX)
+                        .usuarioHacienda("cpj-3-101-234567@stag.comprobanteselectronicos.go.cr")
+                        .passwordHacienda("clave-de-prueba").activa(true)
+                        .rutaCertificado(CertificadoDePrueba.ruta()).pinCertificado(CertificadoDePrueba.PIN).build()));
             }
-            when(configuracionHaciendaService.obtenerConfiguracionActiva()).thenReturn(configHacienda);
+            Long idConfigHacienda = configHacienda.getId();
+            // La configuración activa se lee de la BD en cada llamada, como el servicio real
+            when(configuracionHaciendaService.obtenerConfiguracionActiva())
+                    .thenAnswer(inv -> configuracionHaciendaRepository.findById(idConfigHacienda).orElseThrow());
             gravado13 = producto("Producto A gravado 13 %", "1130.00", true);
             exento = producto("Producto B exento", "500.00", false);
         });
@@ -264,7 +277,7 @@ class NotaCreditoIT {
     void emitir_201() throws Exception {
         int idFactura = facturaAceptada();
         String claveFactura = claveVigente(idFactura);
-        long consecutivoAntes = configHacienda.getConsecutivoNotaCredito();
+        long consecutivoAntes = configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow().getConsecutivoNotaCredito();
 
         MvcResult result = emitir(idFactura, "01", "Cliente devolvió el pedido completo");
 
@@ -292,7 +305,7 @@ class NotaCreditoIT {
         assertThat(comp.get("factura_id")).isNull();
         assertThat(((Number) comp.get("nota_factura_id")).longValue()).isEqualTo(idNota);
         assertThat((String) comp.get("consecutivo")).isEqualTo(String.format("%020d", consecutivoAntes));
-        assertThat(configHacienda.getConsecutivoNotaCredito()).isEqualTo(consecutivoAntes + 1);
+        assertThat(configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow().getConsecutivoNotaCredito()).isEqualTo(consecutivoAntes + 1);
         String xml = (String) comp.get("xml_comprobante");
         assertThat(xml).startsWith("<?xml").contains("<NotaCreditoElectronica")
                 .contains("<Numero>" + claveFactura + "</Numero>").contains("<Codigo>01</Codigo>")
@@ -445,6 +458,61 @@ class NotaCreditoIT {
         assertThat(notas(idFactura)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico c JOIN nota_factura n "
                 + "ON n.id = c.nota_factura_id WHERE n.factura_id = ?", Integer.class, idFactura)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("T-037 c.10: dos notas de crédito concurrentes de facturas distintas → consecutivos 03 distintos y seguidos")
+    void notasConcurrentes_consecutivosDistintos() throws Exception {
+        int facturaA = facturaAceptada();
+        int facturaB = facturaAceptada();
+        long antes = jdbc.queryForObject("SELECT consecutivo_nota_credito FROM configuracion_hacienda WHERE id = ?",
+                Long.class, configHacienda.getId());
+        CountDownLatch salida = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<Long> consecutivos = new java.util.ArrayList<>();
+        try {
+            List<Future<Long>> futuros = new java.util.ArrayList<>();
+            for (int idFactura : new int[] {facturaA, facturaB}) {
+                futuros.add(pool.submit(() -> {
+                    salida.await();
+                    NotaFactura nota = notaService.emitirNotaCreditoTotal(idFactura, TipoNotaFactura.CREDITO, "01",
+                            "Concurrente T-037", USUARIO);
+                    return Long.parseLong(jdbc.queryForObject("SELECT consecutivo FROM comprobante_electronico "
+                            + "WHERE nota_factura_id = ? AND vigente = 1", String.class, nota.getId()));
+                }));
+            }
+            salida.countDown();
+            for (Future<Long> f : futuros) {
+                consecutivos.add(f.get(60, TimeUnit.SECONDS));
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(consecutivos.stream().sorted().toList()).isEqualTo(List.of(antes, antes + 1));
+        assertThat(jdbc.queryForObject("SELECT consecutivo_nota_credito FROM configuracion_hacienda WHERE id = ?",
+                Long.class, configHacienda.getId())).isEqualTo(antes + 2);
+    }
+
+    @Test
+    @DisplayName("T-037 c.12: Hacienda tarda 3 s → emitir la nota responde en menos de 6 s con ENVIADO")
+    void emitirNota_respondeEnSegundos() throws Exception {
+        int idFactura = facturaAceptada();
+        when(haciendaApi.enviarComprobante(anyString(), anyString(), anyLong())).thenAnswer(inv -> {
+            Thread.sleep(3000);
+            return RespuestaHaciendaDTO.builder().resultadoEnvio(ResultadoEnvioHacienda.RECIBIDO).codigoHttp(202)
+                    .exitoso(false).mensaje("Comprobante recibido por Hacienda, en procesamiento").build();
+        });
+
+        long inicio = System.nanoTime();
+        MvcResult result = emitir(idFactura, "01", "Devolución total");
+        long ms = java.time.Duration.ofNanos(System.nanoTime() - inicio).toMillis();
+
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString()).isEqualTo(201);
+        JsonNode cuerpo = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(cuerpo.get("data").get("estadoComprobante").asText()).isEqualTo("ENVIADO");
+        assertThat(cuerpo.get("message").asText()).startsWith("Nota de crédito emitida. Recibido por Hacienda");
+        assertThat(ms).as("sin sondeo dentro de la petición").isLessThan(6000);
+        verify(haciendaApi, never()).consultarComprobante(anyString(), anyLong());
     }
 
     // ── Estados y efectos ────────────────────────────────────────────────────

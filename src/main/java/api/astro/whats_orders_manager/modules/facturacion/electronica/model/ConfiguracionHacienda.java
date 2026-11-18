@@ -155,9 +155,11 @@ public class ConfiguracionHacienda {
     }
     
     /**
-     * Incrementa y obtiene el siguiente consecutivo según el tipo.
+     * Devuelve el consecutivo vigente del tipo y deja el siguiente en la entidad. Es solo un cálculo sobre esta
+     * instancia: la exclusión entre emisiones concurrentes la da el bloqueo de fila que toma
+     * {@code ConsecutivoHacienda} antes de llamarlo (T-037, ADR-043 §1a), no un {@code synchronized}.
      */
-    public synchronized Long siguienteConsecutivo(String tipo) {
+    public Long siguienteConsecutivo(String tipo) {
         switch (tipo.toUpperCase()) {
             case "01": // Factura
             case "08": // Factura de compra

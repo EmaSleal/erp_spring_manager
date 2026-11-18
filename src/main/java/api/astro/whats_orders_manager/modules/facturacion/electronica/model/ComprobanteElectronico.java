@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,7 +26,11 @@ import java.time.LocalDateTime;
  * @since Sprint 5 - Fase 3
  */
 @Entity
-@Table(name = "comprobante_electronico", indexes = {
+@Table(name = "comprobante_electronico", uniqueConstraints = {
+    // ADR-043 §6 (T-037): última defensa contra un consecutivo repetido en el mismo ambiente (V43)
+    @UniqueConstraint(name = "uk_comprobante_consecutivo",
+        columnNames = {"empresa_id", "ambiente", "tipo_comprobante", "consecutivo"})
+}, indexes = {
     @Index(name = "idx_clave_numerica", columnList = "clave_numerica", unique = true),
     @Index(name = "idx_factura", columnList = "factura_id"),
     @Index(name = "idx_comprobante_nota_factura", columnList = "nota_factura_id"),
@@ -81,6 +86,14 @@ public class ComprobanteElectronico {
     /**
      * Tipo de comprobante electrónico (01-09).
      */
+    /**
+     * Ambiente de Hacienda de la configuración con la que se tomó el consecutivo (T-037). Cada ambiente tiene su propia
+     * numeración; junto con empresa, tipo y consecutivo forma la restricción única uk_comprobante_consecutivo.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ambiente", length = 20)
+    private AmbienteHacienda ambiente;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_comprobante", nullable = false, length = 50)
     @NotNull(message = "El tipo de comprobante es obligatorio")

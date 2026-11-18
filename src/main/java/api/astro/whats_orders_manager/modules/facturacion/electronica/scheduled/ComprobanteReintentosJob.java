@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class ComprobanteReintentosJob {
     
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final ComprobanteElectronicoService comprobanteService;
+    private final EnvioHaciendaService envioService;
     private final Clock clock;
 
     /** Consultas seguidas con ind-estado "error" tras las que un ERROR_HACIENDA deja de consultarse (revisar en ATV). */
@@ -87,21 +89,21 @@ public class ComprobanteReintentosJob {
 
                     // GENERADO, FIRMADO, ERROR o NO_TRANSMITIDO: reenviar regenera/firma si hace falta y envía
                     // con la misma clave (ADR-030)
-                    comprobanteService.reenviar(comprobante.getId());
+                    envioService.reenviar(comprobante.getId());
 
                     exitosos++;
                     log.info("✅ Comprobante {} reenviado exitosamente", comprobante.getId());
                     
+                } catch (EnvioHaciendaService.ComprobanteNoEnviableException e) {
+                    // Otro proceso lo marcó (envío en curso) o Hacienda ya lo tiene: no se toca
+                    log.info("Comprobante {} ya no es transmisible ({}); se omite", comprobante.getId(), e.getEstado());
                 } catch (Exception e) {
                     fallidos++;
                     log.error("❌ Error reenviando comprobante {}: {}", 
                         comprobante.getId(), e.getMessage());
-                    
-                    // Actualizar error y contador
-                    comprobante.setUltimoError("Reintento " + (comprobante.getIntentosEnvio() + 1) + 
-                        ": " + e.getMessage());
-                    comprobante.incrementarIntentos();
-                    comprobanteRepository.save(comprobante);
+                    // Relee la fila: nunca guardar la copia cargada al inicio del job, que pisaría la marca de otro envío
+                    envioService.registrarFalloDeReintento(comprobante.getId(),
+                        "Reintento " + (comprobante.getIntentosEnvio() + 1) + ": " + e.getMessage());
                 }
             }
             

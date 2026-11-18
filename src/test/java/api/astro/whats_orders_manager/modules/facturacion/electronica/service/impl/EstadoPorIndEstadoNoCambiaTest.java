@@ -57,7 +57,7 @@ class EstadoPorIndEstadoNoCambiaTest {
                         mensajeXml(mensajeXml, estadoXml).getBytes(StandardCharsets.UTF_8)))
                 .codigoHttp(200).build());
         new ComprobanteElectronicoServiceImpl(repository, null, null, configuracion, null, null, null, hacienda, null,
-                mock(ComprobanteElectronicoMapper.class), null, null, Clock.systemUTC(), null, null, null)
+                mock(ComprobanteElectronicoMapper.class), null, null, Clock.systemUTC(), null, null, null, (c, t) -> c.siguienteConsecutivo(t))
                 .consultarYActualizarEstado(3L);
         return comprobante;
     }

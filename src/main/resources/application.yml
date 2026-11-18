@@ -119,6 +119,8 @@ app:
   # T-036: false apaga todos los métodos @Scheduled (SchedulingConfig). Verificaciones locales: APP_SCHEDULING_ENABLED=false
   scheduling:
     enabled: ${APP_SCHEDULING_ENABLED:true}
+    # Hilos del TaskScheduler compartido por los @Scheduled y el sondeo tras un envío (T-037)
+    pool-size: ${APP_SCHEDULING_POOL_SIZE:2}
 
 # ========================================
 # CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA
@@ -126,6 +128,16 @@ app:
 facturacion:
   comprobantes:
     directorio-base: ${FACTURACION_DIRECTORIO_BASE:./comprobantes}
+  # T-037 (ADR-043): cliente HTTP de la API de Hacienda (token, recepción y consulta) y sondeo tras el envío.
+  # Peor caso de la petición del usuario al emitir: token + POST = 2 × (5 s + 15 s) = 40 s (< 60 s). El POST de
+  # recepción no se reintenta (sin @Retry); el retry de resilience4j solo aplica a consultarComprobante.
+  hacienda:
+    http:
+      connect-timeout: ${HACIENDA_HTTP_CONNECT_TIMEOUT:5s}
+      read-timeout: ${HACIENDA_HTTP_READ_TIMEOUT:15s}
+    sondeo:
+      espera: ${HACIENDA_SONDEO_ESPERA:30s}
+      max-consultas: ${HACIENDA_SONDEO_MAX_CONSULTAS:5}
 
 # ========================================
 # TIPO DE CAMBIO - SINCRONIZACIÓN DIARIA (T-008)

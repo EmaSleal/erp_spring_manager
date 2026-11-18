@@ -39,7 +39,7 @@ import java.util.Optional;
  *
  * La nota se crea EN_TRAMITE con sus líneas como foto de la factura y su comprobante tipo 03 generado y firmado en la
  * misma transacción. El envío a Hacienda va después, por el mismo flujo de la factura
- * ({@link ComprobanteElectronicoService#procesarFacturaAsync(Long)}). Los efectos se aplican cuando Hacienda acepta
+ * ({@link api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService#enviar(Long)}). Los efectos se aplican cuando Hacienda acepta
  * el comprobante ({@link NotaFacturaEfectos}).
  */
 @Service

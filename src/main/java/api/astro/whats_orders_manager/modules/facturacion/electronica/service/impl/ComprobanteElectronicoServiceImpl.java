@@ -12,6 +12,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Tipo
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConsecutivoHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
@@ -58,6 +60,7 @@ import java.util.Base64;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -90,12 +93,19 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final LimiteConsultaManualHacienda limiteConsultaManual;
     private final ApplicationEventPublisher eventPublisher;
     private final ValidadorXsdComprobante validadorXsd;
+    private final ConsecutivoHacienda consecutivos;
 
     /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
      * Hacienda no lo tiene (NO_TRANSMITIDO). Antes, el 404 no cambia el estado (ADR-030 §2, ADR-031 §4).
      */
     public static final long MINUTOS_ANTES_DE_VERIFICAR = 15;
+
+    /**
+     * Mensaje fijo cuando la factura (o la nota) ya tiene un comprobante vigente que no fue rechazado, p. ej. un doble
+     * clic en «Emitir» (T-037, review 1). Se responde 409 sin consumir consecutivo.
+     */
+    public static final String MENSAJE_COMPROBANTE_EN_CURSO = "La factura ya tiene un comprobante en curso o emitido";
 
     /** Mensaje fijo al usuario cuando el XML firmado no cumple el XSD (el detalle va en ultimoError). */
     public static final String MENSAJE_XML_INVALIDO_XSD =
@@ -126,91 +136,47 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     /** Valor por defecto de facturacion.hacienda.max-consultas-error. */
     public static final int MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO = 5;
     
+    /**
+     * Etapa a de la emisión de una factura (ADR-043 §1a): valida el cliente y genera el comprobante con consecutivo
+     * bloqueado ({@link #generarDesdeFactura}). En una sola transacción corta; no envía nada. El envío lo hace
+     * EnvioHaciendaService.
+     */
     @Override
     @Transactional
-    public ComprobanteElectronicoDTO procesarFactura(Long facturaId) {
-        log.info("🚀 Iniciando procesamiento completo de factura ID: {}", facturaId);
-        
+    public ComprobanteElectronicoDTO generarParaEmision(Long facturaId) {
+        log.info("🚀 Generando el comprobante para emitir la factura ID: {}", facturaId);
+
+        // T-037 (review 1): serializa las emisiones de una misma factura (doble clic) con el bloqueo de su fila. Es la
+        // primera sentencia de la transacción: en MySQL (REPEATABLE READ) la vista de lectura nace con la primera
+        // lectura no bloqueante, así que todo lo que se lea después del bloqueo ve lo que confirmó la emisión anterior
+        // (su comprobante vigente). Orden de bloqueos: factura, luego configuración (igual que la nota de crédito).
+        facturaRepository.findByIdParaActualizar(facturaId.intValue());
+
         // VALIDAR que el cliente requiera facturación electrónica
         Factura factura = facturaRepository.findByIdFactura(facturaId.intValue())
             .orElseThrow(() -> new EntityNotFoundException("Factura no encontrada con ID: " + facturaId));
-        
+
         if (factura.getCliente() == null) {
-            throw new IllegalArgumentException("La factura no tiene cliente asignado");
+            throw new EmisionNoPermitidaException("La factura no tiene cliente asignado");
         }
-        
+
         if (Boolean.FALSE.equals(factura.getCliente().getRequiereFacturaElectronica())) {
             log.warn("⚠️ Cliente {} no requiere facturación electrónica", factura.getCliente().getNombre());
-            throw new IllegalStateException("El cliente '" + factura.getCliente().getNombre() + 
+            throw new EmisionNoPermitidaException("El cliente '" + factura.getCliente().getNombre() +
                 "' no requiere facturación electrónica. Verifique la configuración del cliente.");
         }
-        
-        // 1. Generar comprobante
+
         ComprobanteElectronicoDTO comprobante = generarDesdeFactura(facturaId);
         log.info("✅ Comprobante generado con clave: {}", comprobante.getClaveNumerica());
-        
-        // 2. Firmar comprobante
-        try {
-            comprobante = firmar(comprobante.getId());
-            log.info("✅ Comprobante firmado digitalmente");
-        } catch (Exception e) {
-            log.error("❌ Error firmando comprobante: {}", e.getMessage());
-            throw new RuntimeException("Error en firma digital: " + e.getMessage(), e);
-        }
-        
-        // 3. Enviar a Hacienda de forma asíncrona
-        procesarFacturaAsync(comprobante.getId());
-        
-        log.info("✅ Factura procesada. Envío a Hacienda en progreso (asíncrono)");
         return comprobante;
     }
-    
-    @Override
-    @Async
-    @Transactional
-    public void procesarFacturaAsync(Long comprobanteId) {
-        log.info("📤 Iniciando envío asíncrono de comprobante ID: {}", comprobanteId);
-        
-        try {
-            // Enviar a Hacienda
-            ComprobanteElectronicoDTO resultado = enviarAHacienda(comprobanteId);
-            log.info("✅ Comprobante enviado a Hacienda: {}", resultado.getEstado());
-            if (resultado.getEstado() != EstadoComprobante.ENVIADO) {
-                // NO_TRANSMITIDO, ENVIO_INCIERTO o ERROR: no hay nada que sondear
-                return;
-            }
 
-            // Hacienda es asíncrono: esperar y reintentar hasta obtener estado final
-            int maxReintentos = 5;
-            long esperaMs = 30_000;
-            for (int intento = 1; intento <= maxReintentos; intento++) {
-                Thread.sleep(esperaMs);
-                var actualizado = consultarYActualizarEstado(comprobanteId);
-                EstadoComprobante estadoActual = actualizado.getEstado();
-                if (estadoActual == EstadoComprobante.ACEPTADO
-                        || estadoActual == EstadoComprobante.RECHAZADO
-                        || estadoActual == EstadoComprobante.ENVIO_INCIERTO) {
-                    log.info("✅ Estado final obtenido: {} (intento {}/{})", estadoActual, intento, maxReintentos);
-                    break;
-                }
-                log.info("⏳ Hacienda aún procesando (intento {}/{}), reintentando en {}s...",
-                        intento, maxReintentos, esperaMs / 1000);
-            }
-
-        } catch (InterruptedException e) {
-            log.warn("⚠️ Proceso asíncrono interrumpido: {}", e.getMessage());
-            Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            // El envío ya clasificó su resultado; un fallo del sondeo posterior no cambia el estado (ADR-030:
-            // ERROR es solo una falla local antes de transmitir). El job horario vuelve a consultar.
-            log.error("❌ Error en el sondeo asíncrono del comprobante {}: {}", comprobanteId, e.getMessage());
-        }
-    }
-    
     @Override
     @Transactional
     public ComprobanteElectronicoDTO generarDesdeFactura(Long facturaId) {
         log.info("Generando comprobante electrónico desde factura ID: {}", facturaId);
+        // T-037 (review 1): bloqueo de la factura como primera sentencia (ver generarParaEmision); reentrante
+        facturaRepository.findByIdParaActualizar(facturaId.intValue());
         
         TipoComprobanteElectronico tipo = TipoComprobanteElectronico.FACTURA_ELECTRONICA;
 
@@ -225,11 +191,15 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         // ADR-030 §4: un solo comprobante vigente por factura. Solo un RECHAZADO cede su lugar (reemisión con
         // consecutivo y clave nuevos); el rechazado queda como historial, sin otros cambios.
+        // T-037 (review 1): el chequeo corre con la fila de la factura bloqueada (generarParaEmision, o al inicio de este
+        // método para /generar y la reemisión) y antes de tomar el consecutivo: una segunda emisión de la misma factura
+        // ve el vigente de la primera y responde 409 sin consumir numeración. No se usa una lectura bloqueante del
+        // comprobante: sin filas toma bloqueos de hueco que se cruzan con el INSERT de otra factura (deadlock).
         repository.findFirstByFactura_IdFacturaAndVigenteTrue(factura.getIdFactura()).ifPresent(vigente -> {
             if (vigente.getEstado() != EstadoComprobante.RECHAZADO) {
-                throw new IllegalStateException("La factura ya tiene el comprobante vigente "
-                    + vigente.getClaveNumerica() + " en estado " + vigente.getEstado()
-                    + "; solo se emite uno nuevo si el vigente fue RECHAZADO");
+                log.warn("La factura {} ya tiene el comprobante vigente {} en estado {}", factura.getIdFactura(),
+                    vigente.getClaveNumerica(), vigente.getEstado());
+                throw new EmisionNoPermitidaException(MENSAJE_COMPROBANTE_EN_CURSO);
             }
             vigente.setVigente(false);
             repository.saveAndFlush(vigente); // antes del INSERT del nuevo: la BD admite un solo vigente
@@ -238,18 +208,18 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         // ADR-021: la configuración activa (exactamente una) de la empresa única
         ConfiguracionEmpresa empresa = configuracionEmpresaService.obtenerConfiguracion()
-            .orElseThrow(() -> new IllegalStateException(
+            .orElseThrow(() -> new EmisionNoPermitidaException(
                 "No hay configuración de empresa; complétela en Configuración → Empresa."));
         ConfiguracionHacienda config = configuracionActivaDe(empresa);
 
         if (empresa.getRuc() == null || empresa.getRuc().isBlank()) {
-            throw new IllegalStateException(
+            throw new EmisionNoPermitidaException(
                 "La empresa no tiene número de identificación (cédula jurídica) configurado. " +
                 "Configúrelo en Configuración → Empresa antes de emitir comprobantes.");
         }
 
         // Generar consecutivo y clave numérica
-        Long consecutivo = config.siguienteConsecutivo(tipo.getCodigo());
+        Long consecutivo = consecutivos.siguiente(config, tipo.getCodigo());
         // T-033: hora de Costa Rica del reloj, misma fuente para la fecha de emisión y la fecha de la clave
         LocalDateTime fechaEmision = HoraFiscal.ahora(clock);
 
@@ -266,6 +236,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             .factura(factura)
             .empresa(empresa)
             .tipoComprobante(tipo)
+            .ambiente(config.getAmbiente())
             .claveNumerica(claveNumerica)
             .consecutivo(String.format("%020d", consecutivo))
             .fechaEmision(fechaEmision)
@@ -294,10 +265,13 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             nota.getFactura().getIdFactura());
 
         // Igual que la factura (ADR-030 §4): un solo vigente por nota; solo un RECHAZADO cede su lugar
+        // La emisión de la nota ya bloquea la fila de la factura (NotaFacturaService, T-032): este chequeo y el
+        // consecutivo corren serializados por factura
         repository.findFirstByNotaFactura_IdAndVigenteTrue(nota.getId()).ifPresent(vigente -> {
             if (vigente.getEstado() != EstadoComprobante.RECHAZADO) {
-                throw new IllegalStateException("La nota ya tiene el comprobante vigente "
-                    + vigente.getClaveNumerica() + " en estado " + vigente.getEstado());
+                log.warn("La nota {} ya tiene el comprobante vigente {} en estado {}", nota.getId(),
+                    vigente.getClaveNumerica(), vigente.getEstado());
+                throw new EmisionNoPermitidaException("La nota ya tiene un comprobante en curso o emitido");
             }
             vigente.setVigente(false);
             repository.saveAndFlush(vigente);
@@ -313,7 +287,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
 
         // Consecutivo propio del tipo 03 (o 02) y clave de ese tipo; la fecha de emisión es la de la nota
-        Long consecutivo = config.siguienteConsecutivo(tipo.getCodigo());
+        Long consecutivo = consecutivos.siguiente(config, tipo.getCodigo());
         LocalDateTime fechaEmision = nota.getFechaEmision();
         String claveNumerica = claveGenerator.generar(empresa.getRuc(), consecutivo, tipo, fechaEmision);
 
@@ -321,6 +295,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             .notaFactura(nota)
             .empresa(empresa)
             .tipoComprobante(tipo)
+            .ambiente(config.getAmbiente())
             .claveNumerica(claveNumerica)
             .consecutivo(String.format("%020d", consecutivo))
             .fechaEmision(fechaEmision)
@@ -428,79 +403,30 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     }
 
     /**
-     * Envía el comprobante a Hacienda con su clave (ADR-030). Solo si Hacienda no lo tiene: GENERADO, FIRMADO,
-     * ERROR o NO_TRANSMITIDO. Si el XML se descartó por una edición, o el comprobante quedó en GENERADO o ERROR,
-     * se regenera (misma clave) y se firma antes de enviar. El estado final lo fija la clasificación en origen del
-     * cliente de Hacienda: ENVIADO, NO_TRANSMITIDO o ENVIO_INCIERTO; ERROR solo por fallas locales previas.
+     * Etapa a del envío de un comprobante existente (ADR-043 §1a), sobre la entidad que el llamador cargó con bloqueo
+     * dentro de su transacción: regenera el XML si se descartó o quedó en ERROR (misma clave, ADR-030), firma si está en
+     * GENERADO, valida el XML firmado contra el XSD (T-036) y comprueba la configuración activa. Ante una falla local
+     * deja el comprobante en ERROR con el motivo en ultimoError. No guarda ni transmite.
+     *
+     * @return id de la configuración de Hacienda con la que se envía, o null si quedó en ERROR
      */
     @Override
-    @Transactional
-    public ComprobanteElectronicoDTO enviarAHacienda(Long id) {
-        log.info("Enviando comprobante ID: {} a Hacienda", id);
-
-        ComprobanteElectronico comprobante = repository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-
-        if (!comprobante.puedeReenviar()) {
-            throw new IllegalStateException("El comprobante en estado " + comprobante.getEstado()
-                + " no se puede enviar: Hacienda ya lo tiene o pudo recibirlo");
-        }
-
+    public Long prepararParaEnvio(ComprobanteElectronico comprobante) {
         if (!prepararXmlFirmado(comprobante)) {
-            return mapper.toDTO(repository.save(comprobante));
+            return null;
         }
-
         // XSD v4.4: ningún XML inválido sale hacia Hacienda (ni siquiera se pide el token). ERROR local, misma clave
         if (!xmlFirmadoValidoContraXsd(comprobante)) {
-            return mapper.toDTO(repository.save(comprobante));
+            return null;
         }
-
-        ConfiguracionHacienda config;
         try {
-            config = configuracionActivaDe(comprobante.getEmpresa());
+            return configuracionActivaDe(comprobante.getEmpresa()).getId();
         } catch (Exception e) {
+            log.error("Configuración de Hacienda no válida para {}: {}", comprobante.getClaveNumerica(), e.getMessage());
             comprobante.setEstado(EstadoComprobante.ERROR);
             comprobante.setUltimoError("Configuración de Hacienda: " + e.getMessage());
-            return mapper.toDTO(repository.save(comprobante));
+            return null;
         }
-
-        // Token: si no se puede renovar, la recepción nunca se intenta
-        try {
-            configuracionService.verificarYRenovarToken(config.getId());
-        } catch (Exception e) {
-            comprobante.setEstado(EstadoComprobante.NO_TRANSMITIDO);
-            comprobante.setUltimoError("No se obtuvo el token de Hacienda: " + e.getMessage());
-            return mapper.toDTO(repository.save(comprobante));
-        }
-
-        comprobante.setFechaEnvio(LocalDateTime.now(clock));
-        comprobante.incrementarIntentos();
-        RespuestaHaciendaDTO respuesta = haciendaApi.enviarComprobante(
-            comprobante.getXmlComprobante(),
-            comprobante.getClaveNumerica(),
-            config.getId()
-        );
-
-        try {
-            ResultadoEnvioHacienda resultado = respuesta.getResultadoEnvio() != null
-                ? respuesta.getResultadoEnvio()
-                : ResultadoEnvioHacienda.ENVIO_INCIERTO;
-            comprobante.setEstado(resultado.estado());
-            comprobante.setCodigoRespuesta(respuesta.getCodigoHttp() != null
-                ? String.valueOf(respuesta.getCodigoHttp()) : null);
-            comprobante.setMensajeRespuesta(respuesta.getMensaje());
-            comprobante.setFechaRespuesta(respuesta.getFechaRespuesta());
-            comprobante.setUltimoError(resultado == ResultadoEnvioHacienda.RECIBIDO ? null : respuesta.getMensaje());
-            log.info("Envío de {} clasificado como {} → {}", comprobante.getClaveNumerica(), resultado,
-                comprobante.getEstado());
-        } catch (Exception e) {
-            // Ya hubo un POST: ante cualquier duda, Hacienda pudo recibirlo
-            log.error("Error procesando la respuesta del envío: {}", e.getMessage());
-            comprobante.setEstado(EstadoComprobante.ENVIO_INCIERTO);
-            comprobante.setUltimoError(e.getMessage());
-        }
-
-        return mapper.toDTO(repository.save(comprobante));
     }
 
     /**
@@ -563,21 +489,6 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             firmarInterno(comprobante);
         }
         return comprobante.getEstado() != EstadoComprobante.ERROR;
-    }
-
-    @Override
-    @Transactional
-    public ComprobanteElectronicoDTO reenviar(Long id) {
-        log.info("Reenviando comprobante ID: {}", id);
-
-        ComprobanteElectronico comprobante = repository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
-
-        if (!comprobante.puedeReenviar()) {
-            throw new IllegalStateException("Comprobante no puede ser reenviado en estado " + comprobante.getEstado());
-        }
-
-        return enviarAHacienda(id);
     }
 
     @Override
@@ -1077,7 +988,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
      * nunca castear directamente a LocalDateTime, Integer o Boolean.
      */
     private List<ComprobanteElectronicoDTO> convertirResultadosADTO(List<Object[]> results) {
-        return results.stream()
+        List<ComprobanteElectronicoDTO> lista = results.stream()
             .map(row -> ComprobanteElectronicoDTO.builder()
                 .id(((Number) row[0]).longValue())
                 .claveNumerica((String) row[1])
@@ -1095,6 +1006,21 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 .consultableEnHacienda(CONSULTABLES_A_MANO.contains(EstadoComprobante.valueOf((String) row[5])))
                 .build())
             .collect(java.util.stream.Collectors.toList());
+        // T-037: el SP no trae fecha_envio; el listado la necesita para «Enviando…» (ENVIO_INCIERTO de < 2 min)
+        List<Long> inciertos = lista.stream()
+            .filter(d -> d.getEstado() == EstadoComprobante.ENVIO_INCIERTO)
+            .map(ComprobanteElectronicoDTO::getId)
+            .toList();
+        if (!inciertos.isEmpty()) {
+            Map<Long, LocalDateTime> fechas = new HashMap<>();
+            repository.findAllById(inciertos).forEach(c -> fechas.put(c.getId(), c.getFechaEnvio()));
+            lista.forEach(d -> {
+                if (fechas.containsKey(d.getId())) {
+                    d.setFechaEnvio(fechas.get(d.getId()));
+                }
+            });
+        }
+        return lista;
     }
 
     /**

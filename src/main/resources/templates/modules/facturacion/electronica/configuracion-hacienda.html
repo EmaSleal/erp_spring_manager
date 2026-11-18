@@ -512,8 +512,9 @@
             })
                 .then(res => res.json())
                 .then(data => {
+                    // P-088: el resultado real lo decide el servidor (200 con token vigente; 502 si falló)
                     if (data.success) {
-                        mostrarAlerta('Token renovado exitosamente', 'success');
+                        mostrarAlerta(data.message || 'Token renovado', 'success');
                         cargarConfiguraciones();
                     } else {
                         mostrarAlerta(data.message || 'Error renovando token', 'danger');

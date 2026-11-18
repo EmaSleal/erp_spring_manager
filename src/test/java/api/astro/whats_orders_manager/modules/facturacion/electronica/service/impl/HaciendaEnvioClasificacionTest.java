@@ -136,6 +136,46 @@ class HaciendaEnvioClasificacionTest {
     }
 
     @Test
+    @DisplayName("T-037 criterio 13: SocketTimeoutException de lectura en el POST → una sola invocación, ENVIO_INCIERTO")
+    void timeoutDeLectura_unaSolaInvocacion_envioIncierto() {
+        recepcion = new Respuesta(202, Map.of(), "", READ_TIMEOUT_MS * 3L);
+        var repository = mock(api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository.class);
+        var comprobante = api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico.builder()
+                .id(5L).empresa(ConfiguracionEmpresa.builder().idConfiguracion(1).build())
+                .tipoComprobante(api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico.FACTURA_ELECTRONICA).claveNumerica(CLAVE).consecutivo("00000000000000000001").vigente(true).intentosEnvio(0)
+                .estado(api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.FIRMADO)
+                .xmlComprobante("<xml/>").build();
+        EnvioHaciendaDePrueba.simularBloqueoYMarca(repository, () -> comprobante);
+        when(repository.findById(5L)).thenReturn(Optional.of(comprobante));
+        when(repository.save(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> inv.getArgument(0));
+        var comprobantes = mock(api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService.class);
+        when(comprobantes.prepararParaEnvio(org.mockito.ArgumentMatchers.any())).thenReturn(1L);
+
+        var resultado = EnvioHaciendaDePrueba.crear(repository, comprobantes, servicio(fabrica()),
+                java.time.Clock.systemUTC()).enviar(5L);
+
+        assertThat(llamadas.stream().filter("POST recepcion"::equals).count())
+                .as("el POST de recepción no se reintenta").isEqualTo(1);
+        assertThat(resultado.getEstado())
+                .isEqualTo(api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIO_INCIERTO);
+        assertThat(comprobante.getFechaEnvio()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("T-037 criterio 13: enviarComprobante no tiene @Retry (solo circuit breaker); consultarComprobante sí")
+    void retrySoloEnLaConsulta() throws NoSuchMethodException {
+        var enviar = HaciendaApiServiceImpl.class.getMethod("enviarComprobante", String.class, String.class, Long.class);
+        var consultar = HaciendaApiServiceImpl.class.getMethod("consultarComprobante", String.class, Long.class);
+        assertThat(enviar.isAnnotationPresent(io.github.resilience4j.retry.annotation.Retry.class)).isFalse();
+        assertThat(enviar.isAnnotationPresent(io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker.class)).isTrue();
+        assertThat(consultar.isAnnotationPresent(io.github.resilience4j.retry.annotation.Retry.class)).isTrue();
+        assertThat(java.util.Arrays.stream(HaciendaApiServiceImpl.class.getDeclaredMethods())
+                .filter(m -> m.isAnnotationPresent(io.github.resilience4j.retry.annotation.Retry.class))
+                .map(java.lang.reflect.Method::getName).toList())
+                .as("el retry de haciendaAPI solo envuelve la consulta").containsExactly("consultarComprobante");
+    }
+
+    @Test
     @DisplayName("no se obtiene el token (401 del IdP) → NO_TRANSMITIDO, sin POST a la recepción")
     void sinToken() {
         statusToken = 401;
