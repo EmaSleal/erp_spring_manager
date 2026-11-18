@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.cliente.controller;
 
+import api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaActividadDTO;
 import api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaConsultaDTO;
 import api.astro.whats_orders_manager.modules.configuracion.service.HaciendaApiService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -56,6 +59,7 @@ public class ClienteHaciendaRestController {
             cuerpo.put("nombre", consulta.getNombre());
             cuerpo.put("tipoIdentificacion", consulta.getTipoIdentificacion());
             cuerpo.put("tipoIdentificacionEnum", tipoEnum(consulta.getTipoIdentificacion()));
+            cuerpo.put("actividades", actividades(consulta));
             return ResponseEntity.ok(cuerpo);
         }
         if (resultado == HaciendaConsultaDTO.ResultadoConsulta.NO_ENCONTRADA) {
@@ -63,6 +67,26 @@ public class ClienteHaciendaRestController {
         }
         log.warn("Verificación en Hacienda sin respuesta utilizable para identificación de {} dígitos", limpio.length());
         return bajoDeHacienda();
+    }
+
+    /** Actividades económicas de /fe/ae para que el usuario elija una (el formulario no la guarda sola). */
+    private static List<Map<String, Object>> actividades(HaciendaConsultaDTO consulta) {
+        List<Map<String, Object>> salida = new ArrayList<>();
+        if (consulta.getActividades() == null) {
+            return salida;
+        }
+        for (HaciendaActividadDTO a : consulta.getActividades()) {
+            if (a == null) {
+                continue;
+            }
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("codigo", a.getCodigo());
+            m.put("descripcion", a.getDescripcion());
+            m.put("estado", a.getEstado());
+            m.put("tipo", a.getTipo());
+            salida.add(m);
+        }
+        return salida;
     }
 
     private static ResponseEntity<Map<String, Object>> bajoDeHacienda() {

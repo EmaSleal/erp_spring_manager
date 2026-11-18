@@ -158,7 +158,7 @@ class DatosFeValidatorTest {
     }
 
     @ParameterizedTest(name = "actividad «{0}» → válida={1}")
-    @CsvSource({"620100,true", "4773.0,false", "62010,false", "6201000,false", "abcdef,false"})
+    @CsvSource({"620100,true", "4773.0,true", "62010,false", "6201000,false", "abcdef,false", "4773.00,false", "47730.,false"})
     void actividad(String codigo, boolean valida) {
         Cliente c = clienteValido();
         c.setCodigoActividad(codigo);
@@ -203,6 +203,21 @@ class DatosFeValidatorTest {
             "otrasSenas");
         e.setOtrasSenas("x".repeat(250));
         assertThat(campos(validador.validarEmisor(e))).doesNotContain("otrasSenas");
+    }
+
+    @ParameterizedTest(name = "emisor: actividad «{0}» → válida={1}")
+    @CsvSource(value = {"4773.0,true", "477300,true", "' 4773.0 ',true", "47,false", "1234567,false", "ABCDEF,false",
+        "'',false"})
+    void emisorActividad(String codigo, boolean valida) {
+        ConfiguracionEmpresa e = emisorValido();
+        e.setCodigoActividad(codigo);
+        List<ProblemaDatoFe> p = validador.validarEmisor(e);
+        assertThat(p.isEmpty()).isEqualTo(valida);
+        if (!valida) {
+            assertThat(campos(p)).containsExactly("codigoActividad");
+            assertThat(p.get(0).obligatorio()).isTrue();
+            assertThat(p.get(0).mensaje()).contains("Configuración");
+        }
     }
 
     @Test

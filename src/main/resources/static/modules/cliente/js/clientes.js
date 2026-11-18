@@ -144,6 +144,10 @@ function limpiarResultadoHacienda() {
     verificacionHacienda = null;
     const caja = document.getElementById('resultadoHaciendaCliente');
     if (caja) caja.style.display = 'none';
+    const bloque = document.getElementById('actividadesHaciendaBloque');
+    if (bloque) bloque.style.display = 'none';
+    const lista = document.getElementById('actividadesHaciendaCliente');
+    if (lista) lista.textContent = '';
     const cuerpo = document.getElementById('resultadoHaciendaTexto');
     if (cuerpo) cuerpo.textContent = '';
 }
@@ -176,6 +180,12 @@ document.getElementById('btnConsultarHaciendaCliente')?.addEventListener('click'
             verificacionHacienda = { nombre: datos.nombre || '', tipoIdentificacionEnum: datos.tipoIdentificacionEnum || null };
             const tipo = datos.tipoIdentificacion ? ' | Tipo de identificación: ' + datos.tipoIdentificacion : '';
             mostrarResultadoHacienda('La identificación existe en Hacienda. Nombre: ' + (datos.nombre || '(sin nombre)') + tipo, 'success', true);
+            // Actividad económica: se ofrece elegir una; solo se copia al campo con el botón, sin guardar.
+            const bloque = document.getElementById('actividadesHaciendaBloque');
+            const cantidad = pintarActividadesHacienda(document.getElementById('actividadesHaciendaCliente'), datos.actividades);
+            if (bloque) bloque.style.display = 'block';
+            const btnActividad = document.getElementById('btnCopiarActividadCliente');
+            if (btnActividad) btnActividad.style.display = cantidad > 0 ? 'inline-block' : 'none';
         } else {
             mostrarResultadoHacienda(datos.mensaje || 'La identificación no aparece en el padrón de Hacienda.', 'warning', false);
         }
@@ -196,6 +206,16 @@ document.getElementById('btnCopiarHaciendaCliente')?.addEventListener('click', f
         document.getElementById('tipoIdentificacionCliente').value = verificacionHacienda.tipoIdentificacionEnum;
     }
     showToast('success', 'Datos copiados al formulario. Revíselos y guarde el cliente.');
+});
+
+// Copia la actividad elegida al campo del formulario solo cuando el usuario lo pide; no guarda nada.
+document.getElementById('btnCopiarActividadCliente')?.addEventListener('click', function() {
+    if (copiarActividadHacienda(document.getElementById('actividadesHaciendaCliente'),
+            document.getElementById('codigoActividadCliente'))) {
+        showToast('success', 'Actividad copiada al formulario. Revísela y guarde el cliente.');
+    } else {
+        showToast('warning', 'Elija una actividad para copiarla.');
+    }
 });
 
 // Cerrar modal (opcional - Bootstrap ya maneja esto)

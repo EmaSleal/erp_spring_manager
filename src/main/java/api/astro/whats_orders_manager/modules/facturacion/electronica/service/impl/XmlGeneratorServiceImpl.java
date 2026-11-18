@@ -687,7 +687,7 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         if (empresa == null || empresa.getCodigoActividad() == null || empresa.getCodigoActividad().isBlank()) {
             throw new IllegalStateException("La empresa no tiene código de actividad económica configurado");
         }
-        return empresa.getCodigoActividad();
+        return empresa.getCodigoActividad().trim();
     }
 
     /**

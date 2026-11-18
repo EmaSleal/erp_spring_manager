@@ -22,6 +22,9 @@ public final class DatosFeDePrueba {
             e.setTipoIdentificacion(e.getNumeroIdentificacion().length() == 9
                 ? TipoIdentificacion.CEDULA_FISICA : TipoIdentificacion.CEDULA_JURIDICA);
         }
+        if (e.getCodigoActividad() == null) {
+            e.setCodigoActividad("4773.0");
+        }
         if (e.getRazonSocial() == null) {
             e.setRazonSocial("Empresa Test S.A.");
         }

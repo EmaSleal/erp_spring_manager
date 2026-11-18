@@ -26,7 +26,14 @@ public class DatosFeValidator {
     private static final int CORREO_MAX = 160;
     private static final Pattern CODIGO_UBICACION = Pattern.compile("[1-9]\\d|0[1-9]");
     private static final Pattern PROVINCIA = Pattern.compile("[1-9]");
-    private static final Pattern ACTIVIDAD = Pattern.compile("\\d{6}");
+    /**
+     * Código de actividad (CodigoActividadEmisor y CodigoActividadReceptor): el XSD solo exige un string de exactamente
+     * 6 caracteres. Se aceptan 6 dígitos o el formato de /fe/ae «NNNN.N» (p. ej. «4773.0»), que Hacienda ya aceptó.
+     */
+    private static final Pattern ACTIVIDAD = Pattern.compile("\\d{6}|\\d{4}\\.\\d");
+
+    private static final String MSG_ACTIVIDAD_RECEPTOR =
+        "El código de actividad debe tener 6 caracteres: 6 dígitos o el formato de Hacienda, por ejemplo 4773.0.";
 
     private final CatalogoUbicacion catalogo;
 
@@ -61,8 +68,8 @@ public class DatosFeValidator {
         validarUbicacionReceptor(p, cliente);
 
         String actividad = recortar(cliente.getCodigoActividad());
-        if (!actividad.isEmpty() && !ACTIVIDAD.matcher(actividad).matches()) {
-            p.add(new ProblemaDatoFe("codigoActividad", "El código de actividad debe tener 6 dígitos.",
+        if (!actividad.isEmpty() && !actividadValida(actividad)) {
+            p.add(new ProblemaDatoFe("codigoActividad", MSG_ACTIVIDAD_RECEPTOR,
                 ReglaDatoFe.ACTIVIDAD, false));
         }
         return p;
@@ -119,6 +126,12 @@ public class DatosFeValidator {
         }
         validarIdentificacion(p, empresa.getTipoIdentificacion(), numeroLimpio(empresa.getNumeroIdentificacion()),
             "tipoIdentificacion", "numeroIdentificacion");
+
+        if (!actividadValida(empresa.getCodigoActividad())) {
+            p.add(new ProblemaDatoFe("codigoActividad", "El código de actividad económica no está configurado o no es "
+                + "válido (6 caracteres, por ejemplo 4773.0); configúrelo en Configuración → Empresa.",
+                ReglaDatoFe.ACTIVIDAD, true));
+        }
 
         String provincia = recortar(empresa.getCodigoProvincia());
         String canton = recortar(empresa.getCanton());
@@ -197,6 +210,11 @@ public class DatosFeValidator {
             case DIMEX -> "El DIMEX debe tener 11 o 12 dígitos, sin cero inicial ni guiones.";
             case NITE -> "El NITE debe tener 10 dígitos, sin guiones.";
         };
+    }
+
+    /** Regla única de actividad (emisor y receptor), sobre el valor recortado: 6 dígitos o «NNNN.N». */
+    public static boolean actividadValida(String codigo) {
+        return ACTIVIDAD.matcher(recortar(codigo)).matches();
     }
 
     /** Correo con el patrón del Anexo y como máximo 160 caracteres; el vacío no es válido. */

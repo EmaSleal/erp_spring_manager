@@ -45,7 +45,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * la identificación por tipo y cero inicial (el XSD solo fija maxLength 20), otras señas del receptor de 161 a 250
  * (el XSD admite 250; el Anexo, 160 para el receptor), patrón de correo (el XSD solo fija maxLength 160), existencia
  * de provincia, cantón y distrito en el catálogo (el XSD solo pide 1 y 2 dígitos), teléfono de 1 a 7 dígitos con valor
- * de al menos 100 (el XSD no exige 8), y código de actividad que no son 6 dígitos (el XSD solo pide 6 caracteres).
+ * de al menos 100 (el XSD no exige 8), y código de actividad de 6 caracteres que no sea 6 dígitos ni «NNNN.N», p. ej. «ABCDEF» (el XSD solo pide 6
+ * caracteres: minLength y maxLength 6, sin patrón). «4773.0» es el formato de /fe/ae y es válido.
  * Teléfono 0000000000: lo rechaza el XSD porque NumTelefono es xs:integer con minInclusive 100 y ese valor es 0.
  */
 @DisplayName("T-038 — oráculo: el validador de datos FE contra el XSD real")
@@ -181,7 +182,11 @@ class DatosFeValidatorOraculoXsdTest {
         // código de actividad del receptor (opcional)
         c.add(coinciden("actividad de 6 dígitos", cli(x -> x.setCodigoActividad("620100")), true));
         c.add(coinciden("actividad de 5", cli(x -> x.setCodigoActividad("62010")), false));
-        c.add(soloAnexo("actividad de 6 caracteres no numéricos", cli(x -> x.setCodigoActividad("4773.0"))));
+        c.add(coinciden("actividad «4773.0» (formato /fe/ae)", cli(x -> x.setCodigoActividad("4773.0")), true));
+        c.add(coinciden("actividad «477300»", cli(x -> x.setCodigoActividad("477300")), true));
+        c.add(coinciden("actividad «47» (el XSD exige 6)", cli(x -> x.setCodigoActividad("47")), false));
+        c.add(coinciden("actividad de 7 «1234567»", cli(x -> x.setCodigoActividad("1234567")), false));
+        c.add(soloAnexo("actividad «ABCDEF» (6 caracteres, regla documentada)", cli(x -> x.setCodigoActividad("ABCDEF"))));
         return c.stream();
     }
 
@@ -190,7 +195,9 @@ class DatosFeValidatorOraculoXsdTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("casosEmisor")
     void emisor(CasoEmisor caso) {
-        String xml = facturaBase.replaceFirst("(?s)<Emisor>.*?</Emisor>", Matcher.quoteReplacement(emisorCrudo(caso.empresa())));
+        String xml = facturaBase.replaceFirst("(?s)<Emisor>.*?</Emisor>", Matcher.quoteReplacement(emisorCrudo(caso.empresa())))
+            .replaceFirst("<CodigoActividadEmisor>.*?</CodigoActividadEmisor>", Matcher.quoteReplacement(
+                "<CodigoActividadEmisor>" + nvl(caso.empresa().getCodigoActividad()).trim() + "</CodigoActividadEmisor>"));
         boolean xsd = erroresSinFirma(xml).isEmpty();
         boolean validador = VALIDADOR.validarEmisor(caso.empresa()).isEmpty();
 
@@ -217,6 +224,11 @@ class DatosFeValidatorOraculoXsdTest {
         c.add(emi("provincia 9 fuera del catálogo", e -> e.setCodigoProvincia("9"), Veredicto.SOLO_ANEXO, true));
         c.add(emi("teléfono 0000000000", e -> e.setTelefono("0000000000"), Veredicto.COINCIDEN, false));
         c.add(emi("correo sin arroba", e -> e.setEmail("sin-arroba"), Veredicto.SOLO_ANEXO, true));
+        c.add(emi("actividad «4773.0»", e -> e.setCodigoActividad("4773.0"), Veredicto.COINCIDEN, true));
+        c.add(emi("actividad «477300»", e -> e.setCodigoActividad("477300"), Veredicto.COINCIDEN, true));
+        c.add(emi("actividad «47» (el XSD exige 6)", e -> e.setCodigoActividad("47"), Veredicto.COINCIDEN, false));
+        c.add(emi("actividad de 7 «1234567»", e -> e.setCodigoActividad("1234567"), Veredicto.COINCIDEN, false));
+        c.add(emi("actividad «ABCDEF» (regla documentada)", e -> e.setCodigoActividad("ABCDEF"), Veredicto.SOLO_ANEXO, true));
         c.add(emi("correo de 161", e -> e.setEmail("a".repeat(152) + "@mail.com"), Veredicto.COINCIDEN, false));
         return c.stream();
     }

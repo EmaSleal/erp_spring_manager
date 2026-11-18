@@ -90,6 +90,55 @@ class ClienteHaciendaRestControllerTest {
                 .andExpect(jsonPath("$.tipoIdentificacionEnum").value("CEDULA_FISICA"));
     }
 
+    private static api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaActividadDTO act(
+            String codigo, String desc, String estado, String tipo) {
+        return api.astro.whats_orders_manager.modules.configuracion.dto.HaciendaActividadDTO.builder()
+                .codigo(codigo).descripcion(desc).estado(estado).tipo(tipo).build();
+    }
+
+    @Test
+    @DisplayName("sin actividades (null o vacía): actividades es una lista vacía")
+    void sinActividades() throws Exception {
+        when(hacienda.consultarContribuyente("109990999")).thenReturn(exitosa("JUAN PEREZ", "01"));
+        mockMvc.perform(get(URL, "109990999").with(user("editor").roles("USER")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.actividades").isArray())
+                .andExpect(jsonPath("$.actividades.length()").value(0));
+        HaciendaConsultaDTO vacia = exitosa("JUAN PEREZ", "01");
+        vacia.setActividades(java.util.List.of());
+        when(hacienda.consultarContribuyente("109990999")).thenReturn(vacia);
+        mockMvc.perform(get(URL, "109990999").with(user("editor").roles("USER")))
+                .andExpect(jsonPath("$.actividades.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("una actividad: código, descripción, estado y tipo tal como los da /fe/ae")
+    void unaActividad() throws Exception {
+        HaciendaConsultaDTO c = exitosa("JUAN PEREZ", "01");
+        c.setActividades(java.util.List.of(act("4773.0", "Venta de productos", "A", "P")));
+        when(hacienda.consultarContribuyente("109990999")).thenReturn(c);
+        mockMvc.perform(get(URL, "109990999").with(user("editor").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.actividades.length()").value(1))
+                .andExpect(jsonPath("$.actividades[0].codigo").value("4773.0"))
+                .andExpect(jsonPath("$.actividades[0].descripcion").value("Venta de productos"))
+                .andExpect(jsonPath("$.actividades[0].estado").value("A"))
+                .andExpect(jsonPath("$.actividades[0].tipo").value("P"));
+    }
+
+    @Test
+    @DisplayName("varias actividades: todas, en el orden de Hacienda")
+    void variasActividades() throws Exception {
+        HaciendaConsultaDTO c = exitosa("JUAN PEREZ", "01");
+        c.setActividades(java.util.List.of(act("4773.0", "Uno", "A", "P"), act("620100", "Dos", "I", "S"),
+                act("4759.0", "Tres", "A", "S")));
+        when(hacienda.consultarContribuyente("109990999")).thenReturn(c);
+        mockMvc.perform(get(URL, "109990999").with(user("editor").roles("USER")))
+                .andExpect(jsonPath("$.actividades.length()").value(3))
+                .andExpect(jsonPath("$.actividades[1].codigo").value("620100"))
+                .andExpect(jsonPath("$.actividades[1].estado").value("I"))
+                .andExpect(jsonPath("$.actividades[2].tipo").value("S"));
+    }
+
     @Test
     @DisplayName("tipos 02, 03 y 04 se mapean; otro código (05) da existe=true con tipoIdentificacionEnum null")
     void mapeoDeTipos() {

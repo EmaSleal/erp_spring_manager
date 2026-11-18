@@ -167,7 +167,7 @@ class DatosFeEmisionTest {
         cliente.setCanton("01");
         cliente.setDistrito("01");
         cliente.setOtrasSenas("x".repeat(200));
-        cliente.setCodigoActividad("4773.0");
+        cliente.setCodigoActividad("4773");
 
         ComprobanteElectronico emitido = emitir();
 

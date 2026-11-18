@@ -43,6 +43,7 @@ class XmlActividadEconomicaTest {
                 .otrasSenas("Alajuela, el roble")
                 .build();
         DatosFeDePrueba.emisor(empresa);
+        empresa.setCodigoActividad(codigoActividad); // el fixture completa la actividad; aquí se prueba justo su ausencia
         Producto producto = new Producto();
         producto.setDescripcion("Producto de prueba");
         ArticuloMaestro maestro = new ArticuloMaestro();
