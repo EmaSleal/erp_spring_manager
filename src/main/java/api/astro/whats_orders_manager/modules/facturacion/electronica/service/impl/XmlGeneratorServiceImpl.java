@@ -1,6 +1,8 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.DatosFeProducto;
@@ -29,6 +31,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +95,7 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
 
         agregarDetalleFactura(xml, comprobante);
         agregarResumen(xml, comprobante);
+        agregarInformacionReferenciaFactura(xml, comprobante);
 
         xml.append("</FacturaElectronica>");
 
@@ -103,6 +107,38 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         }
 
         return xmlGenerado;
+    }
+
+    /**
+     * InformacionReferencia de la factura (ADR-045), tras ResumenFactura (orden del XSD, máximo 10): primero la de la
+     * sustituta (01, clave y fecha del comprobante ACEPTADO de la original, código 07 o 15) y después la de la
+     * reemisión (10, el último RECHAZADO anterior, código 16). Todo se deduce de la base, de modo que regenerar el
+     * XML con la misma clave da el mismo resultado. Una primera emisión normal no lleva referencias.
+     */
+    private void agregarInformacionReferenciaFactura(StringBuilder xml, ComprobanteElectronico comprobante) {
+        var factura = comprobante.getFactura();
+        if (factura == null) {
+            return;
+        }
+        var original = factura.getFacturaSustituida();
+        if (original != null) {
+            ComprobanteElectronico origen = original.getComprobantes().stream()
+                .filter(c -> c.getEstado() == EstadoComprobante.ACEPTADO)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                    "La factura sustituida no tiene un comprobante aceptado"));
+            xml.append(InformacionReferenciaXml.construir(InformacionReferenciaXml.TIPO_DOC_FACTURA_ELECTRONICA,
+                origen.getClaveNumerica(), origen.getFechaEmision(), factura.getCodigoSustitucion(),
+                factura.getRazonSustitucion()));
+        }
+        factura.getComprobantes().stream()
+            .filter(c -> c.getEstado() == EstadoComprobante.RECHAZADO)
+            .filter(c -> comprobante.getId() == null || (c.getId() != null && c.getId() < comprobante.getId()))
+            .max(Comparator.comparing(c -> c.getId() == null ? 0L : c.getId()))
+            .ifPresent(rechazado -> xml.append(InformacionReferenciaXml.construir(
+                InformacionReferenciaXml.TIPO_DOC_RECHAZADO, rechazado.getClaveNumerica(),
+                rechazado.getFechaEmision(), CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_RECHAZADO.getCodigo(),
+                InformacionReferenciaXml.RAZON_REEMISION_RECHAZADO)));
     }
 
     @Override

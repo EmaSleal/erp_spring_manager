@@ -46,7 +46,9 @@ class FacturaPdfEtiquetaIdentificacionTest {
         ConfiguracionEmpresaService configuracionService = mock(ConfiguracionEmpresaService.class);
         CuentaBancariaRepository cuentaBancariaRepository = mock(CuentaBancariaRepository.class);
         FacturaPdfServiceImpl service = new FacturaPdfServiceImpl(facturaService, empresaService, configuracionService,
-                cuentaBancariaRepository, mock(UsuarioService.class));
+                cuentaBancariaRepository, mock(UsuarioService.class),
+                mock(api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository.class),
+                mock(api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository.class));
 
         Cliente cliente = new Cliente();
         cliente.setIdCliente(1);

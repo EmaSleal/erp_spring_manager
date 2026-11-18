@@ -32,6 +32,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.LineaFacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
+import api.astro.whats_orders_manager.modules.facturacion.service.SustitucionElegibilidad;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.shared.service.EmailService;
 import jakarta.persistence.EntityNotFoundException;
@@ -99,6 +100,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final ConsecutivoHacienda consecutivos;
     /** T-038 (ADR-044): validador único de datos FE; bloquea la emisión antes del consecutivo. */
     private final DatosFeValidator datosFeValidator;
+    /**
+     * T-039 (ADR-045 §3): regla única de la factura sustituta; revisa la original antes del consecutivo. Se inyecta
+     * por campo para no cambiar el constructor del que dependen los demás componentes y pruebas.
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    private SustitucionElegibilidad sustitucionElegibilidad;
 
     /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
@@ -244,6 +251,16 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             log.warn("Factura {}: datos FE de la empresa inválidos: {}", facturaId,
                 problemasEmisor.stream().map(ProblemaDatoFe::campo).toList());
             throw DatosFeIncompletosException.delEmisor(problemasEmisor);
+        }
+
+        // T-039 (ADR-045 §3): una sustituta no se emite si su original ya no cumple las condiciones; antes del
+        // consecutivo, para no consumir numeración (la excepción deshace la transacción)
+        Factura sustituida = factura.getFacturaSustituida();
+        if (sustituida != null && sustitucionElegibilidad != null
+            && !sustitucionElegibilidad.evaluarSinSustituta(sustituida).elegible()) {
+            log.warn("Factura {}: la original {} ya no cumple las condiciones de sustitución", facturaId,
+                sustituida.getIdFactura());
+            throw new EmisionNoPermitidaException(SustitucionElegibilidad.MENSAJE_ORIGINAL_YA_NO_CUMPLE);
         }
 
         // Generar consecutivo y clave numérica
@@ -773,6 +790,10 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             + "Revise el comprobante en ATV.";
     }
 
+    /** Mensaje fijo del 409 cuando el comprobante no está aceptado (ADR-045 §6). */
+    public static final String MENSAJE_EMAIL_SOLO_ACEPTADO =
+        "Solo se puede enviar por correo un comprobante aceptado por Hacienda";
+
     @Override
     @Transactional
     public boolean enviarPorEmail(Long id, String emailAdicional) {
@@ -780,6 +801,11 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         ComprobanteElectronico comprobante = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
+
+        // ADR-045 §6: el PDF solo acompaña a un comprobante aceptado; en otro estado no se envía nada.
+        if (comprobante.getEstado() != EstadoComprobante.ACEPTADO) {
+            throw new EmisionNoPermitidaException(MENSAJE_EMAIL_SOLO_ACEPTADO);
+        }
 
         Factura factura = comprobante.getFactura();
         Cliente cliente = (factura != null) ? factura.getCliente() : null;
@@ -789,7 +815,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             : (cliente != null ? cliente.getEmail() : null);
 
         if (destino == null || destino.isBlank()) {
-            throw new IllegalStateException("El cliente no tiene email registrado y no se proporcionó un email adicional");
+            throw new EmisionNoPermitidaException("El cliente no tiene email registrado y no se proporcionó un email adicional");
         }
 
         try {

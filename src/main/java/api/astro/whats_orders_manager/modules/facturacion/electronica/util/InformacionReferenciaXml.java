@@ -21,6 +21,12 @@ public final class InformacionReferenciaXml {
     /** Nota 10: factura electrónica. */
     public static final String TIPO_DOC_FACTURA_ELECTRONICA = "01";
 
+    /** Nota 10: comprobante rechazado por Hacienda (reemisión, código 16; ADR-045 §5). */
+    public static final String TIPO_DOC_RECHAZADO = "10";
+
+    /** Razón fija de la referencia 16 de una reemisión tras un rechazo. */
+    public static final String RAZON_REEMISION_RECHAZADO = "Sustituye comprobante rechazado por Hacienda";
+
     private InformacionReferenciaXml() {
     }
 

@@ -18,6 +18,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.ConfiguracionFac
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
+import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.TipoCambioRepository;
@@ -51,6 +52,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -156,6 +159,56 @@ class FacturaServiceAsientoTest {
         assertThat(tx).isNotNull();
         assertThat(tx.readOnly()).isFalse();
         assertThat(RuntimeException.class).isAssignableFrom(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("T-039 review 1: guardar una factura nueva con líneas registra la salida de inventario (control positivo)")
+    void facturaNormalConLineas_registraSalidaDeInventario() {
+        FacturaServiceImpl service = servicio(asientoServiceMock);
+        ReflectionTestUtils.setField(service, "totalesFacturaService", totalesSimulado());
+        Factura factura = nuevaFactura("100.00", "13.00", "113.00", MonedaFE.CRC, null);
+        factura.getLineas().add(lineaConStock(factura));
+
+        service.save(factura);
+
+        verify(movimientoInventarioService).registrarSalida(eq(7), eq(2),
+                eq(TipoMovimientoInventario.SALIDA_VENTA), eq("FACTURA"), eq(42L), any(), any());
+    }
+
+    @Test
+    @DisplayName("T-039 review 1 (ADR-037 §6): guardar una sustituta con líneas no registra salida de inventario")
+    void sustitutaConLineas_noRegistraSalidaDeInventario() {
+        FacturaServiceImpl service = servicio(asientoServiceMock);
+        ReflectionTestUtils.setField(service, "totalesFacturaService", totalesSimulado());
+        Factura sustituta = nuevaFactura("100.00", "13.00", "113.00", MonedaFE.CRC, null);
+        Factura original = new Factura();
+        original.setIdFactura(10);
+        sustituta.setFacturaSustituida(original);
+        sustituta.getLineas().add(lineaConStock(sustituta));
+
+        service.save(sustituta);
+
+        verify(movimientoInventarioService, never()).registrarSalida(any(), any(), any(), any(), any(), any(), any());
+        verifyNoInteractions(movimientoInventarioService);
+    }
+
+    private static TotalesFacturaService totalesSimulado() {
+        TotalesFacturaService totales = mock(TotalesFacturaService.class);
+        when(totales.aplicarTotales(any(), any())).thenReturn(
+                new api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto(
+                        new BigDecimal("100.00"), new BigDecimal("13.00"), new BigDecimal("13")));
+        return totales;
+    }
+
+    private static LineaFactura lineaConStock(Factura factura) {
+        Producto p = new Producto();
+        p.setIdProducto(7);
+        p.setStock(10);
+        LineaFactura l = new LineaFactura();
+        l.setFactura(factura);
+        l.setProducto(p);
+        l.setCantidad(2);
+        return l;
     }
 
     @Test
