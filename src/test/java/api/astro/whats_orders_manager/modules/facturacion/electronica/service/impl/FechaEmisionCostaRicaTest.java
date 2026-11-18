@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
@@ -62,7 +64,8 @@ class FechaEmisionCostaRicaTest {
     private final FacturaRepository facturaRepository = mock(FacturaRepository.class);
     private final ConfiguracionHaciendaService configuracionService = mock(ConfiguracionHaciendaService.class);
     private final ConfiguracionEmpresaService empresaService = mock(ConfiguracionEmpresaService.class);
-    private final XmlGeneratorServiceImpl generador = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null));
+    private final XmlGeneratorServiceImpl generador = new XmlGeneratorServiceImpl(new CalculadoraImpuestoService(null),
+            CatalogoUbicacionDePrueba.validador());
 
     private TimeZone zonaOriginal;
     private ConfiguracionHacienda config;
@@ -76,6 +79,7 @@ class FechaEmisionCostaRicaTest {
                 .idConfiguracion(1).razonSocial("EMANUEL SOTO LEAL").numeroIdentificacion("118200878")
                 .codigoActividad("4773.0").codigoProvincia("1").canton("01").distrito("01")
                 .otrasSenas("Avenida Central, San José").email("emisor@t033.example").build();
+        DatosFeDePrueba.emisor(empresa);
         config = ConfiguracionHacienda.builder().id(3L).empresa(empresa).ambiente(AmbienteHacienda.SANDBOX)
                 .activa(true).consecutivoFactura(28L).build();
         when(empresaService.obtenerConfiguracion()).thenReturn(Optional.of(empresa));
@@ -156,7 +160,8 @@ class FechaEmisionCostaRicaTest {
         ComprobanteElectronicoServiceImpl service = new ComprobanteElectronicoServiceImpl(repository,
                 facturaRepository, null, configuracionService, empresaService, generador, null, null,
                 new ClaveNumericaGenerator(), mock(ComprobanteElectronicoMapper.class), null, null,
-                Clock.fixed(instante, ZoneOffset.UTC), null, null, null, (c, t) -> c.siguienteConsecutivo(t));
+                Clock.fixed(instante, ZoneOffset.UTC), null, null, null, (c, t) -> c.siguienteConsecutivo(t),
+            CatalogoUbicacionDePrueba.validador());
         service.generarDesdeFactura(3L);
         ArgumentCaptor<ComprobanteElectronico> guardado = ArgumentCaptor.forClass(ComprobanteElectronico.class);
         verify(repository, atLeastOnce()).save(guardado.capture());

@@ -35,9 +35,7 @@
                                th:field="*{nombre}" 
                                placeholder="Ej: Juan Pérez" 
                                required>
-                        <div class="invalid-feedback">
-                            Por favor ingrese el nombre del cliente.
-                        </div>
+                        <div class="invalid-feedback" data-error-for="nombre"></div>
                     </div>
 
                     <!-- Teléfono -->
@@ -54,9 +52,7 @@
                                pattern="[0-9]{8}"
                                required>
                         <div class="form-text">8 dígitos sin espacios ni guiones</div>
-                        <div class="invalid-feedback">
-                            Por favor ingrese un teléfono válido de 8 dígitos.
-                        </div>
+                        <div class="invalid-feedback" data-error-for="telefono"></div>
                     </div>
 
                     <!-- Dirección -->
@@ -80,6 +76,7 @@
                                th:field="*{email}"
                                placeholder="Ej: cliente@correo.com"
                                maxlength="100">
+                        <div class="invalid-feedback" data-error-for="email"></div>
                     </div>
 
                     <!-- Tipo de Cliente -->
@@ -147,6 +144,7 @@
                                 <option value="DIMEX">03 - DIMEX</option>
                                 <option value="NITE">04 - NITE</option>
                             </select>
+                            <div class="invalid-feedback" data-error-for="tipoIdentificacion"></div>
                         </div>
 
                         <!-- Número de Identificación -->
@@ -164,11 +162,19 @@
                                        maxlength="12">
                                 <button class="btn btn-outline-secondary" type="button"
                                         id="btnConsultarHaciendaCliente"
-                                        title="Consultar en Hacienda">
-                                    <i class="fas fa-search"></i>
+                                        title="Verificar la identificación en el padrón de Hacienda">
+                                    <i class="fas fa-search me-1"></i>Verificar en Hacienda
                                 </button>
                             </div>
+                            <div class="invalid-feedback" data-error-for="numeroIdentificacion"></div>
                             <div class="form-text">Sin guiones ni espacios</div>
+                            <!-- Resultado de «Verificar en Hacienda»: se llena con textContent desde clientes.js -->
+                            <div id="resultadoHaciendaCliente" class="alert alert-light border py-2 px-3 mt-2 small" style="display: none;" role="status">
+                                <div id="resultadoHaciendaTexto"></div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnCopiarHaciendaCliente" style="display: none;">
+                                    <i class="fas fa-copy me-1"></i>Copiar al formulario
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Código de Actividad -->
@@ -183,7 +189,8 @@
                                    th:field="*{codigoActividad}"
                                    placeholder="047730"
                                    maxlength="20">
-                            <div class="form-text">Se puede autocompletar desde la consulta de Hacienda</div>
+                            <div class="invalid-feedback" data-error-for="codigoActividad"></div>
+                            <div class="form-text">6 dígitos (opcional)</div>
                         </div>
 
                         <!-- Ubicación (Opcional) -->
@@ -201,6 +208,7 @@
                                         <select class="form-select form-select-sm" id="provinciaCliente" th:field="*{provincia}">
                                             <option value="">-- Opcional --</option>
                                         </select>
+                                        <div class="invalid-feedback" data-error-for="provincia"></div>
                                     </div>
 
                                     <!-- Cantón -->
@@ -212,6 +220,7 @@
                                                disabled>
                                             <option value="">-- Seleccione provincia --</option>
                                         </select>
+                                        <div class="invalid-feedback" data-error-for="canton"></div>
                                     </div>
 
                                     <!-- Distrito -->
@@ -223,6 +232,7 @@
                                                disabled>
                                             <option value="">-- Seleccione cantón --</option>
                                         </select>
+                                        <div class="invalid-feedback" data-error-for="distrito"></div>
                                     </div>
                                 </div>
 
@@ -234,14 +244,12 @@
                                               th:field="*{otrasSenas}"
                                               rows="2"
                                               minlength="5"
-                                              maxlength="250"
+                                              maxlength="160"
                                               placeholder="Dirección descriptiva (opcional)"></textarea>
                                     <div class="form-text">
-                                        Si completás este campo, debe tener al menos 5 caracteres (requerido por Hacienda CR)
+                                        Si completás este campo, debe tener de 5 a 160 caracteres (requerido por Hacienda CR)
                                     </div>
-                                    <div class="invalid-feedback">
-                                        Otras señas debe tener al menos 5 caracteres o dejarlo vacío.
-                                    </div>
+                                    <div class="invalid-feedback" data-error-for="otrasSenas"></div>
                                 </div>
                             </div>
                         </div>

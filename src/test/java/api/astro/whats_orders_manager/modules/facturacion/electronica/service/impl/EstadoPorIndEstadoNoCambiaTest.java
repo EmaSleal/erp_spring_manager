@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -57,7 +58,8 @@ class EstadoPorIndEstadoNoCambiaTest {
                         mensajeXml(mensajeXml, estadoXml).getBytes(StandardCharsets.UTF_8)))
                 .codigoHttp(200).build());
         new ComprobanteElectronicoServiceImpl(repository, null, null, configuracion, null, null, null, hacienda, null,
-                mock(ComprobanteElectronicoMapper.class), null, null, Clock.systemUTC(), null, null, null, (c, t) -> c.siguienteConsecutivo(t))
+                mock(ComprobanteElectronicoMapper.class), null, null, Clock.systemUTC(), null, null, null, (c, t) -> c.siguienteConsecutivo(t),
+            CatalogoUbicacionDePrueba.validador())
                 .consultarYActualizarEstado(3L);
         return comprobante;
     }

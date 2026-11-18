@@ -12,7 +12,10 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Tipo
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.DatosFeIncompletosException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeValidator;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.ProblemaDatoFe;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConsecutivoHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
@@ -94,6 +97,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private final ApplicationEventPublisher eventPublisher;
     private final ValidadorXsdComprobante validadorXsd;
     private final ConsecutivoHacienda consecutivos;
+    /** T-038 (ADR-044): validador único de datos FE; bloquea la emisión antes del consecutivo. */
+    private final DatosFeValidator datosFeValidator;
 
     /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
@@ -189,6 +194,21 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             throw new ProductosSinCabysException(sinCabys);
         }
 
+        // T-038 (ADR-044 §3): nombre e identificación del receptor válidos antes del consecutivo; los opcionales
+        // inválidos no bloquean (el generador los omite del XML)
+        if (factura.getCliente() != null) {
+            List<ProblemaDatoFe> obligatorios = datosFeValidator.validarReceptor(factura.getCliente()).stream()
+                .filter(ProblemaDatoFe::obligatorio).toList();
+            if (!obligatorios.isEmpty()) {
+                var cliente = factura.getCliente();
+                String etiqueta = cliente.getNombre() != null && !cliente.getNombre().isBlank()
+                    ? cliente.getNombre().trim() : "#" + cliente.getIdCliente();
+                log.warn("Factura {}: el cliente {} tiene datos FE obligatorios inválidos", facturaId,
+                    cliente.getIdCliente());
+                throw DatosFeIncompletosException.delReceptor(etiqueta, obligatorios);
+            }
+        }
+
         // ADR-030 §4: un solo comprobante vigente por factura. Solo un RECHAZADO cede su lugar (reemisión con
         // consecutivo y clave nuevos); el rechazado queda como historial, sin otros cambios.
         // T-037 (review 1): el chequeo corre con la fila de la factura bloqueada (generarParaEmision, o al inicio de este
@@ -216,6 +236,14 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             throw new EmisionNoPermitidaException(
                 "La empresa no tiene número de identificación (cédula jurídica) configurado. " +
                 "Configúrelo en Configuración → Empresa antes de emitir comprobantes.");
+        }
+
+        // T-038 (ADR-044 §4): datos FE del emisor completos y válidos; sin inventar valores; antes del consecutivo
+        List<ProblemaDatoFe> problemasEmisor = datosFeValidator.validarEmisor(empresa);
+        if (!problemasEmisor.isEmpty()) {
+            log.warn("Factura {}: datos FE de la empresa inválidos: {}", facturaId,
+                problemasEmisor.stream().map(ProblemaDatoFe::campo).toList());
+            throw DatosFeIncompletosException.delEmisor(problemasEmisor);
         }
 
         // Generar consecutivo y clave numérica

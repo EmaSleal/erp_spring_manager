@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -63,6 +64,7 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
             log.warn("Número de identificación vacío");
             return HaciendaConsultaDTO.builder()
                 .exitosa(false)
+                .resultado(HaciendaConsultaDTO.ResultadoConsulta.ERROR)
                 .mensajeError("Número de identificación requerido")
                 .build();
         }
@@ -88,10 +90,10 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 HaciendaConsultaDTO resultado = response.getBody();
                 resultado.setExitosa(true);
+                resultado.setResultado(HaciendaConsultaDTO.ResultadoConsulta.EXITOSA);
                 
-                log.info("Consulta exitosa para {}: {} (Tipo: {})", 
-                    numeroLimpio, 
-                    resultado.getNombre(), 
+                log.info("Consulta exitosa para identificación de {} dígitos (Tipo: {})",
+                    numeroLimpio.length(),
                     resultado.getTipoIdentificacion());
                 
                 return resultado;
@@ -99,6 +101,7 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
                 log.warn("Respuesta no exitosa de Hacienda: {}", response.getStatusCode());
                 return HaciendaConsultaDTO.builder()
                     .exitosa(false)
+                    .resultado(HaciendaConsultaDTO.ResultadoConsulta.NO_ENCONTRADA)
                     .mensajeError("Identificación no encontrada en Hacienda")
                     .build();
             }
@@ -107,21 +110,25 @@ public class HaciendaConsultaServiceImpl implements HaciendaApiService {
             log.error("Error al consultar API de Hacienda para {}: {}", numeroLimpio, e.getMessage());
             
             // Verificar si es error 404 (no encontrado)
-            if (e.getMessage() != null && e.getMessage().contains("404")) {
+            if (e instanceof HttpClientErrorException.NotFound
+                || (e.getMessage() != null && e.getMessage().contains("404"))) {
                 return HaciendaConsultaDTO.builder()
                     .exitosa(false)
+                    .resultado(HaciendaConsultaDTO.ResultadoConsulta.NO_ENCONTRADA)
                     .mensajeError("Identificación no encontrada en el registro de Hacienda")
                     .build();
             }
             
             return HaciendaConsultaDTO.builder()
                 .exitosa(false)
+                .resultado(HaciendaConsultaDTO.ResultadoConsulta.ERROR)
                 .mensajeError("Error al conectar con Hacienda: " + e.getMessage())
                 .build();
         } catch (Exception e) {
             log.error("Error inesperado al consultar Hacienda: {}", e.getMessage(), e);
             return HaciendaConsultaDTO.builder()
                 .exitosa(false)
+                .resultado(HaciendaConsultaDTO.ResultadoConsulta.ERROR)
                 .mensajeError("Error inesperado: " + e.getMessage())
                 .build();
         }

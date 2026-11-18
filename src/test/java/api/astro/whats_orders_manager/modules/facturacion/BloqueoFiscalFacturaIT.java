@@ -246,6 +246,7 @@ class BloqueoFiscalFacturaIT {
             ConfiguracionEmpresa empresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
                     .orElseGet(() -> ConfiguracionEmpresa.builder().razonSocial("Empresa T025 S.A.").build());
             empresa.setNumeroIdentificacion("3101234567");
+            empresa.setTipoIdentificacion(api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion.CEDULA_JURIDICA);
             empresa.setCodigoActividad("4773.0");
             empresa.setCodigoProvincia("1");
             empresa.setCanton("01");
@@ -253,6 +254,7 @@ class BloqueoFiscalFacturaIT {
             empresa.setTelefono("22223333");
             empresa.setEmail("facturacion@t025.example");
             empresa.setOtrasSenas("Avenida Central, San José");
+            api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionSembrado.sembrar(jdbc);
             empresa = empresaRepository.save(empresa);
             idEmpresa = empresa.getIdConfiguracion();
             // Configuración de Hacienda activa simulada, de la misma empresa (ADR-021)
@@ -553,6 +555,70 @@ class BloqueoFiscalFacturaIT {
         assertThat(jdbc.queryForObject("SELECT ultimo_error FROM comprobante_electronico WHERE id = ?", String.class, id))
                 .isNull();
         verify(haciendaApi).enviarComprobante(anyString(), eq(enviado.clave()), anyLong());
+    }
+
+    // ── T-038: datos FE del receptor y del emisor ──
+
+    @Test
+    @DisplayName("T-038: cliente con teléfono 0000000000, correo vacío y otras señas de 200 → XML válido sin esos nodos y se envía")
+    void emitirFactura_opcionalesInvalidosDelCliente_seOmitenYSeEnvia() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        int idCliente = jdbc.queryForObject("SELECT id_cliente FROM factura WHERE id_factura = ?", Integer.class, idFactura);
+        jdbc.update("UPDATE cliente SET telefono = '0000000000', email = '', provincia = '1', canton = '01', "
+                + "distrito = '01', otras_senas = ? WHERE id_cliente = ?", "x".repeat(200), idCliente);
+        autenticar();
+        clearInvocations(haciendaApi);
+
+        Long id = envioService.emitirFactura((long) idFactura).getId();
+
+        ComprobanteBd enviado = comprobanteBd(id);
+        assertThat(enviado.estado()).isEqualTo("ENVIADO");
+        assertThat(XmlValidator.erroresContraXsd(enviado.xml(), TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+        String receptor = enviado.xml().substring(enviado.xml().indexOf("<Receptor>"), enviado.xml().indexOf("</Receptor>"));
+        assertThat(receptor).doesNotContain("<Telefono>").doesNotContain("<CorreoElectronico>")
+                .doesNotContain("<Ubicacion>");
+        verify(haciendaApi).enviarComprobante(anyString(), eq(enviado.clave()), anyLong());
+    }
+
+    @Test
+    @DisplayName("T-038: cliente con física de 8 dígitos → 409 por /procesar, sin comprobante ni consecutivo consumido")
+    void emitirFactura_clienteConFisicaDeOchoDigitos_409SinConsecutivo() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        int idCliente = jdbc.queryForObject("SELECT id_cliente FROM factura WHERE id_factura = ?", Integer.class, idFactura);
+        jdbc.update("UPDATE cliente SET numero_identificacion = '10999099' WHERE id_cliente = ?", idCliente);
+        long antes = jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId());
+
+        mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/" + idFactura)
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("identificación")));
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico WHERE factura_id = ?", Integer.class,
+                idFactura)).isZero();
+        assertThat(jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?", Long.class,
+                configHacienda.getId())).isEqualTo(antes);
+    }
+
+    @Test
+    @DisplayName("T-038: emisor sin distrito → 409 que remite a Configuración → Empresa, sin consecutivo")
+    void emitirFactura_emisorSinDistrito_409SinConsecutivo() throws Exception {
+        int idFactura = facturaConLineasAyB();
+        jdbc.update("UPDATE configuracion_empresa SET distrito = NULL WHERE id_configuracion = ?", idEmpresa);
+        try {
+            long antes = jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?",
+                    Long.class, configHacienda.getId());
+
+            mockMvc.perform(post("/api/facturas/electronica/comprobantes/procesar/" + idFactura)
+                            .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Configuración → Empresa")));
+
+            assertThat(jdbc.queryForObject("SELECT consecutivo_factura FROM configuracion_hacienda WHERE id = ?",
+                    Long.class, configHacienda.getId())).isEqualTo(antes);
+        } finally {
+            jdbc.update("UPDATE configuracion_empresa SET distrito = '01' WHERE id_configuracion = ?", idEmpresa);
+        }
     }
 
     // ── RECHAZADO: se edita y se reemite con clave nueva; el rechazado queda intacto ──

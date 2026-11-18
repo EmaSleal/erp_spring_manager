@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.service.ParametroSistemaService;
@@ -113,7 +115,8 @@ class DesgloseIvaVentaTest {
         ReflectionTestUtils.setField(lineaFacturaService, "totalesFacturaService",
                 new TotalesFacturaService(calculadora, productoRepository));
         ReflectionTestUtils.setField(lineaFacturaService, "politicaMutabilidad", mock(PoliticaMutabilidadFactura.class));
-        xmlGenerator = new XmlGeneratorServiceImpl(calculadora);
+        xmlGenerator = new XmlGeneratorServiceImpl(calculadora,
+            CatalogoUbicacionDePrueba.validador());
 
         long id = 1;
         for (String clave : List.of("VENTA_CXC_CLIENTES", "VENTA_INGRESOS", "VENTA_IVA_POR_PAGAR")) {
@@ -148,6 +151,7 @@ class DesgloseIvaVentaTest {
         Cliente cliente = new Cliente();
         cliente.setIdCliente(1);
         cliente.setNombre("Cliente Prueba");
+        DatosFeDePrueba.cliente(cliente);
         factura = new Factura();
         factura.setIdFactura(ID_FACTURA);
         factura.setNumeroFactura("F-" + ID_FACTURA);
@@ -347,6 +351,7 @@ class DesgloseIvaVentaTest {
                 .distrito("01")
                 .otrasSenas("Avenida Central San Jose Costa Rica")
                 .build();
+        DatosFeDePrueba.emisor(empresa);
         return ComprobanteElectronico.builder()
                 .claveNumerica(CLAVE_50)
                 .fechaEmision(LocalDateTime.of(2026, 10, 1, 10, 0))

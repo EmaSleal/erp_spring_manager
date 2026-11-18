@@ -1,10 +1,13 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.util;
 
+import java.math.BigInteger;
 import java.util.Optional;
 
 /**
  * Teléfono del emisor y del receptor en el XML (T-033, rechazo -20 de Hacienda). NumTelefono lleva solo dígitos, sin
  * el código de país, que va en CodigoPais; el Anexo v4.4 exige de 8 a 20 dígitos.
+ * T-038: además el XSD declara NumTelefono como xs:integer con minInclusive 100 (TelefonoType), de modo que un número
+ * de solo ceros, como «0000000000», vale 0 y Hacienda lo rechaza aunque tenga 10 dígitos.
  */
 public final class TelefonoFe {
 
@@ -13,6 +16,8 @@ public final class TelefonoFe {
 
     private static final int MIN_DIGITOS = 8;
     private static final int MAX_DIGITOS = 20;
+    /** minInclusive de NumTelefono en el XSD. */
+    private static final BigInteger VALOR_MINIMO = BigInteger.valueOf(100);
 
     private TelefonoFe() {
     }
@@ -20,7 +25,7 @@ public final class TelefonoFe {
     /**
      * Número para NumTelefono: sin separadores y sin el prefijo 506 si al quitarlo quedan al menos 8 dígitos.
      *
-     * @return vacío si no queda un número de 8 a 20 dígitos: el nodo Telefono, que es opcional, se omite
+     * @return vacío si no queda un número de 8 a 20 dígitos con valor de al menos 100: el nodo Telefono, que es opcional, se omite
      */
     public static Optional<String> normalizar(String telefono) {
         if (telefono == null) {
@@ -30,7 +35,10 @@ public final class TelefonoFe {
         if (digitos.startsWith(CODIGO_PAIS) && digitos.length() - CODIGO_PAIS.length() >= MIN_DIGITOS) {
             digitos = digitos.substring(CODIGO_PAIS.length());
         }
-        return digitos.length() >= MIN_DIGITOS && digitos.length() <= MAX_DIGITOS
-            ? Optional.of(digitos) : Optional.empty();
+        if (digitos.length() < MIN_DIGITOS || digitos.length() > MAX_DIGITOS
+            || new BigInteger(digitos).compareTo(VALOR_MINIMO) < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(digitos);
     }
 }

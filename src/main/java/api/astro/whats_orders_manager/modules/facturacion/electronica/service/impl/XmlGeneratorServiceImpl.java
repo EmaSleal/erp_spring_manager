@@ -8,6 +8,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraF
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.InformacionReferenciaXml;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.TelefonoFe;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeValidator;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.ProblemaDatoFe;
 import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaNotaFactura;
@@ -45,8 +47,13 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     /** Componente único de desglose de IVA (ADR-009): mismo cálculo que la factura y el asiento. */
     private final CalculadoraImpuestoService calculadoraImpuestoService;
 
-    public XmlGeneratorServiceImpl(CalculadoraImpuestoService calculadoraImpuestoService) {
+    /** Validador único de datos FE (T-038): el XML nunca contradice lo que el validador declara inválido. */
+    private final DatosFeValidator datosFeValidator;
+
+    public XmlGeneratorServiceImpl(CalculadoraImpuestoService calculadoraImpuestoService,
+                                   DatosFeValidator datosFeValidator) {
         this.calculadoraImpuestoService = calculadoraImpuestoService;
+        this.datosFeValidator = datosFeValidator;
     }
 
     @Override
@@ -65,11 +72,13 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<Clave>").append(comprobante.getClaveNumerica()).append("</Clave>");
         xml.append("<ProveedorSistemas>").append(obtenerProveedorSistemas(comprobante)).append("</ProveedorSistemas>");
         xml.append("<CodigoActividadEmisor>").append(obtenerActividadEconomica(comprobante)).append("</CodigoActividadEmisor>");
+        List<ProblemaDatoFe> problemasReceptor = problemasDelReceptor(comprobante);
+        agregarCodigoActividadReceptor(xml, comprobante, problemasReceptor);
         xml.append("<NumeroConsecutivo>").append(extraerConsecutivoDeClave(comprobante.getClaveNumerica())).append("</NumeroConsecutivo>");
         xml.append("<FechaEmision>").append(formatearFecha(comprobante.getFechaEmision())).append("</FechaEmision>");
 
         agregarEmisor(xml, comprobante);
-        agregarReceptor(xml, comprobante);
+        agregarReceptor(xml, comprobante, problemasReceptor);
 
         var factura = comprobante.getFactura();
         String condicionVenta = (factura != null && factura.getCondicionVentaFE() != null)
@@ -269,7 +278,7 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<FechaEmision>").append(formatearFecha(comprobante.getFechaEmision())).append("</FechaEmision>");
 
         agregarEmisor(xml, comprobante);
-        agregarReceptor(xml, comprobante);
+        agregarReceptor(xml, comprobante, problemasDelReceptor(comprobante));
         xml.append("<CondicionVenta>01</CondicionVenta>");
         agregarDetalleFactura(xml, comprobante);
         agregarResumen(xml, comprobante);
@@ -285,13 +294,20 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
     private void agregarEmisor(StringBuilder xml, ComprobanteElectronico comprobante) {
         var empresa = comprobante.getEmpresa();
 
-        xml.append("<Emisor>");
-        xml.append("<Nombre>").append(escaparXml(empresa.getNombreEmpresa())).append("</Nombre>");
+        // T-038 (ADR-044): nunca se inventan datos del emisor. La emisión ya los valida antes del consecutivo (409);
+        // si aun así se llega aquí sin ellos, es un fallo local de generación (ERROR, ADR-030).
+        List<ProblemaDatoFe> problemas = datosFeValidator.validarEmisor(empresa);
+        if (!problemas.isEmpty()) {
+            throw new IllegalStateException("Los datos de facturación electrónica de la empresa están incompletos o no "
+                + "son válidos: " + problemas.stream().map(ProblemaDatoFe::campo).toList());
+        }
 
-        String tipoId = empresa.getTipoIdentificacion() != null ? empresa.getTipoIdentificacion().getCodigo() : "02";
+        xml.append("<Emisor>");
+        xml.append("<Nombre>").append(escaparXml(empresa.getNombreEmpresa().trim())).append("</Nombre>");
+
         xml.append("<Identificacion>");
-        xml.append("<Tipo>").append(tipoId).append("</Tipo>");
-        xml.append("<Numero>").append(empresa.getRuc().replaceAll("[^0-9]", "")).append("</Numero>");
+        xml.append("<Tipo>").append(empresa.getTipoIdentificacion().getCodigo()).append("</Tipo>");
+        xml.append("<Numero>").append(DatosFeValidator.numeroLimpio(empresa.getRuc())).append("</Numero>");
         xml.append("</Identificacion>");
 
         String nombreComercial = empresa.getNombreComercialFe() != null ? empresa.getNombreComercialFe()
@@ -299,69 +315,100 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
         xml.append("<NombreComercial>").append(escaparXml(nombreComercial)).append("</NombreComercial>");
 
         xml.append("<Ubicacion>");
-        xml.append("<Provincia>").append(empresa.getCodigoProvincia() != null ? empresa.getCodigoProvincia() : "1").append("</Provincia>");
-        xml.append("<Canton>").append(empresa.getCanton() != null ? empresa.getCanton() : "01").append("</Canton>");
-        xml.append("<Distrito>").append(empresa.getDistrito() != null ? empresa.getDistrito() : "01").append("</Distrito>");
-        if (empresa.getBarrio() != null && !empresa.getBarrio().isEmpty()) {
-            xml.append("<Barrio>").append(escaparXml(empresa.getBarrio())).append("</Barrio>");
+        xml.append("<Provincia>").append(empresa.getCodigoProvincia().trim()).append("</Provincia>");
+        xml.append("<Canton>").append(empresa.getCanton().trim()).append("</Canton>");
+        xml.append("<Distrito>").append(empresa.getDistrito().trim()).append("</Distrito>");
+        // Barrio es opcional (5 a 50 caracteres en el XSD); la columna guarda un código corto, que no se emite
+        String barrio = empresa.getBarrio() != null ? empresa.getBarrio().trim() : "";
+        if (barrio.length() >= 5 && barrio.length() <= 50) {
+            xml.append("<Barrio>").append(escaparXml(barrio)).append("</Barrio>");
         }
-        String otrasSenas = empresa.getOtrasSenas();
-        if (otrasSenas == null || otrasSenas.isBlank()) otrasSenas = empresa.getDireccion();
-        if (otrasSenas == null || otrasSenas.trim().length() < 5) {
-            log.warn("Empresa sin OtrasSenas válido (mínimo 5 chars) — actualizá los datos de la empresa");
-            otrasSenas = "Sin especificar";
-        }
-        xml.append("<OtrasSenas>").append(escaparXml(otrasSenas.trim())).append("</OtrasSenas>");
+        xml.append("<OtrasSenas>").append(escaparXml(DatosFeValidator.otrasSenasEmisor(empresa))).append("</OtrasSenas>");
         xml.append("</Ubicacion>");
 
         agregarTelefono(xml, empresa.getTelefono());
 
-        xml.append("<CorreoElectronico>").append(empresa.getEmail() != null ? empresa.getEmail() : "").append("</CorreoElectronico>");
+        xml.append("<CorreoElectronico>").append(escaparXml(empresa.getEmail().trim())).append("</CorreoElectronico>");
         xml.append("</Emisor>");
     }
 
-    private void agregarReceptor(StringBuilder xml, ComprobanteElectronico comprobante) {
+    /**
+     * Problemas del receptor por el validador único; vacía si la factura no tiene cliente. Los obligatorios
+     * (nombre, identificación) interrumpen la generación: la emisión ya los bloquea antes (409), esto es la defensa.
+     */
+    private List<ProblemaDatoFe> problemasDelReceptor(ComprobanteElectronico comprobante) {
+        if (comprobante.getFactura() == null || comprobante.getFactura().getCliente() == null) {
+            return List.of();
+        }
+        var cliente = comprobante.getFactura().getCliente();
+        List<ProblemaDatoFe> problemas = datosFeValidator.validarReceptor(cliente);
+        if (problemas.stream().anyMatch(ProblemaDatoFe::obligatorio)) {
+            throw new IllegalStateException("El cliente " + cliente.getIdCliente()
+                + " no tiene los datos de facturación electrónica obligatorios (nombre, identificación)");
+        }
+        for (ProblemaDatoFe p : problemas) {
+            // solo id del cliente y regla: sin datos personales (T-038, ADR-044 §3)
+            log.info("Cliente {}: dato opcional omitido del XML por la regla {}", cliente.getIdCliente(), p.regla());
+        }
+        return problemas;
+    }
+
+    private static boolean tieneProblema(List<ProblemaDatoFe> problemas, String campo) {
+        return problemas.stream().anyMatch(p -> campo.equals(p.campo()));
+    }
+
+    /** CodigoActividadReceptor va en la raíz, tras CodigoActividadEmisor; se omite si no existe o no es válido. */
+    private void agregarCodigoActividadReceptor(StringBuilder xml, ComprobanteElectronico comprobante,
+                                                List<ProblemaDatoFe> problemas) {
+        if (comprobante.getFactura() == null || comprobante.getFactura().getCliente() == null) return;
+        String actividad = comprobante.getFactura().getCliente().getCodigoActividad();
+        if (actividad != null && !actividad.isBlank() && !tieneProblema(problemas, "codigoActividad")) {
+            xml.append("<CodigoActividadReceptor>").append(actividad.trim()).append("</CodigoActividadReceptor>");
+        }
+    }
+
+    private void agregarReceptor(StringBuilder xml, ComprobanteElectronico comprobante,
+                                 List<ProblemaDatoFe> problemas) {
         if (comprobante.getFactura() == null || comprobante.getFactura().getCliente() == null) return;
 
         var cliente = comprobante.getFactura().getCliente();
-        String numeroIdentificacion = cliente.getNumeroIdentificacion() != null && !cliente.getNumeroIdentificacion().isBlank()
-            ? cliente.getNumeroIdentificacion() : cliente.getIdentificacion();
 
         xml.append("<Receptor>");
-        xml.append("<Nombre>").append(escaparXml(cliente.getNombre())).append("</Nombre>");
+        xml.append("<Nombre>").append(escaparXml(cliente.getNombre().trim())).append("</Nombre>");
 
-        String tipoId = cliente.getTipoIdentificacion() != null
-            ? cliente.getTipoIdentificacion().getCodigo()
-            : determinarTipoIdentificacion(numeroIdentificacion);
         xml.append("<Identificacion>");
-        xml.append("<Tipo>").append(tipoId).append("</Tipo>");
-        xml.append("<Numero>").append(numeroIdentificacion != null ? numeroIdentificacion.replaceAll("[^0-9]", "") : "").append("</Numero>");
+        xml.append("<Tipo>").append(cliente.getTipoIdentificacion().getCodigo()).append("</Tipo>");
+        xml.append("<Numero>").append(DatosFeValidator.numeroIdentificacion(cliente)).append("</Numero>");
         xml.append("</Identificacion>");
 
-        // OtrasSenas is required (no minOccurs="0") and minLength=5 inside UbicacionType.
-        // Since Receptor.Ubicacion is optional (minOccurs="0"), skip the whole block if any
-        // required field is missing or OtrasSenas is shorter than 5 chars.
-        String receptorOtrasSenas = cliente.getOtrasSenas() != null ? cliente.getOtrasSenas().trim() : null;
-        boolean ubicacionValida = cliente.getProvincia() != null
-            && cliente.getCanton() != null
-            && cliente.getDistrito() != null
-            && receptorOtrasSenas != null && receptorOtrasSenas.length() >= 5;
+        // Ubicacion es opcional en el receptor, pero si va debe estar completa: se omite entera si cualquiera de sus
+        // partes es inválida (catálogo, otras señas de 5 a 160) o no hay ninguna.
+        boolean hayUbicacion = cliente.getProvincia() != null || notBlank(cliente.getCanton())
+            || notBlank(cliente.getDistrito()) || notBlank(cliente.getOtrasSenas());
+        boolean ubicacionValida = hayUbicacion
+            && problemas.stream().noneMatch(p -> DatosFeValidator.esCampoDeUbicacion(p.campo()));
         if (ubicacionValida) {
             xml.append("<Ubicacion>");
-            xml.append("<Provincia>").append(cliente.getProvincia().getCodigo()).append("</Provincia>");
-            xml.append("<Canton>").append(cliente.getCanton()).append("</Canton>");
-            xml.append("<Distrito>").append(cliente.getDistrito()).append("</Distrito>");
-            xml.append("<OtrasSenas>").append(escaparXml(receptorOtrasSenas)).append("</OtrasSenas>");
+            xml.append("<Provincia>").append(cliente.getProvincia().getCodigo().trim()).append("</Provincia>");
+            xml.append("<Canton>").append(cliente.getCanton().trim()).append("</Canton>");
+            xml.append("<Distrito>").append(cliente.getDistrito().trim()).append("</Distrito>");
+            xml.append("<OtrasSenas>").append(escaparXml(cliente.getOtrasSenas().trim())).append("</OtrasSenas>");
             xml.append("</Ubicacion>");
         }
 
-        agregarTelefono(xml, cliente.getTelefono());
+        if (!tieneProblema(problemas, "telefono")) {
+            agregarTelefono(xml, cliente.getTelefono());
+        }
 
-        if (cliente.getEmail() != null) {
-            xml.append("<CorreoElectronico>").append(cliente.getEmail()).append("</CorreoElectronico>");
+        if (notBlank(cliente.getEmail()) && !tieneProblema(problemas, "email")) {
+            xml.append("<CorreoElectronico>").append(escaparXml(cliente.getEmail().trim())).append("</CorreoElectronico>");
         }
 
         xml.append("</Receptor>");
+    }
+
+    private static boolean notBlank(String s) {
+        return s != null && !s.isBlank();
     }
 
     /**
@@ -641,14 +688,6 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             throw new IllegalStateException("La empresa no tiene código de actividad económica configurado");
         }
         return empresa.getCodigoActividad();
-    }
-
-    private String determinarTipoIdentificacion(String identificacion) {
-        if (identificacion == null) return "01";
-        String numerico = identificacion.replaceAll("[^0-9]", "");
-        if (numerico.length() == 10) return "02"; // Jurídica
-        if (numerico.length() == 9)  return "01"; // Física
-        return "01";
     }
 
     /**

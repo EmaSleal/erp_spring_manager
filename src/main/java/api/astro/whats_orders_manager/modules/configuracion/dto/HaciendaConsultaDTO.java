@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -57,7 +58,18 @@ public class HaciendaConsultaDTO {
      * Mensaje de error si la consulta falló
      */
     private String mensajeError;
-    
+
+    /**
+     * Resultado tipificado de la consulta (T-038): distingue «no existe en el padrón» de «la API no responde» sin
+     * interpretar mensajeError. No se serializa hacia el cliente ni se lee de la API de Hacienda.
+     */
+    @JsonIgnore
+    private ResultadoConsulta resultado;
+
+    public enum ResultadoConsulta {
+        EXITOSA, NO_ENCONTRADA, ERROR
+    }
+
     /**
      * Obtiene la actividad principal (tipo P)
      * 
