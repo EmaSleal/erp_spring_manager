@@ -10,7 +10,14 @@ import api.astro.whats_orders_manager.modules.configuracion.repository.CuentaBan
 import api.astro.whats_orders_manager.modules.configuracion.service.ConfiguracionEmpresaService;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.service.SustitucionElegibilidad;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
@@ -58,6 +65,8 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
     private final ConfiguracionEmpresaService configuracionEmpresaService;
     private final CuentaBancariaRepository cuentaBancariaRepository;
     private final UsuarioService usuarioService;
+    private final NotaFacturaRepository notaFacturaRepository;
+    private final ComprobanteElectronicoRepository comprobanteRepository;
 
     @Value("${app.uploads.directorio:/app/uploads}")
     private String uploadsDir;
@@ -77,6 +86,11 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         Empresa empresa = empresaService.getEmpresaPrincipal();
         ConfiguracionEmpresa configuracion = configuracionEmpresaService.obtenerOCrearConfiguracion();
 
+        ComprobanteElectronico vigente = factura.getComprobanteElectronico();
+        PdfFiscalDecision decision = PdfFiscalDecision.de(
+                vigente != null ? vigente.getEstado() : null,
+                vigente != null ? vigente.getTipoComprobante() : null);
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try (PdfWriter writer = new PdfWriter(baos);
@@ -85,7 +99,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             doc.setMargins(36, 36, 36, 36);
 
-            addHeader(doc, empresa, configuracion, factura);
+            addHeader(doc, empresa, configuracion, factura, decision);
 
             doc.add(separator());
 
@@ -110,11 +124,13 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                         .setTextAlignment(TextAlignment.JUSTIFIED));
             }
 
-            doc.add(new Paragraph(
-                    "RESOLUCIÓN NO MH-DGT-RES-0027-2024 DEL 19 DE NOVIEMBRE DE 2024 Versión 4.4  Número de página  1")
-                    .setFontSize(7)
-                    .setTextAlignment(TextAlignment.LEFT)
-                    .setMarginTop(4));
+            if (decision.leyendaResolucion()) {
+                doc.add(new Paragraph(
+                        "RESOLUCIÓN NO MH-DGT-RES-0027-2024 DEL 19 DE NOVIEMBRE DE 2024 Versión 4.4  Número de página  1")
+                        .setFontSize(7)
+                        .setTextAlignment(TextAlignment.LEFT)
+                        .setMarginTop(4));
+            }
 
         } catch (Exception e) {
             log.error("Error al generar PDF de factura {}: {}", facturaId, e.getMessage(), e);
@@ -126,7 +142,8 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     // ─── Header ───────────────────────────────────────────────────────────────
 
-    private void addHeader(Document doc, Empresa empresa, ConfiguracionEmpresa configuracion, Factura factura) {
+    private void addHeader(Document doc, Empresa empresa, ConfiguracionEmpresa configuracion, Factura factura,
+                           PdfFiscalDecision decision) {
         float[] cols = {35f, 25f, 40f};
         Table header = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
 
@@ -172,17 +189,25 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
         // Col 3 — invoice data
         Cell col3 = noB();
-        col3.add(new Paragraph("Factura electrónica").setBold().setFontSize(11));
-        col3.add(new Paragraph("CLAVE").setBold().setFontSize(8));
-        String clave = "";
-        String consecutivo = "";
-        if (factura.getComprobanteElectronico() != null) {
-            clave = safe(factura.getComprobanteElectronico().getClaveNumerica());
-            consecutivo = safe(factura.getComprobanteElectronico().getConsecutivo());
+        col3.add(new Paragraph(decision.titulo()).setBold().setFontSize(11));
+        if (decision.enTramite()) {
+            col3.add(new Paragraph(PdfFiscalDecision.LEYENDA_EN_TRAMITE).setBold().setFontSize(8));
         }
-        col3.add(new Paragraph(clave).setFontSize(7));
-        col3.add(new Paragraph("NÚMERO CONSECUTIVO").setBold().setFontSize(8));
-        col3.add(new Paragraph(consecutivo).setFontSize(7));
+        String marcaAnulada = marcaAnulada(factura);
+        if (marcaAnulada != null) {
+            col3.add(new Paragraph(marcaAnulada).setBold().setFontSize(9).setFontColor(ColorConstants.RED));
+        }
+        if (factura.getFacturaSustituida() != null) {
+            col3.add(new Paragraph("Sustituye a " + safe(factura.getFacturaSustituida().getNumeroFactura()))
+                    .setFontSize(8));
+        }
+        if (decision.mostrarClaveYConsecutivo()) {
+            ComprobanteElectronico vigente = factura.getComprobanteElectronico();
+            col3.add(new Paragraph("CLAVE").setBold().setFontSize(8));
+            col3.add(new Paragraph(vigente != null ? safe(vigente.getClaveNumerica()) : "").setFontSize(7));
+            col3.add(new Paragraph("NÚMERO CONSECUTIVO").setBold().setFontSize(8));
+            col3.add(new Paragraph(vigente != null ? safe(vigente.getConsecutivo()) : "").setFontSize(7));
+        }
         col3.add(new Paragraph("DOCUMENTO No.").setBold().setFontSize(8));
         col3.add(new Paragraph(safe(factura.getNumeroFactura())).setFontSize(9));
         col3.add(new Paragraph("ACTIVIDAD ECONOMICA").setBold().setFontSize(8));
@@ -191,6 +216,22 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         header.addCell(col3);
 
         doc.add(header);
+    }
+
+    /** «ANULADA por la nota <número>» si la factura está anulada y tiene una nota de crédito aplicada; si no, null. */
+    private String marcaAnulada(Factura factura) {
+        if (!Boolean.TRUE.equals(factura.getAnulada()) || factura.getIdFactura() == null) {
+            return null;
+        }
+        List<NotaFactura> notas = notaFacturaRepository.findByFactura_IdFacturaOrderByIdAsc(factura.getIdFactura());
+        for (NotaFactura nota : notas) {
+            if (nota.getTipo() == TipoNotaFactura.CREDITO && nota.getEstado() == EstadoNotaFactura.APLICADA) {
+                ComprobanteElectronico cNota =
+                        comprobanteRepository.findFirstByNotaFactura_IdAndVigenteTrue(nota.getId()).orElse(null);
+                return "ANULADA por la nota " + SustitucionElegibilidad.numeroDeNota(nota, cNota);
+            }
+        }
+        return null;
     }
 
     // ─── Client block ─────────────────────────────────────────────────────────

@@ -149,4 +149,7 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
             @Param("estadoFE") EstadoComprobante estadoFE,
             Pageable pageable
     );
+
+    /** Sustituta no anulada de una factura (ADR-045 §1); a lo sumo una (V43). */
+    Optional<Factura> findFirstByFacturaSustituida_IdFacturaAndAnuladaFalse(Integer idFactura);
 }

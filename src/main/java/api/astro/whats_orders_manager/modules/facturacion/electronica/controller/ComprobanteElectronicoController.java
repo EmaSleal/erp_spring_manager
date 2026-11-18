@@ -253,6 +253,9 @@ public class ComprobanteElectronicoController {
      * Envía comprobante por email al cliente.
      * POST /api/facturacion/comprobantes/{id}/enviar-email
      */
+    static final String MENSAJE_ERROR_EMAIL =
+        "No se pudo enviar el comprobante por correo. Intente de nuevo; si persiste, revise el registro del sistema.";
+
     @PostMapping("/{id}/enviar-email")
     public ResponseEntity<Map<String, Object>> enviarPorEmail(
             @PathVariable Long id,
@@ -264,11 +267,17 @@ public class ComprobanteElectronicoController {
                 "success", true,
                 "message", "Comprobante enviado por email exitosamente"
             ));
+        } catch (EmisionNoPermitidaException e) {
+            log.warn("Comprobante {} no se envía por email: {}", id, e.getMensajeUsuario());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "success", false,
+                "message", e.getMensajeUsuario()
+            ));
         } catch (Exception e) {
-            log.error("Error enviando email: {}", e.getMessage(), e);
+            log.error("Error enviando email del comprobante {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "success", false,
-                "message", "Error enviando email: " + e.getMessage()
+                "message", MENSAJE_ERROR_EMAIL
             ));
         }
     }

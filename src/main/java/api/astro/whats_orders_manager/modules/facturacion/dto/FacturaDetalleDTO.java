@@ -82,6 +82,13 @@ public class FacturaDetalleDTO {
     /** ERROR_HACIENDA tras el máximo de consultas seguidas con "error": revisar el comprobante en ATV. */
     private Boolean revisarEnAtv;
 
+    // Factura sustituta (ADR-045): solo cuando procede la acción, y los vínculos con la otra factura
+    private Boolean puedeEmitirSustituta;
+    /** Factura anulada que esta sustituye, con el número de la nota que la anuló; null si no es sustituta. */
+    private SustitucionRefDTO sustituye;
+    /** Sustituta no anulada de esta factura; null si no tiene. */
+    private SustitucionRefDTO sustituidaPor;
+
     // Auditoría
     private Integer createBy;
     private Integer updateBy;

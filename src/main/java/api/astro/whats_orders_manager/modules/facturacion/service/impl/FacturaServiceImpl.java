@@ -201,6 +201,9 @@ public class FacturaServiceImpl implements FacturaService {
                 factura.setAnulada(existente.getAnulada());
                 factura.setFechaAnulacion(existente.getFechaAnulacion());
                 factura.setMotivoAnulacion(existente.getMotivoAnulacion());
+                factura.setFacturaSustituida(existente.getFacturaSustituida());
+                factura.setRazonSustitucion(existente.getRazonSustitucion());
+                factura.setCodigoSustitucion(existente.getCodigoSustitucion());
             });
         }
 
@@ -353,6 +356,12 @@ public class FacturaServiceImpl implements FacturaService {
     }
 
     private void registrarSalidasInventario(Factura factura) {
+        // ADR-037 §6 / T-039 review 1: la nota total 01/13 no reingresa inventario, así que la mercadería salió una
+        // sola vez con la original; la sustituta nunca registra salida, tenga las líneas que tenga.
+        if (factura.getFacturaSustituida() != null) {
+            log.debug("Factura sustituta {}: no registra salida de inventario", factura.getNumeroFactura());
+            return;
+        }
         List<LineaFactura> lineas = factura.getLineas();
         if (lineas == null || lineas.isEmpty()) return;
         for (LineaFactura linea : lineas) {

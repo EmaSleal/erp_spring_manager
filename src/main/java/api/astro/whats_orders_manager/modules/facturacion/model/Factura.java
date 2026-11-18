@@ -91,6 +91,26 @@ public class Factura {
     private List<Pago> pagos = new ArrayList<>();
     
     /**
+     * Factura anulada que esta factura sustituye (ADR-045 §1); null si no es una sustituta. Lo fija el servidor: no
+     * se serializa ni se recibe del cliente.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sustituye_factura_id")
+    @JsonIgnore
+    @ToString.Exclude
+    private Factura facturaSustituida;
+
+    /** Código de referencia de la sustituta (nota 9): 07 si la original se anuló con la nota 01, 15 si con la 13. */
+    @Column(name = "codigo_sustitucion", length = 2)
+    @JsonIgnore
+    private String codigoSustitucion;
+
+    /** Razón de la InformacionReferencia 07/15 de la sustituta (3 a 180 caracteres). */
+    @Column(name = "razon_sustitucion", length = 180)
+    @JsonIgnore
+    private String razonSustitucion;
+
+    /**
      * Comprobantes electrónicos de la factura (ADR-030 §4): N comprobantes, uno solo vigente (un RECHAZADO queda
      * como historial al reemitir). Sin cascade: eliminar la factura nunca borra sus comprobantes (§5).
      */
