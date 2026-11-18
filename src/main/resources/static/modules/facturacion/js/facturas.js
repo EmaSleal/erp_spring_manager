@@ -250,6 +250,8 @@ function openModal(button) {
             mostrarVinculoSustitucion('modal-sustituye-row', 'modal-sustituye-link',
                 typeof SustitucionFactura !== 'undefined' ? SustitucionFactura.textoSustituye(data.sustituye) : '',
                 data.sustituye && data.sustituye.idFactura);
+            const avisoSustituta = document.getElementById('modal-sustituta-inventario');
+            if (avisoSustituta) avisoSustituta.style.display = data.sustituye && data.sustituye.idFactura ? '' : 'none';
             mostrarVinculoSustitucion('modal-sustituida-por-row', 'modal-sustituida-por-link',
                 typeof SustitucionFactura !== 'undefined' ? SustitucionFactura.textoSustituidaPor(data.sustituidaPor) : '',
                 data.sustituidaPor && data.sustituidaPor.idFactura);

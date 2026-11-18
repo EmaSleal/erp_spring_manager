@@ -308,6 +308,8 @@ public class FacturaController {
             model.addAttribute("factura", facturaOptional.get());
             // ADR-030: la UI deshabilita los campos fiscales y muestra el motivo; el servidor sigue siendo la autoridad
             model.addAttribute("bloqueoFiscal", politicaMutabilidad.evaluar(idFactura));
+            // T-039 review 1: la sustituta no mueve inventario; la UI lo avisa (texto fijo en la plantilla)
+            model.addAttribute("esSustituta", facturaOptional.get().getFacturaSustituida() != null);
             return "modules/facturacion/form";
             
         } catch (Exception e) {
