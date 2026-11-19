@@ -234,9 +234,17 @@
                 + (config.certificadoTitular ? ' \u00b7 Titular: ' + config.certificadoTitular : '');
         }
 
+        // T-041: aviso fijo del servidor cuando las credenciales guardadas no se descifran con la clave actual
+        function avisoCredenciales(config, clase) {
+            if (!config.credencialesIlegibles) return '';
+            return `<div class="${clase}"><div class="alert alert-warning mb-2">
+                <i class="fas fa-exclamation-triangle me-1"></i>${escaparHtml(config.avisoCredenciales)}</div></div>`;
+        }
+
         function mostrarConfigActiva(config) {
             const content = document.getElementById('configActivaContent');
             content.innerHTML = `
+                ${avisoCredenciales(config, 'col-md-12')}
                 <div class="col-md-4">
                     <strong class="text-muted d-block mb-1">Ambiente</strong>
                     <span class="badge ${config.ambiente === 'PRODUCCION' ? 'bg-danger' : 'bg-secondary'} px-3 py-2">
@@ -293,6 +301,7 @@
                     <td>${config.usuarioHacienda}</td>
                     <td>
                         <small class="text-muted">${config.rutaCertificado || 'No configurado'}</small>
+                        ${config.credencialesIlegibles ? `<div class="small text-warning mt-1"><i class="fas fa-exclamation-triangle me-1"></i>${escaparHtml(config.avisoCredenciales)}</div>` : ''}
                     </td>
                     <td class="text-center">
                         ${config.tokenValido ?
@@ -347,6 +356,12 @@
             document.getElementById('consecutivoNotaDebito').value = config.consecutivoNotaDebito || 1;
             
             document.getElementById('modalTitle').textContent = 'Editar Configuración';
+            // Credenciales ilegibles: contraseña y PIN se vuelven a ingresar (el servidor no puede conservarlos)
+            document.getElementById('passwordHacienda').value = '';
+            document.getElementById('pinCertificado').value = '';
+            if (config.credencialesIlegibles) {
+                mostrarAlerta(config.avisoCredenciales, 'warning');
+            }
             new bootstrap.Modal(document.getElementById('configuracionModal')).show();
         }
 

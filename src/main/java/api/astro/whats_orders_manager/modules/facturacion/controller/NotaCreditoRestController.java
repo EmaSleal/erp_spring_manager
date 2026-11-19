@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.controller.MensajesEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
@@ -115,6 +116,17 @@ public class NotaCreditoRestController {
     @ExceptionHandler(NotaFacturaConflictoException.class)
     public ResponseEntity<ResponseDTO> conflicto(NotaFacturaConflictoException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
+    }
+
+    /**
+     * La emisión no se permite por una regla del negocio, p. ej. la configuración de Hacienda no se puede leer (T-041):
+     * 409 con el mensaje fijo de la excepción. La transacción de la emisión se deshace: no queda nota ni consecutivo.
+     * Más específico que IllegalStateException (de la que desciende), así que gana frente al 500 genérico.
+     */
+    @ExceptionHandler(EmisionNoPermitidaException.class)
+    public ResponseEntity<ResponseDTO> emisionNoPermitida(EmisionNoPermitidaException e) {
+        log.warn("Nota de crédito no emitida: {}", e.getMensajeUsuario());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMensajeUsuario()));
     }
 
     /** Errores no previstos (configuración de Hacienda, firma, BD): mensaje genérico, detalle en el log. */

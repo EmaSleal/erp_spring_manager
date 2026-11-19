@@ -13,6 +13,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.DatosFeIncompletosException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConfiguracionHaciendaNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.EmisionNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeValidator;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.ProblemaDatoFe;
@@ -108,6 +109,13 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private SustitucionElegibilidad sustitucionElegibilidad;
 
     /**
+     * T-041: gestor de transacciones para leer la configuración de Hacienda en una transacción propia de solo lectura
+     * (REQUIRES_NEW). Por campo, como el anterior; sin él (pruebas unitarias) se lee en la transacción del llamador.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
      * Hacienda no lo tiene (NO_TRANSMITIDO). Antes, el 404 no cambia el estado (ADR-030 §2, ADR-031 §4).
      */
@@ -132,6 +140,10 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     /** Estados en los que se puede "Consultar estado en Hacienda" (ADR-031 §4). */
     public static final Set<EstadoComprobante> CONSULTABLES_A_MANO = EnumSet.of(EstadoComprobante.ENVIADO,
         EstadoComprobante.PROCESANDO, EstadoComprobante.ENVIO_INCIERTO, EstadoComprobante.ERROR_HACIENDA);
+
+    /** T-041: ultimoError cuando la firma falla por una causa distinta de la configuración (detalle solo en el log). */
+    public static final String MENSAJE_ERROR_FIRMA = "Error en firma digital; revise el certificado y su PIN en la "
+        + "configuración de Hacienda.";
 
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
     
@@ -237,7 +249,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         ConfiguracionEmpresa empresa = configuracionEmpresaService.obtenerConfiguracion()
             .orElseThrow(() -> new EmisionNoPermitidaException(
                 "No hay configuración de empresa; complétela en Configuración → Empresa."));
-        ConfiguracionHacienda config = configuracionActivaDe(empresa);
+        ConfiguracionHacienda config = configuracionActivaParaEmitir(empresa);
 
         if (empresa.getRuc() == null || empresa.getRuc().isBlank()) {
             throw new EmisionNoPermitidaException(
@@ -325,7 +337,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         ConfiguracionEmpresa empresa = configuracionEmpresaService.obtenerConfiguracion()
             .orElseThrow(() -> new IllegalStateException(
                 "No hay configuración de empresa; complétela en Configuración → Empresa."));
-        ConfiguracionHacienda config = configuracionActivaDe(empresa);
+        ConfiguracionHacienda config = configuracionActivaParaEmitir(empresa);
         if (empresa.getRuc() == null || empresa.getRuc().isBlank()) {
             throw new IllegalStateException(
                 "La empresa no tiene número de identificación (cédula jurídica) configurado.");
@@ -440,10 +452,13 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             }
 
             log.info("Comprobante firmado exitosamente");
+        } catch (ConfiguracionHaciendaNoDisponibleException e) {
+            marcarErrorDeConfiguracion(comprobante, e);
         } catch (Exception e) {
-            log.error("Error firmando comprobante: {}", e.getMessage());
+            // El detalle técnico solo va al log (P-070); ultimoError lleva un texto fijo
+            log.error("Error firmando comprobante {}: {}", comprobante.getClaveNumerica(), e.getMessage());
             comprobante.setEstado(EstadoComprobante.ERROR);
-            comprobante.setUltimoError("Error en firma digital: " + e.getMessage());
+            comprobante.setUltimoError(MENSAJE_ERROR_FIRMA);
         }
     }
 
@@ -466,12 +481,28 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
         try {
             return configuracionActivaDe(comprobante.getEmpresa()).getId();
+        } catch (ConfiguracionHaciendaNoDisponibleException e) {
+            marcarErrorDeConfiguracion(comprobante, e);
+            return null;
         } catch (Exception e) {
-            log.error("Configuración de Hacienda no válida para {}: {}", comprobante.getClaveNumerica(), e.getMessage());
-            comprobante.setEstado(EstadoComprobante.ERROR);
-            comprobante.setUltimoError("Configuración de Hacienda: " + e.getMessage());
+            marcarErrorDeConfiguracion(comprobante, new ConfiguracionHaciendaNoDisponibleException(
+                e.getClass().getSimpleName() + ": " + e.getMessage(),
+                ConfiguracionHaciendaNoDisponibleException.MENSAJE_NO_VALIDA, e));
             return null;
         }
+    }
+
+    /**
+     * T-041: la configuración de Hacienda no se pudo obtener. ERROR local con mensaje fijo, un intento contado (el job
+     * se detiene tras 5) y el detalle técnico solo en el log. No toca la transacción: la lectura fue aislada.
+     */
+    private void marcarErrorDeConfiguracion(ComprobanteElectronico comprobante,
+                                            ConfiguracionHaciendaNoDisponibleException e) {
+        log.error("Configuración de Hacienda no disponible para {}: {}", comprobante.getClaveNumerica(),
+            e.getMessage());
+        comprobante.setEstado(EstadoComprobante.ERROR);
+        comprobante.setUltimoError(e.getMensajeUsuario());
+        comprobante.incrementarIntentos();
     }
 
     /**
@@ -1084,13 +1115,59 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
      * (la empresa única al emitir; la del comprobante en los pasos posteriores).
      */
     private ConfiguracionHacienda configuracionActivaDe(ConfiguracionEmpresa empresa) {
-        ConfiguracionHacienda config = configuracionService.obtenerConfiguracionActiva();
-        Integer empresaDeLaConfiguracion = config.getEmpresa().getIdConfiguracion();
+        if (transactionManager == null) {
+            return leerConfiguracionActiva(empresa);
+        }
+        // T-041: lectura en su propia transacción (REQUIRES_NEW, solo lectura). Si las credenciales no se descifran,
+        // Hibernate marca esa transacción como rollback-only y la del llamador (con la fila bloqueada) sigue sana.
+        org.springframework.transaction.support.TransactionTemplate lectura =
+            new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        lectura.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        lectura.setReadOnly(true);
+        return lectura.execute(st -> leerConfiguracionActiva(empresa));
+    }
+
+    /** Lee la configuración activa y comprueba su empresa; toda falla sale como ConfiguracionHaciendaNoDisponible. */
+    private ConfiguracionHacienda leerConfiguracionActiva(ConfiguracionEmpresa empresa) {
+        ConfiguracionHacienda config;
+        Integer empresaDeLaConfiguracion;
+        try {
+            config = configuracionService.obtenerConfiguracionActiva();
+            empresaDeLaConfiguracion = config.getEmpresa().getIdConfiguracion(); // dentro de la sesión (relación LAZY)
+        } catch (ConfiguracionHaciendaNoDisponibleException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            // Credenciales que no se descifran (CredencialCifradaConverter, T-021) u otra falla de lectura
+            throw new ConfiguracionHaciendaNoDisponibleException(
+                "No se pudo leer la configuración de Hacienda activa (" + causaRaiz(e) + ")",
+                ConfiguracionHaciendaNoDisponibleException.MENSAJE_ILEGIBLE, e);
+        }
         if (!empresaDeLaConfiguracion.equals(empresa.getIdConfiguracion())) {
-            throw new IllegalStateException("La configuración de Hacienda activa (id " + config.getId()
-                + ") pertenece a la empresa " + empresaDeLaConfiguracion + ", no a la empresa "
-                + empresa.getIdConfiguracion() + ".");
+            throw new ConfiguracionHaciendaNoDisponibleException("La configuración de Hacienda activa (id "
+                + config.getId() + ") pertenece a la empresa " + empresaDeLaConfiguracion + ", no a la empresa "
+                + empresa.getIdConfiguracion() + ".", ConfiguracionHaciendaNoDisponibleException.MENSAJE_NO_VALIDA);
         }
         return config;
+    }
+
+    private static String causaRaiz(Throwable e) {
+        Throwable t = e;
+        while (t.getCause() != null && t.getCause() != t) {
+            t = t.getCause();
+        }
+        return t.getClass().getSimpleName() + ": " + t.getMessage();
+    }
+
+    /**
+     * T-041: configuración para generar un comprobante nuevo. Si no se puede leer, la emisión se rechaza con el mensaje
+     * fijo (409) y la transacción de generación se deshace: sin consecutivo consumido ni comprobante creado.
+     */
+    private ConfiguracionHacienda configuracionActivaParaEmitir(ConfiguracionEmpresa empresa) {
+        try {
+            return configuracionActivaDe(empresa);
+        } catch (ConfiguracionHaciendaNoDisponibleException e) {
+            log.error("Emisión rechazada, configuración de Hacienda no disponible: {}", e.getMessage());
+            throw new EmisionNoPermitidaException(e.getMensajeUsuario());
+        }
     }
 }

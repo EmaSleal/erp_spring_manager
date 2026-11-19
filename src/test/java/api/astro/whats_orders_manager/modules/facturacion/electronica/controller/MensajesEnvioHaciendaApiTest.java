@@ -67,6 +67,19 @@ class MensajesEnvioHaciendaApiTest {
         }
     }
 
+    @ParameterizedTest
+    @CsvSource({"ILEGIBLE", "NO_VALIDA"})
+    @DisplayName("T-041: falla local de la configuración de Hacienda: 422 con su mensaje fijo")
+    void configuracionDeHacienda(String causa) throws Exception {
+        String fijo = "ILEGIBLE".equals(causa) ? MensajesEnvioHacienda.CONFIGURACION_ILEGIBLE
+            : MensajesEnvioHacienda.CONFIGURACION_NO_VALIDA;
+        when(envio.reenviar(5L)).thenReturn(comprobante(EstadoComprobante.ERROR, fijo));
+        mvc.perform(post("/api/facturas/electronica/comprobantes/5/reenviar"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.message").value(fijo));
+    }
+
     @Test
     @DisplayName("XML inválido según el XSD: 422 con el mensaje de T-036")
     void xmlInvalido() throws Exception {

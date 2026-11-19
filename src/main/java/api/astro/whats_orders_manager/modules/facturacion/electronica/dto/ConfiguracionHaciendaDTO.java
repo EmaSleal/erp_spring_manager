@@ -50,6 +50,13 @@ public class ConfiguracionHaciendaDTO {
     
     private LocalDateTime tokenExpira;
     
+    /** Solo respuesta (T-041): las credenciales guardadas no se descifran con la clave actual del servidor. */
+    @Builder.Default
+    private Boolean credencialesIlegibles = false;
+
+    /** Solo respuesta (T-041): aviso fijo cuando {@link #credencialesIlegibles}; null en otro caso. */
+    private String avisoCredenciales;
+
     /** Hay un access token guardado (el token nunca sale en el DTO; T-021). */
     private Boolean tieneToken;
     

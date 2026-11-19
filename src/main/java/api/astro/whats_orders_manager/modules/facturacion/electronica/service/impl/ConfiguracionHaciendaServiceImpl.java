@@ -4,10 +4,12 @@ import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionE
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ConfiguracionHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConfiguracionHaciendaNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsecutivoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ConfiguracionHaciendaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaSinCredenciales;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.CertificadoHaciendaValidator.InfoCertificado;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.CertificadoInvalidoException;
@@ -15,7 +17,11 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.service.Co
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -40,6 +46,13 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     private final ConfiguracionHaciendaMapper mapper;
     private final HaciendaApiService haciendaApiService;
     private final CertificadoHaciendaValidator certificadoValidator;
+
+    /**
+     * T-041: gestor de transacciones para probar la lectura de una configuración en una transacción propia. Por campo,
+     * para no cambiar el constructor; sin él (pruebas unitarias) no se prueba y se asume legible.
+     */
+    @Autowired(required = false)
+    private PlatformTransactionManager transactionManager;
     
     @Override
     @Transactional
@@ -82,7 +95,12 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     @Transactional
     public ConfiguracionHaciendaDTO actualizar(Long id, ConfiguracionHaciendaDTO dto) {
         log.info("Actualizando configuración ID: {}", id);
-        
+
+        // T-041: con credenciales que no se descifran no se puede cargar la entidad; se vuelven a guardar sin cargarla
+        if (!credencialesLegibles(id)) {
+            return restablecerCredenciales(id, dto);
+        }
+
         ConfiguracionHacienda configuracion = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
         
@@ -139,12 +157,12 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     public ConfiguracionHacienda obtenerConfiguracionActiva() {
         List<ConfiguracionHacienda> activas = repository.findByActivaTrueOrderByIdAsc();
         if (activas.isEmpty()) {
-            throw new IllegalStateException("No hay ninguna configuración de Hacienda activa; active una en "
-                    + "Facturación → Configuración de Hacienda.");
+            throw new ConfiguracionHaciendaNoDisponibleException("No hay ninguna configuración de Hacienda activa; "
+                    + "active una en Facturación → Configuración de Hacienda.", ConfiguracionHaciendaNoDisponibleException.MENSAJE_NO_VALIDA);
         }
         if (activas.size() > 1) {
-            throw new IllegalStateException("Debe haber exactamente una configuración de Hacienda activa y hay "
-                    + activas.size() + " (ids " + idsDe(activas) + ").");
+            throw new ConfiguracionHaciendaNoDisponibleException("Debe haber exactamente una configuración de Hacienda "
+                    + "activa y hay " + activas.size() + " (ids " + idsDe(activas) + ").", ConfiguracionHaciendaNoDisponibleException.MENSAJE_NO_VALIDA);
         }
         return activas.get(0);
     }
@@ -155,13 +173,98 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
         return repository.findByEmpresaIdAndAmbiente(empresaId, ambiente);
     }
 
+    /**
+     * Sin transacción propia (T-041): si una fila tiene credenciales que no se descifran, la carga lanza y marcaría
+     * como rollback-only una transacción que envolviera todo el listado. Cada lectura del repositorio usa la suya; la
+     * empresa viene cargada con la configuración (JOIN FETCH), así que mapear no necesita sesión.
+     */
     @Override
-    @Transactional(readOnly = true)
     public List<ConfiguracionHaciendaDTO> listarPorEmpresa(Integer empresaId) {
-        return repository.findAllByEmpresaId(empresaId)
-            .stream()
-            .map(mapper::toDTO)
-            .collect(Collectors.toList());
+        try {
+            return repository.findAllByEmpresaId(empresaId)
+                .stream()
+                .map(mapper::toDTO)
+                .collect(Collectors.toList());
+        } catch (RuntimeException e) {
+            log.warn("No se pudo leer el listado de configuraciones de Hacienda de la empresa {} ({}); se lista fila por "
+                + "fila con las credenciales ilegibles marcadas", empresaId, causaRaiz(e));
+            return repository.findSinCredencialesByEmpresaId(empresaId).stream()
+                .map(this::dtoDeFila)
+                .collect(Collectors.toList());
+        }
+    }
+
+    /** Una fila del listado de reserva: completa si se descifra; si no, solo las columnas no cifradas y el aviso. */
+    private ConfiguracionHaciendaDTO dtoDeFila(ConfiguracionHaciendaSinCredenciales fila) {
+        try {
+            return repository.findConEmpresaById(fila.getId()).map(mapper::toDTO)
+                .orElseGet(() -> mapper.toDTOIlegible(fila));
+        } catch (RuntimeException e) {
+            log.warn("Configuración de Hacienda {}: las credenciales guardadas no se descifran con la clave actual "
+                + "(HACIENDA_CRYPTO_KEY): {}", fila.getId(), causaRaiz(e));
+            return mapper.toDTOIlegible(fila);
+        }
+    }
+
+    /**
+     * T-041: true si la fila se puede cargar (sus cuatro columnas cifradas se descifran). La prueba corre en una
+     * transacción propia de solo lectura: si falla, solo se pierde esa y la del llamador sigue sana.
+     */
+    private boolean credencialesLegibles(Long id) {
+        if (transactionManager == null) {
+            return true;
+        }
+        TransactionTemplate prueba = new TransactionTemplate(transactionManager);
+        prueba.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        prueba.setReadOnly(true);
+        try {
+            prueba.executeWithoutResult(st -> repository.findById(id));
+            return true;
+        } catch (RuntimeException e) {
+            log.warn("Configuración de Hacienda {}: las credenciales guardadas no se descifran con la clave actual "
+                + "(HACIENDA_CRYPTO_KEY): {}", id, causaRaiz(e));
+            return false;
+        }
+    }
+
+    /**
+     * T-041: guarda una configuración con credenciales ilegibles sin cargar la entidad. Exige contraseña y PIN nuevos
+     * (no la máscara): los guardados no se pueden recuperar. Valida el certificado con el PIN nuevo, como en una
+     * actualización normal, y descarta los tokens guardados.
+     */
+    private ConfiguracionHaciendaDTO restablecerCredenciales(Long id, ConfiguracionHaciendaDTO dto) {
+        ConfiguracionHaciendaSinCredenciales actual = repository.findSinCredencialesById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
+        if (esMascaraOVacio(dto.getPasswordHacienda()) || esMascaraOVacio(dto.getPinCertificado())) {
+            throw new IllegalArgumentException(ConfiguracionHaciendaMapper.AVISO_CREDENCIALES_ILEGIBLES
+                + " (contraseña y PIN).");
+        }
+        validarCertificado(dto.getRutaCertificado(), dto.getPinCertificado());
+
+        repository.restablecerCredenciales(id, dto.getAmbiente(), dto.getUsuarioHacienda(), dto.getPasswordHacienda(),
+            dto.getRutaCertificado(), dto.getPinCertificado(),
+            fijarConsecutivo(actual.getConsecutivoFactura(), dto.getConsecutivoFactura(), "factura", id),
+            fijarConsecutivo(actual.getConsecutivoTiquete(), dto.getConsecutivoTiquete(), "tiquete", id),
+            fijarConsecutivo(actual.getConsecutivoNotaCredito(), dto.getConsecutivoNotaCredito(), "nota de crédito", id),
+            fijarConsecutivo(actual.getConsecutivoNotaDebito(), dto.getConsecutivoNotaDebito(), "nota de débito", id),
+            LocalDateTime.now());
+        log.info("Configuración de Hacienda {} actualizada con credenciales nuevas (las anteriores no se descifraban)", id);
+
+        ConfiguracionHacienda guardada = repository.findConEmpresaById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
+        return conCertificado(mapper.toDTO(guardada), infoMejorEsfuerzo(guardada), guardada.getEmpresa());
+    }
+
+    private static boolean esMascaraOVacio(String valor) {
+        return valor == null || valor.isBlank() || ConfiguracionHaciendaMapper.MASK.equals(valor);
+    }
+
+    private static String causaRaiz(Throwable e) {
+        Throwable t = e;
+        while (t.getCause() != null && t.getCause() != t) {
+            t = t.getCause();
+        }
+        return t.getClass().getSimpleName() + ": " + t.getMessage();
     }
     
     @Override
