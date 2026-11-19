@@ -107,6 +107,13 @@
                                                    th:text="${asiento.facturaNumero}">FAC-001</a>
                                             </td>
                                         </tr>
+                                        <tr th:if="${asiento.notaFacturaId != null}">
+                                            <th class="text-muted">Nota de crédito:</th>
+                                            <td>
+                                                <a th:href="@{/facturas/notas-credito/{id}(id=${asiento.notaFacturaId})}"
+                                                   th:text="${asiento.notaFacturaNumero}">NC-1</a>
+                                            </td>
+                                        </tr>
                                         <tr th:if="${asiento.pagoId != null}">
                                             <th class="text-muted">Pago:</th>
                                             <td>

@@ -288,6 +288,37 @@ function openModal(button) {
                 buttonsContainer.insertBefore(boton, buttonsContainer.firstChild);
             }
 
+            // T-042 (ADR-047 §2): «Emitir nota de crédito» según las banderas del servidor (sin roles en JS); con pagos
+            // aplicados aparece deshabilitado y con el motivo visible
+            if (typeof NotaCredito !== 'undefined' && typeof NotaCreditoModal !== 'undefined') {
+                const estadoNc = NotaCredito.estadoBoton(data);
+                if (estadoNc.visible) {
+                    const bloque = document.createElement('div');
+                    bloque.id = 'modal-nota-credito';
+                    bloque.className = 'd-inline-block me-2 mb-2 align-top';
+                    const botonNc = document.createElement('button');
+                    botonNc.type = 'button';
+                    botonNc.className = 'btn btn-outline-danger';
+                    botonNc.id = 'modal-boton-nota-credito';
+                    const iconoNc = document.createElement('i');
+                    iconoNc.className = 'fas fa-file-circle-minus me-1';
+                    botonNc.appendChild(iconoNc);
+                    botonNc.appendChild(document.createTextNode('Emitir nota de crédito'));
+                    botonNc.disabled = !estadoNc.habilitado;
+                    bloque.appendChild(botonNc);
+                    if (estadoNc.habilitado) {
+                        botonNc.addEventListener('click', () => NotaCreditoModal.abrir(data));
+                    } else {
+                        const motivoNc = document.createElement('div');
+                        motivoNc.id = 'modal-nota-credito-motivo';
+                        motivoNc.className = 'form-text text-muted';
+                        motivoNc.textContent = estadoNc.motivo;
+                        bloque.appendChild(motivoNc);
+                    }
+                    buttonsContainer.insertBefore(bloque, buttonsContainer.firstChild);
+                }
+            }
+
             // Mostrar el modal con Bootstrap
             facturaModal.show();
         },

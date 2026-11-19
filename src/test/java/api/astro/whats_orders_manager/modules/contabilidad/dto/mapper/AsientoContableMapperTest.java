@@ -42,12 +42,14 @@ class AsientoContableMapperTest {
     @Mock private FacturaRepository facturaRepository;
     @Mock private PagoRepository pagoRepository;
     @Mock private AsientoContableRepository asientoRepository;
+    @Mock private api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository comprobanteRepository;
 
     private AsientoContableMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new AsientoContableMapper(detalleMapper, facturaRepository, pagoRepository, asientoRepository);
+        mapper = new AsientoContableMapper(detalleMapper, facturaRepository, pagoRepository, asientoRepository,
+            comprobanteRepository);
         lenient().when(asientoRepository.findFirstByAsientoRevertidoIdAsiento(anyLong())).thenReturn(Optional.empty());
     }
 
@@ -137,6 +139,40 @@ class AsientoContableMapperTest {
                 .getPuedeRevertirse()).isTrue();
         assertThat(mapper.toDTOSimple(asiento(5L, "A5", TipoAsiento.AUTOMATICO_VENTA, EstadoAsiento.CONTABILIZADO))
                 .getPuedeRevertirse()).isFalse();
+    }
+
+    @Test
+    @DisplayName("T-042: el asiento de una nota lleva notaFacturaId y su número (consecutivo del comprobante vigente)")
+    void notaFacturaEnElDTO() {
+        api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura nota =
+            api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura.builder().id(7L).build();
+        AsientoContable asiento = asiento(9L, "A9", TipoAsiento.AUTOMATICO_VENTA, EstadoAsiento.CONTABILIZADO);
+        asiento.setNotaFactura(nota);
+        when(comprobanteRepository.findFirstByNotaFactura_IdAndVigenteTrue(7L)).thenReturn(Optional.of(
+            api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico.builder()
+                .consecutivo("00100001030000000002").build()));
+
+        for (Function<AsientoContable, AsientoContableDTO> conversion : conversiones()) {
+            AsientoContableDTO dto = conversion.apply(asiento);
+            assertThat(dto.getNotaFacturaId()).isEqualTo(7L);
+            assertThat(dto.getNotaFacturaNumero()).isEqualTo("00100001030000000002");
+        }
+    }
+
+    @Test
+    @DisplayName("T-042: nota sin comprobante vigente → «NC-<id>»; asiento sin nota → campos nulos")
+    void notaFacturaSinComprobanteOSinNota() {
+        api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura nota =
+            api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura.builder().id(8L).build();
+        AsientoContable conNota = asiento(9L, "A9", TipoAsiento.AUTOMATICO_VENTA, EstadoAsiento.CONTABILIZADO);
+        conNota.setNotaFactura(nota);
+        when(comprobanteRepository.findFirstByNotaFactura_IdAndVigenteTrue(8L)).thenReturn(Optional.empty());
+
+        assertThat(mapper.toDTO(conNota).getNotaFacturaNumero()).isEqualTo("NC-8");
+        AsientoContableDTO sinNota = mapper.toDTO(
+            asiento(10L, "A10", TipoAsiento.AUTOMATICO_VENTA, EstadoAsiento.CONTABILIZADO));
+        assertThat(sinNota.getNotaFacturaId()).isNull();
+        assertThat(sinNota.getNotaFacturaNumero()).isNull();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

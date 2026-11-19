@@ -9,6 +9,10 @@ import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaC
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.dto.NotaCreditoDetalleDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.NotaCreditoListaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.dto.NotaCreditoPaginaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoConsultaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaService;
 import api.astro.whats_orders_manager.modules.seguridad.service.PermisoService;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +33,9 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -85,8 +91,14 @@ class NotaCreditoRestControllerTest {
         }
 
         @Bean
-        NotaCreditoRestController notaCreditoRestController(NotaFacturaService n, EnvioHaciendaService e) {
-            return new NotaCreditoRestController(n, e);
+        NotaCreditoConsultaService notaCreditoConsultaService() {
+            return mock(NotaCreditoConsultaService.class);
+        }
+
+        @Bean
+        NotaCreditoRestController notaCreditoRestController(NotaFacturaService n, EnvioHaciendaService e,
+                NotaCreditoConsultaService consulta) {
+            return new NotaCreditoRestController(n, e, consulta);
         }
     }
 
@@ -97,12 +109,13 @@ class NotaCreditoRestControllerTest {
     @Autowired private PermisoService permisoService;
     @Autowired private NotaFacturaService notaService;
     @Autowired private EnvioHaciendaService envioService;
+    @Autowired private NotaCreditoConsultaService consultaService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        reset(permisoService, notaService, envioService);
+        reset(permisoService, notaService, envioService, consultaService);
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         when(permisoService.tienePermisoPorCodigo("gerente", "FACTURA_ANULAR")).thenReturn(true);
         when(permisoService.tienePermisoPorCodigo("gerente", "FACTURA_VER")).thenReturn(true);
@@ -219,6 +232,81 @@ class NotaCreditoRestControllerTest {
         mockMvc.perform(get("/api/facturas/notas-credito/6").with(user("gerente").roles("USER")))
                 .andExpect(status().isNotFound());
         verify(envioService, never()).enviar(anyLong());
+    }
+
+    @Test
+    @DisplayName("T-042 GET listado: sin FACTURA_VER → 403 y no se consulta nada")
+    void listado_sinPermiso_403() throws Exception {
+        when(permisoService.tienePermisoPorCodigo(eq("vendedor"), anyString())).thenReturn(false);
+
+        mockMvc.perform(get("/api/facturas/notas-credito").with(user("vendedor").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/facturas/notas-credito/5/detalle").with(user("vendedor").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+
+        verify(permisoService, atLeastOnce()).tienePermisoPorCodigo("vendedor", "FACTURA_VER");
+        verifyNoInteractions(consultaService);
+    }
+
+    @Test
+    @DisplayName("T-042 GET listado: pasa los filtros y la página al servicio y responde la página")
+    void listado_filtros() throws Exception {
+        NotaCreditoListaDTO fila = new NotaCreditoListaDTO(5L, "NC-5", 7, "FA01-00007", "Cliente", "01",
+                "Anula documento de referencia", new BigDecimal("1630.00"), "CRC",
+                LocalDateTime.of(2026, 11, 12, 10, 0), "APLICADA", 30L, "ACEPTADO", null, false, false);
+        when(consultaService.listar(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(new NotaCreditoPaginaDTO(List.of(fila), 1, 10, 11, 2));
+
+        mockMvc.perform(get("/api/facturas/notas-credito").param("desde", "2026-11-01").param("hasta", "2026-11-30")
+                        .param("cliente", "acme").param("estado", "APLICADA").param("page", "1").param("size", "10")
+                        .with(user("gerente").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.contenido[0].numero").value("NC-5"))
+                .andExpect(jsonPath("$.data.contenido[0].estadoComprobante").value("ACEPTADO"))
+                .andExpect(jsonPath("$.data.pagina").value(1))
+                .andExpect(jsonPath("$.data.tamano").value(10))
+                .andExpect(jsonPath("$.data.totalElementos").value(11))
+                .andExpect(jsonPath("$.data.totalPaginas").value(2));
+
+        verify(consultaService).listar(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30), "acme",
+                EstadoNotaFactura.APLICADA, 1, 10);
+    }
+
+    @Test
+    @DisplayName("T-042 GET listado: sin parámetros usa página 0 y tamaño 20; estado o fecha inválidos → 400")
+    void listado_defectosEInvalidos() throws Exception {
+        when(consultaService.listar(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(new NotaCreditoPaginaDTO(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/facturas/notas-credito").with(user("gerente").roles("USER")))
+                .andExpect(status().isOk());
+        verify(consultaService).listar(null, null, null, null, 0, 20);
+
+        mockMvc.perform(get("/api/facturas/notas-credito").param("estado", "OTRO").with(user("gerente").roles("USER")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/facturas/notas-credito").param("desde", "12/11/2026")
+                        .with(user("gerente").roles("USER")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("T-042 GET /{id}/detalle: el detalle; 404 si la nota no existe")
+    void detalle() throws Exception {
+        NotaCreditoDetalleDTO dto = new NotaCreditoDetalleDTO(5L, "NC-5", "APLICADA", "CREDITO", "01",
+                "Anula documento de referencia", "Anulación total", null, null, "CRC", BigDecimal.ONE, BigDecimal.TEN,
+                BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.TEN, "gerente", 7, "FA01-00007", "Cliente", "506ORIGINAL",
+                null, List.of(), null, List.of(), 90L, "ASI-2026-0001", true);
+        when(consultaService.detalle(5L)).thenReturn(Optional.of(dto));
+        when(consultaService.detalle(6L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/facturas/notas-credito/5/detalle").with(user("gerente").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.numero").value("NC-5"))
+                .andExpect(jsonPath("$.data.claveReferencia").value("506ORIGINAL"))
+                .andExpect(jsonPath("$.data.idAsientoReversion").value(90))
+                .andExpect(jsonPath("$.data.puedeEmitirSustituta").value(true));
+        mockMvc.perform(get("/api/facturas/notas-credito/6/detalle").with(user("gerente").roles("USER")))
+                .andExpect(status().isNotFound());
     }
 
     private static NotaFactura nota() {

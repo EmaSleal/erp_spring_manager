@@ -15,7 +15,10 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.repository
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
+import api.astro.whats_orders_manager.modules.facturacion.model.LineaNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
+import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.SustitucionElegibilidad;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
@@ -49,6 +52,7 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -81,15 +85,123 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         Factura factura = facturaService.findById(facturaId)
                 .orElseThrow(() -> new NoSuchElementException("Factura no encontrada: " + facturaId));
 
-        Cliente cliente = factura.getCliente();
-        List<LineaFactura> lineas = factura.getLineas();
-        Empresa empresa = empresaService.getEmpresaPrincipal();
-        ConfiguracionEmpresa configuracion = configuracionEmpresaService.obtenerOCrearConfiguracion();
-
         ComprobanteElectronico vigente = factura.getComprobanteElectronico();
         PdfFiscalDecision decision = PdfFiscalDecision.de(
                 vigente != null ? vigente.getEstado() : null,
                 vigente != null ? vigente.getTipoComprobante() : null);
+
+        try {
+            return renderizar(documentoDe(factura, vigente), decision, null);
+        } catch (Exception e) {
+            log.error("Error al generar PDF de factura {}: {}", facturaId, e.getMessage(), e);
+            throw new RuntimeException("Error al generar el PDF de la factura", e);
+        }
+    }
+
+    @Override
+    public byte[] generarPdfNotaCredito(Long notaId) {
+        NotaFactura nota = notaFacturaRepository.findById(notaId)
+                .orElseThrow(() -> new NoSuchElementException("Nota no encontrada: " + notaId));
+
+        ComprobanteElectronico vigente = comprobanteRepository.findFirstByNotaFactura_IdAndVigenteTrue(notaId)
+                .orElse(null);
+        PdfFiscalDecision decision = PdfFiscalDecision.deNota(vigente != null ? vigente.getEstado() : null);
+
+        try {
+            return renderizar(documentoDe(nota, vigente, decision), decision, nota);
+        } catch (Exception e) {
+            log.error("Error al generar PDF de la nota {}: {}", notaId, e.getMessage(), e);
+            throw new RuntimeException("Error al generar el PDF de la nota de crédito", e);
+        }
+    }
+
+    /** Lo que el encabezado, el bloque del cliente, la tabla de líneas y el pie necesitan, sea factura o nota. */
+    private record LineaPdf(String numero, String codigo, String codigoCabys, String detalle, String cantidad,
+                            String um, String precio, String pctIva, String total) {
+    }
+
+    private record DocumentoPdf(Cliente cliente, String numero, java.time.temporal.TemporalAccessor fecha, String formaPago,
+                                String vencimiento, String plazo, String vendedor, String tipoCambio,
+                                String observacion, MonedaFE moneda, BigDecimal subtotal, BigDecimal impuesto,
+                                BigDecimal total, ComprobanteElectronico vigente, String marcaAnulada,
+                                String sustituyeA, List<LineaPdf> lineas) {
+    }
+
+    private DocumentoPdf documentoDe(Factura factura, ComprobanteElectronico vigente) {
+        String vendedor = "";
+        if (factura.getCreateBy() != null) {
+            vendedor = usuarioService.findById(factura.getCreateBy())
+                    .map(u -> safe(u.getNombre()))
+                    .orElse("");
+        }
+        List<LineaPdf> lineas = new ArrayList<>();
+        if (factura.getLineas() != null) {
+            for (LineaFactura linea : factura.getLineas()) {
+                // UM: la misma unidad que va en el XML (ADR-041), no el nombre de la presentación
+                String um = linea.getProducto() != null ? safe(DatosFeProducto.unidadMedida(linea.getProducto())) : "";
+                String codigoCabys = linea.getProducto() != null ? safe(DatosFeProducto.codigoCabys(linea.getProducto())) : "";
+                String codigo = linea.getProducto() != null ? safe(linea.getProducto().getCodigo()) : "";
+                String detalle = linea.getProducto() != null ? safe(DatosFeProducto.detalle(linea.getProducto())) : "";
+                String cantidad = linea.getCantidad() != null
+                        ? String.format("%.2f", linea.getCantidad().doubleValue())
+                        : "0.00";
+                String precio = linea.getPrecioUnitario() != null
+                        ? String.format("%,.2f", linea.getPrecioUnitario())
+                        : "0.00";
+                String pctIva = linea.getProducto() != null && resolvePorcentajeImpuesto(linea.getProducto()) != null
+                        ? String.format("%.2f", resolvePorcentajeImpuesto(linea.getProducto()))
+                        : "0.00";
+                String subtotal = linea.getSubtotal() != null
+                        ? String.format("%,.2f", linea.getSubtotal())
+                        : "0.00";
+                lineas.add(new LineaPdf(String.valueOf(linea.getNumeroLinea()), codigo, codigoCabys, detalle, cantidad,
+                        um, precio, pctIva, subtotal));
+            }
+        }
+        String vencimiento = factura.getFechaVencimiento() != null
+                ? factura.getFechaVencimiento().toLocalDate().format(DATE_FMT)
+                : "N/A";
+        String plazo = factura.getPlazoCredito() != null
+                ? factura.getPlazoCredito() + " días naturales"
+                : "0 días naturales";
+        return new DocumentoPdf(factura.getCliente(), factura.getNumeroFactura(), factura.getFechaEmision(),
+                factura.getCondicionVentaFE() != null ? factura.getCondicionVentaFE().getDescripcion() : "",
+                vencimiento, plazo, vendedor,
+                factura.getTipoCambio() != null ? factura.getTipoCambio().toPlainString() : "",
+                safe(factura.getDescripcion()), factura.getMonedaFE(), factura.getSubtotal(), factura.getImpuesto(),
+                factura.getTotal(), vigente, marcaAnulada(factura),
+                factura.getFacturaSustituida() != null ? safe(factura.getFacturaSustituida().getNumeroFactura()) : null,
+                lineas);
+    }
+
+    private DocumentoPdf documentoDe(NotaFactura nota, ComprobanteElectronico vigente, PdfFiscalDecision decision) {
+        List<LineaPdf> lineas = new ArrayList<>();
+        if (nota.getLineas() != null) {
+            for (LineaNotaFactura linea : nota.getLineas()) {
+                Producto producto = linea.getProducto();
+                lineas.add(new LineaPdf(String.valueOf(linea.getNumeroLinea()),
+                        producto != null ? safe(producto.getCodigo()) : "",
+                        safe(linea.getCodigoCabys()), safe(linea.getDescripcion()),
+                        linea.getCantidad() != null ? String.format("%.2f", linea.getCantidad().doubleValue()) : "0.00",
+                        safe(linea.getUnidadMedida()),
+                        linea.getPrecioUnitario() != null ? String.format("%,.2f", linea.getPrecioUnitario()) : "0.00",
+                        linea.getTarifaIva() != null ? String.format("%.2f", linea.getTarifaIva()) : "0.00",
+                        linea.getSubtotal() != null ? String.format("%,.2f", linea.getSubtotal()) : "0.00"));
+            }
+        }
+        return new DocumentoPdf(nota.getFactura().getCliente(),
+                // Sin consecutivo fuera de los estados fiscales: el documento se identifica como «NC-<id>»
+                SustitucionElegibilidad.numeroDeNota(nota, decision.mostrarClaveYConsecutivo() ? vigente : null),
+                nota.getFechaEmision(), "", "N/A", "N/A",
+                safe(nota.getUsuarioCreador()),
+                nota.getTipoCambio() != null ? nota.getTipoCambio().toPlainString() : "",
+                safe(nota.getRazon()), MonedaFE.fromCodigo(nota.getMoneda()), nota.getSubtotal(), nota.getImpuesto(),
+                nota.getTotal(), vigente, null, null, lineas);
+    }
+
+    private byte[] renderizar(DocumentoPdf d, PdfFiscalDecision decision, NotaFactura nota) throws Exception {
+        Empresa empresa = empresaService.getEmpresaPrincipal();
+        ConfiguracionEmpresa configuracion = configuracionEmpresaService.obtenerOCrearConfiguracion();
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -99,23 +211,29 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             doc.setMargins(36, 36, 36, 36);
 
-            addHeader(doc, empresa, configuracion, factura, decision);
+            addHeader(doc, empresa, configuracion, d, decision);
 
             doc.add(separator());
 
-            addClienteBlock(doc, cliente, factura, configuracion);
+            addClienteBlock(doc, d, configuracion);
+
+            if (nota != null) {
+                doc.add(separator());
+
+                addReferenciaBlock(doc, nota);
+            }
 
             doc.add(separator());
 
-            addLineasTable(doc, lineas);
+            addLineasTable(doc, d.lineas());
 
             doc.add(separator());
 
-            addMontoEnLetras(doc, factura);
+            addMontoEnLetras(doc, d);
 
             doc.add(separator());
 
-            addFooter(doc, empresa, factura);
+            addFooter(doc, empresa, d);
 
             if (empresa.tieneTextoLegal()) {
                 doc.add(separator());
@@ -131,18 +249,30 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                         .setTextAlignment(TextAlignment.LEFT)
                         .setMarginTop(4));
             }
-
-        } catch (Exception e) {
-            log.error("Error al generar PDF de factura {}: {}", facturaId, e.getMessage(), e);
-            throw new RuntimeException("Error al generar el PDF de la factura", e);
         }
-
         return baos.toByteArray();
+    }
+
+    /** Bloque «Referencia» de la nota: factura, clave, código y nombre, razón y fecha de la factura. */
+    private void addReferenciaBlock(Document doc, NotaFactura nota) {
+        float[] cols = {50f, 50f};
+        Table table = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
+        doc.add(new Paragraph("Referencia").setBold().setFontSize(10));
+        CodigoReferenciaNota codigo = CodigoReferenciaNota.deCodigo(nota.getCodigoReferencia()).orElse(null);
+        table.addCell(labelValueCell("Factura:", safe(nota.getFactura().getNumeroFactura())));
+        table.addCell(labelValueCell("Fecha de la factura:",
+                nota.getFechaEmisionReferencia() != null ? nota.getFechaEmisionReferencia().format(DATE_FMT) : ""));
+        table.addCell(labelValueCell("Clave:", safe(nota.getClaveReferencia())));
+        table.addCell(labelValueCell("Código:", safe(nota.getCodigoReferencia())
+                + (codigo != null ? " " + codigo.getNombre() : "")));
+        table.addCell(labelValueCell("Razón:", safe(nota.getRazon())));
+        table.addCell(noB());
+        doc.add(table);
     }
 
     // ─── Header ───────────────────────────────────────────────────────────────
 
-    private void addHeader(Document doc, Empresa empresa, ConfiguracionEmpresa configuracion, Factura factura,
+    private void addHeader(Document doc, Empresa empresa, ConfiguracionEmpresa configuracion, DocumentoPdf d,
                            PdfFiscalDecision decision) {
         float[] cols = {35f, 25f, 40f};
         Table header = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
@@ -193,23 +323,22 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         if (decision.enTramite()) {
             col3.add(new Paragraph(PdfFiscalDecision.LEYENDA_EN_TRAMITE).setBold().setFontSize(8));
         }
-        String marcaAnulada = marcaAnulada(factura);
-        if (marcaAnulada != null) {
-            col3.add(new Paragraph(marcaAnulada).setBold().setFontSize(9).setFontColor(ColorConstants.RED));
+        if (d.marcaAnulada() != null) {
+            col3.add(new Paragraph(d.marcaAnulada()).setBold().setFontSize(9).setFontColor(ColorConstants.RED));
         }
-        if (factura.getFacturaSustituida() != null) {
-            col3.add(new Paragraph("Sustituye a " + safe(factura.getFacturaSustituida().getNumeroFactura()))
+        if (d.sustituyeA() != null) {
+            col3.add(new Paragraph("Sustituye a " + d.sustituyeA())
                     .setFontSize(8));
         }
         if (decision.mostrarClaveYConsecutivo()) {
-            ComprobanteElectronico vigente = factura.getComprobanteElectronico();
+            ComprobanteElectronico vigente = d.vigente();
             col3.add(new Paragraph("CLAVE").setBold().setFontSize(8));
             col3.add(new Paragraph(vigente != null ? safe(vigente.getClaveNumerica()) : "").setFontSize(7));
             col3.add(new Paragraph("NÚMERO CONSECUTIVO").setBold().setFontSize(8));
             col3.add(new Paragraph(vigente != null ? safe(vigente.getConsecutivo()) : "").setFontSize(7));
         }
         col3.add(new Paragraph("DOCUMENTO No.").setBold().setFontSize(8));
-        col3.add(new Paragraph(safe(factura.getNumeroFactura())).setFontSize(9));
+        col3.add(new Paragraph(safe(d.numero())).setFontSize(9));
         col3.add(new Paragraph("ACTIVIDAD ECONOMICA").setBold().setFontSize(8));
         String actEcon = safe(configuracion.getCodigoActividad()) + " " + safe(configuracion.getDescripcionActividad());
         col3.add(new Paragraph(actEcon.trim()).setFontSize(8));
@@ -236,7 +365,8 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     // ─── Client block ─────────────────────────────────────────────────────────
 
-    private void addClienteBlock(Document doc, Cliente cliente, Factura factura, ConfiguracionEmpresa configuracion) {
+    private void addClienteBlock(Document doc, DocumentoPdf d, ConfiguracionEmpresa configuracion) {
+        Cliente cliente = d.cliente();
         float[] cols = {50f, 50f};
         Table table = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
 
@@ -251,36 +381,23 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         table.addCell(labelValueCell("Cliente:", "C" + idCliente + "  " + nombre));
         // right — fecha
         table.addCell(labelValueCell("Fecha:",
-                factura.getFechaEmision() != null ? factura.getFechaEmision().format(DATE_FMT) : ""));
+                d.fecha() != null ? DATE_FMT.format(d.fecha()) : ""));
 
         table.addCell(labelValueCell("Identificación:", cedula));
         table.addCell(labelValueCell("Forma Pago:",
-                factura.getCondicionVentaFE() != null ? factura.getCondicionVentaFE().getDescripcion() : ""));
+                d.formaPago()));
 
         table.addCell(labelValueCell("Correo:", correo));
-        String vencimiento = factura.getFechaVencimiento() != null
-                ? factura.getFechaVencimiento().toLocalDate().format(DATE_FMT)
-                : "N/A";
-        table.addCell(labelValueCell("Vencimiento:", vencimiento));
+        table.addCell(labelValueCell("Vencimiento:", d.vencimiento()));
 
         table.addCell(labelValueCell("Dirección:", direccion));
-        String plazo = factura.getPlazoCredito() != null
-                ? factura.getPlazoCredito() + " días naturales"
-                : "0 días naturales";
-        table.addCell(labelValueCell("Plazo:", plazo));
+        table.addCell(labelValueCell("Plazo:", d.plazo()));
 
         table.addCell(labelValueCell("Contacto:", ""));
-        String vendedor = "";
-        if (factura.getCreateBy() != null) {
-            vendedor = usuarioService.findById(factura.getCreateBy())
-                    .map(u -> safe(u.getNombre()))
-                    .orElse("");
-        }
-        table.addCell(labelValueCell("Vendedor:", vendedor));
+        table.addCell(labelValueCell("Vendedor:", d.vendedor()));
 
         table.addCell(labelValueCell("Teléfono:", telefono));
-        String tipoCambio = factura.getTipoCambio() != null ? factura.getTipoCambio().toPlainString() : "";
-        table.addCell(labelValueCell("Tipo Cambio:", tipoCambio));
+        table.addCell(labelValueCell("Tipo Cambio:", d.tipoCambio()));
 
         // last row: orden/observ spans left col, activ econ spans right
         Cell ordenCell = noB();
@@ -288,7 +405,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                 .add(new com.itextpdf.layout.element.Text("Orden Compra:").setBold())
                 .add("  ")
                 .add(new com.itextpdf.layout.element.Text("Observ.:").setBold())
-                .add("  " + safe(factura.getDescripcion()))
+                .add("  " + d.observacion())
                 .setFontSize(9));
         table.addCell(ordenCell);
         table.addCell(labelValueCell("Activ Econ.:", safe(configuracion.getCodigoActividad())));
@@ -298,7 +415,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     // ─── Lines table ──────────────────────────────────────────────────────────
 
-    private void addLineasTable(Document doc, List<LineaFactura> lineas) {
+    private void addLineasTable(Document doc, List<LineaPdf> lineas) {
         float[] cols = {0.4f, 0.8f, 1.6f, 3.5f, 0.8f, 0.7f, 1.2f, 0.7f, 1.2f};
         Table table = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
 
@@ -313,36 +430,16 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                     .setBorderRight(Border.NO_BORDER));
         }
 
-        if (lineas != null) {
-            for (LineaFactura linea : lineas) {
-                // UM: la misma unidad que va en el XML (ADR-041), no el nombre de la presentación
-                String um = linea.getProducto() != null ? safe(DatosFeProducto.unidadMedida(linea.getProducto())) : "";
-                String codigoCabys = linea.getProducto() != null ? safe(DatosFeProducto.codigoCabys(linea.getProducto())) : "";
-                String codigo = linea.getProducto() != null ? safe(linea.getProducto().getCodigo()) : "";
-                String detalle = linea.getProducto() != null ? safe(DatosFeProducto.detalle(linea.getProducto())) : "";
-                String cantidad = linea.getCantidad() != null
-                        ? String.format("%.2f", linea.getCantidad().doubleValue())
-                        : "0.00";
-                String precio = linea.getPrecioUnitario() != null
-                        ? String.format("%,.2f", linea.getPrecioUnitario())
-                        : "0.00";
-                String pctIva = linea.getProducto() != null && resolvePorcentajeImpuesto(linea.getProducto()) != null
-                        ? String.format("%.2f", resolvePorcentajeImpuesto(linea.getProducto()))
-                        : "0.00";
-                String subtotal = linea.getSubtotal() != null
-                        ? String.format("%,.2f", linea.getSubtotal())
-                        : "0.00";
-
-                table.addCell(lineCell(String.valueOf(linea.getNumeroLinea()), TextAlignment.LEFT));
-                table.addCell(lineCell(codigo, TextAlignment.LEFT));
-                table.addCell(lineCell(codigoCabys, TextAlignment.LEFT));
-                table.addCell(lineCell(detalle, TextAlignment.LEFT));
-                table.addCell(lineCell(cantidad, TextAlignment.RIGHT));
-                table.addCell(lineCell(um, TextAlignment.LEFT));
-                table.addCell(lineCell(precio, TextAlignment.RIGHT));
-                table.addCell(lineCell(pctIva, TextAlignment.LEFT));
-                table.addCell(lineCell(subtotal, TextAlignment.RIGHT));
-            }
+        for (LineaPdf l : lineas) {
+            table.addCell(lineCell(l.numero(), TextAlignment.LEFT));
+            table.addCell(lineCell(l.codigo(), TextAlignment.LEFT));
+            table.addCell(lineCell(l.codigoCabys(), TextAlignment.LEFT));
+            table.addCell(lineCell(l.detalle(), TextAlignment.LEFT));
+            table.addCell(lineCell(l.cantidad(), TextAlignment.RIGHT));
+            table.addCell(lineCell(l.um(), TextAlignment.LEFT));
+            table.addCell(lineCell(l.precio(), TextAlignment.RIGHT));
+            table.addCell(lineCell(l.pctIva(), TextAlignment.LEFT));
+            table.addCell(lineCell(l.total(), TextAlignment.RIGHT));
         }
 
         doc.add(table);
@@ -350,16 +447,16 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     // ─── Amount in words ──────────────────────────────────────────────────────
 
-    private void addMontoEnLetras(Document doc, Factura factura) {
-        String monedaLabel = resolveMonedaLabel(factura.getMonedaFE());
-        BigDecimal total = factura.getTotal() != null ? factura.getTotal() : BigDecimal.ZERO;
+    private void addMontoEnLetras(Document doc, DocumentoPdf d) {
+        String monedaLabel = resolveMonedaLabel(d.moneda());
+        BigDecimal total = d.total() != null ? d.total() : BigDecimal.ZERO;
         String letras = MontoEnLetras.convertir(total, monedaLabel);
         doc.add(new Paragraph(letras).setFontSize(9).setBold().setMarginTop(8));
     }
 
     // ─── Footer ───────────────────────────────────────────────────────────────
 
-    private void addFooter(Document doc, Empresa empresa, Factura factura) {
+    private void addFooter(Document doc, Empresa empresa, DocumentoPdf d) {
         float[] cols = {60f, 40f};
         Table footer = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
 
@@ -388,14 +485,14 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
         // Right — totals
         Cell rightCell = noB();
-        BigDecimal subtotal = factura.getSubtotal() != null ? factura.getSubtotal() : BigDecimal.ZERO;
+        BigDecimal subtotal = d.subtotal() != null ? d.subtotal() : BigDecimal.ZERO;
         BigDecimal descuento = BigDecimal.ZERO;
         BigDecimal neto = subtotal.subtract(descuento);
-        BigDecimal iva = factura.getImpuesto() != null ? factura.getImpuesto() : BigDecimal.ZERO;
-        BigDecimal total = factura.getTotal() != null ? factura.getTotal() : BigDecimal.ZERO;
+        BigDecimal iva = d.impuesto() != null ? d.impuesto() : BigDecimal.ZERO;
+        BigDecimal total = d.total() != null ? d.total() : BigDecimal.ZERO;
 
-        String prefix = resolvePrefix(factura.getMonedaFE());
-        String monedaLabel = resolveMonedaLabel(factura.getMonedaFE());
+        String prefix = resolvePrefix(d.moneda());
+        String monedaLabel = resolveMonedaLabel(d.moneda());
 
         float[] totCols = {1f, 1f};
         Table totTable = new Table(UnitValue.createPercentArray(totCols)).useAllAvailableWidth();

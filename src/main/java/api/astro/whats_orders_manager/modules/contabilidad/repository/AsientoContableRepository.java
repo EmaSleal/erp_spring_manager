@@ -96,6 +96,9 @@ public interface AsientoContableRepository extends JpaRepository<AsientoContable
      * @param facturaId ID de la factura
      * @return Lista de asientos de la factura
      */
+    /** Asiento de reversión originado por una nota de crédito (T-042); el FK vive en el asiento. */
+    Optional<AsientoContable> findFirstByNotaFactura_IdOrderByIdAsientoAsc(Long idNota);
+
     @Query("SELECT a FROM AsientoContable a WHERE a.factura.idFactura = :facturaId")
     List<AsientoContable> findByFacturaId(@Param("facturaId") Long facturaId);
     

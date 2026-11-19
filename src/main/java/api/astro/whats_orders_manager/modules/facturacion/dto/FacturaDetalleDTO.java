@@ -89,6 +89,11 @@ public class FacturaDetalleDTO {
     /** Sustituta no anulada de esta factura; null si no tiene. */
     private SustitucionRefDTO sustituidaPor;
 
+    // Nota de crédito (ADR-047 §2, T-042): la regla la decide el servidor. puedeEmitirNotaCredito habilita el botón;
+    // motivoNotaCreditoNoDisponible lo deja deshabilitado con ese texto; con ambos vacíos no hay botón.
+    private Boolean puedeEmitirNotaCredito;
+    private String motivoNotaCreditoNoDisponible;
+
     // Auditoría
     private Integer createBy;
     private Integer updateBy;

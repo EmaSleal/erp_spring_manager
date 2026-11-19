@@ -81,7 +81,8 @@ class FacturaAnularPermisoTest {
                     mock(FacturaPdfService.class),
                     mock(PagoMapper.class),
                     mock(PoliticaMutabilidadFactura.class),
-                    mock(api.astro.whats_orders_manager.modules.facturacion.service.FacturaSustitutaService.class));
+                    mock(api.astro.whats_orders_manager.modules.facturacion.service.FacturaSustitutaService.class),
+                    mock(api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoElegibilidad.class));
         }
     }
 

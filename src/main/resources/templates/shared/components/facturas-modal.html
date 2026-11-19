@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 
-<div th:fragment="facturaModal" class="modal fade" id="facturaModal" tabindex="-1" aria-labelledby="facturaModalLabel" aria-hidden="true">
+<th:block th:fragment="facturaModal">
+<div class="modal fade" id="facturaModal" tabindex="-1" aria-labelledby="facturaModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <!-- Modal Header -->
@@ -160,6 +161,56 @@
         </div>
     </div>
 
+    <!-- T-042 (ADR-047 §2): modal de emisión de la nota de crédito; se llena desde nota-credito-modal.js -->
+    <div class="modal fade" id="notaCreditoModal" tabindex="-1" aria-labelledby="notaCreditoModalLabel" aria-hidden="true"
+         data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notaCreditoModalLabel">
+                        <i class="fas fa-file-circle-minus me-2"></i>Emitir nota de crédito
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nc-codigo" class="form-label fw-bold">Código de referencia</label>
+                        <select id="nc-codigo" class="form-select">
+                            <option value="01">01 - Anula documento de referencia</option>
+                            <option value="13">13 - Anula documento de referencia por error material</option>
+                        </select>
+                        <div id="nc-efecto" class="form-text"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nc-razon" class="form-label fw-bold">Razón <span class="text-danger">*</span></label>
+                        <textarea id="nc-razon" class="form-control" rows="3" maxlength="180" required></textarea>
+                        <div class="d-flex justify-content-between">
+                            <div id="nc-razon-error" class="invalid-feedback d-block"></div>
+                            <small id="nc-contador" class="text-muted ms-auto">0/180</small>
+                        </div>
+                    </div>
+                    <div class="border rounded p-3 mb-3 bg-light">
+                        <h6 class="fw-bold mb-2">Resumen</h6>
+                        <div><strong>Factura:</strong> <span id="nc-resumen-factura"></span></div>
+                        <div><strong>Cliente:</strong> <span id="nc-resumen-cliente"></span></div>
+                        <div><strong>Monto:</strong> <span id="nc-resumen-monto"></span></div>
+                    </div>
+                    <div id="nc-aviso" class="alert alert-warning mb-3"></div>
+                    <div id="nc-error" class="alert alert-danger mb-0" role="alert" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="nc-cancelar">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="nc-confirmar">
+                        <i class="fas fa-check me-1"></i>Confirmar nota de crédito
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+
     <script th:src="@{/modules/facturacion/js/sustitucion-factura.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito-modal.js}"></script>
     <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
 </html>
