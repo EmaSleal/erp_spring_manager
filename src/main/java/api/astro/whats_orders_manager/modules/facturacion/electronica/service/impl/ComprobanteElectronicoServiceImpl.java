@@ -420,6 +420,21 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     
     @Override
     @Transactional(readOnly = true)
+    public PaginaComprobantes listarFiltrado(Integer empresaId, EstadoComprobante estado, Boolean vigente,
+                                             AmbienteHacienda ambiente, int page, int size) {
+        int tamano = Math.min(Math.max(size, 1), 500);
+        org.springframework.data.domain.Page<Object[]> pagina = repository.buscarFiltrados(empresaId, estado, vigente,
+            ambiente, org.springframework.data.domain.PageRequest.of(Math.max(page, 0), tamano));
+        // Mismas columnas que los SP de listado, para armar el DTO con el mismo código
+        List<Object[]> filas = pagina.getContent().stream().map(f -> new Object[]{f[0], f[1], f[2],
+            ((TipoComprobanteElectronico) f[3]).name(),
+            f[4] != null ? java.sql.Timestamp.valueOf((LocalDateTime) f[4]) : null,
+            ((EstadoComprobante) f[5]).name(), f[6], f[7], f[8], f[9], f[10], f[11]}).toList();
+        return new PaginaComprobantes(convertirResultadosADTO(filas), pagina.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ComprobanteElectronicoDTO> listarPorRangoFechas(Integer empresaId, LocalDateTime fechaInicio, LocalDateTime fechaFin, int page, int size) {
         List<Object[]> results = repository.findByEmpresaIdAndFechaEmisionBetweenAsDTO(empresaId, fechaInicio, fechaFin, page, size);
         return convertirResultadosADTO(results);
@@ -1164,6 +1179,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
         // T-044: ambiente de cada fila (el SP no lo trae) y banderas con UNA sola lectura del ambiente activo
         if (!lista.isEmpty()) {
+            // T-043: «vigente» de cada fila (el SP no la trae) para el filtro del enlace del panel (?vigente=true)
+            Map<Long, Boolean> vigentes = new HashMap<>();
+            for (Object[] fila : repository.findVigenteByIds(lista.stream().map(ComprobanteElectronicoDTO::getId).toList())) {
+                vigentes.put(((Number) fila[0]).longValue(), (Boolean) fila[1]);
+            }
+            lista.forEach(d -> d.setVigente(vigentes.get(d.getId())));
             Map<Long, AmbienteHacienda> ambientes = new HashMap<>();
             for (Object[] fila : repository.findAmbientesByIds(lista.stream().map(ComprobanteElectronicoDTO::getId).toList())) {
                 ambientes.put(((Number) fila[0]).longValue(), (AmbienteHacienda) fila[1]);

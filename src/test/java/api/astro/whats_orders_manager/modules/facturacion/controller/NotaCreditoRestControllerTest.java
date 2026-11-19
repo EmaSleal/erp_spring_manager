@@ -254,7 +254,7 @@ class NotaCreditoRestControllerTest {
         NotaCreditoListaDTO fila = new NotaCreditoListaDTO(5L, "NC-5", 7, "FA01-00007", "Cliente", "01",
                 "Anula documento de referencia", new BigDecimal("1630.00"), "CRC",
                 LocalDateTime.of(2026, 11, 12, 10, 0), "APLICADA", 30L, "ACEPTADO", null, false, false, "SANDBOX", true, null);
-        when(consultaService.listar(any(), any(), any(), any(), anyInt(), anyInt()))
+        when(consultaService.listar(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(new NotaCreditoPaginaDTO(List.of(fila), 1, 10, 11, 2));
 
         mockMvc.perform(get("/api/facturas/notas-credito").param("desde", "2026-11-01").param("hasta", "2026-11-30")
@@ -269,18 +269,18 @@ class NotaCreditoRestControllerTest {
                 .andExpect(jsonPath("$.data.totalPaginas").value(2));
 
         verify(consultaService).listar(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30), "acme",
-                EstadoNotaFactura.APLICADA, 1, 10);
+                EstadoNotaFactura.APLICADA, null, 1, 10);
     }
 
     @Test
     @DisplayName("T-042 GET listado: sin parámetros usa página 0 y tamaño 20; estado o fecha inválidos → 400")
     void listado_defectosEInvalidos() throws Exception {
-        when(consultaService.listar(any(), any(), any(), any(), anyInt(), anyInt()))
+        when(consultaService.listar(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(new NotaCreditoPaginaDTO(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/api/facturas/notas-credito").with(user("gerente").roles("USER")))
                 .andExpect(status().isOk());
-        verify(consultaService).listar(null, null, null, null, 0, 20);
+        verify(consultaService).listar(null, null, null, null, null, 0, 20);
 
         mockMvc.perform(get("/api/facturas/notas-credito").param("estado", "OTRO").with(user("gerente").roles("USER")))
                 .andExpect(status().isBadRequest());

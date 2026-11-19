@@ -6,6 +6,8 @@
     const TAMANO = 20;
     let pagina = 0;
     let totalPaginas = 0;
+    // T-043: ambiente que trae el enlace del panel; lo filtra el servidor
+    let ambienteUrl = '';
 
     function $(id) {
         return document.getElementById(id);
@@ -16,7 +18,8 @@
             desde: $('nc-filtro-desde').value,
             hasta: $('nc-filtro-hasta').value,
             cliente: $('nc-filtro-cliente').value,
-            estado: $('nc-filtro-estado').value
+            estado: $('nc-filtro-estado').value,
+            ambiente: ambienteUrl
         };
     }
 
@@ -105,10 +108,28 @@
         $('nc-filtrar').addEventListener('click', () => cargar(0));
         $('nc-limpiar').addEventListener('click', () => {
             ['nc-filtro-desde', 'nc-filtro-hasta', 'nc-filtro-cliente', 'nc-filtro-estado'].forEach((id) => { $(id).value = ''; });
+            ambienteUrl = '';
+            pintarFiltroAmbiente();
             cargar(0);
         });
         $('nc-anterior').addEventListener('click', () => { if (pagina > 0) cargar(pagina - 1); });
         $('nc-siguiente').addEventListener('click', () => { if (pagina + 1 < totalPaginas) cargar(pagina + 1); });
+        // T-043: el enlace del panel de Facturación trae ?estado=EN_TRAMITE
+        const estadoUrl = (new URLSearchParams(window.location.search).get('estado') || '').trim();
+        const selectEstado = $('nc-filtro-estado');
+        if (Array.from(selectEstado.options).some((o) => o.value === estadoUrl)) {
+            selectEstado.value = estadoUrl;
+        }
+        const ambiente = (new URLSearchParams(window.location.search).get('ambiente') || '').trim();
+        ambienteUrl = /^[A-Z_]{1,30}$/.test(ambiente) ? ambiente : '';
+        pintarFiltroAmbiente();
         cargar(0);
     });
+
+    function pintarFiltroAmbiente() {
+        const aviso = $('nc-filtro-ambiente');
+        if (!aviso) return;
+        aviso.textContent = ambienteUrl ? 'Solo notas del ambiente ' + ambienteUrl + ' (filtro del panel; «Limpiar» lo quita)' : '';
+        aviso.style.display = ambienteUrl ? '' : 'none';
+    }
 })();

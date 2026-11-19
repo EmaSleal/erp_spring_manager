@@ -44,7 +44,8 @@ class FacturaDetalleNotaCreditoTest {
         FacturaController controller = new FacturaController(facturaService, mock(ClienteService.class),
             mock(PagoService.class), mock(EmailService.class), mock(MonedaService.class), facturaMapper,
             mock(FacturaPdfService.class), mock(PagoMapper.class), mock(PoliticaMutabilidadFactura.class),
-            mock(FacturaSustitutaService.class), elegibilidad);
+            mock(FacturaSustitutaService.class), elegibilidad,
+            mock(api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard.class));
         mvc = MockMvcBuilders.standaloneSetup(controller).build();
         when(facturaService.findById(7)).thenReturn(Optional.of(factura));
         when(facturaMapper.toDetalleDTO(factura)).thenReturn(FacturaDetalleDTO.builder().build());

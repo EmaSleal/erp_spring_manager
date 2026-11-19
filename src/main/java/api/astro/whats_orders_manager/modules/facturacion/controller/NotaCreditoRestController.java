@@ -12,6 +12,7 @@ import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaC
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoConsultaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaService;
 import api.astro.whats_orders_manager.shared.dto.ResponseDTO;
@@ -88,7 +89,7 @@ public class NotaCreditoRestController {
 
     /**
      * Listado de notas (T-042, ADR-047 §1): filtros opcionales por fecha de emisión (yyyy-MM-dd, ambos extremos
-     * inclusive), cliente (nombre o identificación) y estado; paginado en la base de datos, de la más reciente a la
+     * inclusive), cliente (nombre o identificación), estado y ambiente del comprobante vigente (T-043); paginado en la base de datos, de la más reciente a la
      * más antigua. {@code page} es 0-based; {@code size} por defecto 20, máximo 100.
      */
     @GetMapping
@@ -98,11 +99,12 @@ public class NotaCreditoRestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) String cliente,
             @RequestParam(required = false) EstadoNotaFactura estado,
+            @RequestParam(required = false) AmbienteHacienda ambiente,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + NotaCreditoConsultaService.TAMANO_DEFECTO) int size,
             Authentication authentication) {
         return ResponseEntity.ok(ResponseDTO.success("OK",
-            consultaService.listar(desde, hasta, cliente, estado, page, size)));
+            consultaService.listar(desde, hasta, cliente, estado, ambiente, page, size)));
     }
 
     /** Detalle de la nota para su página (T-042): líneas, referencia, comprobante, historial y asiento. */

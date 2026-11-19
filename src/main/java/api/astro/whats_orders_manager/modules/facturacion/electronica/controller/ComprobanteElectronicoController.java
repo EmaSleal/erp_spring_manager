@@ -7,6 +7,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.TendenciaEnviosDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
@@ -43,6 +44,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ComprobanteElectronicoController {
+
+    /** Total de filas que cumplen el filtro del listado (T-043). */
+    public static final String CABECERA_TOTAL = "X-Total-Count";
+
     
     private final ComprobanteElectronicoService comprobanteService;
     private final EnvioHaciendaService envioService;
@@ -394,8 +399,13 @@ public class ComprobanteElectronicoController {
     public ResponseEntity<List<ComprobanteElectronicoDTO>> listarPorEmpresa(
             @PathVariable Integer empresaId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean vigente,
+            @RequestParam(required = false) AmbienteHacienda ambiente) {
         log.info("Listando comprobantes de empresa {} - page: {}, size: {}", empresaId, page, size);
+        if (vigente != null || ambiente != null) {
+            return filtrado(empresaId, null, vigente, ambiente, page, size);
+        }
         List<ComprobanteElectronicoDTO> comprobantes = comprobanteService.listarPorEmpresa(empresaId, page, size);
         return ResponseEntity.ok(comprobantes);
     }
@@ -403,16 +413,31 @@ public class ComprobanteElectronicoController {
     /**
      * Lista comprobantes por estado.
      * GET /api/facturacion/comprobantes/empresa/{empresaId}/estado/{estado}
+     * T-043: con {@code vigente} y/o {@code ambiente} el filtro se aplica en la base de datos y la respuesta trae el
+     * total filtrado en la cabecera {@code X-Total-Count}; sin ellos, el comportamiento anterior.
      */
     @GetMapping("/empresa/{empresaId}/estado/{estado}")
     public ResponseEntity<List<ComprobanteElectronicoDTO>> listarPorEstado(
             @PathVariable Integer empresaId,
             @PathVariable EstadoComprobante estado,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean vigente,
+            @RequestParam(required = false) AmbienteHacienda ambiente) {
         log.info("Listando comprobantes {} de empresa {}", estado, empresaId);
+        if (vigente != null || ambiente != null) {
+            return filtrado(empresaId, estado, vigente, ambiente, page, size);
+        }
         List<ComprobanteElectronicoDTO> comprobantes = comprobanteService.listarPorEstado(empresaId, estado, page, size);
         return ResponseEntity.ok(comprobantes);
+    }
+
+    private ResponseEntity<List<ComprobanteElectronicoDTO>> filtrado(Integer empresaId, EstadoComprobante estado,
+                                                                     Boolean vigente, AmbienteHacienda ambiente,
+                                                                     int page, int size) {
+        ComprobanteElectronicoService.PaginaComprobantes pagina =
+            comprobanteService.listarFiltrado(empresaId, estado, vigente, ambiente, page, size);
+        return ResponseEntity.ok().header(CABECERA_TOTAL, String.valueOf(pagina.total())).body(pagina.contenido());
     }
     
     /**
