@@ -23,7 +23,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -50,17 +53,53 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
     private final ConfiguracionHaciendaRepository configuracionRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    /**
+     * Transacción de solo lectura propia para leer de la configuración lo que está detrás de relaciones perezosas
+     * (emisor). El token y el POST nunca corren dentro de ella (ADR-043 §2). Nulo solo en pruebas unitarias, donde la
+     * configuración es un objeto en memoria.
+     */
+    private final TransactionTemplate lecturaConfiguracion;
 
     /**
      * @param restTemplate el cliente exclusivo de Hacienda ({@code haciendaRestTemplate}, timeouts por propiedades,
      *                     T-037)
      */
+    @Autowired
     public HaciendaApiServiceImpl(ConfiguracionHaciendaRepository configuracionRepository,
                                   @Qualifier("haciendaRestTemplate") RestTemplate restTemplate,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  PlatformTransactionManager transactionManager) {
         this.configuracionRepository = configuracionRepository;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        if (transactionManager != null) {
+            this.lecturaConfiguracion = new TransactionTemplate(transactionManager);
+            this.lecturaConfiguracion.setReadOnly(true);
+            // Propia aunque el llamador tenga una: el envío corre sin transacción y el sondeo en la suya
+        } else {
+            this.lecturaConfiguracion = null;
+        }
+    }
+
+    /** Sin transacciones: la configuración es un objeto en memoria (pruebas unitarias). */
+    public HaciendaApiServiceImpl(ConfiguracionHaciendaRepository configuracionRepository, RestTemplate restTemplate,
+                                  ObjectMapper objectMapper) {
+        this(configuracionRepository, restTemplate, objectMapper, null);
+    }
+
+    /** Lo que el POST de recepción necesita de la configuración, leído en una transacción de solo lectura. */
+    private record DatosEnvio(String urlRecepcion, String tipoIdentificacionEmisor, String numeroIdentificacionEmisor) {
+    }
+
+    private DatosEnvio leerDatosEnvio(Long configuracionId) {
+        java.util.function.Supplier<DatosEnvio> lectura = () -> {
+            ConfiguracionHacienda config = configuracionRepository.findById(configuracionId)
+                .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
+            var empresa = config.getEmpresa(); // perezosa: solo se toca con la transacción abierta
+            String tipoId = empresa.getTipoIdentificacion() != null ? empresa.getTipoIdentificacion().getCodigo() : "02";
+            return new DatosEnvio(urlBase(config) + AmbienteHacienda.RUTA_RECEPCION, tipoId, empresa.getRuc());
+        };
+        return lecturaConfiguracion != null ? lecturaConfiguracion.execute(st -> lectura.get()) : lectura.get();
     }
     
     private static final String GRANT_TYPE_PASSWORD = "password";
@@ -188,26 +227,22 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
     public RespuestaHaciendaDTO enviarComprobante(String xml, String claveNumerica, Long configuracionId) {
         log.info("Enviando comprobante a Hacienda - Clave: {}", claveNumerica);
 
-        ConfiguracionHacienda config;
         String urlRecepcion;
         Map<String, Object> body;
         try {
-            config = configuracionRepository.findById(configuracionId)
-                .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
-            urlRecepcion = urlBase(config) + AmbienteHacienda.RUTA_RECEPCION;
+            // Datos de la configuración (relaciones perezosas) en una lectura propia: el POST no depende de la sesión
+            DatosEnvio datos = leerDatosEnvio(configuracionId);
+            urlRecepcion = datos.urlRecepcion();
 
             String xmlBase64 = Base64.getEncoder().encodeToString(xml.getBytes(StandardCharsets.UTF_8));
             String fechaEmision = OffsetDateTime.now(ZoneId.of("America/Costa_Rica"))
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx"));
-            String tipoId = config.getEmpresa().getTipoIdentificacion() != null
-                ? config.getEmpresa().getTipoIdentificacion().getCodigo()
-                : "02";
             body = Map.of(
                 "clave", claveNumerica,
                 "fecha", fechaEmision,
                 "emisor", Map.of(
-                    "tipoIdentificacion", tipoId,
-                    "numeroIdentificacion", config.getEmpresa().getRuc()
+                    "tipoIdentificacion", datos.tipoIdentificacionEmisor(),
+                    "numeroIdentificacion", datos.numeroIdentificacionEmisor()
                 ),
                 "comprobanteXml", xmlBase64
             );
@@ -375,7 +410,8 @@ public class HaciendaApiServiceImpl implements HaciendaApiService {
             TokenResponse token = autenticar(configuracionId);
             
             // URL de mensajes
-            String urlMensajes = urlBase(config) + AmbienteHacienda.RUTA_MENSAJES_RECEPTOR + config.getEmpresa().getRuc();
+            String urlMensajes = urlBase(config) + AmbienteHacienda.RUTA_MENSAJES_RECEPTOR
+                + leerDatosEnvio(configuracionId).numeroIdentificacionEmisor();
             
             // Preparar headers
             HttpHeaders headers = new HttpHeaders();

@@ -1058,6 +1058,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 .enviadoEmail(row[11] instanceof Boolean b ? b : row[11] instanceof Number n && n.intValue() != 0)
                 // Acción "Consultar estado en Hacienda" del listado (ADR-031 §4)
                 .consultableEnHacienda(CONSULTABLES_A_MANO.contains(EstadoComprobante.valueOf((String) row[5])))
+                // T-040 (P-086): acción «Reenviar» del listado, calculada aquí porque el SP no la trae
+                .puedeReenviar(EstadoComprobante.valueOf((String) row[5]).esReenviable())
                 .build())
             .collect(java.util.stream.Collectors.toList());
         // T-037: el SP no trae fecha_envio; el listado la necesita para «Enviando…» (ENVIO_INCIERTO de < 2 min)
