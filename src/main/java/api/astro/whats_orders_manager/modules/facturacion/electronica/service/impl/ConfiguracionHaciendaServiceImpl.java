@@ -174,21 +174,22 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     }
 
     /**
-     * Sin transacción propia (T-041): si una fila tiene credenciales que no se descifran, la carga lanza y marcaría
-     * como rollback-only una transacción que envolviera todo el listado. Cada lectura del repositorio usa la suya; la
-     * empresa viene cargada con la configuración (JOIN FETCH), así que mapear no necesita sesión.
+     * T-041: cada lectura corre en su propia transacción de solo lectura (REQUIRES_NEW, un EntityManager nuevo). Con
+     * open-in-view, una carga que falla al descifrar deja una entidad a medias en el EntityManager de la petición y
+     * contamina las lecturas siguientes (otra fila legible podría salir como ilegible); en uno propio, lo que falla se
+     * descarta junto con él. La empresa viene cargada con la configuración (JOIN FETCH) y se mapea dentro de la lectura.
      */
     @Override
     public List<ConfiguracionHaciendaDTO> listarPorEmpresa(Integer empresaId) {
         try {
-            return repository.findAllByEmpresaId(empresaId)
+            return enLecturaPropia(() -> repository.findAllByEmpresaId(empresaId)
                 .stream()
                 .map(mapper::toDTO)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
         } catch (RuntimeException e) {
             log.warn("No se pudo leer el listado de configuraciones de Hacienda de la empresa {} ({}); se lista fila por "
                 + "fila con las credenciales ilegibles marcadas", empresaId, causaRaiz(e));
-            return repository.findSinCredencialesByEmpresaId(empresaId).stream()
+            return enLecturaPropia(() -> repository.findSinCredencialesByEmpresaId(empresaId)).stream()
                 .map(this::dtoDeFila)
                 .collect(Collectors.toList());
         }
@@ -197,13 +198,24 @@ public class ConfiguracionHaciendaServiceImpl implements ConfiguracionHaciendaSe
     /** Una fila del listado de reserva: completa si se descifra; si no, solo las columnas no cifradas y el aviso. */
     private ConfiguracionHaciendaDTO dtoDeFila(ConfiguracionHaciendaSinCredenciales fila) {
         try {
-            return repository.findConEmpresaById(fila.getId()).map(mapper::toDTO)
-                .orElseGet(() -> mapper.toDTOIlegible(fila));
+            return enLecturaPropia(() -> repository.findConEmpresaById(fila.getId()).map(mapper::toDTO)
+                .orElseGet(() -> mapper.toDTOIlegible(fila)));
         } catch (RuntimeException e) {
             log.warn("Configuración de Hacienda {}: las credenciales guardadas no se descifran con la clave actual "
                 + "(HACIENDA_CRYPTO_KEY): {}", fila.getId(), causaRaiz(e));
             return mapper.toDTOIlegible(fila);
         }
+    }
+
+    /** Ejecuta la lectura en una transacción propia de solo lectura; sin gestor (pruebas unitarias), en línea. */
+    private <T> T enLecturaPropia(java.util.function.Supplier<T> lectura) {
+        if (transactionManager == null) {
+            return lectura.get();
+        }
+        TransactionTemplate propia = new TransactionTemplate(transactionManager);
+        propia.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        propia.setReadOnly(true);
+        return propia.execute(st -> lectura.get());
     }
 
     /**

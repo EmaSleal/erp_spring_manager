@@ -279,6 +279,22 @@ class ConfiguracionHaciendaIlegibleIT {
     }
 
     @Test
+    @DisplayName("reenviar un ERROR con otro ultimoError, dos veces seguidas: el mensaje de la respuesta es el fijo")
+    void api_reenviarError_dosVeces_mensajeFijo() throws Exception {
+        Long id = comprobanteEn("ERROR");
+        jdbc.update("UPDATE comprobante_electronico SET ultimo_error = 'Error en firma digital: PIN' WHERE id = ?", id);
+        corromperCredenciales();
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/facturas/electronica/comprobantes/" + id + "/reenviar")
+                            .with(user(USUARIO).roles("ADMIN")).with(csrf()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.message").value(ILEGIBLE));
+        }
+        assertThat(ultimoError(id)).isEqualTo(ILEGIBLE);
+        assertThat(intentos(id)).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("POST /procesar/{facturaId} con la configuración ilegible: 409 con el mensaje fijo, sin consecutivo consumido ni comprobante")
     void api_procesar_configuracionIlegible_409SinConsumirConsecutivo() throws Exception {
         int idFactura = facturaConLinea();

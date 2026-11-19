@@ -39,7 +39,7 @@ public final class MensajesEnvioHacienda {
             case NO_TRANSMITIDO -> NO_TRANSMITIDO;
             case ENVIO_INCIERTO -> ENVIO_INCIERTO;
             case ERROR -> esXmlInvalido(comprobante) ? XML_INVALIDO
-                : esConfiguracion(comprobante) ? comprobante.getUltimoError() : ERROR_LOCAL;
+                : mensajeDeConfiguracion(comprobante) != null ? mensajeDeConfiguracion(comprobante) : ERROR_LOCAL;
             default -> "El comprobante quedó en estado " + estado.getCodigo() + ".";
         };
     }
@@ -61,11 +61,28 @@ public final class MensajesEnvioHacienda {
             : "El comprobante en estado " + estado + " no se puede enviar: Hacienda ya lo tiene o pudo recibirlo";
     }
 
-    /** La falla local fue de la configuración de Hacienda: ultimoError ya es uno de los dos mensajes fijos. */
-    static boolean esConfiguracion(ComprobanteElectronicoDTO comprobante) {
-        return CONFIGURACION_ILEGIBLE.equals(comprobante.getUltimoError())
-            || CONFIGURACION_NO_VALIDA.equals(comprobante.getUltimoError());
+    /**
+     * Si la falla local fue de la configuración de Hacienda, el mensaje fijo que corresponde (siempre la constante, nunca
+     * el texto guardado). Se reconoce por el comienzo ASCII de ultimoError, de modo que espacios finales, otra
+     * codificación de los acentos o una columna más corta no lo hagan caer en el mensaje genérico. null si no aplica.
+     */
+    static String mensajeDeConfiguracion(ComprobanteElectronicoDTO comprobante) {
+        String ultimo = comprobante.getUltimoError();
+        if (comprobante.getEstado() != EstadoComprobante.ERROR || ultimo == null) {
+            return null;
+        }
+        String texto = ultimo.strip();
+        if (texto.startsWith(PREFIJO_ILEGIBLE)) {
+            return CONFIGURACION_ILEGIBLE;
+        }
+        if (texto.startsWith(PREFIJO_NO_VALIDA)) {
+            return CONFIGURACION_NO_VALIDA;
+        }
+        return null;
     }
+
+    private static final String PREFIJO_ILEGIBLE = "No se pueden leer las credenciales de Hacienda";
+    private static final String PREFIJO_NO_VALIDA = "No hay una configuraci";
 
     static boolean esXmlInvalido(ComprobanteElectronicoDTO comprobante) {
         return comprobante.getEstado() == EstadoComprobante.ERROR && comprobante.getUltimoError() != null
