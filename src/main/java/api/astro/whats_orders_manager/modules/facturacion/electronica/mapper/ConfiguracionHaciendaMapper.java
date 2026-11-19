@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.mapper;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ConfiguracionHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaSinCredenciales;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +18,37 @@ public class ConfiguracionHaciendaMapper {
     /** Valor enmascarado que se devuelve en lugar de la contraseña y el PIN (T-021). */
     public static final String MASK = "********";
     
+    /** T-041: aviso fijo de una configuración cuyas credenciales no se descifran. */
+    public static final String AVISO_CREDENCIALES_ILEGIBLES = "Las credenciales guardadas no se pueden descifrar con "
+        + "la clave actual del servidor; vuelva a ingresarlas";
+
+    /**
+     * T-041: DTO de una configuración cuyas credenciales no se descifran, a partir de las columnas no cifradas.
+     * Marca el aviso fijo; no expone ninguna credencial.
+     */
+    public ConfiguracionHaciendaDTO toDTOIlegible(ConfiguracionHaciendaSinCredenciales fila) {
+        return ConfiguracionHaciendaDTO.builder()
+            .id(fila.getId())
+            .empresaId(fila.getEmpresa().getIdEmpresa().longValue())
+            .empresaNombre(fila.getEmpresa().getNombreDisplay())
+            .ambiente(fila.getAmbiente())
+            .usuarioHacienda(fila.getUsuarioHacienda())
+            .passwordHacienda(MASK)
+            .rutaCertificado(fila.getRutaCertificado())
+            .activa(fila.getActiva())
+            .tokenValido(false)
+            .tieneToken(false)
+            .credencialesIlegibles(true)
+            .avisoCredenciales(AVISO_CREDENCIALES_ILEGIBLES)
+            .consecutivoFactura(fila.getConsecutivoFactura())
+            .consecutivoTiquete(fila.getConsecutivoTiquete())
+            .consecutivoNotaCredito(fila.getConsecutivoNotaCredito())
+            .consecutivoNotaDebito(fila.getConsecutivoNotaDebito())
+            .createdAt(fila.getCreatedAt())
+            .updatedAt(fila.getUpdatedAt())
+            .build();
+    }
+
     /**
      * Convierte entidad a DTO.
      */

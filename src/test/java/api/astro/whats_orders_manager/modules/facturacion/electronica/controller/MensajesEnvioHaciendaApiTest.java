@@ -67,6 +67,39 @@ class MensajesEnvioHaciendaApiTest {
         }
     }
 
+    @ParameterizedTest
+    @CsvSource({"ILEGIBLE", "NO_VALIDA"})
+    @DisplayName("T-041: falla local de la configuración de Hacienda: 422 con su mensaje fijo")
+    void configuracionDeHacienda(String causa) throws Exception {
+        String fijo = "ILEGIBLE".equals(causa) ? MensajesEnvioHacienda.CONFIGURACION_ILEGIBLE
+            : MensajesEnvioHacienda.CONFIGURACION_NO_VALIDA;
+        when(envio.reenviar(5L)).thenReturn(comprobante(EstadoComprobante.ERROR, fijo));
+        mvc.perform(post("/api/facturas/electronica/comprobantes/5/reenviar"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.message").value(fijo));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "No se pueden leer las credenciales de Hacienda; revise la configuración y la clave de cifrado del servidor. | ILEGIBLE",
+        "No se pueden leer las credenciales de Hacienda; revise la configuraci?n y la clave de cifrado del servidor | ILEGIBLE",
+        "No se pueden leer las credenciales de Hacienda; revise la configuración y la clave de cifr | ILEGIBLE",
+        "No hay una configuración de Hacienda válida; revise Facturación ? Configuración | NO_VALIDA"
+    })
+    @DisplayName("T-041: ultimoError con espacios, otra codificación o truncado: la respuesta usa igual el mensaje fijo")
+    void configuracionDeHacienda_ultimoErrorNoIdentico(String ultimoError, String causa) throws Exception {
+        String fijo = "ILEGIBLE".equals(causa) ? MensajesEnvioHacienda.CONFIGURACION_ILEGIBLE
+            : MensajesEnvioHacienda.CONFIGURACION_NO_VALIDA;
+        when(envio.reenviar(5L)).thenReturn(comprobante(EstadoComprobante.ERROR, ultimoError));
+        when(envio.enviar(5L)).thenReturn(comprobante(EstadoComprobante.ERROR, ultimoError));
+        for (String accion : new String[] {"reenviar", "enviar"}) {
+            mvc.perform(post("/api/facturas/electronica/comprobantes/5/" + accion))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value(fijo));
+        }
+    }
+
     @Test
     @DisplayName("XML inválido según el XSD: 422 con el mensaje de T-036")
     void xmlInvalido() throws Exception {

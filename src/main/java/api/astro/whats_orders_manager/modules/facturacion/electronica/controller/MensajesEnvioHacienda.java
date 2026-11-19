@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.controlle
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConfiguracionHaciendaNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import org.springframework.http.HttpStatus;
 
@@ -17,6 +18,10 @@ public final class MensajesEnvioHacienda {
     public static final String XML_INVALIDO = ComprobanteElectronicoServiceImpl.MENSAJE_XML_INVALIDO_XSD;
     public static final String ERROR_LOCAL = "No se pudo preparar el comprobante (generación, firma o configuración de "
         + "Hacienda). Revise el error en el detalle del comprobante.";
+    /** T-041: las credenciales de Hacienda no se descifran con la clave del servidor. */
+    public static final String CONFIGURACION_ILEGIBLE = ConfiguracionHaciendaNoDisponibleException.MENSAJE_ILEGIBLE;
+    /** T-041: sin configuración activa, más de una, de otra empresa o incompleta. */
+    public static final String CONFIGURACION_NO_VALIDA = ConfiguracionHaciendaNoDisponibleException.MENSAJE_NO_VALIDA;
     public static final String ERROR_INESPERADO = "No se pudo completar la operación con el comprobante electrónico. "
         + "Intente de nuevo; si el problema sigue, contacte al administrador.";
 
@@ -33,7 +38,8 @@ public final class MensajesEnvioHacienda {
             case ENVIADO -> RECIBIDO;
             case NO_TRANSMITIDO -> NO_TRANSMITIDO;
             case ENVIO_INCIERTO -> ENVIO_INCIERTO;
-            case ERROR -> esXmlInvalido(comprobante) ? XML_INVALIDO : ERROR_LOCAL;
+            case ERROR -> esXmlInvalido(comprobante) ? XML_INVALIDO
+                : mensajeDeConfiguracion(comprobante) != null ? mensajeDeConfiguracion(comprobante) : ERROR_LOCAL;
             default -> "El comprobante quedó en estado " + estado.getCodigo() + ".";
         };
     }
@@ -54,6 +60,29 @@ public final class MensajesEnvioHacienda {
             ? "Comprobante no puede ser reenviado en estado " + estado
             : "El comprobante en estado " + estado + " no se puede enviar: Hacienda ya lo tiene o pudo recibirlo";
     }
+
+    /**
+     * Si la falla local fue de la configuración de Hacienda, el mensaje fijo que corresponde (siempre la constante, nunca
+     * el texto guardado). Se reconoce por el comienzo ASCII de ultimoError, de modo que espacios finales, otra
+     * codificación de los acentos o una columna más corta no lo hagan caer en el mensaje genérico. null si no aplica.
+     */
+    static String mensajeDeConfiguracion(ComprobanteElectronicoDTO comprobante) {
+        String ultimo = comprobante.getUltimoError();
+        if (comprobante.getEstado() != EstadoComprobante.ERROR || ultimo == null) {
+            return null;
+        }
+        String texto = ultimo.strip();
+        if (texto.startsWith(PREFIJO_ILEGIBLE)) {
+            return CONFIGURACION_ILEGIBLE;
+        }
+        if (texto.startsWith(PREFIJO_NO_VALIDA)) {
+            return CONFIGURACION_NO_VALIDA;
+        }
+        return null;
+    }
+
+    private static final String PREFIJO_ILEGIBLE = "No se pueden leer las credenciales de Hacienda";
+    private static final String PREFIJO_NO_VALIDA = "No hay una configuraci";
 
     static boolean esXmlInvalido(ComprobanteElectronicoDTO comprobante) {
         return comprobante.getEstado() == EstadoComprobante.ERROR && comprobante.getUltimoError() != null
