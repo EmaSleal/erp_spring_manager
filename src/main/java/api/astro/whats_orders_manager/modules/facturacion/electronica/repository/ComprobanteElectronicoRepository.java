@@ -148,6 +148,13 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
     /** Comprobante vigente de una nota de crédito o débito (ADR-037 §2). */
     Optional<ComprobanteElectronico> findFirstByNotaFactura_IdAndVigenteTrue(Long idNota);
 
+    /** Comprobantes vigentes de varias notas, en una sola consulta (listado de notas, T-042). */
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE c.notaFactura.id IN :ids AND c.vigente = true")
+    List<ComprobanteElectronico> findVigentesByNotaIds(@Param("ids") java.util.Collection<Long> ids);
+
+    /** Todos los comprobantes de una nota, vigente e historial, en orden de creación (T-042). */
+    List<ComprobanteElectronico> findByNotaFactura_IdOrderByIdAsc(Long idNota);
+
     /**
      * Todos los comprobantes de una factura, vigente e historial, en orden de creación.
      */

@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.shared.dto.PaginacionDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.exception.FacturaBloqueadaException;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaSustitutaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoElegibilidad;
 import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabilidadFactura;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
@@ -64,6 +65,7 @@ public class FacturaController {
     private final PagoMapper pagoMapper;
     private final PoliticaMutabilidadFactura politicaMutabilidad;
     private final FacturaSustitutaService sustitutaService;
+    private final NotaCreditoElegibilidad notaCreditoElegibilidad;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -188,6 +190,10 @@ public class FacturaController {
                 detalle.setRevisarEnAtv(false);
             }
             sustitutaService.completarDetalle(factura, detalle);
+            NotaCreditoElegibilidad.Resultado notaCredito = notaCreditoElegibilidad.evaluar(factura,
+                authentication.getName());
+            detalle.setPuedeEmitirNotaCredito(notaCredito.puedeEmitir());
+            detalle.setMotivoNotaCreditoNoDisponible(notaCredito.motivoNoDisponible());
             return ResponseEntity.ok(detalle);
                     
         } catch (Exception e) {

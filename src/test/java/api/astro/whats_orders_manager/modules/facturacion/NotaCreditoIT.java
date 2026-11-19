@@ -108,6 +108,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -178,6 +179,7 @@ class NotaCreditoIT {
     @Autowired private FirmaDigitalService firmaDigital;
     @Autowired private NotaFacturaService notaService;
     @Autowired private FacturaService facturaService;
+    @Autowired private api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService empresaService;
     @Autowired private RelojAjustable reloj;
     @Autowired private ComprobanteReintentosJob reintentosJob;
 
@@ -823,6 +825,252 @@ class NotaCreditoIT {
                 idNota);
     }
 
+
+    // ── T-042: pantalla de notas (listado, detalle, PDF, bandera del modal) ───────────
+
+    @Test
+    @DisplayName("T-042: listado con filtros de cliente, fechas y estado, paginado y ordenado por fecha descendente")
+    void listado_filtrosPaginacionYOrden() throws Exception {
+        String token = "Zeta" + UUID.randomUUID().toString().substring(0, 8);
+        int idFactura1 = facturaAceptada();
+        int idFactura2 = facturaAceptada();
+        Nota n1 = emitirOk(idFactura1, "01", "Primera para el listado");
+        Nota n2 = emitirOk(idFactura2, "13", "Segunda para el listado");
+        for (int id : new int[] {idFactura1, idFactura2}) {
+            jdbc.update("UPDATE cliente SET nombre = ? WHERE id_cliente = (SELECT id_cliente FROM factura "
+                    + "WHERE id_factura = ?)", token + " S.A.", id);
+        }
+        // Fechas lejanas para no mezclarse con las notas de otras pruebas de la clase
+        jdbc.update("UPDATE nota_factura SET fecha_emision = '2020-03-10 10:00:00' WHERE id = ?", n1.id());
+        jdbc.update("UPDATE nota_factura SET fecha_emision = '2020-03-12 12:00:00', estado = 'APLICADA' WHERE id = ?",
+                n2.id());
+
+        // cliente: contiene, sin distinguir mayúsculas
+        JsonNode porCliente = listar("cliente", token.toUpperCase().substring(0, 6).toLowerCase());
+        assertThat(ids(porCliente)).containsExactly(n2.id(), n1.id());
+        assertThat(porCliente.get("totalElementos").asLong()).isEqualTo(2);
+
+        // fechas: ambos extremos inclusive; «hasta» llega al final del día
+        assertThat(ids(listar("desde", "2020-03-10", "hasta", "2020-03-12"))).containsExactly(n2.id(), n1.id());
+        assertThat(ids(listar("desde", "2020-03-11", "hasta", "2020-03-12"))).containsExactly(n2.id());
+        assertThat(ids(listar("desde", "2020-03-10", "hasta", "2020-03-10"))).containsExactly(n1.id());
+        assertThat(ids(listar("desde", "2020-03-13", "hasta", "2020-03-31"))).isEmpty();
+
+        // estado de la nota
+        assertThat(ids(listar("desde", "2020-03-01", "hasta", "2020-03-31", "estado", "APLICADA")))
+                .containsExactly(n2.id());
+        assertThat(ids(listar("desde", "2020-03-01", "hasta", "2020-03-31", "estado", "EN_TRAMITE")))
+                .containsExactly(n1.id());
+
+        // paginado en la base de datos: 0-based, orden fecha descendente
+        JsonNode pagina0 = listar("cliente", token, "page", "0", "size", "1");
+        assertThat(ids(pagina0)).containsExactly(n2.id());
+        assertThat(pagina0.get("pagina").asInt()).isZero();
+        assertThat(pagina0.get("tamano").asInt()).isEqualTo(1);
+        assertThat(pagina0.get("totalElementos").asLong()).isEqualTo(2);
+        assertThat(pagina0.get("totalPaginas").asInt()).isEqualTo(2);
+        assertThat(ids(listar("cliente", token, "page", "1", "size", "1"))).containsExactly(n1.id());
+        assertThat(listar("size", "1000").get("tamano").asInt()).isEqualTo(100);
+
+        // contenido de la fila
+        JsonNode fila = listar("cliente", token, "estado", "EN_TRAMITE").get("contenido").get(0);
+        assertThat(fila.get("numero").asText()).isEqualTo(
+                jdbc.queryForObject("SELECT consecutivo FROM comprobante_electronico WHERE id = ?", String.class,
+                        n1.idComprobante()));
+        assertThat(fila.get("idFactura").asInt()).isEqualTo(idFactura1);
+        assertThat(fila.get("clienteNombre").asText()).isEqualTo(token + " S.A.");
+        assertThat(fila.get("codigoReferencia").asText()).isEqualTo("01");
+        assertThat(fila.get("codigoNombre").asText()).isEqualTo("Anula documento de referencia");
+        assertThat(fila.get("total").decimalValue()).isEqualByComparingTo("1630.00");
+        assertThat(fila.get("moneda").asText()).isEqualTo("CRC");
+        assertThat(fila.get("fechaEmision").asText()).startsWith("2020-03-10T10:00");
+        assertThat(fila.get("estado").asText()).isEqualTo("EN_TRAMITE");
+        assertThat(fila.get("estadoComprobante").asText()).isEqualTo("ENVIO_INCIERTO");
+        assertThat(fila.get("idComprobante").asLong()).isEqualTo(n1.idComprobante());
+        // ENVIO_INCIERTO se consulta a mano, no se reenvía (mismas reglas de comprobantes)
+        assertThat(fila.get("puedeReenviar").asBoolean()).isFalse();
+        assertThat(fila.get("consultableEnHacienda").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("T-042: filtros inválidos → 400")
+    void listado_invalido_400() throws Exception {
+        assertThat(mockMvc.perform(get("/api/facturas/notas-credito").param("estado", "OTRO")
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getStatus()).isEqualTo(400);
+        assertThat(mockMvc.perform(get("/api/facturas/notas-credito").param("desde", "10/03/2020")
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getStatus()).isEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("T-042: detalle con líneas, referencia, comprobante, historial, asiento de reversión y sustituta; 404 si no existe")
+    void detalle_completo() throws Exception {
+        int idFactura = facturaAceptada();
+        String claveFactura = claveVigente(idFactura);
+        Long idVenta = asientoVentaVigente(idFactura);
+        Nota nota = emitirOk(idFactura, "01", "Anulación para el detalle");
+
+        // En trámite: sin asiento ni sustituta
+        JsonNode enTramite = detalle(nota.id());
+        assertThat(enTramite.get("estado").asText()).isEqualTo("EN_TRAMITE");
+        assertThat(enTramite.get("idAsientoReversion").isNull()).isTrue();
+        assertThat(enTramite.get("puedeEmitirSustituta").asBoolean()).isFalse();
+        assertThat(enTramite.get("historial")).hasSize(1);
+
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        Long idReversion = jdbc.queryForObject("SELECT id FROM asientos_contables WHERE asiento_revertido_id = ?",
+                Long.class, idVenta);
+        String numeroReversion = jdbc.queryForObject("SELECT numero FROM asientos_contables WHERE id = ?",
+                String.class, idReversion);
+
+        JsonNode d = detalle(nota.id());
+        assertThat(d.get("id").asLong()).isEqualTo(nota.id());
+        assertThat(d.get("estado").asText()).isEqualTo("APLICADA");
+        assertThat(d.get("tipo").asText()).isEqualTo("CREDITO");
+        assertThat(d.get("codigoReferencia").asText()).isEqualTo("01");
+        assertThat(d.get("codigoNombre").asText()).isEqualTo("Anula documento de referencia");
+        assertThat(d.get("razon").asText()).isEqualTo("Anulación para el detalle");
+        assertThat(d.get("moneda").asText()).isEqualTo("CRC");
+        assertThat(d.get("total").decimalValue()).isEqualByComparingTo("1630.00");
+        assertThat(d.get("usuarioCreador").asText()).isEqualTo(USUARIO);
+        assertThat(d.get("fechaAplicacion").isNull()).isFalse();
+        assertThat(d.get("idFactura").asInt()).isEqualTo(idFactura);
+        assertThat(d.get("numeroFactura").asText()).isNotBlank();
+        assertThat(d.get("clienteNombre").asText()).startsWith("Cliente T032");
+        assertThat(d.get("claveReferencia").asText()).isEqualTo(claveFactura);
+        assertThat(d.get("fechaEmisionReferencia").asText()).isNotBlank();
+
+        JsonNode lineas = d.get("lineas");
+        assertThat(lineas).hasSize(2);
+        assertThat(lineas.get(0).get("numeroLinea").asInt()).isEqualTo(1);
+        assertThat(lineas.get(0).get("producto").asText()).contains("Producto A");
+        assertThat(lineas.get(0).get("descripcion").asText()).isNotBlank();
+        assertThat(lineas.get(0).get("codigoCabys").asText()).hasSize(13);
+        assertThat(lineas.get(0).get("cantidad").decimalValue()).isEqualByComparingTo("1");
+        assertThat(lineas.get(0).get("tarifaIva").decimalValue()).isEqualByComparingTo("13");
+        assertThat(lineas.get(1).get("producto").asText()).contains("Producto B");
+
+        assertThat(d.get("comprobante").get("estado").asText()).isEqualTo("ACEPTADO");
+        assertThat(d.get("comprobante").get("clave").asText()).isEqualTo(nota.clave());
+        assertThat(d.get("comprobante").get("estadoDescripcion").asText()).isNotBlank();
+        assertThat(d.get("historial")).hasSize(1);
+        assertThat(d.get("historial").get(0).get("id").asLong()).isEqualTo(nota.idComprobante());
+        assertThat(d.get("idAsientoReversion").asLong()).isEqualTo(idReversion);
+        assertThat(d.get("numeroAsientoReversion").asText()).isEqualTo(numeroReversion);
+        assertThat(d.get("puedeEmitirSustituta").asBoolean()).isTrue();
+
+        assertThat(mockMvc.perform(get("/api/facturas/notas-credito/9999999/detalle")
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("T-042: el historial del detalle lleva todos los comprobantes de la nota")
+    void detalle_historialConVariosComprobantes() throws Exception {
+        int idFactura = facturaAceptada();
+        Nota nota = emitirOk(idFactura, "13", "Con historial");
+        tx.executeWithoutResult(s -> {
+            ComprobanteElectronico vigente = comprobanteRepository.findById(nota.idComprobante()).orElseThrow();
+            vigente.setVigente(false);
+            vigente.setEstado(EstadoComprobante.RECHAZADO);
+            comprobanteRepository.save(vigente);
+        });
+        tx.executeWithoutResult(s -> {
+            ComprobanteElectronico anterior = comprobanteRepository.findById(nota.idComprobante()).orElseThrow();
+            comprobanteRepository.save(ComprobanteElectronico.builder()
+                    .notaFactura(anterior.getNotaFactura())
+                    .empresa(anterior.getEmpresa())
+                    .tipoComprobante(TipoComprobanteElectronico.NOTA_CREDITO)
+                    .claveNumerica(clave())
+                    .consecutivo(String.format("%020d", 7777L))
+                    .fechaEmision(LocalDateTime.now().withNano(0))
+                    .estado(EstadoComprobante.FIRMADO)
+                    .vigente(true)
+                    .build());
+        });
+
+        JsonNode d = detalle(nota.id());
+
+        assertThat(d.get("historial")).hasSize(2);
+        assertThat(d.get("historial").get(0).get("id").asLong()).isEqualTo(nota.idComprobante());
+        assertThat(d.get("historial").get(0).get("estado").asText()).isEqualTo("RECHAZADO");
+        assertThat(d.get("historial").get(1).get("estado").asText()).isEqualTo("FIRMADO");
+        assertThat(d.get("comprobante").get("estado").asText()).isEqualTo("FIRMADO");
+        assertThat(d.get("comprobante").get("puedeReenviar").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("T-042: PDF de la nota → application/pdf con el nombre nota-credito-<id>.pdf; 404 si no existe")
+    void pdfDeLaNota() throws Exception {
+        int idFactura = facturaAceptada();
+        Nota nota = emitirOk(idFactura, "01", "Para el PDF");
+        // La base de la clase no trae la empresa única (ADR-019); el PDF la lee en una transacción de solo lectura
+        empresaService.getEmpresaPrincipal();
+
+        MvcResult pdf = mockMvc.perform(get("/facturas/notas-credito/" + nota.id() + "/pdf")
+                .with(user(USUARIO).roles("ADMIN"))).andReturn();
+
+        assertThat(pdf.getResponse().getStatus()).as(pdf.getResponse().getContentAsString()).isEqualTo(200);
+        assertThat(pdf.getResponse().getContentType()).isEqualTo("application/pdf");
+        assertThat(pdf.getResponse().getHeader("Content-Disposition")).contains("nota-credito-" + nota.id() + ".pdf");
+        assertThat(new String(pdf.getResponse().getContentAsByteArray(), 0, 5)).isEqualTo("%PDF-");
+        assertThat(mockMvc.perform(get("/facturas/notas-credito/9999999/pdf").with(user(USUARIO).roles("ADMIN")))
+                .andReturn().getResponse().getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("T-042: bandera del modal: aceptada → puede; con nota en trámite → no; con pagos → deshabilitada con motivo")
+    void detalleFactura_banderaDeLaNota() throws Exception {
+        int idFactura = facturaAceptada();
+        JsonNode antes = detalleFactura(idFactura);
+        assertThat(antes.get("puedeEmitirNotaCredito").asBoolean()).isTrue();
+        assertThat(antes.get("motivoNotaCreditoNoDisponible").isNull()).isTrue();
+
+        emitirOk(idFactura, "01", "Bandera");
+        JsonNode despues = detalleFactura(idFactura);
+        assertThat(despues.get("puedeEmitirNotaCredito").asBoolean()).isFalse();
+        assertThat(despues.get("motivoNotaCreditoNoDisponible").isNull()).isTrue();
+
+        int conPagos = facturaAceptada();
+        doReturn(List.of(new Pago())).when(pagoService).findPagosValidosByFacturaId(conPagos);
+        JsonNode pagos = detalleFactura(conPagos);
+        assertThat(pagos.get("puedeEmitirNotaCredito").asBoolean()).isFalse();
+        assertThat(pagos.get("motivoNotaCreditoNoDisponible").asText())
+                .isEqualTo("La nota de crédito sobre facturas con pagos llega en una próxima versión");
+
+        int sinComprobante = facturaConLineasAyB();
+        assertThat(detalleFactura(sinComprobante).get("puedeEmitirNotaCredito").asBoolean()).isFalse();
+    }
+
+    private JsonNode detalleFactura(int idFactura) throws Exception {
+        MvcResult r = mockMvc.perform(get("/facturas/detalle/" + idFactura).with(user(USUARIO).roles("ADMIN")))
+                .andReturn();
+        assertThat(r.getResponse().getStatus()).as(r.getResponse().getContentAsString()).isEqualTo(200);
+        return objectMapper.readTree(r.getResponse().getContentAsString());
+    }
+
+    private JsonNode detalle(Long idNota) throws Exception {
+        MvcResult r = mockMvc.perform(get("/api/facturas/notas-credito/" + idNota + "/detalle")
+                .with(user(USUARIO).roles("ADMIN"))).andReturn();
+        assertThat(r.getResponse().getStatus()).as(r.getResponse().getContentAsString()).isEqualTo(200);
+        return objectMapper.readTree(r.getResponse().getContentAsString()).get("data");
+    }
+
+    /** GET del listado con pares nombre, valor; devuelve la página (data). */
+    private JsonNode listar(String... parametros) throws Exception {
+        var request = get("/api/facturas/notas-credito").with(user(USUARIO).roles("ADMIN"));
+        for (int i = 0; i < parametros.length; i += 2) {
+            request = request.param(parametros[i], parametros[i + 1]);
+        }
+        MvcResult r = mockMvc.perform(request).andReturn();
+        assertThat(r.getResponse().getStatus()).as(r.getResponse().getContentAsString()).isEqualTo(200);
+        return objectMapper.readTree(r.getResponse().getContentAsString()).get("data");
+    }
+
+    private static List<Long> ids(JsonNode pagina) {
+        List<Long> ids = new ArrayList<>();
+        pagina.get("contenido").forEach(f -> ids.add(f.get("id").asLong()));
+        return ids;
+    }
 
     // ── T-039: factura sustituta (ADR-045), de punta a punta ─────────────────
 

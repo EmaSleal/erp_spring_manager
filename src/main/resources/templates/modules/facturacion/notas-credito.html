@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Notas de crédito</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/facturas', 'fas fa-file-invoice-dollar', 'Facturas', 'fas fa-file-circle-minus', 'Notas de crédito')}"></div>
+
+            <div class="page-header mb-4">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-circle-minus', 'text-primary', 'Notas de', 'Crédito', 'Notas de crédito electrónicas emitidas sobre facturas')}"></div>
+                <div class="page-header-actions">
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/facturas', 'Volver a Facturas', 'Volver a Facturas')}"></a>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-2">
+                            <label for="nc-filtro-desde" class="form-label">Desde</label>
+                            <input type="date" id="nc-filtro-desde" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="nc-filtro-hasta" class="form-label">Hasta</label>
+                            <input type="date" id="nc-filtro-hasta" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="nc-filtro-cliente" class="form-label">Cliente</label>
+                            <input type="text" id="nc-filtro-cliente" class="form-control" placeholder="Nombre del cliente">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="nc-filtro-estado" class="form-label">Estado de la nota</label>
+                            <select id="nc-filtro-estado" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="EN_TRAMITE">En trámite</option>
+                                <option value="APLICADA">Aplicada</option>
+                                <option value="RECHAZADA">Rechazada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex gap-2">
+                            <button type="button" id="nc-filtrar" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Filtrar
+                            </button>
+                            <button type="button" id="nc-limpiar" class="btn btn-outline-secondary">
+                                <i class="fas fa-eraser me-1"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="nc-tabla">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Factura</th>
+                                    <th>Cliente</th>
+                                    <th>Código</th>
+                                    <th class="text-end">Monto</th>
+                                    <th>Fecha de emisión</th>
+                                    <th>Estado de la nota</th>
+                                    <th>Estado del comprobante</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nc-cuerpo"></tbody>
+                        </table>
+                    </div>
+                    <div id="nc-mensaje" class="text-muted text-center py-3" style="display: none;"></div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small id="nc-pagina-info" class="text-muted"></small>
+                        <div class="btn-group">
+                            <button type="button" id="nc-anterior" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-chevron-left me-1"></i>Anterior
+                            </button>
+                            <button type="button" id="nc-siguiente" class="btn btn-outline-secondary btn-sm">
+                                Siguiente<i class="fas fa-chevron-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de detalle de factura (compartido): el número de factura del listado lo abre -->
+    <div th:replace="~{shared/components/facturas-modal :: facturaModal}"></div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const USER_ROLE = /*[[${userRole}]]*/ 'USER';
+        /*]]>*/
+    </script>
+
+    <script th:src="@{/modules/facturacion/electronica/js/estado-envio.js}"></script>
+    <script th:src="@{/modules/facturacion/js/sustitucion-factura.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito-modal.js}"></script>
+    <script th:src="@{/modules/facturacion/js/accion-envio-hacienda.js}"></script>
+    <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
+    <script th:src="@{/modules/facturacion/js/notas-credito.js}"></script>
+</body>
+</html>

@@ -36,6 +36,10 @@ public class AsientoContableDTO {
     private Long facturaId;
     private String facturaNumero;
     
+    /** Nota de crédito que originó el asiento de reversión (ADR-047 §3); null si no viene de una nota. */
+    private Long notaFacturaId;
+    private String notaFacturaNumero;
+
     private Long pagoId;
     private String pagoReferencia;
     

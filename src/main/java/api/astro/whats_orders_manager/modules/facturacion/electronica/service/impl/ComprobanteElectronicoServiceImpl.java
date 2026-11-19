@@ -838,8 +838,11 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             throw new EmisionNoPermitidaException(MENSAJE_EMAIL_SOLO_ACEPTADO);
         }
 
+        // T-042: el comprobante de una nota no tiene factura propia; el cliente es el de la factura de la nota
+        NotaFactura nota = comprobante.esDeNota() ? comprobante.getNotaFactura() : null;
         Factura factura = comprobante.getFactura();
-        Cliente cliente = (factura != null) ? factura.getCliente() : null;
+        Cliente cliente = (factura != null) ? factura.getCliente()
+            : (nota != null && nota.getFactura() != null ? nota.getFactura().getCliente() : null);
 
         String destino = (emailAdicional != null && !emailAdicional.isBlank())
             ? emailAdicional
@@ -861,11 +864,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             LocalDateTime emision = comprobante.getFechaEmision();
 
             String moneda = (factura != null && factura.getMonedaFE() != null)
-                ? factura.getMonedaFE().name() : "";
-            String total = (factura != null && factura.getTotal() != null)
-                ? String.format("%,.2f", factura.getTotal()) : "0.00";
+                ? factura.getMonedaFE().name() : (nota != null && nota.getMoneda() != null ? nota.getMoneda() : "");
+            BigDecimal totalDoc = factura != null ? factura.getTotal() : (nota != null ? nota.getTotal() : null);
+            String total = totalDoc != null ? String.format("%,.2f", totalDoc) : "0.00";
             String consecutivo = comprobante.getConsecutivo();
-            String numFactura  = (factura != null) ? factura.getNumeroFactura() : "";
+            String numFactura  = (factura != null) ? factura.getNumeroFactura()
+                : (nota != null ? SustitucionElegibilidad.numeroDeNota(nota, comprobante) : "");
 
             String clienteNombre = (cliente != null) ? cliente.getNombre() : "";
             String clienteId     = (cliente != null && cliente.getNumeroIdentificacion() != null)
@@ -942,6 +946,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             if (factura != null) {
                 byte[] pdf = facturaPdfService.generarPdfFactura(factura.getIdFactura());
                 adjuntos.put(clave + ".pdf", pdf);
+            } else if (nota != null) {
+                adjuntos.put(clave + ".pdf", facturaPdfService.generarPdfNotaCredito(nota.getId()));
             }
 
             emailService.enviarEmailConMultiplesAdjuntos(destino, asunto, cuerpo, adjuntos);

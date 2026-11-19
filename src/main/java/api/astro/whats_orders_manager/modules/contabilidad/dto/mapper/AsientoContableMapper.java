@@ -4,7 +4,10 @@ import api.astro.whats_orders_manager.modules.contabilidad.dto.AsientoContableDT
 import api.astro.whats_orders_manager.modules.contabilidad.dto.DetalleAsientoDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoContableRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.service.SustitucionElegibilidad;
 import api.astro.whats_orders_manager.modules.facturacion.repository.PagoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -28,6 +31,7 @@ public class AsientoContableMapper {
     private final FacturaRepository facturaRepository;
     private final PagoRepository pagoRepository;
     private final AsientoContableRepository asientoRepository;
+    private final ComprobanteElectronicoRepository comprobanteRepository;
     
     /**
      * Convierte una entidad AsientoContable a DTO.
@@ -58,6 +62,7 @@ public class AsientoContableMapper {
                     ? asiento.getFactura().getIdFactura().longValue() : null);
             dto.setFacturaNumero(asiento.getFactura().getNumeroFactura());
         }
+        aplicarNota(asiento, dto);
         
         // Información de pago
         if (asiento.getPago() != null) {
@@ -152,6 +157,7 @@ public class AsientoContableMapper {
             dto.setFacturaId(asiento.getFactura().getIdFactura().longValue());
             dto.setFacturaNumero(asiento.getFactura().getNumeroFactura());
         }
+        aplicarNota(asiento, dto);
         
         // Información de pago
         if (asiento.getPago() != null) {
@@ -167,6 +173,20 @@ public class AsientoContableMapper {
         return dto;
     }
     
+    /**
+     * Nota de crédito que originó el asiento (ADR-047 §3, T-042): su id y su número (consecutivo del comprobante
+     * vigente o «NC-<id>»). Solo se toca el id de la nota y, si existe, una consulta por clave.
+     */
+    private void aplicarNota(AsientoContable asiento, AsientoContableDTO dto) {
+        if (asiento.getNotaFactura() == null) {
+            return;
+        }
+        NotaFactura nota = asiento.getNotaFactura();
+        dto.setNotaFacturaId(nota.getId());
+        dto.setNotaFacturaNumero(SustitucionElegibilidad.numeroDeNota(nota,
+            comprobanteRepository.findFirstByNotaFactura_IdAndVigenteTrue(nota.getId()).orElse(null)));
+    }
+
     /**
      * Enlaces de reversión (ADR-023) y puedeRevertirse: el asiento que lo revirtió, el asiento del que
      * es reversión, y si se puede revertir desde Contabilidad (reversible y aún no revertido).

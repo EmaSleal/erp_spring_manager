@@ -14,6 +14,8 @@ record PdfFiscalDecision(String titulo, boolean mostrarClaveYConsecutivo, boolea
     static final String TITULO_RECHAZADO = "Documento no fiscal (rechazado por Hacienda)";
     static final String TITULO_FACTURA = "Factura electrónica";
     static final String TITULO_TIQUETE = "Tiquete electrónico";
+    static final String TITULO_NOTA_CREDITO = "Nota de crédito electrónica";
+    static final String TITULO_NOTA_NO_FISCAL = "Documento no fiscal";
     static final String LEYENDA_EN_TRAMITE = "En trámite ante Hacienda";
 
     /** @param estado estado del comprobante vigente, o null si la factura no tiene comprobante vigente */
@@ -28,6 +30,26 @@ record PdfFiscalDecision(String titulo, boolean mostrarClaveYConsecutivo, boolea
             case ENVIADO, PROCESANDO, ENVIO_INCIERTO, ERROR_HACIENDA -> new PdfFiscalDecision(titulo, true, true, true);
             case RECHAZADO -> new PdfFiscalDecision(TITULO_RECHAZADO, false, false, false);
             case GENERADO, FIRMADO, ERROR, NO_TRANSMITIDO, ANULADO -> proforma();
+        };
+    }
+
+    /**
+     * Misma tabla de estados para una nota de crédito (T-042, ADR-045 §6): título «Nota de crédito electrónica» en los
+     * estados fiscales y «Documento no fiscal» en los demás.
+     *
+     * @param estado estado del comprobante vigente de la nota, o null si no tiene
+     */
+    static PdfFiscalDecision deNota(EstadoComprobante estado) {
+        if (estado == null) {
+            return new PdfFiscalDecision(TITULO_NOTA_NO_FISCAL, false, false, false);
+        }
+        return switch (estado) {
+            case ACEPTADO -> new PdfFiscalDecision(TITULO_NOTA_CREDITO, true, false, true);
+            case ENVIADO, PROCESANDO, ENVIO_INCIERTO, ERROR_HACIENDA ->
+                new PdfFiscalDecision(TITULO_NOTA_CREDITO, true, true, true);
+            case RECHAZADO -> new PdfFiscalDecision(TITULO_RECHAZADO, false, false, false);
+            case GENERADO, FIRMADO, ERROR, NO_TRANSMITIDO, ANULADO ->
+                new PdfFiscalDecision(TITULO_NOTA_NO_FISCAL, false, false, false);
         };
     }
 
