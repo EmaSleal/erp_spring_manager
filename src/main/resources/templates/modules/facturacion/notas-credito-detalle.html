@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Nota de crédito</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content" id="nc-detalle" th:attr="data-nota-id=${notaId}">
+        <div class="container-fluid py-4">
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/facturas/notas-credito', 'fas fa-file-circle-minus', 'Notas de crédito', 'fas fa-file-lines', 'Detalle')}"></div>
+
+            <div class="page-header mb-4">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-file-circle-minus', 'text-primary', 'Nota de', 'Crédito', 'Detalle de la nota de crédito electrónica')}"></div>
+                <div class="page-header-actions">
+                    <a th:replace="~{shared/fragments/back-button :: backButton('/facturas/notas-credito', 'Volver a Notas de crédito', 'Volver al listado')}"></a>
+                    <a id="nd-pdf" class="btn btn-outline-secondary" target="_blank" href="#">
+                        <i class="fas fa-file-pdf me-1"></i>PDF
+                    </a>
+                    <button type="button" id="nd-sustituta" class="btn btn-success" style="display: none;">
+                        <i class="bi bi-files me-1"></i>Emitir factura sustituta
+                    </button>
+                </div>
+            </div>
+
+            <div id="nd-error" class="alert alert-danger" style="display: none;"></div>
+
+            <div id="nd-contenido" style="display: none;">
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold">Datos de la nota</div>
+                            <div class="card-body">
+                                <dl class="row mb-0" id="nd-datos"></dl>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold">Referencia</div>
+                            <div class="card-body">
+                                <dl class="row mb-0" id="nd-referencia"></dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white fw-bold">Líneas</div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Descripción</th>
+                                        <th>CAByS</th>
+                                        <th class="text-end">Cantidad</th>
+                                        <th>Unidad</th>
+                                        <th class="text-end">Precio</th>
+                                        <th class="text-end">IVA</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nd-lineas"></tbody>
+                            </table>
+                        </div>
+                        <dl class="row justify-content-end mb-0 mt-3" id="nd-totales"></dl>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                        <span>Comprobante electrónico</span>
+                        <span id="nd-comprobante-acciones" class="d-flex gap-2"></span>
+                    </div>
+                    <div class="card-body">
+                        <div id="nd-comprobante"></div>
+                        <h6 class="fw-bold mt-3">Historial</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Estado</th>
+                                        <th>Fecha de envío</th>
+                                        <th>Fecha de respuesta</th>
+                                        <th>Código</th>
+                                        <th>Mensaje de Hacienda</th>
+                                        <th>Último error</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nd-historial"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4" id="nd-asiento-card" style="display: none;">
+                    <div class="card-header bg-white fw-bold">Asiento de reversión</div>
+                    <div class="card-body" id="nd-asiento"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de detalle de factura (compartido): el número de factura de la referencia lo abre -->
+    <div th:replace="~{shared/components/facturas-modal :: facturaModal}"></div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const USER_ROLE = /*[[${userRole}]]*/ 'USER';
+        /*]]>*/
+    </script>
+
+    <script th:src="@{/modules/facturacion/electronica/js/estado-envio.js}"></script>
+    <script th:src="@{/modules/facturacion/js/sustitucion-factura.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito-modal.js}"></script>
+    <script th:src="@{/modules/facturacion/js/accion-envio-hacienda.js}"></script>
+    <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito-detalle.js}"></script>
+</body>
+</html>

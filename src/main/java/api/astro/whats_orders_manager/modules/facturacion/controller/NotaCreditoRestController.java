@@ -10,6 +10,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoConsultaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaFacturaService;
 import api.astro.whats_orders_manager.shared.dto.ResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +19,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.NoSuchElementException;
 
 /**
@@ -47,6 +51,7 @@ public class NotaCreditoRestController {
 
     private final NotaFacturaService notaService;
     private final EnvioHaciendaService envioService;
+    private final NotaCreditoConsultaService consultaService;
 
     @PostMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ANULAR')")
@@ -74,6 +79,33 @@ public class NotaCreditoRestController {
         }
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ResponseDTO.success(mensaje, emitida));
+    }
+
+    /**
+     * Listado de notas (T-042, ADR-047 §1): filtros opcionales por fecha de emisión (yyyy-MM-dd, ambos extremos
+     * inclusive), cliente (nombre o identificación) y estado; paginado en la base de datos, de la más reciente a la
+     * más antigua. {@code page} es 0-based; {@code size} por defecto 20, máximo 100.
+     */
+    @GetMapping
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
+    public ResponseEntity<ResponseDTO> listar(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) String cliente,
+            @RequestParam(required = false) EstadoNotaFactura estado,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "" + NotaCreditoConsultaService.TAMANO_DEFECTO) int size,
+            Authentication authentication) {
+        return ResponseEntity.ok(ResponseDTO.success("OK",
+            consultaService.listar(desde, hasta, cliente, estado, page, size)));
+    }
+
+    /** Detalle de la nota para su página (T-042): líneas, referencia, comprobante, historial y asiento. */
+    @GetMapping("/{id}/detalle")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
+    public ResponseEntity<ResponseDTO> detalle(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(ResponseDTO.success("OK",
+            consultaService.detalle(id).orElseThrow(NotaNoEncontradaException::new)));
     }
 
     @GetMapping("/{id}")

@@ -82,6 +82,28 @@
                 </div>
             </div>
 
+            <!-- T-042 (ADR-047): Notas de crédito -->
+            <div class="row g-3 mb-4" sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
+                <div class="col-md-6">
+                    <a th:href="@{/facturas/notas-credito}" class="text-decoration-none">
+                        <div class="card border-0 shadow-sm h-100 hover-lift">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="icon-wrapper me-3">
+                                    <i class="fas fa-file-circle-minus fa-2x text-secondary"></i>
+                                </div>
+                                <div>
+                                    <h5 class="card-title mb-1">Notas de crédito</h5>
+                                    <p class="card-text text-muted mb-0">Consulta de notas de crédito electrónicas</p>
+                                </div>
+                                <div class="ms-auto">
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
             <!-- Filters Card -->
             <div th:replace="~{shared/fragments/filter-bar :: filterCard(~{::.filter-row}, 'mb-4')}">
                 <div class="filter-row row g-3">
@@ -555,6 +577,8 @@
     
     <!-- Scripts de módulo de facturación -->
     <script th:src="@{/modules/facturacion/js/sustitucion-factura.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito.js}"></script>
+    <script th:src="@{/modules/facturacion/js/nota-credito-modal.js}"></script>
     <script th:src="@{/modules/facturacion/js/accion-envio-hacienda.js}"></script>
     <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
     <script th:src="@{/modules/facturacion/js/editar-factura.js}"></script>
