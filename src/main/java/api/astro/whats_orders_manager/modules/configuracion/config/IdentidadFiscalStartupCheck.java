@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.configuracion.config;
 
+import api.astro.whats_orders_manager.config.crypto.CredencialCipher;
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ConfiguracionHaciendaRepository;
@@ -37,7 +38,17 @@ public class IdentidadFiscalStartupCheck {
                         empresas);
             }
 
-            List<ConfiguracionHacienda> activas = configuracionHaciendaRepository.findByActivaTrueOrderByIdAsc();
+            List<ConfiguracionHacienda> activas;
+            try {
+                activas = configuracionHaciendaRepository.findByActivaTrueOrderByIdAsc();
+            } catch (RuntimeException e) {
+                // T-041: cargar la fila descifra sus credenciales; si no se pueden descifrar, cada envío quedará en ERROR
+                log.warn("Configuración de Hacienda activa ilegible: no se pudo leer o descifrar sus credenciales. "
+                        + "Revise {} (debe ser la clave con la que se guardaron); mientras tanto los envíos a "
+                        + "Hacienda quedarán en ERROR con el mensaje de configuración ilegible. La aplicación "
+                        + "arranca igual. Causa: {}", CredencialCipher.KEY_ENV_VAR, causaRaiz(e));
+                return;
+            }
             if (activas.size() != 1) {
                 log.error("Identidad fiscal (ADR-021): hay {} configuraciones de Hacienda activas (ids [{}]) y debe "
                         + "haber exactamente una.", activas.size(),
@@ -49,6 +60,14 @@ public class IdentidadFiscalStartupCheck {
         } catch (RuntimeException e) {
             log.error("Identidad fiscal (ADR-021): no se pudo verificar la configuración fiscal", e);
         }
+    }
+
+    private static String causaRaiz(Throwable e) {
+        Throwable t = e;
+        while (t.getCause() != null && t.getCause() != t) {
+            t = t.getCause();
+        }
+        return t.getClass().getSimpleName() + ": " + t.getMessage();
     }
 
     private void verificarCertificado(ConfiguracionHacienda activa) {

@@ -84,6 +84,23 @@ class IdentidadFiscalStartupCheckTest {
     }
 
     @Test
+    @DisplayName("T-041: credenciales de la configuración activa que no se descifran → WARN que nombra HACIENDA_CRYPTO_KEY, sin datos sensibles, sin lanzar")
+    void credencialesIlegibles_registraWarnConLaClave() {
+        when(empresaRepository.count()).thenReturn(1L);
+        when(haciendaRepository.findByActivaTrueOrderByIdAsc()).thenThrow(new RuntimeException(
+                "Error attempting to apply AttributeConverter",
+                new IllegalStateException("Credencial cifrada alterada o cifrada con otra clave (HACIENDA_CRYPTO_KEY)")));
+
+        check.verificarIdentidadFiscal();
+
+        List<String> avisos = appender.list.stream().filter(e -> e.getLevel() == Level.WARN)
+                .map(ILoggingEvent::getFormattedMessage).toList();
+        assertThat(avisos).singleElement().asString()
+                .contains("HACIENDA_CRYPTO_KEY").contains("arranca igual").doesNotContain(CLAVE_DE_PRUEBA);
+        assertThat(errores()).isEmpty();
+    }
+
+    @Test
     @DisplayName("2 configuraciones de Hacienda activas → ERROR con las ids")
     void dosActivas_registraError() throws Exception {
         when(empresaRepository.count()).thenReturn(1L);
