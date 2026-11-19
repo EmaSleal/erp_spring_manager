@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.repository;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
@@ -128,6 +129,10 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
                            @Param("marca") EstadoComprobante marca,
                            @Param("transmisibles") java.util.Collection<EstadoComprobante> transmisibles);
 
+    /** T-044: ambiente de cada comprobante de una página de listado (el SP del listado no lo trae). */
+    @Query("SELECT c.id, c.ambiente FROM ComprobanteElectronico c WHERE c.id IN :ids")
+    List<Object[]> findAmbientesByIds(@Param("ids") java.util.Collection<Long> ids);
+
     /**
      * Encuentra comprobantes vigentes pendientes de reintento: los que Hacienda no tiene (GENERADO, FIRMADO, ERROR
      * o NO_TRANSMITIDO, ADR-030) y no alcanzaron el límite de intentos. Nunca ENVIO_INCIERTO, ENVIADO, PROCESANDO
@@ -137,8 +142,31 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
            "c.estado IN ('GENERADO', 'FIRMADO', 'ERROR', 'NO_TRANSMITIDO') " +
            "AND c.vigente = true " +
            "AND c.intentosEnvio < 5 " +
+           "AND c.ambiente = :ambiente " +
            "ORDER BY c.createdAt ASC")
-    List<ComprobanteElectronico> findPendientesReintento();
+    List<ComprobanteElectronico> findPendientesReintento(@Param("ambiente") AmbienteHacienda ambiente);
+
+    /**
+     * Los mismos pendientes sin filtrar por ambiente: solo para cuando la configuración activa no se puede leer y el
+     * job conserva su comportamiento de T-041 (cada reenvío termina en ERROR de configuración).
+     */
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE " +
+           "c.estado IN ('GENERADO', 'FIRMADO', 'ERROR', 'NO_TRANSMITIDO') " +
+           "AND c.vigente = true " +
+           "AND c.intentosEnvio < 5 " +
+           "ORDER BY c.createdAt ASC")
+    List<ComprobanteElectronico> findPendientesReintentoSinFiltroDeAmbiente();
+
+    /**
+     * T-044: los que {@link #findPendientesReintento} deja fuera por ambiente (misma condición, ambiente distinto o
+     * nulo), para el log del job. No se cargan ni se les cuentan intentos.
+     */
+    @Query("SELECT COUNT(c) FROM ComprobanteElectronico c WHERE " +
+           "c.estado IN ('GENERADO', 'FIRMADO', 'ERROR', 'NO_TRANSMITIDO') " +
+           "AND c.vigente = true " +
+           "AND c.intentosEnvio < 5 " +
+           "AND (c.ambiente IS NULL OR c.ambiente <> :ambiente)")
+    long countPendientesReintentoDeOtroAmbiente(@Param("ambiente") AmbienteHacienda ambiente);
 
     /**
      * Comprobante vigente de una factura (ADR-030 §4: N comprobantes, uno vigente).
@@ -178,10 +206,36 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
            "c.estado IN (api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIADO, " +
            "api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.PROCESANDO) " +
            "OR (c.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ERROR_HACIENDA " +
-           "AND c.consultasErrorHacienda < :maxConsultasError))")
+           "AND c.consultasErrorHacienda < :maxConsultasError)) " +
+           "AND c.ambiente = :ambiente")
     List<ComprobanteElectronico> findParaSondeo(
         @Param("fechaLimite") LocalDateTime fechaLimite,
+        @Param("maxConsultasError") int maxConsultasError,
+        @Param("ambiente") AmbienteHacienda ambiente
+    );
+
+    /** El sondeo sin filtrar por ambiente: solo con la configuración activa ilegible (comportamiento de T-041). */
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE c.vigente = true AND c.fechaEnvio < :fechaLimite AND (" +
+           "c.estado IN (api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIADO, " +
+           "api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.PROCESANDO) " +
+           "OR (c.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ERROR_HACIENDA " +
+           "AND c.consultasErrorHacienda < :maxConsultasError))")
+    List<ComprobanteElectronico> findParaSondeoSinFiltroDeAmbiente(
+        @Param("fechaLimite") LocalDateTime fechaLimite,
         @Param("maxConsultasError") int maxConsultasError
+    );
+
+    /** T-044: los que {@link #findParaSondeo} deja fuera por ambiente (misma condición, ambiente distinto o nulo). */
+    @Query("SELECT COUNT(c) FROM ComprobanteElectronico c WHERE c.vigente = true AND c.fechaEnvio < :fechaLimite AND (" +
+           "c.estado IN (api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIADO, " +
+           "api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.PROCESANDO) " +
+           "OR (c.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ERROR_HACIENDA " +
+           "AND c.consultasErrorHacienda < :maxConsultasError)) " +
+           "AND (c.ambiente IS NULL OR c.ambiente <> :ambiente)")
+    long countParaSondeoDeOtroAmbiente(
+        @Param("fechaLimite") LocalDateTime fechaLimite,
+        @Param("maxConsultasError") int maxConsultasError,
+        @Param("ambiente") AmbienteHacienda ambiente
     );
 
     /**

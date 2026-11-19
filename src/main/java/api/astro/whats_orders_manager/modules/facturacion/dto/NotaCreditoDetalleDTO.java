@@ -14,5 +14,6 @@ public record NotaCreditoDetalleDTO(Long id, String numero, String estado, Strin
                                     LocalDateTime fechaEmisionReferencia, List<LineaNotaCreditoDTO> lineas,
                                     ComprobanteNotaDTO comprobante, List<ComprobanteNotaDTO> historial,
                                     Long idAsientoReversion, String numeroAsientoReversion,
-                                    boolean puedeEmitirSustituta) {
+                                    boolean puedeEmitirSustituta,
+                                    String motivoSustitutaNoDisponible) {
 }

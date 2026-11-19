@@ -7,8 +7,10 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.LineaNotaCreditoDT
 import api.astro.whats_orders_manager.modules.facturacion.dto.NotaCreditoDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.NotaCreditoListaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.NotaCreditoPaginaDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -51,6 +53,7 @@ public class NotaCreditoConsultaService {
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final AsientoContableRepository asientoRepository;
     private final SustitucionElegibilidad sustitucionElegibilidad;
+    private final AmbienteComprobanteGuard ambienteGuard;
 
     /**
      * @param desde fecha de emisión mínima, inclusive
@@ -72,8 +75,9 @@ public class NotaCreditoConsultaService {
             comprobanteRepository.findVigentesByNotaIds(notas.getContent().stream().map(NotaFactura::getId).toList())
                 .forEach(c -> vigentes.put(c.getNotaFactura().getId(), c));
         }
+        Optional<AmbienteHacienda> activo = ambienteGuard.ambienteActivo();
         List<NotaCreditoListaDTO> filas = notas.getContent().stream()
-            .map(n -> fila(n, vigentes.get(n.getId()))).toList();
+            .map(n -> fila(n, vigentes.get(n.getId()), activo)).toList();
         return new NotaCreditoPaginaDTO(filas, notas.getNumber(), notas.getSize(), notas.getTotalElements(),
             notas.getTotalPages());
     }
@@ -87,8 +91,9 @@ public class NotaCreditoConsultaService {
         Factura factura = nota.getFactura();
         ComprobanteElectronico vigente = comprobanteRepository.findFirstByNotaFactura_IdAndVigenteTrue(nota.getId())
             .orElse(null);
+        Optional<AmbienteHacienda> activo = ambienteGuard.ambienteActivo();
         List<ComprobanteNotaDTO> historial = comprobanteRepository.findByNotaFactura_IdOrderByIdAsc(nota.getId())
-            .stream().map(ComprobanteNotaDTO::de).toList();
+            .stream().map(c -> ComprobanteNotaDTO.de(c, activo)).toList();
         List<LineaNotaCreditoDTO> lineas = new ArrayList<>();
         for (LineaNotaFactura l : nota.getLineas()) {
             lineas.add(new LineaNotaCreditoDTO(l.getNumeroLinea(),
@@ -99,18 +104,20 @@ public class NotaCreditoConsultaService {
         Optional<AsientoContable> asiento = asientoRepository.findFirstByNotaFactura_IdOrderByIdAsientoAsc(nota.getId());
         boolean sustituta = nota.getEstado() == EstadoNotaFactura.APLICADA
             && sustitucionElegibilidad.puedeEmitirSustituta(factura);
+        String motivoSustituta = nota.getEstado() == EstadoNotaFactura.APLICADA
+            ? sustitucionElegibilidad.motivoSustitutaNoDisponible(factura).orElse(null) : null;
         return new NotaCreditoDetalleDTO(nota.getId(), SustitucionElegibilidad.numeroDeNota(nota, vigente),
             nota.getEstado().name(), nota.getTipo().name(), nota.getCodigoReferencia(), nombreDe(nota),
             nota.getRazon(), nota.getFechaEmision(), nota.getFechaAplicacion(), nota.getMoneda(),
             nota.getTipoCambio(), nota.getSubtotal(), nota.getDescuento(), nota.getImpuesto(), nota.getTotal(),
             nota.getUsuarioCreador(), factura.getIdFactura(), factura.getNumeroFactura(),
             factura.getCliente() != null ? factura.getCliente().getNombre() : null, nota.getClaveReferencia(),
-            nota.getFechaEmisionReferencia(), lineas, ComprobanteNotaDTO.de(vigente), historial,
+            nota.getFechaEmisionReferencia(), lineas, ComprobanteNotaDTO.de(vigente, activo), historial,
             asiento.map(AsientoContable::getIdAsiento).orElse(null),
-            asiento.map(AsientoContable::getNumero).orElse(null), sustituta);
+            asiento.map(AsientoContable::getNumero).orElse(null), sustituta, motivoSustituta);
     }
 
-    private NotaCreditoListaDTO fila(NotaFactura n, ComprobanteElectronico c) {
+    private NotaCreditoListaDTO fila(NotaFactura n, ComprobanteElectronico c, Optional<AmbienteHacienda> activo) {
         Factura factura = n.getFactura();
         return new NotaCreditoListaDTO(n.getId(), SustitucionElegibilidad.numeroDeNota(n, c),
             factura.getIdFactura(), factura.getNumeroFactura(),
@@ -118,7 +125,9 @@ public class NotaCreditoConsultaService {
             nombreDe(n), n.getTotal(), n.getMoneda(), n.getFechaEmision(), n.getEstado().name(),
             c != null ? c.getId() : null, c != null && c.getEstado() != null ? c.getEstado().name() : null,
             c != null ? c.getFechaEnvio() : null, c != null && c.getEstado() != null && c.puedeReenviar(),
-            ComprobanteNotaDTO.consultable(c));
+            ComprobanteNotaDTO.consultable(c), c != null && c.getAmbiente() != null ? c.getAmbiente().name() : null,
+            c == null || AmbienteComprobanteGuard.coincide(c.getAmbiente(), activo),
+            c != null ? AmbienteComprobanteGuard.motivo(c.getAmbiente(), activo) : null);
     }
 
     private static String nombreDe(NotaFactura nota) {

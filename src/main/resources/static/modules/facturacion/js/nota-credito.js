@@ -222,6 +222,29 @@
         return b;
     }
 
+    /**
+     * T-044 (P-099): badge del ambiente del comprobante y bloqueo de «Reenviar»/«Consultar estado» según las banderas
+     * del servidor (ambiente-comprobante.js, que se carga después; se resuelve al pintar, no al cargar).
+     */
+    function ambienteDe(c) {
+        const AC = global.AmbienteComprobante;
+        return {
+            etiqueta: AC && c && c.ambiente ? AC.etiqueta(c.ambiente) : null,
+            bloqueo: AC ? AC.bloqueo(c) : { bloqueado: false, motivo: null }
+        };
+    }
+
+    /** Botón de acción del comprobante: deshabilitado, con el motivo fijo como título, si el ambiente no coincide. */
+    function botonAccionComprobante(doc, texto, clase, bloqueo, onClick) {
+        if (!bloqueo.bloqueado) {
+            return boton(doc, texto, clase, onClick);
+        }
+        const b = boton(doc, texto, clase, null);
+        b.setAttribute('disabled', 'disabled');
+        if (bloqueo.motivo) b.setAttribute('title', bloqueo.motivo);
+        return b;
+    }
+
     function celda(doc, hijo, clase) {
         const td = el(doc, 'td', null, clase);
         if (typeof hijo === 'string') td.textContent = hijo;
@@ -248,21 +271,30 @@
         tr.appendChild(celda(doc, formatearMonto(n.total, n.moneda) + ' ' + (n.moneda || ''), 'text-end'));
         tr.appendChild(celda(doc, formatearFecha(n.fechaEmision, true)));
         tr.appendChild(celda(doc, badge(doc, badgeNota(n.estado))));
-        tr.appendChild(celda(doc, badge(doc, badgeComprobante(n.estadoComprobante, n.fechaEnvioComprobante))));
+        const amb = ambienteDe(n);
+        const celdaComprobante = el(doc, 'div');
+        celdaComprobante.appendChild(badge(doc, badgeComprobante(n.estadoComprobante, n.fechaEnvioComprobante)));
+        if (amb.etiqueta) {
+            celdaComprobante.appendChild(el(doc, 'span', amb.etiqueta.texto, 'badge ms-1 ' + amb.etiqueta.clase));
+        }
+        tr.appendChild(celda(doc, celdaComprobante));
         const acc = el(doc, 'div', null, 'd-flex flex-wrap gap-1');
         acc.appendChild(enlace(doc, 'Ver detalle', '/facturas/notas-credito/' + id, 'btn btn-sm btn-outline-primary'));
         const pdf = enlace(doc, 'PDF', '/facturas/notas-credito/' + id + '/pdf', 'btn btn-sm btn-outline-secondary');
         pdf.setAttribute('target', '_blank');
         acc.appendChild(pdf);
         if (n.consultableEnHacienda) {
-            const b = boton(doc, 'Consultar estado', 'btn btn-sm btn-outline-info', null);
-            b.addEventListener('click', () => acciones.consultar(n, b));
+            const b = botonAccionComprobante(doc, 'Consultar estado', 'btn btn-sm btn-outline-info', amb.bloqueo, null);
+            if (!amb.bloqueo.bloqueado) b.addEventListener('click', () => acciones.consultar(n, b));
             acc.appendChild(b);
         }
         if (n.puedeReenviar) {
-            const b = boton(doc, 'Reenviar', 'btn btn-sm btn-outline-warning', null);
-            b.addEventListener('click', () => acciones.reenviar(n, b));
+            const b = botonAccionComprobante(doc, 'Reenviar', 'btn btn-sm btn-outline-warning', amb.bloqueo, null);
+            if (!amb.bloqueo.bloqueado) b.addEventListener('click', () => acciones.reenviar(n, b));
             acc.appendChild(b);
+        }
+        if (amb.bloqueo.bloqueado && amb.bloqueo.motivo && (n.consultableEnHacienda || n.puedeReenviar)) {
+            acc.appendChild(el(doc, 'small', amb.bloqueo.motivo, 'text-danger w-100 motivo-ambiente'));
         }
         tr.appendChild(celda(doc, acc));
         return tr;
@@ -273,6 +305,6 @@
         estadoBoton, contadorRazon, validarRazon, textoEfecto, nombreCodigo, cuerpoPedido,
         mensajeResultado, mensajeDeError, formatearMonto, resumen,
         badgeNota, badgeComprobante, queryListado, textoPagina, resultadoReenvio, resultadoConsulta, formatearFecha,
-        el, badge, enlace, boton, celda, filaNota
+        el, badge, enlace, boton, botonAccionComprobante, ambienteDe, celda, filaNota
     };
 })(typeof window !== 'undefined' ? window : globalThis);

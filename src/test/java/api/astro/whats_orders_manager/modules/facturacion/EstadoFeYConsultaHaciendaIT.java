@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
@@ -503,7 +504,7 @@ class EstadoFeYConsultaHaciendaIT {
     }
 
     private boolean enSondeo(Long id) {
-        return comprobanteRepository.findParaSondeo(LocalDateTime.now(reloj).minusMinutes(5), 5).stream()
+        return comprobanteRepository.findParaSondeo(LocalDateTime.now(reloj).minusMinutes(5), 5, AmbienteHacienda.SANDBOX).stream()
                 .anyMatch(c -> c.getId().equals(id));
     }
 
@@ -622,8 +623,8 @@ class EstadoFeYConsultaHaciendaIT {
         }
         jdbc.update("INSERT INTO comprobante_electronico (clave_numerica, consecutivo, created_at, updated_at, estado, "
                         + "fecha_emision, fecha_envio, tipo_comprobante, empresa_id, factura_id, vigente, intentos_envio, "
-                        + "enviado_email, xml_comprobante, ruta_archivo_xml) "
-                        + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), ?, 'FACTURA_ELECTRONICA', ?, ?, b'1', 0, b'0', ?, ?)",
+                        + "enviado_email, xml_comprobante, ruta_archivo_xml, ambiente) "
+                        + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), ?, 'FACTURA_ELECTRONICA', ?, ?, b'1', 0, b'0', ?, ?, 'SANDBOX')",
                 clave.toString(), String.format("%020d", ThreadLocalRandom.current().nextLong(1, 1_000_000_000L)),
                 estado, fechaEnvio, idEmpresa, idFactura, "<FacturaElectronica>T026</FacturaElectronica>",
                 "comprobantes/t026.xml");

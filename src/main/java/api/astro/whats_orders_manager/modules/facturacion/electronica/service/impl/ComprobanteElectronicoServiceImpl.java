@@ -6,9 +6,11 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.Compro
 import api.astro.whats_orders_manager.modules.facturacion.electronica.event.ComprobanteNotaResueltoEvent;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.ResultadoEnvioHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
@@ -114,6 +116,13 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    /**
+     * T-044 (P-099): regla única de ambiente; un comprobante de otro ambiente que el de la configuración activa no se
+     * consulta. Por campo, como los anteriores; sin él (pruebas unitarias) no se aplica la regla.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private AmbienteComprobanteGuard ambienteGuard;
 
     /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
@@ -268,11 +277,19 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         // T-039 (ADR-045 §3): una sustituta no se emite si su original ya no cumple las condiciones; antes del
         // consecutivo, para no consumir numeración (la excepción deshace la transacción)
         Factura sustituida = factura.getFacturaSustituida();
-        if (sustituida != null && sustitucionElegibilidad != null
-            && !sustitucionElegibilidad.evaluarSinSustituta(sustituida).elegible()) {
-            log.warn("Factura {}: la original {} ya no cumple las condiciones de sustitución", facturaId,
-                sustituida.getIdFactura());
-            throw new EmisionNoPermitidaException(SustitucionElegibilidad.MENSAJE_ORIGINAL_YA_NO_CUMPLE);
+        if (sustituida != null && sustitucionElegibilidad != null) {
+            SustitucionElegibilidad.Evaluacion evaluacion = sustitucionElegibilidad.evaluarSinSustituta(sustituida);
+            if (!evaluacion.elegible()) {
+                log.warn("Factura {}: la original {} ya no cumple las condiciones de sustitución", facturaId,
+                    sustituida.getIdFactura());
+                throw new EmisionNoPermitidaException(SustitucionElegibilidad.MENSAJE_ORIGINAL_YA_NO_CUMPLE);
+            }
+            // T-044 (P-099): su comprobante ACEPTADO debe ser del ambiente activo (409 antes del consecutivo)
+            Optional<String> motivoAmbiente = sustitucionElegibilidad.motivoAmbiente(evaluacion);
+            if (motivoAmbiente != null && motivoAmbiente.isPresent()) {
+                log.warn("Factura {}: la original {} no es del ambiente activo", facturaId, sustituida.getIdFactura());
+                throw new EmisionNoPermitidaException(motivoAmbiente.get());
+            }
         }
 
         // Generar consecutivo y clave numérica
@@ -600,6 +617,9 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         if (comprobante.getEstado().esTerminal()) {
             return mapper.toDTO(comprobante); // ACEPTADO, RECHAZADO (historial inmutable) o ANULADO
         }
+        // T-044: otro ambiente → sin HTTP, sin cambio de estado ni de ultimoError (la excepción deshace una transacción
+        // que no escribió nada). El sondeo se detiene y el job la registra sin contar intentos.
+        exigirMismoAmbiente(comprobante);
 
         ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
 
@@ -648,6 +668,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             throw new ConsultaManualNoPermitidaException("Solo se consulta el estado en Hacienda de un comprobante "
                 + "ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA; este está en estado " + estadoPrevio);
         }
+        // T-044: antes del límite de 30 s, para que una consulta rechazada por ambiente no consuma el turno
+        exigirMismoAmbiente(comprobante);
         limiteConsultaManual.exigirYRegistrar(id);
 
         ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
@@ -1113,6 +1135,20 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 }
             });
         }
+        // T-044: ambiente de cada fila (el SP no lo trae) y banderas con UNA sola lectura del ambiente activo
+        if (!lista.isEmpty()) {
+            Map<Long, AmbienteHacienda> ambientes = new HashMap<>();
+            for (Object[] fila : repository.findAmbientesByIds(lista.stream().map(ComprobanteElectronicoDTO::getId).toList())) {
+                ambientes.put(((Number) fila[0]).longValue(), (AmbienteHacienda) fila[1]);
+            }
+            Optional<AmbienteHacienda> activo = ambienteGuard != null ? ambienteGuard.ambienteActivo() : Optional.empty();
+            lista.forEach(d -> {
+                AmbienteHacienda ambiente = ambientes.get(d.getId());
+                d.setAmbiente(ambiente != null ? ambiente.name() : null);
+                d.setAmbienteCoincide(AmbienteComprobanteGuard.coincide(ambiente, activo));
+                d.setMotivoAmbiente(AmbienteComprobanteGuard.motivo(ambiente, activo));
+            });
+        }
         return lista;
     }
 
@@ -1121,47 +1157,15 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
      * (la empresa única al emitir; la del comprobante en los pasos posteriores).
      */
     private ConfiguracionHacienda configuracionActivaDe(ConfiguracionEmpresa empresa) {
-        if (transactionManager == null) {
-            return leerConfiguracionActiva(empresa);
-        }
-        // T-041: lectura en su propia transacción (REQUIRES_NEW, solo lectura). Si las credenciales no se descifran,
-        // Hibernate marca esa transacción como rollback-only y la del llamador (con la fila bloqueada) sigue sana.
-        org.springframework.transaction.support.TransactionTemplate lectura =
-            new org.springframework.transaction.support.TransactionTemplate(transactionManager);
-        lectura.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        lectura.setReadOnly(true);
-        return lectura.execute(st -> leerConfiguracionActiva(empresa));
+        // T-041/T-044: lectura aislada compartida con AmbienteComprobanteGuard
+        return LecturaConfiguracionActiva.leer(configuracionService, transactionManager, empresa);
     }
 
-    /** Lee la configuración activa y comprueba su empresa; toda falla sale como ConfiguracionHaciendaNoDisponible. */
-    private ConfiguracionHacienda leerConfiguracionActiva(ConfiguracionEmpresa empresa) {
-        ConfiguracionHacienda config;
-        Integer empresaDeLaConfiguracion;
-        try {
-            config = configuracionService.obtenerConfiguracionActiva();
-            empresaDeLaConfiguracion = config.getEmpresa().getIdConfiguracion(); // dentro de la sesión (relación LAZY)
-        } catch (ConfiguracionHaciendaNoDisponibleException e) {
-            throw e;
-        } catch (RuntimeException e) {
-            // Credenciales que no se descifran (CredencialCifradaConverter, T-021) u otra falla de lectura
-            throw new ConfiguracionHaciendaNoDisponibleException(
-                "No se pudo leer la configuración de Hacienda activa (" + causaRaiz(e) + ")",
-                ConfiguracionHaciendaNoDisponibleException.MENSAJE_ILEGIBLE, e);
+    /** T-044: lanza {@link AmbienteDistintoException} si el comprobante es de otro ambiente que el activo. */
+    private void exigirMismoAmbiente(ComprobanteElectronico comprobante) {
+        if (ambienteGuard != null) {
+            ambienteGuard.exigirMismoAmbiente(comprobante);
         }
-        if (!empresaDeLaConfiguracion.equals(empresa.getIdConfiguracion())) {
-            throw new ConfiguracionHaciendaNoDisponibleException("La configuración de Hacienda activa (id "
-                + config.getId() + ") pertenece a la empresa " + empresaDeLaConfiguracion + ", no a la empresa "
-                + empresa.getIdConfiguracion() + ".", ConfiguracionHaciendaNoDisponibleException.MENSAJE_NO_VALIDA);
-        }
-        return config;
-    }
-
-    private static String causaRaiz(Throwable e) {
-        Throwable t = e;
-        while (t.getCause() != null && t.getCause() != t) {
-            t = t.getCause();
-        }
-        return t.getClass().getSimpleName() + ": " + t.getMessage();
     }
 
     /**

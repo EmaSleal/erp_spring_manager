@@ -253,7 +253,7 @@ class NotaCreditoRestControllerTest {
     void listado_filtros() throws Exception {
         NotaCreditoListaDTO fila = new NotaCreditoListaDTO(5L, "NC-5", 7, "FA01-00007", "Cliente", "01",
                 "Anula documento de referencia", new BigDecimal("1630.00"), "CRC",
-                LocalDateTime.of(2026, 11, 12, 10, 0), "APLICADA", 30L, "ACEPTADO", null, false, false);
+                LocalDateTime.of(2026, 11, 12, 10, 0), "APLICADA", 30L, "ACEPTADO", null, false, false, "SANDBOX", true, null);
         when(consultaService.listar(any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(new NotaCreditoPaginaDTO(List.of(fila), 1, 10, 11, 2));
 
@@ -295,7 +295,7 @@ class NotaCreditoRestControllerTest {
         NotaCreditoDetalleDTO dto = new NotaCreditoDetalleDTO(5L, "NC-5", "APLICADA", "CREDITO", "01",
                 "Anula documento de referencia", "Anulación total", null, null, "CRC", BigDecimal.ONE, BigDecimal.TEN,
                 BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.TEN, "gerente", 7, "FA01-00007", "Cliente", "506ORIGINAL",
-                null, List.of(), null, List.of(), 90L, "ASI-2026-0001", true);
+                null, List.of(), null, List.of(), 90L, "ASI-2026-0001", true, null);
         when(consultaService.detalle(5L)).thenReturn(Optional.of(dto));
         when(consultaService.detalle(6L)).thenReturn(Optional.empty());
 

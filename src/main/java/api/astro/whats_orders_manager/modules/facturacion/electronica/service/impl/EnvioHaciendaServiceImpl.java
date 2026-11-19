@@ -7,6 +7,8 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Resu
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.HaciendaApiService;
@@ -60,6 +62,7 @@ public class EnvioHaciendaServiceImpl implements EnvioHaciendaService {
     private final ComprobanteElectronicoMapper mapper;
     private final HaciendaApiService haciendaApi;
     private final Clock clock;
+    private final AmbienteComprobanteGuard ambienteGuard;
     private final ObjectProvider<TaskScheduler> scheduler;
     private final TransactionTemplate nueva;
     private final TransactionTemplate sinTransaccion;
@@ -72,6 +75,7 @@ public class EnvioHaciendaServiceImpl implements EnvioHaciendaService {
                                     ComprobanteElectronicoMapper mapper,
                                     HaciendaApiService haciendaApi,
                                     Clock clock,
+                                    AmbienteComprobanteGuard ambienteGuard,
                                     @Qualifier("taskScheduler") ObjectProvider<TaskScheduler> scheduler,
                                     PlatformTransactionManager transactionManager,
                                     @Value("${facturacion.hacienda.sondeo.espera:30s}") Duration esperaSondeo,
@@ -81,6 +85,7 @@ public class EnvioHaciendaServiceImpl implements EnvioHaciendaService {
         this.mapper = mapper;
         this.haciendaApi = haciendaApi;
         this.clock = clock;
+        this.ambienteGuard = ambienteGuard;
         this.scheduler = scheduler;
         this.nueva = new TransactionTemplate(transactionManager);
         this.nueva.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -157,6 +162,9 @@ public class EnvioHaciendaServiceImpl implements EnvioHaciendaService {
         if (!comprobante.puedeReenviar()) {
             throw new ComprobanteNoEnviableException(comprobante.getEstado(), reenvio);
         }
+        // T-044 (P-099): otro ambiente que el activo → ni firma, ni marca, ni token, ni POST; la excepción deshace esta
+        // transacción y el estado, los intentos y ultimo_error quedan como estaban (no es una falla del documento)
+        ambienteGuard.exigirMismoAmbiente(comprobante);
         Long configuracionId = comprobanteService.prepararParaEnvio(comprobante);
         repository.save(comprobante);
         return configuracionId;
@@ -255,6 +263,10 @@ public class EnvioHaciendaServiceImpl implements EnvioHaciendaService {
         try {
             estado = comprobanteService.consultarYActualizarEstado(id).getEstado();
             log.info("Sondeo de {} ({}/{}): {}", id, consulta, maxConsultasSondeo, estado);
+        } catch (AmbienteDistintoException e) {
+            // T-044: otro ambiente que el activo; no se consulta ni se reprograma, el estado no cambia
+            log.warn("Sondeo de {} detenido: {}", id, e.getMessage());
+            return;
         } catch (RuntimeException e) {
             log.warn("Sondeo de {} ({}/{}) sin respuesta: {}", id, consulta, maxConsultasSondeo, e.getMessage());
         }

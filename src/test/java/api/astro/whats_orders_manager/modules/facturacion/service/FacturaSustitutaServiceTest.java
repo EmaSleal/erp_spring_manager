@@ -166,6 +166,18 @@ class FacturaSustitutaServiceTest {
     }
 
     @Test
+    @DisplayName("T-044 criterio 5: original de otro ambiente → 409 con el motivo de ambiente y no se crea nada")
+    void otroAmbiente_409() {
+        when(elegibilidad.evaluar(original)).thenReturn(ok());
+        String motivo = "La factura se emitió en el ambiente SANDBOX; la configuración activa es PRODUCCION";
+        when(elegibilidad.motivoAmbiente(any())).thenReturn(Optional.of(motivo));
+
+        assertThatThrownBy(() -> servicio.crear(5, null))
+                .isInstanceOf(NotaFacturaConflictoException.class).hasMessage(motivo);
+        verify(facturaService, never()).save(any());
+    }
+
+    @Test
     @DisplayName("la restricción única de la BD (carrera) se traduce al mismo 409")
     void violacionUnica_mismoMensaje() {
         org.mockito.Mockito.doThrow(new DataIntegrityViolationException("uk_factura_una_sustituta_vigente"))

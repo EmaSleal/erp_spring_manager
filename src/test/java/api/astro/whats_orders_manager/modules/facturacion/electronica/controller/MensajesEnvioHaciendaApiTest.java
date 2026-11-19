@@ -101,6 +101,28 @@ class MensajesEnvioHaciendaApiTest {
     }
 
     @Test
+    @DisplayName("T-044: otro ambiente al enviar, reenviar, procesar o consultar: 409 con el mensaje fijo, sin e.getMessage()")
+    void otroAmbiente_409() throws Exception {
+        String fijo = "El comprobante pertenece al ambiente SANDBOX y la configuración activa es PRODUCCION; no se envía";
+        var e = new api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException(
+            api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.SANDBOX,
+            api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.PRODUCCION);
+        when(envio.emitirFactura(7L)).thenThrow(e);
+        when(envio.enviar(5L)).thenThrow(e);
+        when(envio.reenviar(5L)).thenThrow(e);
+        when(comprobantes.consultarEstadoManual(5L)).thenThrow(e);
+        for (String url : new String[] {"/api/facturas/electronica/comprobantes/procesar/7",
+                "/api/facturas/electronica/comprobantes/5/enviar", "/api/facturas/electronica/comprobantes/5/reenviar",
+                "/api/facturas/electronica/comprobantes/5/consultar-estado-hacienda"}) {
+            mvc.perform(post(url))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(fijo));
+        }
+        org.assertj.core.api.Assertions.assertThat(MensajesEnvioHacienda.ambienteDistinto(e)).isEqualTo(fijo);
+    }
+
+    @Test
     @DisplayName("XML inválido según el XSD: 422 con el mensaje de T-036")
     void xmlInvalido() throws Exception {
         when(envio.enviar(5L)).thenReturn(comprobante(EstadoComprobante.ERROR,

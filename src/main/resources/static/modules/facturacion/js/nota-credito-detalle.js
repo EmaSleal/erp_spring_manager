@@ -101,6 +101,10 @@
         } else {
             const dl = NC.el(document, 'dl', null, 'row mb-0');
             par(dl, 'Estado', NC.badge(document, NC.badgeComprobante(c.estado, c.fechaEnvio)));
+            const amb = NC.ambienteDe(c);
+            if (amb.etiqueta) {
+                par(dl, 'Ambiente', NC.el(document, 'span', amb.etiqueta.texto, 'badge ' + amb.etiqueta.clase));
+            }
             par(dl, 'Consecutivo', c.consecutivo);
             par(dl, 'Clave', NC.el(document, 'span', c.clave || '-', 'font-monospace small'));
             par(dl, 'Fecha de envío', NC.formatearFecha(c.fechaEnvio, true));
@@ -109,12 +113,15 @@
             par(dl, 'Último error', c.ultimoError);
             info.appendChild(dl);
             if (c.consultableEnHacienda) {
-                acciones.appendChild(NC.boton(document, 'Consultar estado', 'btn btn-sm btn-outline-info',
-                    (ev) => consultarEstado(c, ev.currentTarget)));
+                acciones.appendChild(NC.botonAccionComprobante(document, 'Consultar estado',
+                    'btn btn-sm btn-outline-info', amb.bloqueo, (ev) => consultarEstado(c, ev.currentTarget)));
             }
             if (c.puedeReenviar) {
-                acciones.appendChild(NC.boton(document, 'Reenviar', 'btn btn-sm btn-outline-warning',
-                    (ev) => reenviar(c, ev.currentTarget)));
+                acciones.appendChild(NC.botonAccionComprobante(document, 'Reenviar',
+                    'btn btn-sm btn-outline-warning', amb.bloqueo, (ev) => reenviar(c, ev.currentTarget)));
+            }
+            if (amb.bloqueo.bloqueado && amb.bloqueo.motivo && (c.consultableEnHacienda || c.puedeReenviar)) {
+                acciones.appendChild(NC.el(document, 'div', amb.bloqueo.motivo, 'small text-danger mt-1 motivo-ambiente'));
             }
         }
         const cuerpo = $('nd-historial');
@@ -151,7 +158,18 @@
         pintarLineas(d);
         pintarComprobante(d);
         pintarAsiento(d);
-        $('nd-sustituta').style.display = d.puedeEmitirSustituta === true ? '' : 'none';
+        // T-044 (P-099): con otro ambiente que el activo el botón se ve deshabilitado, con el motivo fijo
+        const botonSustituta = $('nd-sustituta');
+        const motivoSustituta = typeof d.motivoSustitutaNoDisponible === 'string' ? d.motivoSustitutaNoDisponible : '';
+        const sustitutaBloqueada = d.puedeEmitirSustituta !== true && motivoSustituta !== '';
+        botonSustituta.style.display = d.puedeEmitirSustituta === true || sustitutaBloqueada ? '' : 'none';
+        botonSustituta.disabled = sustitutaBloqueada;
+        botonSustituta.title = sustitutaBloqueada ? motivoSustituta : '';
+        const textoMotivoSustituta = $('nd-sustituta-motivo');
+        if (textoMotivoSustituta) {
+            textoMotivoSustituta.textContent = sustitutaBloqueada ? motivoSustituta : '';
+            textoMotivoSustituta.style.display = sustitutaBloqueada ? '' : 'none';
+        }
         $('nd-contenido').style.display = '';
     }
 

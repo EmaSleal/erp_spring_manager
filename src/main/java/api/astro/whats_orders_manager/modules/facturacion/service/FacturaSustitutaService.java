@@ -52,6 +52,11 @@ public class FacturaSustitutaService {
         if (!evaluacion.elegible()) {
             throw new NotaFacturaConflictoException(evaluacion.mensaje());
         }
+        // T-044 (P-099): el comprobante de la original debe ser del ambiente activo; 409 antes de crear la factura
+        // sustituta y, por tanto, de cualquier consecutivo
+        elegibilidad.motivoAmbiente(evaluacion).ifPresent(motivo -> {
+            throw new NotaFacturaConflictoException(motivo);
+        });
         String razonFinal = razonFinal(razon, original.getNumeroFactura(), evaluacion.numeroNota());
 
         Factura sustituta = new Factura();
@@ -113,6 +118,13 @@ public class FacturaSustitutaService {
     @Transactional(readOnly = true)
     public void completarDetalle(Factura factura, FacturaDetalleDTO detalle) {
         detalle.setPuedeEmitirSustituta(elegibilidad.puedeEmitirSustituta(factura));
+        detalle.setMotivoSustitutaNoDisponible(elegibilidad.motivoSustitutaNoDisponible(factura).orElse(null));
+        // T-044: ambiente del comprobante vigente para el bloque FE del modal
+        elegibilidad.ambienteDeLaFactura(factura).ifPresent(a -> {
+            detalle.setAmbienteComprobante(a.ambiente());
+            detalle.setAmbienteComprobanteCoincide(a.coincide());
+            detalle.setMotivoAmbienteComprobante(a.motivo());
+        });
         Factura original = factura.getFacturaSustituida();
         if (original != null) {
             SustitucionElegibilidad.Evaluacion e = elegibilidad.evaluarSinSustituta(original);
