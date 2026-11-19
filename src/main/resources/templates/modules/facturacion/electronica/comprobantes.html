@@ -222,6 +222,7 @@
     <!-- Scripts personalizados -->
     <script th:src="@{/modules/facturacion/electronica/js/estado-envio.js}"></script>
     <script th:src="@{/modules/facturacion/js/ambiente-comprobante.js}"></script>
+    <script th:src="@{/modules/facturacion/js/filtro-url.js}"></script>
     <script th:inline="javascript">
         const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
         const csrfToken  = /*[[${_csrf.token}]]*/ '';
@@ -241,6 +242,9 @@
                 .catch(err => console.error('Error cargando estadísticas:', err));
         }
 
+        // T-043: el enlace del panel de Facturación trae ?estado=X&vigente=true; vigente oculta el historial no vigente
+        let soloVigentesActivo = false;
+
         // Cargar comprobantes
         function cargarComprobantes(filtros = {}) {
             let url = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}?page=0&size=100`;
@@ -254,6 +258,7 @@
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
+                    data = FiltroUrl.soloVigentes(data, soloVigentesActivo);
                     comprobantes = data;
                     renderizarComprobantes(data);
                 })
@@ -1071,6 +1076,7 @@
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
             document.getElementById('estadoFilter').value = '';
+            soloVigentesActivo = false;
             cargarComprobantes();
         });
         
@@ -1188,7 +1194,15 @@
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
-            cargarComprobantes();
+            const filtroUrl = FiltroUrl.leerFiltros(window.location.search);
+            const selectEstado = document.getElementById('estadoFilter');
+            const estadoDeLaUrl = filtroUrl.estado
+                && Array.from(selectEstado.options).some(o => o.value === filtroUrl.estado);
+            if (estadoDeLaUrl) {
+                selectEstado.value = filtroUrl.estado;
+            }
+            soloVigentesActivo = filtroUrl.vigente;
+            cargarComprobantes(estadoDeLaUrl ? { estado: filtroUrl.estado } : {});
             cargarEstadisticas();
             cargarGraficoTendencia();
         });

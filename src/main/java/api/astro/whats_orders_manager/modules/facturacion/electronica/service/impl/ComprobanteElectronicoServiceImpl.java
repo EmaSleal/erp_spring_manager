@@ -1164,6 +1164,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
         // T-044: ambiente de cada fila (el SP no lo trae) y banderas con UNA sola lectura del ambiente activo
         if (!lista.isEmpty()) {
+            // T-043: «vigente» de cada fila (el SP no la trae) para el filtro del enlace del panel (?vigente=true)
+            Map<Long, Boolean> vigentes = new HashMap<>();
+            for (Object[] fila : repository.findVigenteByIds(lista.stream().map(ComprobanteElectronicoDTO::getId).toList())) {
+                vigentes.put(((Number) fila[0]).longValue(), (Boolean) fila[1]);
+            }
+            lista.forEach(d -> d.setVigente(vigentes.get(d.getId())));
             Map<Long, AmbienteHacienda> ambientes = new HashMap<>();
             for (Object[] fila : repository.findAmbientesByIds(lista.stream().map(ComprobanteElectronicoDTO::getId).toList())) {
                 ambientes.put(((Number) fila[0]).longValue(), (AmbienteHacienda) fila[1]);

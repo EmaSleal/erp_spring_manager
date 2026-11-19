@@ -152,4 +152,32 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
 
     /** Sustituta no anulada de una factura (ADR-045 §1); a lo sumo una (V43). */
     Optional<Factura> findFirstByFacturaSustituida_IdFacturaAndAnuladaFalse(Integer idFactura);
+
+    /**
+     * T-043 (ADR-048): facturas sin comprobante vigente, las mismas que lista {@code /facturas?estadoFE=sin_fe}
+     * (LEFT JOIN de comprobantes vigentes con c IS NULL): incluye las anuladas, igual que ese listado.
+     */
+    @Query("SELECT COUNT(f) FROM Factura f WHERE NOT EXISTS "
+        + "(SELECT 1 FROM ComprobanteElectronico c WHERE c.factura = f AND c.vigente = true)")
+    long contarSinComprobanteVigente();
+
+    /**
+     * T-043 (ADR-048): facturas anuladas que admiten sustituta y no la tienen. Espejo en JPQL de
+     * {@code SustitucionElegibilidad.evaluar} (ADR-045): anulada; la primera nota CREDITO APLICADA con código 01 o 13
+     * (la de menor id); el comprobante vigente de esa nota ACEPTADO; el comprobante de origen que la nota referencia
+     * (comprobante_referencia_id es NOT NULL) ACEPTADO con clave y fecha de emisión; y ninguna sustituta no anulada.
+     * No aplica la regla de ambiente de T-044 (puedeEmitirSustituta), que exige leer la configuración de Hacienda
+     * activa y no es contable con un COUNT.
+     */
+    @Query("SELECT COUNT(f) FROM Factura f WHERE f.anulada = true "
+        + "AND NOT EXISTS (SELECT 1 FROM Factura s WHERE s.facturaSustituida = f AND s.anulada = false) "
+        + "AND EXISTS (SELECT 1 FROM NotaFactura n JOIN n.comprobanteReferencia cr "
+        + "WHERE n.id = (SELECT MIN(n2.id) FROM NotaFactura n2 WHERE n2.factura = f "
+        + "AND n2.tipo = api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura.CREDITO "
+        + "AND n2.estado = api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura.APLICADA AND n2.codigoReferencia IN ('01', '13')) "
+        + "AND EXISTS (SELECT 1 FROM ComprobanteElectronico cn WHERE cn.notaFactura = n AND cn.vigente = true "
+        + "AND cn.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ACEPTADO) "
+        + "AND cr.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ACEPTADO "
+        + "AND cr.claveNumerica IS NOT NULL AND TRIM(cr.claveNumerica) <> '' AND cr.fechaEmision IS NOT NULL)")
+    long contarAnuladasQueAdmitenSustituta();
 }

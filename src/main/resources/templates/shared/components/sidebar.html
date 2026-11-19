@@ -53,7 +53,7 @@
         <!-- Facturas -->
         <li class="menu-item"
             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')">
-            <a th:href="@{/facturas}" 
+            <a th:href="@{/facturas/inicio}" 
                class="menu-link" 
                data-module="facturas"
                data-tooltip="Facturas">

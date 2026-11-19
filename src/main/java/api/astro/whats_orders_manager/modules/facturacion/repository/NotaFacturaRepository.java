@@ -18,4 +18,7 @@ public interface NotaFacturaRepository extends JpaRepository<NotaFactura, Long>,
     List<NotaFactura> findByFactura_IdFacturaOrderByIdAsc(Integer idFactura);
 
     Optional<NotaFactura> findFirstByFactura_IdFacturaAndEstado(Integer idFactura, EstadoNotaFactura estado);
+
+    /** T-043 (ADR-048): conteo para el panel de Facturación (notas EN_TRAMITE). */
+    long countByEstado(EstadoNotaFactura estado);
 }

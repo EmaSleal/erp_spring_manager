@@ -129,6 +129,18 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
                            @Param("marca") EstadoComprobante marca,
                            @Param("transmisibles") java.util.Collection<EstadoComprobante> transmisibles);
 
+    /**
+     * T-043 (ADR-048): comprobantes VIGENTES por estado, en una sola consulta de conteo (el SP de conteo cuenta también
+     * el historial no vigente y no corre en H2). Cada fila es {estado, cantidad}; los estados sin comprobantes no salen.
+     */
+    @Query("SELECT c.estado, COUNT(c) FROM ComprobanteElectronico c "
+        + "WHERE c.vigente = true AND c.estado IN :estados GROUP BY c.estado")
+    List<Object[]> contarVigentesPorEstado(@Param("estados") java.util.Collection<EstadoComprobante> estados);
+
+    /** T-043: bandera «vigente» de cada comprobante de una página de listado (el SP del listado no la trae). */
+    @Query("SELECT c.id, c.vigente FROM ComprobanteElectronico c WHERE c.id IN :ids")
+    List<Object[]> findVigenteByIds(@Param("ids") java.util.Collection<Long> ids);
+
     /** T-044: ambiente de cada comprobante de una página de listado (el SP del listado no lo trae). */
     @Query("SELECT c.id, c.ambiente FROM ComprobanteElectronico c WHERE c.id IN :ids")
     List<Object[]> findAmbientesByIds(@Param("ids") java.util.Collection<Long> ids);

@@ -109,6 +109,12 @@
         });
         $('nc-anterior').addEventListener('click', () => { if (pagina > 0) cargar(pagina - 1); });
         $('nc-siguiente').addEventListener('click', () => { if (pagina + 1 < totalPaginas) cargar(pagina + 1); });
+        // T-043: el enlace del panel de Facturación trae ?estado=EN_TRAMITE
+        const estadoUrl = (new URLSearchParams(window.location.search).get('estado') || '').trim();
+        const selectEstado = $('nc-filtro-estado');
+        if (Array.from(selectEstado.options).some((o) => o.value === estadoUrl)) {
+            selectEstado.value = estadoUrl;
+        }
         cargar(0);
     });
 })();

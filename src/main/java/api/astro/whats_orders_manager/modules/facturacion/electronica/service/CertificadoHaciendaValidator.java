@@ -62,6 +62,30 @@ public class CertificadoHaciendaValidator {
     }
 
     InfoCertificado validar(String ruta, String pin, Instant ahora) {
+        X509Certificate cert = certificadoConClavePrivada(ruta, pin);
+        try {
+            cert.checkValidity(Date.from(ahora));
+        } catch (CertificateExpiredException | CertificateNotYetValidException e) {
+            throw rechazar(Causa.VENCIDO_O_NO_VIGENTE, ruta);
+        }
+        LocalDate vence = cert.getNotAfter().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        X500Principal subject = cert.getSubjectX500Principal();
+        String serial = valorRdn(subject, "SERIALNUMBER");
+        return new InfoCertificado(vence.toString(), valorRdn(subject, "CN"),
+                serial == null ? "" : serial.replaceAll("\\D", ""));
+    }
+
+    /**
+     * T-043 (ADR-048): vencimiento del certificado SIN exigir que esté vigente (validar lanza para uno vencido), para
+     * que el panel de Facturación pueda decir «vencido». Es una lectura propia del keystore.
+     *
+     * @throws CertificadoInvalidoException si el archivo o el PIN no abren el keystore o no hay clave privada
+     */
+    public Instant leerVencimiento(String ruta, String pin) {
+        return certificadoConClavePrivada(ruta, pin).getNotAfter().toInstant();
+    }
+
+    private X509Certificate certificadoConClavePrivada(String ruta, String pin) {
         KeyStore ks;
         try (InputStream in = Files.newInputStream(Path.of(ruta))) {
             ks = KeyStore.getInstance("PKCS12");
@@ -89,16 +113,7 @@ public class CertificadoHaciendaValidator {
         if (cert == null) {
             throw rechazar(Causa.SIN_CLAVE_PRIVADA, ruta);
         }
-        try {
-            cert.checkValidity(Date.from(ahora));
-        } catch (CertificateExpiredException | CertificateNotYetValidException e) {
-            throw rechazar(Causa.VENCIDO_O_NO_VIGENTE, ruta);
-        }
-        LocalDate vence = cert.getNotAfter().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        X500Principal subject = cert.getSubjectX500Principal();
-        String serial = valorRdn(subject, "SERIALNUMBER");
-        return new InfoCertificado(vence.toString(), valorRdn(subject, "CN"),
-                serial == null ? "" : serial.replaceAll("\\D", ""));
+        return cert;
     }
 
     private static String valorRdn(X500Principal subject, String tipo) {
