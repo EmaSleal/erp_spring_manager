@@ -119,6 +119,13 @@ public interface ComprobanteElectronicoService {
      * @return Comprobante actualizado con nuevo estado
      */
     ComprobanteElectronicoDTO consultarYActualizarEstado(Long comprobanteId);
+
+    /**
+     * T-045 (ADR-049 §3): cuenta una consulta automática del job que dejó el comprobante en ENVIO_INCIERTO
+     * (incrementa consultas_error_hacienda; al llegar al máximo deja de consultarse y se registra). Transacción propia;
+     * si el comprobante ya no está en ENVIO_INCIERTO no hace nada.
+     */
+    void registrarConsultaIncierta(Long comprobanteId);
     
     /**
      * Envía comprobante por correo al cliente.

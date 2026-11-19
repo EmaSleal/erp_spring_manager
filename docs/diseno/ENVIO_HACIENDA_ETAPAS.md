@@ -105,5 +105,27 @@ Fuente: Anexo 3 (`docs/referencias/ANEXOS_Y_ESTRUCTURAS_V4.4/anexo-3-api-comprob
 - El estado se resuelve después con «Consultar estado en Hacienda» o con el job horario, cuando vuelva a estar activo.
 - Las pruebas corren con la propiedad en false (`src/test/resources/application.yml`) y llaman al sondeo y a los jobs de forma explícita.
 
+## Recuperación automática del ENVIO_INCIERTO (T-045, ADR-049)
+Antes de T-045 un ENVIO_INCIERTO (caída tras la marca previa al POST, timeout de lectura, o 404 de un ENVIADO) solo se resolvía con «Consultar estado en Hacienda». Ahora lo recupera el job horario `consultarEstadosPendientes`.
+
+### Selección
+- Vigentes en ENVIO_INCIERTO **del ambiente activo** (T-044; con la configuración ilegible, sin filtro como en T-041).
+- Con el último envío (`fecha_envio`) de hace **15 minutos o más** (`MINUTOS_ANTES_DE_VERIFICAR`, la misma constante de la regla del 404).
+- Con `consultas_error_hacienda` por debajo de `facturacion.hacienda.max-consultas-error` (5).
+- Consulta propia en el repositorio (`findInciertosParaSondeo` y sus hermanas `...SinFiltroDeAmbiente` y `countInciertosParaSondeoDeOtroAmbiente`); ENVIADO, PROCESANDO y ERROR_HACIENDA conservan su ventana de 5 minutos (`findParaSondeo`). El log de excluidos por ambiente suma ambas.
+
+### Interpretación
+El job usa `consultarYActualizarEstado`, sin lógica propia:
+- Hacienda lo tiene (200): se adopta su estado (recibido/procesando → PROCESANDO, aceptado → ACEPTADO, rechazado → RECHAZADO, error → ERROR_HACIENDA).
+- 404 pasados 15 minutos (`interpretarNoExiste`): NO_TRANSMITIDO. El job de reintentos (cada 15 minutos) lo reenvía con **la misma clave y el mismo consecutivo**, dentro del límite de 5 intentos.
+- Si el reenvío vuelve a clasificarse ENVIO_INCIERTO (4xx de «ya recibido», timeout), a los 15 minutos la consulta siguiente adopta el estado real. El ciclo 404 → reenvío → incierto queda acotado por los 5 intentos y no hay más de un POST por intento (el POST nunca se repite dentro de la misma petición).
+
+### Tope de consultas
+- Una consulta automática que deja el comprobante en ENVIO_INCIERTO (error de red o excepción, respuesta sin ind-estado clasificable, 404 antes de tiempo) suma 1 a `consultas_error_hacienda`. Lo hace el job con `registrarConsultaIncierta`, en una transacción propia (la de la consulta se revierte con la excepción). Pasar de ENVIADO/PROCESANDO/ERROR_HACIENDA a ENVIO_INCIERTO no cuenta.
+- Al llegar al máximo, el job deja de consultarlo y lo dice en el log («... consultas automáticas sin resolver el ENVIO_INCIERTO; se deja de consultar»). Queda para la consulta manual o para revisarlo en ATV.
+- Salir de ENVIO_INCIERTO (NO_TRANSMITIDO, ACEPTADO, RECHAZADO, PROCESANDO...) reinicia el contador a 0.
+- La consulta manual «Consultar estado en Hacienda» reinicia el contador de un ENVIO_INCIERTO, igual que el de ERROR_HACIENDA (ADR-031 §4), y lo devuelve al sondeo. Su comportamiento no cambia en lo demás.
+- No cuentan el sondeo inmediato de T-037 (que sigue igual) ni las consultas manuales.
+
 ## Fuera del alcance
 Cola durable o 202 con consulta desde la pantalla (alternativa descartada). Cambios en la máquina de estados de ADR-030. Notificaciones `@Async` (P-090). InformacionReferencia de sustitutos (P-073).
