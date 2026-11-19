@@ -24,7 +24,13 @@
         </div>
 
         <div class="row mb-3">
-            <div class="col-12"><h2 class="section-title"><i class="fas fa-bell me-2"></i>Requiere acción</h2></div>
+            <div class="col-12">
+                <h2 class="section-title"><i class="fas fa-bell me-2"></i>Requiere acción</h2>
+                <p class="text-muted mb-0" id="contadores-ambiente" th:if="${ambienteContadores != null}"
+                   th:text="'Contadores del ambiente ' + ${ambienteContadores}">Contadores del ambiente SANDBOX</p>
+                <p class="text-muted mb-0" id="contadores-sin-ambiente" th:if="${ambienteContadores == null}"
+                   th:text="${leyendaSinAmbiente}">Sin ambiente activo</p>
+            </div>
         </div>
         <div class="row mb-4" id="panel-contadores">
             <div class="col-12 col-sm-6 col-lg-4 mb-3">
@@ -35,7 +41,7 @@
                         <p class="stat-label">Comprobantes con error</p>
                     </div>
                     <div class="stat-footer">
-                        <a th:href="@{/facturas/comprobantes(estado='ERROR',vigente=true)}" class="stat-link">
+                        <a th:href="@{/facturas/comprobantes(estado='ERROR',vigente=true)} + ${sufijoAmbiente}" class="stat-link">
                             Ver listado <i class="fas fa-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -49,7 +55,7 @@
                         <p class="stat-label">Comprobantes no transmitidos</p>
                     </div>
                     <div class="stat-footer">
-                        <a th:href="@{/facturas/comprobantes(estado='NO_TRANSMITIDO',vigente=true)}" class="stat-link">
+                        <a th:href="@{/facturas/comprobantes(estado='NO_TRANSMITIDO',vigente=true)} + ${sufijoAmbiente}" class="stat-link">
                             Ver listado <i class="fas fa-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -63,7 +69,7 @@
                         <p class="stat-label">Comprobantes con envío incierto</p>
                     </div>
                     <div class="stat-footer">
-                        <a th:href="@{/facturas/comprobantes(estado='ENVIO_INCIERTO',vigente=true)}" class="stat-link">
+                        <a th:href="@{/facturas/comprobantes(estado='ENVIO_INCIERTO',vigente=true)} + ${sufijoAmbiente}" class="stat-link">
                             Ver listado <i class="fas fa-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -77,7 +83,7 @@
                         <p class="stat-label">Comprobantes rechazados</p>
                     </div>
                     <div class="stat-footer">
-                        <a th:href="@{/facturas/comprobantes(estado='RECHAZADO',vigente=true)}" class="stat-link">
+                        <a th:href="@{/facturas/comprobantes(estado='RECHAZADO',vigente=true)} + ${sufijoAmbiente}" class="stat-link">
                             Ver listado <i class="fas fa-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -91,7 +97,7 @@
                         <p class="stat-label">Notas de crédito en trámite</p>
                     </div>
                     <div class="stat-footer">
-                        <a th:href="@{/facturas/notas-credito(estado='EN_TRAMITE')}" class="stat-link">
+                        <a th:href="@{/facturas/notas-credito(estado='EN_TRAMITE')} + ${sufijoAmbiente}" class="stat-link">
                             Ver listado <i class="fas fa-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -105,7 +111,7 @@
                         <p class="stat-label">Facturas anuladas que admiten sustituta</p>
                     </div>
                     <div class="stat-footer">
-                        <a th:href="@{/facturas}" class="stat-link">
+                        <a th:href="@{/facturas(sustitutaPendiente=true)}" class="stat-link">
                             Ver facturas <i class="fas fa-arrow-right ms-1"></i>
                         </a>
                     </div>

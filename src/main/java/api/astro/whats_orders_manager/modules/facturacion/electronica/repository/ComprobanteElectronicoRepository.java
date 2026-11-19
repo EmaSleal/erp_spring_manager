@@ -132,10 +132,32 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
     /**
      * T-043 (ADR-048): comprobantes VIGENTES por estado, en una sola consulta de conteo (el SP de conteo cuenta también
      * el historial no vigente y no corre en H2). Cada fila es {estado, cantidad}; los estados sin comprobantes no salen.
+     * T-043 (review 1): con {@code ambiente} cuenta solo los de ese ambiente (T-044: lo de otro ambiente no se puede
+     * reenviar ni consultar desde aquí); con null cuenta todos.
      */
     @Query("SELECT c.estado, COUNT(c) FROM ComprobanteElectronico c "
-        + "WHERE c.vigente = true AND c.estado IN :estados GROUP BY c.estado")
-    List<Object[]> contarVigentesPorEstado(@Param("estados") java.util.Collection<EstadoComprobante> estados);
+        + "WHERE c.vigente = true AND c.estado IN :estados AND (:ambiente IS NULL OR c.ambiente = :ambiente) "
+        + "GROUP BY c.estado")
+    List<Object[]> contarVigentesPorEstado(@Param("estados") java.util.Collection<EstadoComprobante> estados,
+                                           @Param("ambiente") AmbienteHacienda ambiente);
+
+    /**
+     * T-043 (review 1): página filtrada del listado de comprobantes en la base de datos (JPQL, sin SP: ADR-028).
+     * Cada fila tiene las mismas 12 columnas que los SP de listado (id, clave, consecutivo, tipo, fecha de emisión,
+     * estado, factura, empresa, código y mensaje de respuesta, intentos, enviado por email). Cada filtro se ignora
+     * cuando es null; el total y la paginación ya traen el filtro aplicado.
+     */
+    @Query(value = "SELECT c.id, c.claveNumerica, c.consecutivo, c.tipoComprobante, c.fechaEmision, c.estado, "
+        + "c.factura.idFactura, c.empresa.idConfiguracion, c.codigoRespuesta, c.mensajeRespuesta, c.intentosEnvio, "
+        + "c.enviadoEmail FROM ComprobanteElectronico c WHERE c.empresa.idConfiguracion = :empresaId "
+        + "AND (:estado IS NULL OR c.estado = :estado) AND (:vigente IS NULL OR c.vigente = :vigente) "
+        + "AND (:ambiente IS NULL OR c.ambiente = :ambiente) ORDER BY c.fechaEmision DESC, c.id DESC",
+        countQuery = "SELECT COUNT(c) FROM ComprobanteElectronico c WHERE c.empresa.idConfiguracion = :empresaId "
+        + "AND (:estado IS NULL OR c.estado = :estado) AND (:vigente IS NULL OR c.vigente = :vigente) "
+        + "AND (:ambiente IS NULL OR c.ambiente = :ambiente)")
+    Page<Object[]> buscarFiltrados(@Param("empresaId") Integer empresaId, @Param("estado") EstadoComprobante estado,
+                                   @Param("vigente") Boolean vigente, @Param("ambiente") AmbienteHacienda ambiente,
+                                   Pageable pageable);
 
     /** T-043: bandera «vigente» de cada comprobante de una página de listado (el SP del listado no la trae). */
     @Query("SELECT c.id, c.vigente FROM ComprobanteElectronico c WHERE c.id IN :ids")

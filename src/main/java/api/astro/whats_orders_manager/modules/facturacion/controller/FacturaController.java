@@ -10,6 +10,8 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDT
 import api.astro.whats_orders_manager.modules.facturacion.dto.PagoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapper;
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -66,6 +68,7 @@ public class FacturaController {
     private final PoliticaMutabilidadFactura politicaMutabilidad;
     private final FacturaSustitutaService sustitutaService;
     private final NotaCreditoElegibilidad notaCreditoElegibilidad;
+    private final AmbienteComprobanteGuard ambienteGuard;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -82,6 +85,7 @@ public class FacturaController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Boolean isPaid,
             @RequestParam(required = false) String estadoFE,
+            @RequestParam(required = false) Boolean sustitutaPendiente,
             Model model,
             Authentication authentication
     ) {
@@ -113,7 +117,13 @@ public class FacturaController {
                 }
             }
 
-            boolean sinFiltros = startDate == null && endDate == null
+            // T-043: «anuladas que admiten sustituta» del panel; el ambiente es el de la configuración activa (T-044) y,
+            // sin configuración legible, no se filtra por ambiente (igual que el contador del panel)
+            Boolean sustitutaFiltro = Boolean.TRUE.equals(sustitutaPendiente) ? Boolean.TRUE : null;
+            AmbienteHacienda ambienteSustituta = sustitutaFiltro != null
+                    ? ambienteGuard.ambienteActivo().orElse(null) : null;
+
+            boolean sinFiltros = sustitutaFiltro == null && startDate == null && endDate == null
                     && (status == null || status.isBlank())
                     && isPaid == null
                     && (estadoFE == null || estadoFE.isBlank());
@@ -121,7 +131,8 @@ public class FacturaController {
             // Obtener página de facturas (con o sin filtros)
             Page<Factura> facturasPage = sinFiltros
                     ? facturaService.findAll(pageable)
-                    : facturaService.buscarConFiltros(pageable, startDate, endDate, entregado, isPaid, sinFE, estadoFEFiltro);
+                    : facturaService.buscarConFiltros(pageable, startDate, endDate, entregado, isPaid, sinFE, estadoFEFiltro,
+                            sustitutaFiltro, ambienteSustituta);
 
             // Convertir a DTO y agregar atributos de paginación usando PaginacionUtil
             PaginacionDTO<Factura> paginacion = PaginacionUtil.fromPage(facturasPage);
@@ -133,6 +144,8 @@ public class FacturaController {
             model.addAttribute("status", status);
             model.addAttribute("isPaid", isPaid);
             model.addAttribute("estadoFE", estadoFE);
+            model.addAttribute("sustitutaPendiente", sustitutaFiltro);
+            model.addAttribute("ambienteSustituta", ambienteSustituta != null ? ambienteSustituta.name() : null);
 
             // Agregar datos adicionales para la vista
             model.addAttribute("clientes", clienteService.findAll());

@@ -26,6 +26,12 @@ public class FacturacionInicioController {
         PanelFacturacionService.Panel panel = panelService.obtener();
         model.addAttribute("contadores", panel.contadores());
         model.addAttribute("hacienda", panel.hacienda());
+        // T-043 (review 1): ambiente de los contadores (null = sin ambiente activo) y la leyenda fija en ese caso
+        String ambiente = panel.ambienteContadores() != null ? panel.ambienteContadores().name() : null;
+        model.addAttribute("ambienteContadores", ambiente);
+        // parámetro que los enlaces de comprobantes y notas añaden para listar solo ese ambiente (vacío = sin filtro)
+        model.addAttribute("sufijoAmbiente", ambiente != null ? "&ambiente=" + ambiente : "");
+        model.addAttribute("leyendaSinAmbiente", PanelFacturacionService.LEYENDA_SIN_AMBIENTE);
         return "modules/facturacion/inicio";
     }
 }

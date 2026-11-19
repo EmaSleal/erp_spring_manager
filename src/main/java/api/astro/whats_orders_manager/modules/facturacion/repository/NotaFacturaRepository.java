@@ -19,6 +19,14 @@ public interface NotaFacturaRepository extends JpaRepository<NotaFactura, Long>,
 
     Optional<NotaFactura> findFirstByFactura_IdFacturaAndEstado(Integer idFactura, EstadoNotaFactura estado);
 
-    /** T-043 (ADR-048): conteo para el panel de Facturación (notas EN_TRAMITE). */
-    long countByEstado(EstadoNotaFactura estado);
+    /**
+     * T-043 (ADR-048): notas en un estado, para el panel de Facturación. Con {@code ambiente}, solo las que tienen
+     * comprobante vigente de ese ambiente (el ambiente de una nota es el de su comprobante, T-044); con null, todas.
+     */
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(n) FROM NotaFactura n WHERE n.estado = :estado "
+        + "AND (:ambiente IS NULL OR EXISTS (SELECT 1 FROM ComprobanteElectronico c WHERE c.notaFactura = n "
+        + "AND c.vigente = true AND c.ambiente = :ambiente))")
+    long contarPorEstado(@org.springframework.data.repository.query.Param("estado") EstadoNotaFactura estado,
+                         @org.springframework.data.repository.query.Param("ambiente")
+                         api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda ambiente);
 }

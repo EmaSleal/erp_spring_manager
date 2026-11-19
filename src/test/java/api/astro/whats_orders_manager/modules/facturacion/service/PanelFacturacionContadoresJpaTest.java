@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
@@ -80,12 +81,17 @@ class PanelFacturacionContadoresJpaTest {
     }
 
     private ComprobanteElectronico comprobante(Factura f, NotaFactura n, EstadoComprobante estado, boolean vigente) {
+        return comprobante(f, n, estado, vigente, null);
+    }
+
+    private ComprobanteElectronico comprobante(Factura f, NotaFactura n, EstadoComprobante estado, boolean vigente,
+                                               AmbienteHacienda ambiente) {
         int n1 = ++secuencia;
         ComprobanteElectronico c = ComprobanteElectronico.builder().factura(f).notaFactura(n).empresa(empresa)
             .tipoComprobante(n == null ? TipoComprobanteElectronico.FACTURA_ELECTRONICA
                 : TipoComprobanteElectronico.NOTA_CREDITO)
             .claveNumerica("clave-" + n1).consecutivo("c" + n1).fechaEmision(LocalDateTime.now()).estado(estado)
-            .vigente(vigente).consultasErrorHacienda(0).build();
+            .vigente(vigente).ambiente(ambiente).consultasErrorHacienda(0).build();
         em.persist(c);
         return c;
     }
@@ -104,10 +110,16 @@ class PanelFacturacionContadoresJpaTest {
     /** Factura anulada con nota y comprobantes; devuelve la factura. */
     private Factura anulada(TipoNotaFactura tipo, EstadoNotaFactura estadoNota, String codigo,
                             EstadoComprobante estadoComprobanteNota, EstadoComprobante estadoOrigen) {
+        return anulada(tipo, estadoNota, codigo, estadoComprobanteNota, estadoOrigen, null);
+    }
+
+    private Factura anulada(TipoNotaFactura tipo, EstadoNotaFactura estadoNota, String codigo,
+                            EstadoComprobante estadoComprobanteNota, EstadoComprobante estadoOrigen,
+                            AmbienteHacienda ambiente) {
         Factura f = factura(true, null);
-        ComprobanteElectronico origen = comprobante(f, null, estadoOrigen, true);
+        ComprobanteElectronico origen = comprobante(f, null, estadoOrigen, true, ambiente);
         NotaFactura n = nota(f, origen, tipo, estadoNota, codigo);
-        comprobante(null, n, estadoComprobanteNota, true);
+        comprobante(null, n, estadoComprobanteNota, true, ambiente);
         return f;
     }
 
@@ -134,7 +146,7 @@ class PanelFacturacionContadoresJpaTest {
         comprobante(factura(false, null), null, EstadoComprobante.ERROR, false);
         em.flush();
 
-        var c = servicio().contadores();
+        var c = servicio().contadores(null);
 
         assertThat(c.comprobantesError()).isEqualTo(2);
         assertThat(c.comprobantesNoTransmitido()).isEqualTo(1);
@@ -153,22 +165,91 @@ class PanelFacturacionContadoresJpaTest {
         nota(f, ref, TipoNotaFactura.CREDITO, EstadoNotaFactura.RECHAZADA, "02");
         em.flush();
 
-        assertThat(servicio().contadores().notasEnTramite()).isEqualTo(2);
+        assertThat(servicio().contadores(null).notasEnTramite()).isEqualTo(2);
     }
 
     @Test
-    @DisplayName("sin comprobante: igual que /facturas?estadoFE=sin_fe (sin comprobante vigente; incluye anuladas)")
+    @DisplayName("sin comprobante: no anuladas sin ningún comprobante (de cualquier ambiente); igual que /facturas?estadoFE=sin_fe")
     void sinComprobante() {
-        factura(false, null);                                  // sin comprobante
-        factura(true, null);                                   // anulada sin comprobante: el listado la incluye
-        comprobante(factura(false, null), null, EstadoComprobante.ACEPTADO, true);   // con vigente
-        comprobante(factura(false, null), null, EstadoComprobante.RECHAZADO, false); // solo historial no vigente
+        factura(false, null);                                  // sin comprobante: cuenta
+        factura(false, null);                                  // sin comprobante: cuenta
+        factura(true, null);                                   // anulada sin comprobante: no cuenta
+        comprobante(factura(false, null), null, EstadoComprobante.ACEPTADO, true, AmbienteHacienda.SANDBOX);     // con comprobante
+        comprobante(factura(false, null), null, EstadoComprobante.ACEPTADO, true, AmbienteHacienda.PRODUCCION);  // de otro ambiente: no cuenta
+        comprobante(factura(false, null), null, EstadoComprobante.RECHAZADO, false);  // solo historial no vigente: no cuenta
         em.flush();
 
-        long delListado = facturaRepository.buscarConFiltros(null, null, null, null, Boolean.TRUE, null,
+        long delListado = facturaRepository.buscarConFiltros(null, null, null, null, Boolean.TRUE, null, null, null,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements();
 
-        assertThat(servicio().contadores().sinComprobante()).isEqualTo(3).isEqualTo(delListado);
+        assertThat(servicio().contadores(null).sinComprobante()).isEqualTo(2).isEqualTo(delListado);
+        // no depende del ambiente
+        assertThat(servicio().contadores(AmbienteHacienda.PRODUCCION).sinComprobante()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("review 1: comprobantes vigentes por estado cuentan solo el ambiente indicado (null = todos)")
+    void comprobantesPorAmbiente() {
+        comprobante(factura(false, null), null, EstadoComprobante.ERROR, true, AmbienteHacienda.PRODUCCION);
+        comprobante(factura(false, null), null, EstadoComprobante.RECHAZADO, true, AmbienteHacienda.PRODUCCION);
+        comprobante(factura(false, null), null, EstadoComprobante.ERROR, true, AmbienteHacienda.SANDBOX);
+        comprobante(factura(false, null), null, EstadoComprobante.ERROR, true, AmbienteHacienda.SANDBOX);
+        comprobante(factura(false, null), null, EstadoComprobante.RECHAZADO, true, AmbienteHacienda.SANDBOX);
+        em.flush();
+
+        var prod = servicio().contadores(AmbienteHacienda.PRODUCCION);
+        var sand = servicio().contadores(AmbienteHacienda.SANDBOX);
+        var todos = servicio().contadores(null);
+
+        assertThat(prod.comprobantesError()).isEqualTo(1);
+        assertThat(prod.comprobantesRechazado()).isEqualTo(1);
+        assertThat(sand.comprobantesError()).isEqualTo(2);
+        assertThat(sand.comprobantesRechazado()).isEqualTo(1);
+        assertThat(todos.comprobantesError()).isEqualTo(3);
+        assertThat(todos.comprobantesRechazado()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("review 1: notas EN_TRAMITE cuentan por el ambiente de su comprobante vigente")
+    void notasPorAmbiente() {
+        Factura f = factura(false, null);
+        ComprobanteElectronico ref = comprobante(f, null, EstadoComprobante.ACEPTADO, true, AmbienteHacienda.PRODUCCION);
+        NotaFactura nProd = nota(f, ref, TipoNotaFactura.CREDITO, EstadoNotaFactura.EN_TRAMITE, "02");
+        comprobante(null, nProd, EstadoComprobante.FIRMADO, true, AmbienteHacienda.PRODUCCION);
+        NotaFactura nSand = nota(f, ref, TipoNotaFactura.CREDITO, EstadoNotaFactura.EN_TRAMITE, "02");
+        comprobante(null, nSand, EstadoComprobante.FIRMADO, true, AmbienteHacienda.SANDBOX);
+        NotaFactura nHistorial = nota(f, ref, TipoNotaFactura.CREDITO, EstadoNotaFactura.EN_TRAMITE, "02");
+        comprobante(null, nHistorial, EstadoComprobante.RECHAZADO, false, AmbienteHacienda.SANDBOX);
+        comprobante(null, nHistorial, EstadoComprobante.FIRMADO, true, AmbienteHacienda.PRODUCCION);
+        em.flush();
+
+        assertThat(servicio().contadores(AmbienteHacienda.PRODUCCION).notasEnTramite()).isEqualTo(2);
+        assertThat(servicio().contadores(AmbienteHacienda.SANDBOX).notasEnTramite()).isEqualTo(1);
+        assertThat(servicio().contadores(null).notasEnTramite()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("review 1: anuladas que admiten sustituta por el ambiente del comprobante ACEPTADO de la original; la lista coincide")
+    void anuladasPorAmbienteYListaCoincide() {
+        anulada(TipoNotaFactura.CREDITO, EstadoNotaFactura.APLICADA, "01", EstadoComprobante.ACEPTADO,
+            EstadoComprobante.ACEPTADO, AmbienteHacienda.PRODUCCION);
+        anulada(TipoNotaFactura.CREDITO, EstadoNotaFactura.APLICADA, "13", EstadoComprobante.ACEPTADO,
+            EstadoComprobante.ACEPTADO, AmbienteHacienda.SANDBOX);
+        anulada(TipoNotaFactura.CREDITO, EstadoNotaFactura.APLICADA, "01", EstadoComprobante.ACEPTADO,
+            EstadoComprobante.ACEPTADO, AmbienteHacienda.SANDBOX);
+        anulada(TipoNotaFactura.CREDITO, EstadoNotaFactura.APLICADA, "01", EstadoComprobante.RECHAZADO,
+            EstadoComprobante.ACEPTADO, AmbienteHacienda.SANDBOX); // no elegible
+        em.flush();
+        var sin = org.springframework.data.domain.Pageable.unpaged();
+
+        for (var par : new Object[][]{{AmbienteHacienda.PRODUCCION, 1L}, {AmbienteHacienda.SANDBOX, 2L}, {null, 3L}}) {
+            AmbienteHacienda ambiente = (AmbienteHacienda) par[0];
+            long contador = servicio().contadores(ambiente).anuladasSinSustituta();
+            long lista = facturaRepository.buscarConFiltros(null, null, null, null, null, null, Boolean.TRUE,
+                ambiente, sin).getTotalElements();
+            assertThat(contador).as("contador %s", ambiente).isEqualTo((Long) par[1]);
+            assertThat(lista).as("lista %s", ambiente).isEqualTo(contador);
+        }
     }
 
     @Test
@@ -209,7 +290,7 @@ class PanelFacturacionContadoresJpaTest {
         long esperado = facturaRepository.findAll().stream().filter(f -> regla.evaluar(f).elegible()).count();
 
         assertThat(esperado).isEqualTo(3); // elegible, elegible13 y sustitutaAnulada (su sustituta está anulada)
-        assertThat(servicio().contadores().anuladasSinSustituta()).isEqualTo(esperado);
+        assertThat(servicio().contadores(null).anuladasSinSustituta()).isEqualTo(esperado);
         assertThat(regla.evaluar(facturaRepository.findById(elegible.getIdFactura()).orElseThrow()).elegible()).isTrue();
         assertThat(regla.evaluar(facturaRepository.findById(yaTiene.getIdFactura()).orElseThrow()).elegible()).isFalse();
     }
@@ -228,7 +309,7 @@ class PanelFacturacionContadoresJpaTest {
         var servicio = servicio();
         stats.clear();
 
-        var c = servicio.contadores();
+        var c = servicio.contadores(null);
 
         assertThat(stats.getPrepareStatementCount()).isEqualTo(4);
         assertThat(stats.getEntityLoadCount()).isZero();

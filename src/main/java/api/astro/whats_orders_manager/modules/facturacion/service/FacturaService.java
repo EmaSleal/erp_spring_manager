@@ -23,7 +23,9 @@ public interface FacturaService {
      * estado de pago y estado de facturación electrónica).
      */
     Page<Factura> buscarConFiltros(Pageable pageable, LocalDate startDate, LocalDate endDate,
-                                    Boolean entregado, Boolean pagada, Boolean sinFE, EstadoComprobante estadoFE);
+                                    Boolean entregado, Boolean pagada, Boolean sinFE, EstadoComprobante estadoFE,
+                                    Boolean sustitutaPendiente,
+                                    api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda ambiente);
     Optional<Factura> findById(Integer id);
     Factura save(Factura factura);
     void deleteById(Integer id);

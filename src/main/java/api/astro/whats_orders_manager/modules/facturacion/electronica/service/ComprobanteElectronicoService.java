@@ -91,6 +91,18 @@ public interface ComprobanteElectronicoService {
      */
     List<ComprobanteElectronicoDTO> listarPorEstado(Integer empresaId, EstadoComprobante estado, int page, int size);
     
+    /** Página de comprobantes con el total que cumple el filtro (T-043, review 1). */
+    record PaginaComprobantes(List<ComprobanteElectronicoDTO> contenido, long total) {
+    }
+
+    /**
+     * T-043 (review 1): lista con filtros aplicados en la base de datos (estado, vigente y ambiente, cada uno opcional);
+     * el total y la paginación ya traen el filtro.
+     */
+    PaginaComprobantes listarFiltrado(Integer empresaId, EstadoComprobante estado, Boolean vigente,
+                                      api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda ambiente,
+                                      int page, int size);
+
     /**
      * Lista comprobantes por rango de fechas.
      */

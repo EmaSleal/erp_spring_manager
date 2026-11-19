@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.repository;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import org.springframework.data.domain.Page;
@@ -121,55 +122,15 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
     Optional<List<Factura>> findByClienteId(@Param("idCliente") Integer idCliente);
 
     /**
-     * Busca facturas paginadas aplicando filtros opcionales del listado.
-     * Cada filtro se ignora cuando su parámetro es null.
-     * sinFE y estadoFE son mutuamente excluyentes: sinFE busca facturas sin
-     * comprobante electrónico, mientras que estadoFE filtra por el estado del comprobante.
+     * Predicado compartido de «factura anulada que admite sustituta y no la tiene» (T-043, ADR-048 y ADR-045), usado por
+     * el contador del panel y por el filtro {@code sustitutaPendiente} del listado, para que coincidan. Espejo en JPQL
+     * de {@code SustitucionElegibilidad.evaluar} más la regla de ambiente de T-044 (puedeEmitirSustituta): anulada; la
+     * primera nota CREDITO APLICADA con código 01 o 13 (la de menor id); el comprobante vigente de esa nota ACEPTADO; el
+     * comprobante de origen que la nota referencia ACEPTADO con clave y fecha de emisión y, si se indica
+     * {@code :ambiente}, de ese ambiente; y ninguna sustituta no anulada. Con :ambiente null no filtra por ambiente.
+     * Requiere el alias {@code f} sobre Factura y el parámetro {@code :ambiente}.
      */
-    @Query(value = "SELECT f FROM Factura f LEFT JOIN f.comprobantes c ON c.vigente = true " +
-           "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
-           "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
-           "AND (:entregado IS NULL OR f.entregado = :entregado) " +
-           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL')) " +
-           "AND (:sinFE IS NULL OR c IS NULL) " +
-           "AND (:estadoFE IS NULL OR c.estado = :estadoFE)",
-           countQuery = "SELECT COUNT(f) FROM Factura f LEFT JOIN f.comprobantes c ON c.vigente = true " +
-           "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
-           "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
-           "AND (:entregado IS NULL OR f.entregado = :entregado) " +
-           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL')) " +
-           "AND (:sinFE IS NULL OR c IS NULL) " +
-           "AND (:estadoFE IS NULL OR c.estado = :estadoFE)")
-    Page<Factura> buscarConFiltros(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
-            @Param("entregado") Boolean entregado,
-            @Param("pagada") Boolean pagada,
-            @Param("sinFE") Boolean sinFE,
-            @Param("estadoFE") EstadoComprobante estadoFE,
-            Pageable pageable
-    );
-
-    /** Sustituta no anulada de una factura (ADR-045 §1); a lo sumo una (V43). */
-    Optional<Factura> findFirstByFacturaSustituida_IdFacturaAndAnuladaFalse(Integer idFactura);
-
-    /**
-     * T-043 (ADR-048): facturas sin comprobante vigente, las mismas que lista {@code /facturas?estadoFE=sin_fe}
-     * (LEFT JOIN de comprobantes vigentes con c IS NULL): incluye las anuladas, igual que ese listado.
-     */
-    @Query("SELECT COUNT(f) FROM Factura f WHERE NOT EXISTS "
-        + "(SELECT 1 FROM ComprobanteElectronico c WHERE c.factura = f AND c.vigente = true)")
-    long contarSinComprobanteVigente();
-
-    /**
-     * T-043 (ADR-048): facturas anuladas que admiten sustituta y no la tienen. Espejo en JPQL de
-     * {@code SustitucionElegibilidad.evaluar} (ADR-045): anulada; la primera nota CREDITO APLICADA con código 01 o 13
-     * (la de menor id); el comprobante vigente de esa nota ACEPTADO; el comprobante de origen que la nota referencia
-     * (comprobante_referencia_id es NOT NULL) ACEPTADO con clave y fecha de emisión; y ninguna sustituta no anulada.
-     * No aplica la regla de ambiente de T-044 (puedeEmitirSustituta), que exige leer la configuración de Hacienda
-     * activa y no es contable con un COUNT.
-     */
-    @Query("SELECT COUNT(f) FROM Factura f WHERE f.anulada = true "
+    String PREDICADO_SUSTITUTA_PENDIENTE = "f.anulada = true "
         + "AND NOT EXISTS (SELECT 1 FROM Factura s WHERE s.facturaSustituida = f AND s.anulada = false) "
         + "AND EXISTS (SELECT 1 FROM NotaFactura n JOIN n.comprobanteReferencia cr "
         + "WHERE n.id = (SELECT MIN(n2.id) FROM NotaFactura n2 WHERE n2.factura = f "
@@ -178,6 +139,64 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
         + "AND EXISTS (SELECT 1 FROM ComprobanteElectronico cn WHERE cn.notaFactura = n AND cn.vigente = true "
         + "AND cn.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ACEPTADO) "
         + "AND cr.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ACEPTADO "
-        + "AND cr.claveNumerica IS NOT NULL AND TRIM(cr.claveNumerica) <> '' AND cr.fechaEmision IS NOT NULL)")
-    long contarAnuladasQueAdmitenSustituta();
+        + "AND cr.claveNumerica IS NOT NULL AND TRIM(cr.claveNumerica) <> '' AND cr.fechaEmision IS NOT NULL "
+        + "AND (:ambiente IS NULL OR cr.ambiente = :ambiente))";
+
+    /** Facturas no anuladas y sin ningún comprobante (de cualquier ambiente), las que se pueden emitir (T-043). */
+    String PREDICADO_SIN_COMPROBANTE = "f.anulada = false AND NOT EXISTS "
+        + "(SELECT 1 FROM ComprobanteElectronico x WHERE x.factura = f)";
+
+    /**
+     * Busca facturas paginadas aplicando filtros opcionales del listado.
+     * Cada filtro se ignora cuando su parámetro es null.
+     * sinFE y estadoFE son mutuamente excluyentes: sinFE busca facturas no anuladas sin ningún comprobante electrónico
+     * (T-043: las que se pueden emitir; las de otro ambiente con comprobante no cuentan), mientras que estadoFE filtra
+     * por el estado del comprobante vigente. sustitutaPendiente (T-043) deja las anuladas que admiten sustituta y no la
+     * tienen en el {@code ambiente} indicado (null = todos), con el mismo predicado que el contador del panel.
+     */
+    @Query(value = "SELECT f FROM Factura f LEFT JOIN f.comprobantes c ON c.vigente = true " +
+           "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
+           "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
+           "AND (:entregado IS NULL OR f.entregado = :entregado) " +
+           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL')) " +
+           "AND (:sinFE IS NULL OR (" + PREDICADO_SIN_COMPROBANTE + ")) " +
+           "AND (:estadoFE IS NULL OR c.estado = :estadoFE) " +
+           "AND (:sustitutaPendiente IS NULL OR (" + PREDICADO_SUSTITUTA_PENDIENTE + "))",
+           countQuery = "SELECT COUNT(f) FROM Factura f LEFT JOIN f.comprobantes c ON c.vigente = true " +
+           "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
+           "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
+           "AND (:entregado IS NULL OR f.entregado = :entregado) " +
+           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL')) " +
+           "AND (:sinFE IS NULL OR (" + PREDICADO_SIN_COMPROBANTE + ")) " +
+           "AND (:estadoFE IS NULL OR c.estado = :estadoFE) " +
+           "AND (:sustitutaPendiente IS NULL OR (" + PREDICADO_SUSTITUTA_PENDIENTE + "))")
+    Page<Factura> buscarConFiltros(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("entregado") Boolean entregado,
+            @Param("pagada") Boolean pagada,
+            @Param("sinFE") Boolean sinFE,
+            @Param("estadoFE") EstadoComprobante estadoFE,
+            @Param("sustitutaPendiente") Boolean sustitutaPendiente,
+            @Param("ambiente") AmbienteHacienda ambiente,
+            Pageable pageable
+    );
+
+    /** Sustituta no anulada de una factura (ADR-045 §1); a lo sumo una (V43). */
+    Optional<Factura> findFirstByFacturaSustituida_IdFacturaAndAnuladaFalse(Integer idFactura);
+
+    /**
+     * T-043 (ADR-048): facturas no anuladas sin ningún comprobante, las mismas que lista
+     * {@code /facturas?estadoFE=sin_fe} ({@link #PREDICADO_SIN_COMPROBANTE}). No lleva ambiente: la que ya tiene un
+     * comprobante de otro ambiente no se puede emitir aquí (T-044) y no cuenta.
+     */
+    @Query("SELECT COUNT(f) FROM Factura f WHERE " + PREDICADO_SIN_COMPROBANTE)
+    long contarSinComprobante();
+
+    /**
+     * T-043 (ADR-048): facturas anuladas que admiten sustituta y no la tienen, en el ambiente indicado (null = todos).
+     * Mismo predicado que el filtro {@code sustitutaPendiente} del listado ({@link #PREDICADO_SUSTITUTA_PENDIENTE}).
+     */
+    @Query("SELECT COUNT(f) FROM Factura f WHERE " + PREDICADO_SUSTITUTA_PENDIENTE)
+    long contarAnuladasQueAdmitenSustituta(@Param("ambiente") AmbienteHacienda ambiente);
 }

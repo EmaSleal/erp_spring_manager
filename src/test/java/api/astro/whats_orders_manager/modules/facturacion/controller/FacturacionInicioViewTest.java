@@ -121,7 +121,8 @@ class FacturacionInicioViewTest {
     }
 
     private static Panel panel(TarjetaHacienda tarjeta) {
-        return new Panel(new Contadores(3, 0, 12, 1, 4, 2, 5, 7, 6), tarjeta);
+        return new Panel(new Contadores(3, 0, 12, 1, 4, 2, 5, 7, 6), tarjeta,
+            tarjeta.disponible() ? tarjeta.ambienteEnum() : null);
     }
 
     private static TarjetaHacienda tarjetaOk() {
@@ -148,11 +149,12 @@ class FacturacionInicioViewTest {
 
         assertThat(html).contains("Comprobantes con error", "Comprobantes con envío incierto", "Facturas sin comprobante",
             "Artículos activos sin CAByS", "Clientes con datos FE inválidos");
-        assertThat(html).contains("/facturas/comprobantes?estado=ERROR&amp;vigente=true",
-            "/facturas/comprobantes?estado=NO_TRANSMITIDO&amp;vigente=true",
-            "/facturas/comprobantes?estado=ENVIO_INCIERTO&amp;vigente=true",
-            "/facturas/comprobantes?estado=RECHAZADO&amp;vigente=true",
-            "/facturas/notas-credito?estado=EN_TRAMITE", "/facturas?estadoFE=sin_fe", "/articulos?sinCabys=true",
+        assertThat(html).contains("/facturas/comprobantes?estado=ERROR&amp;vigente=true&amp;ambiente=SANDBOX",
+            "/facturas/comprobantes?estado=NO_TRANSMITIDO&amp;vigente=true&amp;ambiente=SANDBOX",
+            "/facturas/comprobantes?estado=ENVIO_INCIERTO&amp;vigente=true&amp;ambiente=SANDBOX",
+            "/facturas/comprobantes?estado=RECHAZADO&amp;vigente=true&amp;ambiente=SANDBOX",
+            "/facturas/notas-credito?estado=EN_TRAMITE&amp;ambiente=SANDBOX",
+            "/facturas?sustitutaPendiente=true", "/facturas?estadoFE=sin_fe", "/articulos?sinCabys=true",
             "/clientes?filtro=feInvalidos");
         // los números del panel salen en h3.stat-number con data-contador
         assertThat(html).containsPattern("data-contador[^>]*>12<");
@@ -239,5 +241,35 @@ class FacturacionInicioViewTest {
         }
         assertThat(usuario).doesNotContain("/facturas/configuracion-hacienda");
         assertThat(admin).contains("href=\"/facturas/configuracion-hacienda\"");
+    }
+
+    @Test
+    @DisplayName("review 1: el encabezado dice el ambiente de los contadores y los enlaces lo llevan (PRODUCCION)")
+    void ambienteDeLosContadores() throws Exception {
+        when(panelService.obtener()).thenReturn(panel(new TarjetaHacienda(null, "PRODUCCION", true,
+            "Vence el 2027-03-01 (en 102 días)", 102L, false, true, LocalDateTime.of(2026, 11, 19, 14, 30))));
+
+        String html = html("gerente", "USER");
+
+        assertThat(html).contains("Contadores del ambiente PRODUCCION")
+            .doesNotContain(PanelFacturacionService.LEYENDA_SIN_AMBIENTE);
+        assertThat(html).contains("/facturas/comprobantes?estado=RECHAZADO&amp;vigente=true&amp;ambiente=PRODUCCION",
+            "/facturas/notas-credito?estado=EN_TRAMITE&amp;ambiente=PRODUCCION");
+    }
+
+    @Test
+    @DisplayName("review 1: sin ambiente activo o con credenciales ilegibles, leyenda fija y enlaces sin ambiente, 200")
+    void sinAmbienteActivo() throws Exception {
+        for (String mensaje : new String[]{ConfiguracionHaciendaNoDisponibleException.MENSAJE_NO_VALIDA,
+            ConfiguracionHaciendaNoDisponibleException.MENSAJE_ILEGIBLE}) {
+            when(panelService.obtener()).thenReturn(panel(TarjetaHacienda.conAviso(mensaje)));
+
+            String html = html("gerente", "USER");
+
+            assertThat(html).contains("Sin ambiente activo: los contadores incluyen todos los ambientes")
+                .doesNotContain("Contadores del ambiente");
+            assertThat(html).contains("/facturas/comprobantes?estado=RECHAZADO&amp;vigente=true\"")
+                .doesNotContain("ambiente=");
+        }
     }
 }

@@ -104,6 +104,18 @@
                 </div>
             </div>
 
+            <!-- T-043: filtro activo del panel de Facturación (anuladas que admiten sustituta) -->
+            <div class="alert alert-info d-flex justify-content-between align-items-center" id="filtro-sustituta-pendiente"
+                 th:if="${sustitutaPendiente != null}">
+                <span>
+                    <i class="fas fa-filter me-2"></i>Facturas anuladas que admiten sustituta y no la tienen
+                    <span th:if="${ambienteSustituta != null}" th:text="'(ambiente ' + ${ambienteSustituta} + ')'"></span>
+                    <span th:if="${ambienteSustituta == null}">(todos los ambientes: no hay ambiente activo)</span>.
+                    Abra la factura para emitir la sustituta.
+                </span>
+                <a th:href="@{/facturas}" class="btn btn-sm btn-outline-secondary">Quitar filtro</a>
+            </div>
+
             <!-- Filters Card -->
             <div th:replace="~{shared/fragments/filter-bar :: filterCard(~{::.filter-row}, 'mb-4')}">
                 <div class="filter-row row g-3">
@@ -448,7 +460,7 @@
                 <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'facturas', '/facturas', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir} + (${startDate} != null ? '&amp;startDate=' + ${startDate} : '') + (${endDate} != null ? '&amp;endDate=' + ${endDate} : '') + (${status} != null ? '&amp;status=' + ${status} : '') + (${isPaid} != null ? '&amp;isPaid=' + ${isPaid} : '') + (${estadoFE} != null ? '&amp;estadoFE=' + ${estadoFE} : ''))}"></div>
+                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'facturas', '/facturas', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir} + (${startDate} != null ? '&amp;startDate=' + ${startDate} : '') + (${endDate} != null ? '&amp;endDate=' + ${endDate} : '') + (${status} != null ? '&amp;status=' + ${status} : '') + (${isPaid} != null ? '&amp;isPaid=' + ${isPaid} : '') + (${estadoFE} != null ? '&amp;estadoFE=' + ${estadoFE} : '') + (${sustitutaPendiente} != null ? '&amp;sustitutaPendiente=true' : ''))}"></div>
                 </div>
             </div>
         </div>

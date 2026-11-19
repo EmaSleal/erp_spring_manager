@@ -135,6 +135,8 @@ test('query del listado: solo filtros con valor, página y tamaño', () => {
     assert.equal(n.queryListado({ desde: '2026-01-01', hasta: '', cliente: ' ACME ', estado: 'APLICADA' }, 2, 20),
         'desde=2026-01-01&cliente=ACME&estado=APLICADA&page=2&size=20');
     assert.equal(n.queryListado({}, 0, 20), 'page=0&size=20');
+    assert.equal(n.queryListado({ estado: 'EN_TRAMITE', ambiente: 'PRODUCCION' }, 0, 20),
+        'estado=EN_TRAMITE&ambiente=PRODUCCION&page=0&size=20');
     assert.equal(n.textoPagina({ pagina: 1, tamano: 20, totalElementos: 45, totalPaginas: 3 }),
         'Mostrando 21-40 de 45 (página 2 de 3)');
     assert.equal(n.textoPagina({ pagina: 0, tamano: 20, totalElementos: 0, totalPaginas: 0 }), 'Sin notas de crédito');

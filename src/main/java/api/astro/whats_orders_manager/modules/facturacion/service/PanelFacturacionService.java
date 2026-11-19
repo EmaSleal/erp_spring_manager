@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConfiguracionHaciendaNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ConfiguracionHacienda;
@@ -62,13 +63,26 @@ public class PanelFacturacionService {
             return aviso == null;
         }
 
+        /** Ambiente como enum, o null si no hay ambiente legible. */
+        public AmbienteHacienda ambienteEnum() {
+            return ambiente == null ? null : AmbienteHacienda.valueOf(ambiente);
+        }
+
         public static TarjetaHacienda conAviso(String aviso) {
             return new TarjetaHacienda(aviso, null, false, null, null, false, false, null);
         }
     }
 
-    public record Panel(Contadores contadores, TarjetaHacienda hacienda) {
+    /**
+     * {@code ambienteContadores} es el ambiente por el que se filtraron los contadores de comprobantes, notas y
+     * anuladas (el de la configuración activa) o null si no hay configuración legible: entonces cuentan todos los
+     * ambientes y la vista muestra {@link #LEYENDA_SIN_AMBIENTE}.
+     */
+    public record Panel(Contadores contadores, TarjetaHacienda hacienda, AmbienteHacienda ambienteContadores) {
     }
+
+    public static final String LEYENDA_SIN_AMBIENTE =
+        "Sin ambiente activo: los contadores incluyen todos los ambientes";
 
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final NotaFacturaRepository notaRepository;
@@ -98,14 +112,24 @@ public class PanelFacturacionService {
         this.transactionManager = transactionManager;
     }
 
+    /**
+     * Primero la lectura de Hacienda: su ambiente (null si no hay configuración legible) parametriza los contadores
+     * (T-044: lo de otro ambiente no se puede reenviar ni sustituir desde la configuración activa).
+     */
     public Panel obtener() {
-        return new Panel(contadores(), tarjetaHacienda(Instant.now()));
+        TarjetaHacienda hacienda = tarjetaHacienda(Instant.now());
+        AmbienteHacienda ambiente = hacienda.disponible() ? hacienda.ambienteEnum() : null;
+        return new Panel(contadores(ambiente), hacienda, ambiente);
     }
 
+    /**
+     * @param ambiente ambiente de la configuración activa; null = sin filtrar por ambiente. «Facturas sin comprobante»
+     *                 no lo usa: cuenta las no anuladas sin ningún comprobante, de cualquier ambiente.
+     */
     @Transactional(readOnly = true)
-    public Contadores contadores() {
+    public Contadores contadores(AmbienteHacienda ambiente) {
         Map<EstadoComprobante, Long> porEstado = new EnumMap<>(EstadoComprobante.class);
-        for (Object[] fila : comprobanteRepository.contarVigentesPorEstado(ESTADOS_CON_ACCION)) {
+        for (Object[] fila : comprobanteRepository.contarVigentesPorEstado(ESTADOS_CON_ACCION, ambiente)) {
             porEstado.put((EstadoComprobante) fila[0], ((Number) fila[1]).longValue());
         }
         return new Contadores(
@@ -113,9 +137,9 @@ public class PanelFacturacionService {
             porEstado.getOrDefault(EstadoComprobante.NO_TRANSMITIDO, 0L),
             porEstado.getOrDefault(EstadoComprobante.ENVIO_INCIERTO, 0L),
             porEstado.getOrDefault(EstadoComprobante.RECHAZADO, 0L),
-            notaRepository.countByEstado(EstadoNotaFactura.EN_TRAMITE),
-            facturaRepository.contarAnuladasQueAdmitenSustituta(),
-            facturaRepository.contarSinComprobanteVigente(),
+            notaRepository.contarPorEstado(EstadoNotaFactura.EN_TRAMITE, ambiente),
+            facturaRepository.contarAnuladasQueAdmitenSustituta(ambiente),
+            facturaRepository.contarSinComprobante(),
             articuloMaestroService.countActivosSinCabys(),
             clienteService.contarClientesConDatosFeInvalidos());
     }
