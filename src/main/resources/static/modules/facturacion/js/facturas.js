@@ -92,8 +92,27 @@ function openModal(button) {
             
             // Estado FE del comprobante vigente (ADR-031): badge con el color e ícono de EstadoComprobante
             feContainer.style.display = 'block';
+            // T-040: la acción del botón depende del comprobante vigente (emitir / reenviar / ninguno)
+            const accionEnvio = window.AccionEnvioHacienda.accionEnvioHacienda(data.estadoComprobante);
+            if (accionEnvio === 'reenviar' && !data.idComprobante) {
+                console.warn('Comprobante vigente sin id: no se puede reenviar desde el modal');
+            }
+            const botonEnvio = document.getElementById('btn-enviar-hacienda');
+            if (botonEnvio) {
+                const texto = window.AccionEnvioHacienda.textoBotonEnvio(accionEnvio);
+                if (texto) {
+                    botonEnvio.innerHTML = `<i class="fas fa-cloud-upload me-1"></i>${texto}`;
+                }
+                botonEnvio.dataset.accion = accionEnvio || '';
+                botonEnvio.dataset.idComprobante = data.idComprobante || '';
+            }
+            // El aviso «aún no ha sido enviada» solo aplica sin comprobante
+            const avisoSinEnvio = feBotonEnviar.querySelector('p.text-muted');
+            if (avisoSinEnvio) avisoSinEnvio.style.display = data.estadoComprobante ? 'none' : '';
             if (data.estadoComprobante) {
-                feBotonEnviar.style.display = 'none';
+                const puedeBoton = accionEnvio === 'emitir' || (accionEnvio === 'reenviar' && data.idComprobante);
+                feBotonEnviar.style.display = puedeBoton ? 'block' : 'none';
+                feBotonEnviar.setAttribute('data-id', data.idFactura);
                 feEstado.style.display = 'block';
                 const color = escapeHtml(data.estadoComprobanteColor || 'secondary');
                 feEstado.innerHTML = `
@@ -649,16 +668,24 @@ function enviarFacturaPorWhatsApp(button) {
 function enviarFacturaAHacienda() {
     const btnEnviar = document.getElementById('btn-enviar-hacienda');
     const facturaId = document.getElementById('modal-idFactura').innerText;
+    // T-040: «reenviar» usa el comprobante vigente (NO_TRANSMITIDO / ERROR); «emitir» sigue por /procesar/{facturaId}
+    const reenviar = btnEnviar.dataset.accion === 'reenviar';
+    const idComprobante = btnEnviar.dataset.idComprobante;
+    const textoBoton = reenviar ? 'Reenviar a Hacienda' : 'Enviar a Hacienda';
     
-    if (!facturaId) {
+    if (!facturaId || (reenviar && !idComprobante)) {
         showToast('error', 'No se pudo obtener el ID de la factura');
         return;
     }
     
     // Confirmación
     Swal.fire({
-        title: '¿Enviar a Hacienda?',
-        html: `
+        title: reenviar ? '¿Reenviar a Hacienda?' : '¿Enviar a Hacienda?',
+        html: reenviar ? `
+            <div class="text-start">
+                <p>Se reenviará a Hacienda de Costa Rica el comprobante que no pudo transmitirse.</p>
+            </div>
+        ` : `
             <div class="text-start">
                 <p>Se generará y enviará el comprobante electrónico a Hacienda de Costa Rica.</p>
                 <div class="alert alert-info mt-3">
@@ -674,7 +701,7 @@ function enviarFacturaAHacienda() {
         `,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: '<i class="bi bi-cloud-upload me-1"></i> Sí, enviar',
+        confirmButtonText: reenviar ? '<i class="bi bi-cloud-upload me-1"></i> Sí, reenviar' : '<i class="bi bi-cloud-upload me-1"></i> Sí, enviar',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#198754',
         cancelButtonColor: '#6c757d'
@@ -697,7 +724,10 @@ function enviarFacturaAHacienda() {
             }
             
             try {
-                const response = await fetch(`/api/facturas/electronica/comprobantes/procesar/${facturaId}`, {
+                const url = reenviar
+                    ? `/api/facturas/electronica/comprobantes/${idComprobante}/reenviar`
+                    : `/api/facturas/electronica/comprobantes/procesar/${facturaId}`;
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: headers
                 });
@@ -718,7 +748,7 @@ function enviarFacturaAHacienda() {
                     showToast('error', data.message || 'No se pudo enviar el comprobante a Hacienda');
 
                     btnEnviar.disabled = false;
-                    btnEnviar.innerHTML = '<i class="fas fa-cloud-upload me-1"></i>Enviar a Hacienda';
+                    btnEnviar.innerHTML = `<i class="fas fa-cloud-upload me-1"></i>${textoBoton}`;
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -726,7 +756,7 @@ function enviarFacturaAHacienda() {
                 showToast('error', 'No se pudo conectar con el servidor. Por favor, intente nuevamente.');
 
                 btnEnviar.disabled = false;
-                btnEnviar.innerHTML = '<i class="fas fa-cloud-upload me-1"></i>Enviar a Hacienda';
+                btnEnviar.innerHTML = `<i class="fas fa-cloud-upload me-1"></i>${textoBoton}`;
             }
         }
     });

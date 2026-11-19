@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.scheduled;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
@@ -42,6 +43,19 @@ public class ComprobanteReintentosJob {
     private int maxConsultasErrorHacienda = ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
     
     private static final int MAX_INTENTOS = 5;
+
+    /** Estados con los que un reintento cuenta como exitoso: Hacienda ya recibió el comprobante (ENVIADO o posterior). */
+    private static final java.util.Set<EstadoComprobante> EXITOSOS = java.util.EnumSet.of(EstadoComprobante.ENVIADO,
+        EstadoComprobante.PROCESANDO, EstadoComprobante.ACEPTADO, EstadoComprobante.RECHAZADO,
+        EstadoComprobante.ERROR_HACIENDA);
+
+    /**
+     * ENVIADO o posterior. ENVIO_INCIERTO precede a ENVIADO (ADR-043): no es exitoso ni fallido, se cuenta aparte y se
+     * resuelve por consulta.
+     */
+    static boolean esReintentoExitoso(EstadoComprobante estado) {
+        return EXITOSOS.contains(estado);
+    }
     
     /**
      * Ejecuta cada 15 minutos para reintentar envíos fallidos.
@@ -69,6 +83,7 @@ public class ComprobanteReintentosJob {
             int exitosos = 0;
             int fallidos = 0;
             int alcanzaronLimite = 0;
+            int inciertos = 0;
             
             for (ComprobanteElectronico comprobante : pendientes) {
                 try {
@@ -89,11 +104,30 @@ public class ComprobanteReintentosJob {
 
                     // GENERADO, FIRMADO, ERROR o NO_TRANSMITIDO: reenviar regenera/firma si hace falta y envía
                     // con la misma clave (ADR-030)
-                    envioService.reenviar(comprobante.getId());
+                    int intentosAntes = comprobante.getIntentosEnvio() != null ? comprobante.getIntentosEnvio() : 0;
+                    ComprobanteElectronicoDTO resultado = envioService.reenviar(comprobante.getId());
 
-                    exitosos++;
-                    log.info("✅ Comprobante {} reenviado exitosamente", comprobante.getId());
-                    
+                    // Solo cuenta como exitoso un reintento que no deja el comprobante reenviable (ENVIADO o posterior)
+                    if (esReintentoExitoso(resultado.getEstado())) {
+                        exitosos++;
+                        log.info("✅ Comprobante {} reintentado → {}", comprobante.getId(), resultado.getEstado());
+                    } else if (resultado.getEstado() == EstadoComprobante.ENVIO_INCIERTO) {
+                        inciertos++;
+                        log.info("Comprobante {} reintentado → ENVIO_INCIERTO (se resolverá por consulta)",
+                            comprobante.getId());
+                    } else {
+                        fallidos++;
+                        log.warn("⚠️ Comprobante {} reintentado → {}: {}", comprobante.getId(), resultado.getEstado(),
+                            resultado.getUltimoError());
+                        int intentosDespues = resultado.getIntentosEnvio() != null ? resultado.getIntentosEnvio() : 0;
+                        if (intentosDespues <= intentosAntes) {
+                            // Falla local antes de la marca de envío, que no contó el intento: se cuenta para que el
+                            // job se detenga al llegar al límite (la marca de envío ya cuenta los demás)
+                            envioService.registrarFalloDeReintento(comprobante.getId(),
+                                "Reintento " + (intentosAntes + 1) + ": " + resultado.getUltimoError());
+                        }
+                    }
+
                 } catch (EnvioHaciendaService.ComprobanteNoEnviableException e) {
                     // Otro proceso lo marcó (envío en curso) o Hacienda ya lo tiene: no se toca
                     log.info("Comprobante {} ya no es transmisible ({}); se omite", comprobante.getId(), e.getEstado());
@@ -107,8 +141,8 @@ public class ComprobanteReintentosJob {
                 }
             }
             
-            log.info("📊 Resumen de reintentos: {} exitosos, {} fallidos, {} alcanzaron límite", 
-                exitosos, fallidos, alcanzaronLimite);
+            log.info("📊 Resumen de reintentos: {} exitosos, {} fallidos, {} inciertos, {} alcanzaron límite",
+                exitosos, fallidos, inciertos, alcanzaronLimite);
             
         } catch (Exception e) {
             log.error("❌ Error crítico en job de reintentos: {}", e.getMessage(), e);

@@ -552,15 +552,19 @@
         function reenviar(id) {
             if (!confirm('¿Reenviar comprobante a Hacienda?')) return;
             
-            fetch(`/api/facturas/electronica/comprobantes/${id}/reenviar`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        mostrarAlerta('Comprobante reenviado exitosamente', 'success');
-                        cargarComprobantes();
+            // T-040: CSRF explícito; el servidor responde con mensajes fijos (409 si el estado no es reenviable)
+            fetch(`/api/facturas/electronica/comprobantes/${id}/reenviar`, {
+                method: 'POST',
+                headers: { [csrfHeader]: csrfToken }
+            })
+                .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, data })))
+                .then(({ ok, data }) => {
+                    if (ok && data.success) {
+                        mostrarAlerta(data.message || 'Comprobante reenviado', 'success');
                     } else {
-                        mostrarAlerta(data.message || 'Error reenviando comprobante', 'danger');
+                        mostrarAlerta(data.message || 'No se pudo reenviar el comprobante', ok ? 'warning' : 'danger');
                     }
+                    cargarComprobantes();
                 })
                 .catch(err => {
                     console.error(err);
