@@ -155,7 +155,7 @@
     function queryListado(filtros, pagina, tamano) {
         const f = filtros || {};
         const p = new URLSearchParams();
-        ['desde', 'hasta', 'cliente', 'estado'].forEach((k) => {
+        ['desde', 'hasta', 'cliente', 'estado', 'ambiente'].forEach((k) => {
             const v = typeof f[k] === 'string' ? f[k].trim() : '';
             if (v) p.set(k, v);
         });

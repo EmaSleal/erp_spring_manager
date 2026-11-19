@@ -104,10 +104,13 @@ public class FacturaServiceImpl implements FacturaService {
     @Override
     @Transactional(readOnly = true)
     public Page<Factura> buscarConFiltros(Pageable pageable, LocalDate startDate, LocalDate endDate,
-                                           Boolean entregado, Boolean pagada, Boolean sinFE, EstadoComprobante estadoFE) {
+                                           Boolean entregado, Boolean pagada, Boolean sinFE, EstadoComprobante estadoFE,
+                                           Boolean sustitutaPendiente,
+                                           api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda ambiente) {
         log.debug("Buscando facturas con filtros - startDate: {}, endDate: {}, entregado: {}, pagada: {}, sinFE: {}, estadoFE: {}",
             startDate, endDate, entregado, pagada, sinFE, estadoFE);
-        return facturaRepository.buscarConFiltros(startDate, endDate, entregado, pagada, sinFE, estadoFE, pageable);
+        return facturaRepository.buscarConFiltros(startDate, endDate, entregado, pagada, sinFE, estadoFE,
+            sustitutaPendiente, ambiente, pageable);
     }
 
     @Override

@@ -21,6 +21,8 @@ import jakarta.persistence.criteria.Fetch;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -60,15 +62,16 @@ public class NotaCreditoConsultaService {
      * @param hasta fecha de emisión máxima, inclusive (hasta el final del día)
      * @param cliente texto contenido en el nombre o la identificación del cliente, sin distinguir mayúsculas
      * @param estado estado de la nota
+     * @param ambiente T-043: solo las notas con comprobante vigente de ese ambiente (null = todas)
      * @param pagina 0-based
      * @param tamano filas por página; se acota a 1..100
      */
     public NotaCreditoPaginaDTO listar(LocalDate desde, LocalDate hasta, String cliente, EstadoNotaFactura estado,
-                                       int pagina, int tamano) {
+                                       AmbienteHacienda ambiente, int pagina, int tamano) {
         int tamanoEfectivo = tamano <= 0 ? TAMANO_DEFECTO : Math.min(tamano, TAMANO_MAXIMO);
         PageRequest pageable = PageRequest.of(Math.max(pagina, 0), tamanoEfectivo,
             Sort.by(Sort.Order.desc("fechaEmision"), Sort.Order.desc("id")));
-        Page<NotaFactura> notas = notaRepository.findAll(filtros(desde, hasta, cliente, estado), pageable);
+        Page<NotaFactura> notas = notaRepository.findAll(filtros(desde, hasta, cliente, estado, ambiente), pageable);
 
         Map<Long, ComprobanteElectronico> vigentes = new HashMap<>();
         if (!notas.isEmpty()) {
@@ -136,7 +139,7 @@ public class NotaCreditoConsultaService {
     }
 
     private static Specification<NotaFactura> filtros(LocalDate desde, LocalDate hasta, String cliente,
-                                                      EstadoNotaFactura estado) {
+                                                      EstadoNotaFactura estado, AmbienteHacienda ambiente) {
         return (root, query, cb) -> {
             // Una sola unión a factura y cliente: en la consulta de datos es también el fetch (sin N+1); en el
             // conteo es una unión simple.
@@ -161,6 +164,14 @@ public class NotaCreditoConsultaService {
             }
             if (estado != null) {
                 p.add(cb.equal(root.get("estado"), estado));
+            }
+            if (ambiente != null) {
+                // el ambiente de la nota es el de su comprobante vigente (misma regla que el contador del panel)
+                Subquery<Long> sub = query.subquery(Long.class);
+                Root<ComprobanteElectronico> c = sub.from(ComprobanteElectronico.class);
+                sub.select(cb.literal(1L)).where(cb.equal(c.get("notaFactura"), root),
+                    cb.isTrue(c.get("vigente")), cb.equal(c.get("ambiente"), ambiente));
+                p.add(cb.exists(sub));
             }
             if (cliente != null && !cliente.isBlank()) {
                 String like = "%" + escapar(cliente.trim().toLowerCase(Locale.ROOT)) + "%";

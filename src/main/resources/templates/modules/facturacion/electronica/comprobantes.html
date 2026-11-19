@@ -57,6 +57,8 @@
                 </div>
             </div>
 
+            <div class="alert alert-info py-2" id="filtro-panel" style="display: none;"></div>
+
             <!-- Filters Card -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body">
@@ -145,6 +147,19 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span class="text-muted small" id="comprobantes-total"></span>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary" id="comprobantes-anterior" disabled
+                                        onclick="cargarComprobantes(filtrosActuales, paginaActual - 1)">
+                                    <i class="fas fa-chevron-left"></i> Anterior
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="comprobantes-siguiente" disabled
+                                        onclick="cargarComprobantes(filtrosActuales, paginaActual + 1)">
+                                    Siguiente <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -222,6 +237,7 @@
     <!-- Scripts personalizados -->
     <script th:src="@{/modules/facturacion/electronica/js/estado-envio.js}"></script>
     <script th:src="@{/modules/facturacion/js/ambiente-comprobante.js}"></script>
+    <script th:src="@{/modules/facturacion/js/filtro-url.js}"></script>
     <script th:inline="javascript">
         const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
         const csrfToken  = /*[[${_csrf.token}]]*/ '';
@@ -241,21 +257,49 @@
                 .catch(err => console.error('Error cargando estadísticas:', err));
         }
 
+        // T-043: el enlace del panel trae ?estado=X&vigente=true&ambiente=Y; vigente y ambiente los filtra el SERVIDOR
+        // (la API devuelve el total filtrado en X-Total-Count). «Limpiar» o un filtro por fechas los quita.
+        const TAMANO_PAGINA = 100;
+        let filtroPanel = { vigente: false, ambiente: '' };
+        let filtrosActuales = {};
+        let paginaActual = 0;
+
+        function pintarFiltroPanel() {
+            const aviso = document.getElementById('filtro-panel');
+            const texto = FiltroUrl.textoFiltro(filtroPanel);
+            aviso.textContent = texto ? 'Filtro del panel: ' + texto : '';
+            aviso.style.display = texto ? '' : 'none';
+        }
+
+        function pintarPaginacion(total, enPagina) {
+            const info = document.getElementById('comprobantes-total');
+            info.textContent = FiltroUrl.textoTotal(total, paginaActual, TAMANO_PAGINA, enPagina);
+            const hayTotal = total !== null && total !== '';
+            document.getElementById('comprobantes-anterior').disabled = paginaActual <= 0;
+            document.getElementById('comprobantes-siguiente').disabled =
+                hayTotal ? (paginaActual + 1) * TAMANO_PAGINA >= Number(total) : enPagina < TAMANO_PAGINA;
+        }
+
         // Cargar comprobantes
-        function cargarComprobantes(filtros = {}) {
-            let url = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}?page=0&size=100`;
-            
+        function cargarComprobantes(filtros = {}, pagina = 0) {
+            filtrosActuales = filtros;
+            paginaActual = pagina;
+            const base = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}`;
+            const consulta = FiltroUrl.queryServidor(filtroPanel, pagina, TAMANO_PAGINA);
+            let url = `${base}?${consulta}`;
+
             if (filtros.fechaInicio && filtros.fechaFin) {
-                url = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}/fechas?fechaInicio=${filtros.fechaInicio}&fechaFin=${filtros.fechaFin}&page=0&size=100`;
+                url = `${base}/fechas?fechaInicio=${filtros.fechaInicio}&fechaFin=${filtros.fechaFin}&page=${pagina}&size=${TAMANO_PAGINA}`;
             } else if (filtros.estado) {
-                url = `/api/facturas/electronica/comprobantes/empresa/${EMPRESA_ID}/estado/${filtros.estado}?page=0&size=100`;
+                url = `${base}/estado/${filtros.estado}?${consulta}`;
             }
 
             fetch(url)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(data => ({ data, total: res.headers.get('X-Total-Count') })))
+                .then(({ data, total }) => {
                     comprobantes = data;
                     renderizarComprobantes(data);
+                    pintarPaginacion(total, Array.isArray(data) ? data.length : 0);
                 })
                 .catch(err => {
                     console.error('Error cargando comprobantes:', err);
@@ -1064,6 +1108,11 @@
                 fechaFin: document.getElementById('endDate').value,
                 estado: document.getElementById('estadoFilter').value
             };
+            // un filtro por fechas usa el listado por rango, que no lleva los filtros del panel: se quitan para no mentir
+            if (filtros.fechaInicio && filtros.fechaFin) {
+                filtroPanel = { vigente: false, ambiente: '' };
+                pintarFiltroPanel();
+            }
             cargarComprobantes(filtros);
         });
 
@@ -1071,6 +1120,8 @@
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
             document.getElementById('estadoFilter').value = '';
+            filtroPanel = { vigente: false, ambiente: '' };
+            pintarFiltroPanel();
             cargarComprobantes();
         });
         
@@ -1188,7 +1239,16 @@
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
-            cargarComprobantes();
+            const filtroUrl = FiltroUrl.leerFiltros(window.location.search);
+            const selectEstado = document.getElementById('estadoFilter');
+            const estadoDeLaUrl = filtroUrl.estado
+                && Array.from(selectEstado.options).some(o => o.value === filtroUrl.estado);
+            if (estadoDeLaUrl) {
+                selectEstado.value = filtroUrl.estado;
+            }
+            filtroPanel = { vigente: filtroUrl.vigente, ambiente: filtroUrl.ambiente };
+            pintarFiltroPanel();
+            cargarComprobantes(estadoDeLaUrl ? { estado: filtroUrl.estado } : {});
             cargarEstadisticas();
             cargarGraficoTendencia();
         });
