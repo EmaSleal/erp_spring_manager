@@ -1215,8 +1215,8 @@ class BloqueoFiscalFacturaIT {
         }
         jdbc.update("INSERT INTO comprobante_electronico (clave_numerica, consecutivo, created_at, updated_at, estado, "
                         + "fecha_emision, fecha_envio, tipo_comprobante, empresa_id, factura_id, vigente, intentos_envio, "
-                        + "enviado_email, xml_comprobante, ruta_archivo_xml) "
-                        + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), ?, 'FACTURA_ELECTRONICA', ?, ?, b'1', 0, b'0', ?, ?)",
+                        + "enviado_email, xml_comprobante, ruta_archivo_xml, ambiente) "
+                        + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), ?, 'FACTURA_ELECTRONICA', ?, ?, b'1', 0, b'0', ?, ?, 'SANDBOX')",
                 clave(), String.format("%020d", ThreadLocalRandom.current().nextLong(1, 1_000_000_000L)), estado,
                 fechaEnvio, idEmpresa, idFactura, xmlFirmadoReal(),
                 "comprobantes/t025.xml");

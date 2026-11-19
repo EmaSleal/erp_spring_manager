@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.DatosFeProducto;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
@@ -58,6 +59,7 @@ public class NotaFacturaService {
     private final PagoService pagoService;
     private final CalculadoraImpuestoService calculadoraImpuestoService;
     private final Clock clock;
+    private final AmbienteComprobanteGuard ambienteGuard;
 
     /**
      * Valida el pedido de una nota (400 si falla): tipo CREDITO, código de la nota 9 válido en nota de crédito y
@@ -112,6 +114,10 @@ public class NotaFacturaService {
                 + " no tiene un comprobante electrónico ACEPTADO por Hacienda: la nota de crédito solo corrige "
                 + "comprobantes aceptados. Una factura sin comprobante aceptado se corrige editándola o anulándola "
                 + "(ADR-030)."));
+        // T-044 (P-099): el comprobante referenciado debe ser del ambiente activo; antes del consecutivo y de guardar la nota
+        ambienteGuard.motivoReferencia(aceptado).ifPresent(motivo -> {
+            throw new NotaFacturaConflictoException(motivo);
+        });
         if (factura.estaAnulada()) {
             throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura() + " ya está anulada");
         }

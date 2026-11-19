@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
@@ -44,7 +45,7 @@ class SustitucionElegibilidadTest {
         notas = mock(NotaFacturaRepository.class);
         comprobantes = mock(ComprobanteElectronicoRepository.class);
         facturas = mock(FacturaRepository.class);
-        regla = new SustitucionElegibilidad(notas, comprobantes, facturas);
+        regla = new SustitucionElegibilidad(notas, comprobantes, facturas, mock(AmbienteComprobanteGuard.class));
 
         original = new Factura();
         original.setIdFactura(5);

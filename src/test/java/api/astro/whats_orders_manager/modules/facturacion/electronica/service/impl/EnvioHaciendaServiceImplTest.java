@@ -334,6 +334,21 @@ class EnvioHaciendaServiceImplTest {
         }
 
         @Test
+        @DisplayName("T-044: la consulta rechazada por ambiente detiene el sondeo: no se reprograma")
+        void otroAmbienteDetieneElSondeo() {
+            when(comprobantes.consultarYActualizarEstado(5L)).thenThrow(
+                new api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException(
+                    api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.PRODUCCION,
+                    api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.SANDBOX));
+            EnvioHaciendaDePrueba.crear(repository, comprobantes, hacienda, clock, programador).enviar(5L);
+
+            programador.ejecutarSiguiente();
+
+            verify(comprobantes, times(1)).consultarYActualizarEstado(5L);
+            assertThat(programador.tareas).isEmpty();
+        }
+
+        @Test
         @DisplayName("una consulta que falla no corta el sondeo")
         void consultaQueFallaSigue() {
             when(comprobantes.consultarYActualizarEstado(5L)).thenThrow(new RuntimeException("sin respuesta"))
@@ -365,5 +380,31 @@ class EnvioHaciendaServiceImplTest {
             assertThat(resultado.getEstado()).isEqualTo(EstadoComprobante.ENVIADO);
             verify(comprobantes, never()).consultarYActualizarEstado(anyLong());
         }
+    }
+
+    @Test
+    @DisplayName("T-044 criterio 2: comprobante de otro ambiente → AmbienteDistintoException antes de preparar, marcar o transmitir; nada cambia")
+    void otroAmbiente_noSeEnvia() {
+        var guard = mock(api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard.class);
+        org.mockito.Mockito.doThrow(new api.astro.whats_orders_manager.modules.facturacion.electronica.exception
+            .AmbienteDistintoException(api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.SANDBOX,
+                api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.PRODUCCION))
+            .when(guard).exigirMismoAmbiente(comprobante);
+        comprobante.setEstado(EstadoComprobante.NO_TRANSMITIDO);
+        comprobante.setIntentosEnvio(2);
+        comprobante.setUltimoError("previo");
+        EnvioHaciendaServiceImpl servicio = EnvioHaciendaDePrueba.crear(repository, comprobantes, hacienda, clock, null, guard);
+
+        assertThatThrownBy(() -> servicio.reenviar(5L))
+            .isInstanceOf(api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException.class)
+            .hasMessage("El comprobante pertenece al ambiente SANDBOX y la configuración activa es PRODUCCION; no se envía");
+
+        verify(comprobantes, never()).prepararParaEnvio(any());
+        verifyNoInteractions(hacienda);
+        verify(repository, never()).save(any());
+        verify(repository, never()).marcarEnvioEnCurso(anyLong(), any(), any(), any());
+        assertThat(comprobante.getEstado()).isEqualTo(EstadoComprobante.NO_TRANSMITIDO);
+        assertThat(comprobante.getIntentosEnvio()).isEqualTo(2);
+        assertThat(comprobante.getUltimoError()).isEqualTo("previo");
     }
 }

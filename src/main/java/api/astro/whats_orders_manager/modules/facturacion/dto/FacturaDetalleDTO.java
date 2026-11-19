@@ -82,8 +82,16 @@ public class FacturaDetalleDTO {
     /** ERROR_HACIENDA tras el máximo de consultas seguidas con "error": revisar el comprobante en ATV. */
     private Boolean revisarEnAtv;
 
+    // T-044 (P-099): ambiente del comprobante vigente (SANDBOX o PRODUCCION), si coincide con el de la configuración
+    // activa y, si no, el motivo fijo que deja «Reenviar» y «Consultar estado» deshabilitados
+    private String ambienteComprobante;
+    private Boolean ambienteComprobanteCoincide;
+    private String motivoAmbienteComprobante;
+
     // Factura sustituta (ADR-045): solo cuando procede la acción, y los vínculos con la otra factura
     private Boolean puedeEmitirSustituta;
+    /** T-044: «La factura se emitió en el ambiente X; la configuración activa es Y» si solo lo impide el ambiente; si no, null. */
+    private String motivoSustitutaNoDisponible;
     /** Factura anulada que esta sustituye, con el número de la nota que la anuló; null si no es sustituta. */
     private SustitucionRefDTO sustituye;
     /** Sustituta no anulada de esta factura; null si no tiene. */

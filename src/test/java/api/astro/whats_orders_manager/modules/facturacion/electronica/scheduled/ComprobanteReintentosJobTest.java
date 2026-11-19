@@ -1,6 +1,8 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.scheduled;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
@@ -19,6 +21,7 @@ import java.time.Clock;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -31,14 +34,16 @@ import static org.mockito.Mockito.when;
 class ComprobanteReintentosJobTest {
 
     private final ComprobanteElectronicoRepository repository = mock(ComprobanteElectronicoRepository.class);
+    private final AmbienteComprobanteGuard guard = mock(AmbienteComprobanteGuard.class);
     private final EnvioHaciendaService envio = mock(EnvioHaciendaService.class);
     private final ComprobanteReintentosJob job = new ComprobanteReintentosJob(repository,
-        mock(ComprobanteElectronicoService.class), envio, Clock.systemUTC());
+        mock(ComprobanteElectronicoService.class), envio, Clock.systemUTC(), guard);
     private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
     private final Logger logger = (Logger) LoggerFactory.getLogger(ComprobanteReintentosJob.class);
 
     @BeforeEach
     void capturarLog() {
+        when(guard.ambienteActivo()).thenReturn(java.util.Optional.of(AmbienteHacienda.SANDBOX));
         logs.start();
         logger.addAppender(logs);
     }
@@ -67,7 +72,7 @@ class ComprobanteReintentosJobTest {
     @Test
     @DisplayName("ENVIADO cuenta como exitoso; ERROR y NO_TRANSMITIDO como fallidos, con su estado y ultimoError en el log")
     void cuentaSegunElEstadoEnQueQuedo() {
-        when(repository.findPendientesReintento()).thenReturn(List.of(
+        when(repository.findPendientesReintento(AmbienteHacienda.SANDBOX)).thenReturn(List.of(
             pendiente(1, EstadoComprobante.NO_TRANSMITIDO, 1),
             pendiente(2, EstadoComprobante.NO_TRANSMITIDO, 1),
             pendiente(3, EstadoComprobante.ERROR, 1)));
@@ -90,7 +95,7 @@ class ComprobanteReintentosJobTest {
     @Test
     @DisplayName("ENVIO_INCIERTO: ni exitoso ni fallido, se cuenta aparte y no registra fallo; ACEPTADO es exitoso")
     void envioIncierto_seCuentaAparte() {
-        when(repository.findPendientesReintento()).thenReturn(List.of(
+        when(repository.findPendientesReintento(AmbienteHacienda.SANDBOX)).thenReturn(List.of(
             pendiente(1, EstadoComprobante.NO_TRANSMITIDO, 0), pendiente(2, EstadoComprobante.NO_TRANSMITIDO, 0)));
         when(envio.reenviar(1L)).thenReturn(resultado(EstadoComprobante.ENVIO_INCIERTO, 1, null));
         when(envio.reenviar(2L)).thenReturn(resultado(EstadoComprobante.ACEPTADO, 1, null));
@@ -106,7 +111,7 @@ class ComprobanteReintentosJobTest {
     @Test
     @DisplayName("falla local que no contó el intento (ERROR sin marca de envío): el job lo cuenta, para respetar el límite")
     void falloLocalSinMarcaCuentaElIntento() {
-        when(repository.findPendientesReintento()).thenReturn(List.of(pendiente(7, EstadoComprobante.ERROR, 2)));
+        when(repository.findPendientesReintento(AmbienteHacienda.SANDBOX)).thenReturn(List.of(pendiente(7, EstadoComprobante.ERROR, 2)));
         when(envio.reenviar(7L)).thenReturn(resultado(EstadoComprobante.ERROR, 2, "Error generando el XML: x"));
 
         job.reintentarEnviosPendientes();
@@ -118,11 +123,73 @@ class ComprobanteReintentosJobTest {
     @Test
     @DisplayName("al límite de intentos no se reintenta y no cuenta como exitoso ni fallido")
     void alLimiteNoSeReintenta() {
-        when(repository.findPendientesReintento()).thenReturn(List.of(pendiente(9, EstadoComprobante.NO_TRANSMITIDO, 5)));
+        when(repository.findPendientesReintento(AmbienteHacienda.SANDBOX)).thenReturn(List.of(pendiente(9, EstadoComprobante.NO_TRANSMITIDO, 5)));
 
         job.reintentarEnviosPendientes();
 
         verify(envio, never()).reenviar(anyLong());
         assertThat(mensajes()).anyMatch(m -> m.contains("0 exitosos, 0 fallidos, 0 inciertos, 1 alcanzaron límite"));
+    }
+
+    @Test
+    @DisplayName("T-044 criterio 4: el job filtra por el ambiente activo e informa cuántos excluyó por ambiente")
+    void reintentos_excluidosPorAmbiente_enElLog() {
+        when(guard.ambienteActivo()).thenReturn(java.util.Optional.of(AmbienteHacienda.PRODUCCION));
+        when(repository.findPendientesReintento(AmbienteHacienda.PRODUCCION)).thenReturn(List.of());
+        when(repository.countPendientesReintentoDeOtroAmbiente(AmbienteHacienda.PRODUCCION)).thenReturn(3L);
+
+        job.reintentarEnviosPendientes();
+
+        assertThat(mensajes()).anyMatch(m -> m.contains("3 excluidos por ambiente") && m.contains("PRODUCCION"));
+        verify(repository, never()).findPendientesReintento(AmbienteHacienda.SANDBOX);
+        verify(repository, never()).findPendientesReintentoSinFiltroDeAmbiente();
+        verify(envio, never()).reenviar(anyLong());
+    }
+
+    @Test
+    @DisplayName("T-044: ambiente distinto detectado al reenviar (carrera) → se omite, sin registrarFalloDeReintento")
+    void ambienteDistinto_noRegistraFallo() {
+        when(repository.findPendientesReintento(AmbienteHacienda.SANDBOX))
+            .thenReturn(List.of(pendiente(4, EstadoComprobante.NO_TRANSMITIDO, 1)));
+        when(envio.reenviar(4L)).thenThrow(new api.astro.whats_orders_manager.modules.facturacion.electronica.exception
+            .AmbienteDistintoException(AmbienteHacienda.PRODUCCION, AmbienteHacienda.SANDBOX));
+
+        job.reintentarEnviosPendientes();
+
+        verify(envio, never()).registrarFalloDeReintento(anyLong(), anyString());
+        assertThat(mensajes()).anyMatch(m -> m.contains("Comprobante 4 es de otro ambiente"))
+            .anyMatch(m -> m.contains("0 exitosos, 0 fallidos"));
+    }
+
+    @Test
+    @DisplayName("T-044: sin configuración activa legible, el job conserva su comportamiento (sin filtro) y lo registra")
+    void ambienteIlegible_conservaElComportamiento() {
+        when(guard.ambienteActivo()).thenReturn(java.util.Optional.empty());
+        when(repository.findPendientesReintentoSinFiltroDeAmbiente()).thenReturn(List.of());
+
+        job.reintentarEnviosPendientes();
+
+        verify(repository).findPendientesReintentoSinFiltroDeAmbiente();
+        assertThat(mensajes()).anyMatch(m -> m.contains("ambiente activo no disponible"));
+    }
+
+    @Test
+    @DisplayName("T-044 criterio 4: la consulta horaria filtra por el ambiente activo, informa los excluidos y no cuenta el ambiente distinto como error")
+    void consultaHoraria_filtraPorAmbiente() {
+        var servicio = mock(ComprobanteElectronicoService.class);
+        ComprobanteReintentosJob conServicio = new ComprobanteReintentosJob(repository, servicio, envio,
+            Clock.systemUTC(), guard);
+        when(repository.findParaSondeo(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(AmbienteHacienda.SANDBOX)))
+            .thenReturn(List.of(pendiente(5, EstadoComprobante.ENVIADO, 1)));
+        when(repository.countParaSondeoDeOtroAmbiente(any(), org.mockito.ArgumentMatchers.anyInt(),
+            org.mockito.ArgumentMatchers.eq(AmbienteHacienda.SANDBOX))).thenReturn(2L);
+        when(servicio.consultarYActualizarEstado(5L)).thenThrow(new api.astro.whats_orders_manager.modules.facturacion
+            .electronica.exception.AmbienteDistintoException(AmbienteHacienda.PRODUCCION, AmbienteHacienda.SANDBOX));
+
+        conServicio.consultarEstadosPendientes();
+
+        assertThat(mensajes()).anyMatch(m -> m.contains("2 excluidos por ambiente"))
+            .anyMatch(m -> m.contains("Comprobante 5 es de otro ambiente"))
+            .noneMatch(m -> m.contains("Error consultando estado"));
     }
 }

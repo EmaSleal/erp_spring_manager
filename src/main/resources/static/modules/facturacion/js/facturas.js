@@ -97,8 +97,16 @@ function openModal(button) {
             if (accionEnvio === 'reenviar' && !data.idComprobante) {
                 console.warn('Comprobante vigente sin id: no se puede reenviar desde el modal');
             }
+            // T-044 (P-099): «Reenviar» de un comprobante de otro ambiente que el activo se muestra deshabilitado con el
+            // motivo fijo del servidor; «Enviar» (sin comprobante o RECHAZADO) emite uno nuevo en el ambiente activo
+            const ambienteFe = window.AmbienteComprobante;
+            const bloqueoAmbiente = accionEnvio === 'reenviar' && ambienteFe
+                ? ambienteFe.bloqueo({ ambienteCoincide: data.ambienteComprobanteCoincide, motivoAmbiente: data.motivoAmbienteComprobante })
+                : { bloqueado: false, motivo: null };
             const botonEnvio = document.getElementById('btn-enviar-hacienda');
             if (botonEnvio) {
+                botonEnvio.disabled = bloqueoAmbiente.bloqueado;
+                botonEnvio.title = bloqueoAmbiente.motivo || '';
                 const texto = window.AccionEnvioHacienda.textoBotonEnvio(accionEnvio);
                 if (texto) {
                     botonEnvio.innerHTML = `<i class="fas fa-cloud-upload me-1"></i>${texto}`;
@@ -121,6 +129,9 @@ function openModal(button) {
                             <i class="bi ${escapeHtml(data.estadoComprobanteIcono || '')} me-1"></i>${escapeHtml(data.estadoComprobanteDescripcion || data.estadoComprobante)}
                         </span>
                     </p>
+                    ${data.ambienteComprobante && ambienteFe ? `<p class="mb-1"><strong>Ambiente:</strong>
+                        <span class="badge ${escapeHtml(ambienteFe.etiqueta(data.ambienteComprobante).clase)}" id="modal-fe-ambiente">${escapeHtml(ambienteFe.etiqueta(data.ambienteComprobante).texto)}</span></p>` : ''}
+                    ${data.ambienteComprobanteCoincide === false && data.motivoAmbienteComprobante ? `<div class="alert alert-danger py-2 mb-2 motivo-ambiente"><i class="fas fa-ban me-1"></i>${escapeHtml(data.motivoAmbienteComprobante)}</div>` : ''}
                     ${data.claveComprobante ? `<p class="mb-1"><strong>Clave:</strong> <code>${escapeHtml(data.claveComprobante)}</code></p>` : ''}
                     ${data.revisarEnAtv ? `<div class="alert alert-danger py-2 mb-2"><i class="fas fa-exclamation-circle me-1"></i>Hacienda informó "error" en varias consultas seguidas: revise el comprobante en ATV.</div>` : ''}
                     ${data.idComprobante ? `<button class="btn btn-sm btn-primary mt-1" onclick="verComprobante(${Number(data.idComprobante)})">
@@ -286,6 +297,23 @@ function openModal(button) {
                 boton.appendChild(document.createTextNode('Emitir factura sustituta'));
                 boton.addEventListener('click', () => emitirFacturaSustituta(data.idFactura, boton));
                 buttonsContainer.insertBefore(boton, buttonsContainer.firstChild);
+            } else if (data.motivoSustitutaNoDisponible && (USER_ROLE === 'ADMIN' || USER_ROLE === 'USER' || USER_ROLE === 'VENDEDOR')) {
+                // T-044 (P-099): la original es de otro ambiente que el activo; deshabilitado y con el motivo fijo
+                const bloque = document.createElement('div');
+                bloque.id = 'modal-sustituta-ambiente';
+                bloque.className = 'd-inline-block me-2 mb-2 align-top';
+                const botonDes = document.createElement('button');
+                botonDes.type = 'button';
+                botonDes.className = 'btn btn-success';
+                botonDes.disabled = true;
+                botonDes.title = data.motivoSustitutaNoDisponible;
+                botonDes.textContent = 'Emitir factura sustituta';
+                const motivo = document.createElement('div');
+                motivo.className = 'small text-danger mt-1 motivo-ambiente';
+                motivo.textContent = data.motivoSustitutaNoDisponible;
+                bloque.appendChild(botonDes);
+                bloque.appendChild(motivo);
+                buttonsContainer.insertBefore(bloque, buttonsContainer.firstChild);
             }
 
             // T-042 (ADR-047 §2): «Emitir nota de crédito» según las banderas del servidor (sin roles en JS); con pagos

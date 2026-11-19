@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.controller;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException;
 import api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest;
 import api.astro.whats_orders_manager.modules.facturacion.dto.NotaFacturaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -70,6 +71,10 @@ public class NotaCreditoRestController {
             try {
                 ComprobanteElectronicoDTO enviado = envioService.enviar(emitida.idComprobante());
                 mensaje = "Nota de crédito emitida. " + MensajesEnvioHacienda.mensaje(enviado);
+            } catch (AmbienteDistintoException e) {
+                // T-044: la configuración activa cambió tras emitir; la nota queda firmada, sin envío ni cambio de estado
+                log.warn("Nota {} emitida; su comprobante no se envía: {}", nota.getId(), e.getMessage());
+                mensaje = "Nota de crédito emitida. " + MensajesEnvioHacienda.ambienteDistinto(e);
             } catch (RuntimeException e) {
                 // La nota ya está emitida y su comprobante, firmado: el job lo reintenta
                 log.error("Nota {} emitida; su envío a Hacienda falló: {}", nota.getId(), e.getMessage(), e);

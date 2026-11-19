@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
@@ -40,6 +41,7 @@ public class SustitucionElegibilidad {
     private final NotaFacturaRepository notaRepository;
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final FacturaRepository facturaRepository;
+    private final AmbienteComprobanteGuard ambienteGuard;
 
     /**
      * Resultado de la evaluación: o es elegible (con los datos para armar la sustituta) o trae el mensaje fijo del
@@ -103,8 +105,46 @@ public class SustitucionElegibilidad {
         return new Evaluacion(true, null, nota, numeroDeNota(nota, comprobanteNota.get()), codigo, origen);
     }
 
+    /**
+     * Bandera de la pantalla: {@link #evaluar} y, a nivel de emisión (T-044), que el comprobante ACEPTADO de la original
+     * sea del ambiente activo. La regla de ambiente no está en evaluar ni en evaluarSinSustituta: esas las usan también
+     * el PDF y la contabilidad, que describen una factura ya emitida.
+     */
     public boolean puedeEmitirSustituta(Factura original) {
-        return evaluar(original).elegible();
+        Evaluacion evaluacion = evaluar(original);
+        return evaluacion.elegible() && motivoAmbiente(evaluacion).isEmpty();
+    }
+
+    /**
+     * T-044 (P-099): motivo fijo «La factura se emitió en el ambiente X; la configuración activa es Y» cuando la
+     * sustituta sería elegible salvo por el ambiente; vacío en otro caso.
+     */
+    public Optional<String> motivoSustitutaNoDisponible(Factura original) {
+        return motivoAmbiente(evaluar(original));
+    }
+
+    /** Motivo de ambiente de una evaluación elegible: el comprobante de la original no es del ambiente activo. */
+    public Optional<String> motivoAmbiente(Evaluacion evaluacion) {
+        if (evaluacion == null || !evaluacion.elegible() || evaluacion.comprobanteOriginal() == null) {
+            return Optional.empty();
+        }
+        return ambienteGuard.motivoReferencia(evaluacion.comprobanteOriginal());
+    }
+
+    /** Ambiente del comprobante vigente de la factura para el modal (T-044); vacío si no tiene comprobante vigente. */
+    public Optional<AmbienteFactura> ambienteDeLaFactura(Factura factura) {
+        if (factura == null || factura.getIdFactura() == null) {
+            return Optional.empty();
+        }
+        var activo = ambienteGuard.ambienteActivo();
+        return comprobanteRepository.findFirstByFactura_IdFacturaAndVigenteTrue(factura.getIdFactura())
+            .map(c -> new AmbienteFactura(c.getAmbiente() != null ? c.getAmbiente().name() : null,
+                AmbienteComprobanteGuard.coincide(c.getAmbiente(), activo),
+                AmbienteComprobanteGuard.motivo(c.getAmbiente(), activo)));
+    }
+
+    /** Ambiente del comprobante vigente de una factura y si coincide con el activo, con su motivo fijo. */
+    public record AmbienteFactura(String ambiente, boolean coincide, String motivo) {
     }
 
     /**

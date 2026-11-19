@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
@@ -30,7 +31,7 @@ class NotaCreditoElegibilidadTest {
     private final PagoService pagos = mock(PagoService.class);
     private final PermisoService permisos = mock(PermisoService.class);
     private final NotaCreditoElegibilidad elegibilidad =
-        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos);
+        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, mock(AmbienteComprobanteGuard.class));
 
     @BeforeEach
     void setUp() {

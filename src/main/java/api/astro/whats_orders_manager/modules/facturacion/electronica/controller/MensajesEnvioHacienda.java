@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.controlle
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConfiguracionHaciendaNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
 import org.springframework.http.HttpStatus;
@@ -59,6 +60,14 @@ public final class MensajesEnvioHacienda {
         return reenvio
             ? "Comprobante no puede ser reenviado en estado " + estado
             : "El comprobante en estado " + estado + " no se puede enviar: Hacienda ya lo tiene o pudo recibirlo";
+    }
+
+    /**
+     * T-044 (P-099): 409 fijo cuando el comprobante es de otro ambiente que el de la configuración activa. Se arma con
+     * los dos ambientes, nunca con el texto de la excepción.
+     */
+    public static String ambienteDistinto(AmbienteDistintoException e) {
+        return AmbienteDistintoException.mensaje(e.getAmbienteComprobante(), e.getAmbienteActivo());
     }
 
     /**
