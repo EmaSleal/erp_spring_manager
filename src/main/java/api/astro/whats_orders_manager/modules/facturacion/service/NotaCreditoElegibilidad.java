@@ -1,6 +1,8 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -10,12 +12,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumSet;
+import java.util.Optional;
 
 /**
  * Regla única de «¿se ofrece "Emitir nota de crédito" en el modal de esta factura?» (ADR-047 §2, T-042). El servidor
  * decide; el JavaScript solo pinta la bandera. Es la misma regla de {@link NotaFacturaService#emitirNotaCreditoTotal}
  * (comprobante vigente ACEPTADO, factura no anulada, sin nota en trámite ni aplicada, sin pagos aplicados) más el
  * permiso FACTURA_ANULAR del usuario. La emisión sigue validando todo con su 409.
+ *
+ * <p>T-044: la factura se referencia solo si su comprobante ACEPTADO es del ambiente de la configuración activa; si no,
+ * la bandera es false con «La factura se emitió en el ambiente X; la configuración activa es Y». Orden de las
+ * comprobaciones: permiso/anulada, ACEPTADO y notas, ambiente, pagos.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,6 +36,7 @@ public class NotaCreditoElegibilidad {
     private final NotaFacturaRepository notaRepository;
     private final PagoService pagoService;
     private final PermisoService permisoService;
+    private final AmbienteComprobanteGuard ambienteGuard;
 
     /**
      * @param puedeEmitir habilita el botón
@@ -44,11 +52,17 @@ public class NotaCreditoElegibilidad {
             return Resultado.NO;
         }
         Integer id = factura.getIdFactura();
-        boolean aceptado = comprobanteRepository.findFirstByFactura_IdFacturaAndVigenteTrue(id)
-            .map(c -> c.getEstado() == EstadoComprobante.ACEPTADO).orElse(false);
-        if (!aceptado || notaRepository.existsByFactura_IdFacturaAndEstadoIn(id,
+        ComprobanteElectronico aceptado = comprobanteRepository.findFirstByFactura_IdFacturaAndVigenteTrue(id)
+            .filter(c -> c.getEstado() == EstadoComprobante.ACEPTADO).orElse(null);
+        if (aceptado == null || notaRepository.existsByFactura_IdFacturaAndEstadoIn(id,
             EnumSet.of(EstadoNotaFactura.EN_TRAMITE, EstadoNotaFactura.APLICADA))) {
             return Resultado.NO;
+        }
+        // T-044 (P-099): después de permiso, anulada, ACEPTADO y notas (así el motivo es el que el usuario puede
+        // corregir) y antes de pagos: la factura de otro ambiente no se referencia, sea cual sea el resto
+        Optional<String> motivoAmbiente = ambienteGuard.motivoReferencia(aceptado);
+        if (motivoAmbiente.isPresent()) {
+            return new Resultado(false, motivoAmbiente.get());
         }
         if (!pagoService.findPagosValidosByFacturaId(id).isEmpty()) {
             return new Resultado(false, MOTIVO_CON_PAGOS);

@@ -77,6 +77,18 @@ public class ComprobanteElectronicoDTO {
     /** Se puede "Consultar estado en Hacienda": ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA (ADR-031 §4). */
     private Boolean consultableEnHacienda;
 
+    /** T-044: ambiente del comprobante (SANDBOX o PRODUCCION), de comprobante_electronico.ambiente. */
+    private String ambiente;
+
+    /**
+     * T-044: el ambiente del comprobante es el de la configuración activa (o no hay configuración legible que lo
+     * contradiga). Si es false, «Reenviar» y «Consultar estado» se muestran deshabilitados con {@link #motivoAmbiente}.
+     */
+    private Boolean ambienteCoincide;
+
+    /** T-044: motivo fijo «El comprobante pertenece al ambiente X y la configuración activa es Y; no se envía», o null. */
+    private String motivoAmbiente;
+
     /** Consultas seguidas en que Hacienda informó ind-estado "error". */
     private Integer consultasErrorHacienda;
 

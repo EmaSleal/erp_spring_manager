@@ -409,10 +409,10 @@ class ConfiguracionHaciendaIlegibleIT {
         int idFactura = facturaConLinea();
         jdbc.update("INSERT INTO comprobante_electronico (clave_numerica, consecutivo, created_at, updated_at, estado, "
                         + "fecha_emision, fecha_envio, tipo_comprobante, empresa_id, factura_id, vigente, intentos_envio, "
-                        + "enviado_email, xml_comprobante, ruta_archivo_xml) "
+                        + "enviado_email, xml_comprobante, ruta_archivo_xml, ambiente) "
                         + "VALUES (?, ?, NOW(6), NOW(6), ?, NOW(6), NOW(6), 'FACTURA_ELECTRONICA', "
                         + "(SELECT id_configuracion FROM configuracion_empresa ORDER BY id_configuracion LIMIT 1), "
-                        + "?, b'1', 0, b'0', ?, ?)",
+                        + "?, b'1', 0, b'0', ?, ?, 'SANDBOX')",
                 claveNueva(), consecutivoNuevo(), estado, idFactura, xmlFirmadoReal(), "comprobantes/t040.xml");
         return jdbc.queryForObject("SELECT MAX(id) FROM comprobante_electronico WHERE factura_id = ?", Long.class,
                 idFactura);

@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -143,6 +144,57 @@ class SustitutaXmlTest {
         assertThat(texto(ir, "FechaEmisionIR")).isEqualTo("2026-11-05T14:00:01-06:00");
         assertThat(texto(ir, "Codigo")).isEqualTo("16");
         assertThat(texto(ir, "Razon")).isEqualTo("Sustituye comprobante rechazado por Hacienda");
+    }
+
+    @ParameterizedTest(name = "rechazado {0}, nuevo {1}")
+    @CsvSource({"PRODUCCION, PRODUCCION", "SANDBOX, SANDBOX"})
+    @DisplayName("T-044 criterio 6: rechazado del mismo ambiente que el nuevo → lleva la referencia 10/16; valida")
+    void reemision_mismoAmbiente_llevaReferencia(AmbienteHacienda delRechazado, AmbienteHacienda delNuevo)
+            throws Exception {
+        Factura normal = factura(81, "FA-T044-81");
+        comprobante(21L, normal, CLAVE_RECHAZADO, FECHA_RECHAZADO, EstadoComprobante.RECHAZADO, false)
+                .setAmbiente(delRechazado);
+        ComprobanteElectronico nuevo = comprobante(null, normal, CLAVE_NUEVA, LocalDateTime.of(2026, 11, 18, 10, 0, 0),
+                EstadoComprobante.GENERADO, true);
+        nuevo.setAmbiente(delNuevo);
+
+        String xml = firmado(nuevo);
+
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+        List<Element> refs = referencias(raiz(xml));
+        assertThat(refs).hasSize(1);
+        assertThat(texto(refs.get(0), "TipoDocIR")).isEqualTo("10");
+        assertThat(texto(refs.get(0), "Codigo")).isEqualTo("16");
+    }
+
+    @ParameterizedTest(name = "rechazado {0}, nuevo {1}")
+    @CsvSource({"SANDBOX, PRODUCCION", "PRODUCCION, SANDBOX"})
+    @DisplayName("T-044 criterio 6: rechazado de otro ambiente → se emite sin la referencia 10/16, lo registra el log; valida")
+    void reemision_otroAmbiente_sinReferencia(AmbienteHacienda delRechazado, AmbienteHacienda delNuevo)
+            throws Exception {
+        Factura normal = factura(82, "FA-T044-82");
+        comprobante(22L, normal, CLAVE_RECHAZADO, FECHA_RECHAZADO, EstadoComprobante.RECHAZADO, false)
+                .setAmbiente(delRechazado);
+        ComprobanteElectronico nuevo = comprobante(null, normal, CLAVE_NUEVA, LocalDateTime.of(2026, 11, 18, 10, 0, 0),
+                EstadoComprobante.GENERADO, true);
+        nuevo.setAmbiente(delNuevo);
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(XmlGeneratorServiceImpl.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> logs =
+                new ch.qos.logback.core.read.ListAppender<>();
+        logs.start();
+        logger.addAppender(logs);
+        String xml;
+        try {
+            xml = firmado(nuevo);
+        } finally {
+            logger.detachAppender(logs);
+        }
+
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.FACTURA_ELECTRONICA)).isEmpty();
+        assertThat(referencias(raiz(xml))).isEmpty();
+        assertThat(logs.list).anyMatch(e -> e.getFormattedMessage().contains("Referencia 10/16 omitida")
+                && e.getFormattedMessage().contains(delRechazado.name()) && e.getFormattedMessage().contains(delNuevo.name()));
     }
 
     @Test

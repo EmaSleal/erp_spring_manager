@@ -1,9 +1,12 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.scheduled;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ComprobanteElectronicoService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.EnvioHaciendaService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl;
@@ -17,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Job programado para reintentar envíos fallidos de comprobantes electrónicos.
@@ -36,6 +40,8 @@ public class ComprobanteReintentosJob {
     private final ComprobanteElectronicoService comprobanteService;
     private final EnvioHaciendaService envioService;
     private final Clock clock;
+    /** T-044 (P-099): ambiente de la configuración activa; el job solo trabaja con los comprobantes de ese ambiente. */
+    private final AmbienteComprobanteGuard ambienteGuard;
 
     /** Consultas seguidas con ind-estado "error" tras las que un ERROR_HACIENDA deja de consultarse (revisar en ATV). */
     @Value("${facturacion.hacienda.max-consultas-error:"
@@ -71,7 +77,18 @@ public class ComprobanteReintentosJob {
         
         try {
             // Buscar comprobantes pendientes de reintento
-            List<ComprobanteElectronico> pendientes = comprobanteRepository.findPendientesReintento();
+            // T-044: solo los del ambiente de la configuración activa; los demás ni se cargan ni cuentan intentos.
+            // Si esa configuración no se puede leer, se conserva el comportamiento de T-041 (sin filtro) y se registra.
+            Optional<AmbienteHacienda> activo = ambienteGuard.ambienteActivo();
+            List<ComprobanteElectronico> pendientes;
+            if (activo.isPresent()) {
+                pendientes = comprobanteRepository.findPendientesReintento(activo.get());
+                log.info("Reintentos: {} excluidos por ambiente (ambiente activo {})",
+                    comprobanteRepository.countPendientesReintentoDeOtroAmbiente(activo.get()), activo.get());
+            } else {
+                log.warn("Reintentos: ambiente activo no disponible; sin filtro por ambiente (comportamiento de T-041)");
+                pendientes = comprobanteRepository.findPendientesReintentoSinFiltroDeAmbiente();
+            }
             
             if (pendientes.isEmpty()) {
                 log.info("✅ No hay comprobantes pendientes de reintento");
@@ -128,6 +145,11 @@ public class ComprobanteReintentosJob {
                         }
                     }
 
+                } catch (AmbienteDistintoException e) {
+                    // T-044: la configuración activa cambió entre la consulta y el envío; no es una falla del
+                    // documento: ni intento contado ni ultimoError (nunca registrarFalloDeReintento)
+                    log.info("Comprobante {} es de otro ambiente que el activo; se omite: {}", comprobante.getId(),
+                        e.getMessage());
                 } catch (EnvioHaciendaService.ComprobanteNoEnviableException e) {
                     // Otro proceso lo marcó (envío en curso) o Hacienda ya lo tiene: no se toca
                     log.info("Comprobante {} ya no es transmisible ({}); se omite", comprobante.getId(), e.getEstado());
@@ -167,8 +189,19 @@ public class ComprobanteReintentosJob {
             // Comprobantes recibidos por Hacienda (ENVIADO), en proceso o con ind-estado "error" (ERROR_HACIENDA,
             // hasta el máximo de consultas seguidas), enviados hace más de 5 minutos. ENVIO_INCIERTO no se consulta
             // aquí: se resuelve con "Consultar estado en Hacienda" (ADR-030, ADR-031).
-            List<ComprobanteElectronico> enviados = comprobanteRepository.findParaSondeo(
-                LocalDateTime.now(clock).minusMinutes(5), maxConsultasErrorHacienda);
+            // T-044: solo los del ambiente activo; con la configuración ilegible, sin filtro (comportamiento de T-041)
+            LocalDateTime limite = LocalDateTime.now(clock).minusMinutes(5);
+            Optional<AmbienteHacienda> activo = ambienteGuard.ambienteActivo();
+            List<ComprobanteElectronico> enviados;
+            if (activo.isPresent()) {
+                enviados = comprobanteRepository.findParaSondeo(limite, maxConsultasErrorHacienda, activo.get());
+                log.info("Consulta de estados: {} excluidos por ambiente (ambiente activo {})",
+                    comprobanteRepository.countParaSondeoDeOtroAmbiente(limite, maxConsultasErrorHacienda, activo.get()),
+                    activo.get());
+            } else {
+                log.warn("Consulta de estados: ambiente activo no disponible; sin filtro por ambiente (T-041)");
+                enviados = comprobanteRepository.findParaSondeoSinFiltroDeAmbiente(limite, maxConsultasErrorHacienda);
+            }
             
             if (enviados.isEmpty()) {
                 log.info("✅ No hay estados pendientes de consultar");
@@ -182,6 +215,8 @@ public class ComprobanteReintentosJob {
                 try {
                     comprobanteService.consultarYActualizarEstado(comprobante.getId());
                     consultados++;
+                } catch (AmbienteDistintoException e) {
+                    log.info("Comprobante {} es de otro ambiente que el activo; no se consulta", comprobante.getId());
                 } catch (Exception e) {
                     log.error("❌ Error consultando estado de {}: {}", 
                         comprobante.getId(), e.getMessage());

@@ -5,8 +5,13 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.service.im
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
 
 /**
  * Mapper para convertir entre ComprobanteElectronico y DTO.
@@ -23,13 +28,29 @@ public class ComprobanteElectronicoMapper {
     private int maxConsultasErrorHacienda = ComprobanteElectronicoServiceImpl.MAX_CONSULTAS_ERROR_HACIENDA_DEFECTO;
     
     /**
-     * Convierte entidad a DTO.
+     * T-044: regla de ambiente para las banderas del DTO. Por campo; sin ella (pruebas unitarias) no hay regla y el
+     * comprobante «coincide».
+     */
+    @Autowired(required = false)
+    private AmbienteComprobanteGuard ambienteGuard;
+
+    /**
+     * Convierte entidad a DTO. Lee el ambiente activo una vez (lectura aislada); un listado usa
+     * {@link #toDTO(ComprobanteElectronico, Optional)} con una sola lectura para todas las filas.
      */
     public ComprobanteElectronicoDTO toDTO(ComprobanteElectronico entity) {
         if (entity == null) {
             return null;
         }
-        
+        return toDTO(entity, ambienteGuard != null ? ambienteGuard.ambienteActivo() : Optional.empty());
+    }
+
+    /** Convierte entidad a DTO con el ambiente activo ya leído (vacío = sin regla de ambiente). */
+    public ComprobanteElectronicoDTO toDTO(ComprobanteElectronico entity, Optional<AmbienteHacienda> activo) {
+        if (entity == null) {
+            return null;
+        }
+
         return ComprobanteElectronicoDTO.builder()
             .id(entity.getId())
             .facturaId(entity.getFactura() != null ? entity.getFactura().getIdFactura().longValue() : null)
@@ -60,6 +81,9 @@ public class ComprobanteElectronicoMapper {
             .consultableEnHacienda(ComprobanteElectronicoServiceImpl.CONSULTABLES_A_MANO.contains(entity.getEstado()))
             .consultasErrorHacienda(entity.getConsultasErrorHacienda())
             .revisarEnAtv(entity.requiereRevisionEnAtv(maxConsultasErrorHacienda))
+            .ambiente(entity.getAmbiente() != null ? entity.getAmbiente().name() : null)
+            .ambienteCoincide(AmbienteComprobanteGuard.coincide(entity.getAmbiente(), activo))
+            .motivoAmbiente(AmbienteComprobanteGuard.motivo(entity.getAmbiente(), activo))
             .createdAt(entity.getCreatedAt())
             .updatedAt(entity.getUpdatedAt())
             .xmlComprobante(entity.getXmlComprobante())

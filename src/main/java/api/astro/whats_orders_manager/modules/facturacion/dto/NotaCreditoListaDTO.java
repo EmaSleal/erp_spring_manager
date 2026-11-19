@@ -5,11 +5,13 @@ import java.time.LocalDateTime;
 
 /**
  * Fila del listado de notas de crédito (T-042, ADR-047 §1). Sin entidades JPA: todo lo que la pantalla pinta, incluido
- * el estado del comprobante vigente y lo que habilita «Reenviar» y «Consultar estado».
+ * el estado del comprobante vigente y lo que habilita «Reenviar» y «Consultar estado». T-044: ambiente del
+ * comprobante, si coincide con el activo y el motivo fijo que deshabilita las dos acciones.
  */
 public record NotaCreditoListaDTO(Long id, String numero, Integer idFactura, String numeroFactura,
                                   String clienteNombre, String codigoReferencia, String codigoNombre,
                                   BigDecimal total, String moneda, LocalDateTime fechaEmision, String estado,
                                   Long idComprobante, String estadoComprobante, LocalDateTime fechaEnvioComprobante,
-                                  boolean puedeReenviar, boolean consultableEnHacienda) {
+                                  boolean puedeReenviar, boolean consultableEnHacienda, String ambiente,
+                                  boolean ambienteCoincide, String motivoAmbiente) {
 }

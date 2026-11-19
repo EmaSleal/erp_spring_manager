@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.DatosFeDePrueba;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.validacion.CatalogoUbicacionDePrueba;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
@@ -479,7 +480,7 @@ class NotaCreditoXmlTest {
         Clock reloj = Clock.fixed(FECHA_NOTA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
 
         new NotaFacturaService(facturas, notas, comprobantes, comprobanteService, pagos,
-                new CalculadoraImpuestoService(null), reloj)
+                new CalculadoraImpuestoService(null), reloj, mock(AmbienteComprobanteGuard.class))
                 .emitirNotaCreditoTotal(77, TipoNotaFactura.CREDITO, codigo, razon, "admin");
 
         ArgumentCaptor<NotaFactura> captor = ArgumentCaptor.forClass(NotaFactura.class);

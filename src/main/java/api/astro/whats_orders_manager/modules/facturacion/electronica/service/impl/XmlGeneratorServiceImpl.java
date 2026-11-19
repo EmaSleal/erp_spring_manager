@@ -32,6 +32,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -135,10 +136,19 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             .filter(c -> c.getEstado() == EstadoComprobante.RECHAZADO)
             .filter(c -> comprobante.getId() == null || (c.getId() != null && c.getId() < comprobante.getId()))
             .max(Comparator.comparing(c -> c.getId() == null ? 0L : c.getId()))
-            .ifPresent(rechazado -> xml.append(InformacionReferenciaXml.construir(
-                InformacionReferenciaXml.TIPO_DOC_RECHAZADO, rechazado.getClaveNumerica(),
-                rechazado.getFechaEmision(), CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_RECHAZADO.getCodigo(),
-                InformacionReferenciaXml.RAZON_REEMISION_RECHAZADO)));
+            .ifPresent(rechazado -> {
+                // T-044 (P-099): Hacienda del ambiente del comprobante nuevo (el activo al emitir) no conoce la clave de
+                // un rechazado de otro ambiente; se emite sin la referencia 10/16 y queda en el log
+                if (!Objects.equals(rechazado.getAmbiente(), comprobante.getAmbiente())) {
+                    log.info("Referencia 10/16 omitida: el comprobante rechazado {} es del ambiente {} y el nuevo es del {}",
+                        rechazado.getClaveNumerica(), rechazado.getAmbiente(), comprobante.getAmbiente());
+                    return;
+                }
+                xml.append(InformacionReferenciaXml.construir(
+                    InformacionReferenciaXml.TIPO_DOC_RECHAZADO, rechazado.getClaveNumerica(),
+                    rechazado.getFechaEmision(), CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_RECHAZADO.getCodigo(),
+                    InformacionReferenciaXml.RAZON_REEMISION_RECHAZADO));
+            });
     }
 
     @Override

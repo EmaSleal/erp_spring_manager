@@ -221,6 +221,7 @@
 
     <!-- Scripts personalizados -->
     <script th:src="@{/modules/facturacion/electronica/js/estado-envio.js}"></script>
+    <script th:src="@{/modules/facturacion/js/ambiente-comprobante.js}"></script>
     <script th:inline="javascript">
         const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
         const csrfToken  = /*[[${_csrf.token}]]*/ '';
@@ -281,6 +282,7 @@
                     <td>${comp.tipoComprobanteDescripcion}</td>
                     <td class="text-center">
                         ${getEstadoBadge(comp.estado, comp.fechaEnvio)}
+                        <div class="mt-1">${badgeAmbiente(comp.ambiente)}</div>
                         ${comp.estado === 'ERROR_HACIENDA' && comp.mensajeRespuesta ? `
                             <div class="small text-danger mt-1">${escapeHtml(comp.mensajeRespuesta)}</div>
                         ` : ''}
@@ -300,21 +302,9 @@
                                     <span class="visually-hidden">Más acciones</span>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    ${comp.estado === 'FIRMADO' ? `
-                                        <li><button type="button" class="dropdown-item" onclick="enviarHacienda(${comp.id})">
-                                            <i class="fas fa-paper-plane me-2"></i>Enviar a Hacienda
-                                        </button></li>
-                                    ` : ''}
-                                    ${comp.puedeReenviar ? `
-                                        <li><button type="button" class="dropdown-item" onclick="reenviar(${comp.id})">
-                                            <i class="fas fa-redo me-2"></i>Reenviar
-                                        </button></li>
-                                    ` : ''}
-                                    ${comp.consultableEnHacienda ? `
-                                        <li><button type="button" class="dropdown-item" onclick="consultarEstadoEnHacienda(${comp.id})">
-                                            <i class="fas fa-search me-2"></i>Consultar estado en Hacienda
-                                        </button></li>
-                                    ` : ''}
+                                    ${itemAccion(comp.estado === 'FIRMADO', comp, `enviarHacienda(${comp.id})`, 'fa-paper-plane', 'Enviar a Hacienda')}
+                                    ${itemAccion(comp.puedeReenviar, comp, `reenviar(${comp.id})`, 'fa-redo', 'Reenviar')}
+                                    ${itemAccion(comp.consultableEnHacienda, comp, `consultarEstadoEnHacienda(${comp.id})`, 'fa-search', 'Consultar estado en Hacienda')}
                                     ${comp.xmlComprobante ? `
                                         <li><button type="button" class="dropdown-item" onclick="descargarXML(${comp.id})">
                                             <i class="fas fa-download me-2"></i>Descargar XML
@@ -326,6 +316,26 @@
                     </td>
                 </tr>
             `).join('');
+        }
+
+        // T-044 (P-099): badge del ambiente del comprobante (texto y clases son constantes de ambiente-comprobante.js)
+        function badgeAmbiente(ambiente) {
+            const e = AmbienteComprobante.etiqueta(ambiente);
+            return `<span class="badge ${e.clase}" title="Ambiente de Hacienda del comprobante">${e.texto}</span>`;
+        }
+
+        // T-044: ítem del menú de acciones; con otro ambiente que el de la configuración activa se muestra
+        // deshabilitado y con el motivo fijo del servidor (escapado: es texto, no HTML)
+        function itemAccion(permiteElEstado, comp, onclick, icono, texto) {
+            const accion = AmbienteComprobante.estadoAccion(permiteElEstado, comp);
+            if (!accion) return '';
+            if (accion.habilitada) {
+                return `<li><button type="button" class="dropdown-item" onclick="${onclick}">
+                    <i class="fas ${icono} me-2"></i>${texto}</button></li>`;
+            }
+            return `<li><button type="button" class="dropdown-item disabled" disabled aria-disabled="true"
+                    title="${escapeHtml(accion.motivo)}"><i class="fas ${icono} me-2"></i>${texto}</button>
+                <div class="small text-danger px-3 pb-1 motivo-ambiente" style="max-width:18rem;white-space:normal">${escapeHtml(accion.motivo)}</div></li>`;
         }
 
         // Helper: escapa texto de Hacienda antes de insertarlo como HTML
@@ -667,6 +677,11 @@
                                         ${getEstadoBadge(comp.estado, comp.fechaEnvio)}
                                     </div>
                                     <div class="col-md-6">
+                                        <strong>Ambiente:</strong><br>
+                                        ${badgeAmbiente(comp.ambiente)}
+                                        ${comp.ambienteCoincide === false ? `<div class="small text-danger mt-1 motivo-ambiente">${escapeHtml(comp.motivoAmbiente)}</div>` : ''}
+                                    </div>
+                                    <div class="col-md-6">
                                         <strong>Fecha Emisión:</strong><br>
                                         ${formatearFecha(comp.fechaEmision)}
                                     </div>
@@ -753,7 +768,16 @@
                         `;
                     }
                     // ADR-031 §4: "Consultar estado en Hacienda" para ENVIADO, PROCESANDO, ENVIO_INCIERTO y ERROR_HACIENDA
-                    if (comp.consultableEnHacienda) {
+                    const consultar = AmbienteComprobante.estadoAccion(comp.consultableEnHacienda, comp);
+                    if (consultar && !consultar.habilitada) {
+                        // T-044: otro ambiente que el activo; deshabilitado, con el motivo fijo
+                        actionButtons += `
+                            <button id="btnConsultarEstadoHacienda" class="btn btn-warning" disabled title="${escapeHtml(consultar.motivo)}">
+                                <i class="fas fa-search me-1"></i>Consultar estado en Hacienda
+                            </button>
+                            <small class="text-danger ms-2 motivo-ambiente">${escapeHtml(consultar.motivo)}</small>
+                        `;
+                    } else if (consultar) {
                         const desde = comp.estado === 'ENVIO_INCIERTO' && comp.verificableDesde ? new Date(comp.verificableDesde) : null;
                         const hora = desde ? desde.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' }) : '';
                         actionButtons += `

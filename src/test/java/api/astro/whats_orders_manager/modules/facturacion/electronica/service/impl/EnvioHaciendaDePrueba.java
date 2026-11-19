@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl;
 
+import static org.mockito.Mockito.mock;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.mapper.ComprobanteElectronicoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
@@ -90,13 +92,21 @@ public final class EnvioHaciendaDePrueba {
     public static EnvioHaciendaServiceImpl crear(ComprobanteElectronicoRepository repository,
                                                  ComprobanteElectronicoService comprobanteService,
                                                  HaciendaApiService hacienda, Clock clock, TaskScheduler scheduler) {
+        return crear(repository, comprobanteService, hacienda, clock, scheduler, mock(AmbienteComprobanteGuard.class));
+    }
+
+    /** Con la regla de ambiente indicada (T-044). */
+    public static EnvioHaciendaServiceImpl crear(ComprobanteElectronicoRepository repository,
+                                                 ComprobanteElectronicoService comprobanteService,
+                                                 HaciendaApiService hacienda, Clock clock, TaskScheduler scheduler,
+                                                 AmbienteComprobanteGuard guard) {
         DefaultListableBeanFactory fabrica = new DefaultListableBeanFactory();
         if (scheduler != null) {
             fabrica.registerSingleton("taskScheduler", scheduler);
         }
         ObjectProvider<TaskScheduler> proveedor = fabrica.getBeanProvider(TaskScheduler.class);
         return new EnvioHaciendaServiceImpl(repository, comprobanteService, new ComprobanteElectronicoMapper(), hacienda,
-            clock, proveedor, new SinBd(), Duration.ofSeconds(30), 5);
+            clock, guard, proveedor, new SinBd(), Duration.ofSeconds(30), 5);
     }
 
     /**

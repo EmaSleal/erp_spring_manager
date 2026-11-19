@@ -1356,6 +1356,7 @@ class NotaCreditoIT {
                     .factura(factura)
                     .empresa(configHacienda.getEmpresa())
                     .tipoComprobante(TipoComprobanteElectronico.FACTURA_ELECTRONICA)
+                    .ambiente(api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda.SANDBOX)
                     .claveNumerica(clave())
                     .consecutivo(String.format("%020d", ThreadLocalRandom.current().nextLong(1, 1_000_000_000L)))
                     .fechaEmision(LocalDateTime.now().minusDays(1).withNano(0))

@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.controlle
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ComprobanteElectronicoDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.ResultadoConsultaManualDTO;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ProductosSinCabysException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualDemasiadoProntoException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConsultaManualNoPermitidaException;
@@ -63,6 +64,9 @@ public class ComprobanteElectronicoController {
         } catch (EmisionNoPermitidaException e) {
             log.warn("Factura {} no se puede emitir: {}", facturaId, e.getMensajeUsuario());
             return error(HttpStatus.CONFLICT, e.getMensajeUsuario());
+        } catch (AmbienteDistintoException e) {
+            // T-044 (P-099): otro ambiente que el activo; no se envía, el comprobante no cambia
+            return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.ambienteDistinto(e));
         } catch (Exception e) {
             log.error("Error procesando factura {}: {}", facturaId, e.getMessage(), e);
             return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
@@ -135,6 +139,9 @@ public class ComprobanteElectronicoController {
             return respuestaDeEnvio(envioService.enviar(id));
         } catch (EnvioHaciendaService.ComprobanteNoEnviableException e) {
             return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.noEnviable(e.getEstado(), false));
+        } catch (AmbienteDistintoException e) {
+            // T-044 (P-099): otro ambiente que el activo; no se envía, el comprobante no cambia
+            return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.ambienteDistinto(e));
         } catch (Exception e) {
             log.error("Error enviando comprobante: {}", e.getMessage(), e);
             return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
@@ -152,6 +159,9 @@ public class ComprobanteElectronicoController {
             return respuestaDeEnvio(envioService.reenviar(id));
         } catch (EnvioHaciendaService.ComprobanteNoEnviableException e) {
             return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.noEnviable(e.getEstado(), true));
+        } catch (AmbienteDistintoException e) {
+            // T-044 (P-099): otro ambiente que el activo; no se envía, el comprobante no cambia
+            return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.ambienteDistinto(e));
         } catch (Exception e) {
             log.error("Error reenviando comprobante: {}", e.getMessage(), e);
             return error(HttpStatus.INTERNAL_SERVER_ERROR, MensajesEnvioHacienda.ERROR_INESPERADO);
@@ -201,6 +211,9 @@ public class ComprobanteElectronicoController {
             ));
         } catch (ConsultaManualNoPermitidaException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (AmbienteDistintoException e) {
+            // T-044 (P-099): otro ambiente que el activo; no se envía, el comprobante no cambia
+            return error(HttpStatus.CONFLICT, MensajesEnvioHacienda.ambienteDistinto(e));
         } catch (ConsultaManualDemasiadoProntoException e) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
                 "success", false,
