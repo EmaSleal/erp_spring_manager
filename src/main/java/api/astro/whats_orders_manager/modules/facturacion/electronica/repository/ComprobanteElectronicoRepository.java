@@ -239,6 +239,33 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
     );
 
     /**
+     * T-045 (ADR-049): los vigentes en ENVIO_INCIERTO que el job horario también consulta: último envío anterior a la
+     * fecha límite (ahora menos MINUTOS_ANTES_DE_VERIFICAR) y consultas automáticas sin resolver por debajo del máximo.
+     * Hermana de {@link #findParaSondeo}, que conserva su ventana de 5 minutos para los demás estados.
+     */
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE c.vigente = true AND c.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIO_INCIERTO AND c.fechaEnvio < :fechaLimite AND c.consultasErrorHacienda < :maxConsultasError AND c.ambiente = :ambiente")
+    List<ComprobanteElectronico> findInciertosParaSondeo(
+        @Param("fechaLimite") LocalDateTime fechaLimite,
+        @Param("maxConsultasError") int maxConsultasError,
+        @Param("ambiente") AmbienteHacienda ambiente
+    );
+
+    /** T-045: ENVIO_INCIERTO sin filtrar por ambiente, solo con la configuración activa ilegible (como T-041). */
+    @Query("SELECT c FROM ComprobanteElectronico c WHERE c.vigente = true AND c.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIO_INCIERTO AND c.fechaEnvio < :fechaLimite AND c.consultasErrorHacienda < :maxConsultasError")
+    List<ComprobanteElectronico> findInciertosParaSondeoSinFiltroDeAmbiente(
+        @Param("fechaLimite") LocalDateTime fechaLimite,
+        @Param("maxConsultasError") int maxConsultasError
+    );
+
+    /** T-045: los que {@link #findInciertosParaSondeo} deja fuera por ambiente (ambiente distinto o nulo). */
+    @Query("SELECT COUNT(c) FROM ComprobanteElectronico c WHERE c.vigente = true AND c.estado = api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.ENVIO_INCIERTO AND c.fechaEnvio < :fechaLimite AND c.consultasErrorHacienda < :maxConsultasError AND (c.ambiente IS NULL OR c.ambiente <> :ambiente)")
+    long countInciertosParaSondeoDeOtroAmbiente(
+        @Param("fechaLimite") LocalDateTime fechaLimite,
+        @Param("maxConsultasError") int maxConsultasError,
+        @Param("ambiente") AmbienteHacienda ambiente
+    );
+
+    /**
      * Encuentra comprobantes enviados sin respuesta después de cierto tiempo.
      */
     @Query("SELECT c FROM ComprobanteElectronico c WHERE " +

@@ -192,4 +192,97 @@ class ComprobanteReintentosJobTest {
             .anyMatch(m -> m.contains("Comprobante 5 es de otro ambiente"))
             .noneMatch(m -> m.contains("Error consultando estado"));
     }
+
+    private ComprobanteReintentosJob jobConServicio(ComprobanteElectronicoService servicio) {
+        return new ComprobanteReintentosJob(repository, servicio, envio, Clock.systemUTC(), guard);
+    }
+
+    @Test
+    @DisplayName("T-045: el job suma los ENVIO_INCIERTO elegibles a los de siempre y los consulta con consultarYActualizarEstado")
+    void consultaHoraria_incluyeLosInciertos() {
+        var servicio = mock(ComprobanteElectronicoService.class);
+        when(repository.findParaSondeo(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(AmbienteHacienda.SANDBOX)))
+            .thenReturn(List.of(pendiente(5, EstadoComprobante.ENVIADO, 1)));
+        when(repository.findInciertosParaSondeo(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(AmbienteHacienda.SANDBOX)))
+            .thenReturn(List.of(pendiente(6, EstadoComprobante.ENVIO_INCIERTO, 1)));
+        when(servicio.consultarYActualizarEstado(5L)).thenReturn(resultado(EstadoComprobante.PROCESANDO, 1, null));
+        when(servicio.consultarYActualizarEstado(6L)).thenReturn(resultado(EstadoComprobante.ACEPTADO, 1, null));
+
+        jobConServicio(servicio).consultarEstadosPendientes();
+
+        verify(servicio).consultarYActualizarEstado(5L);
+        verify(servicio).consultarYActualizarEstado(6L);
+        verify(servicio, never()).registrarConsultaIncierta(anyLong());
+        assertThat(mensajes()).anyMatch(m -> m.contains("Estados consultados: 2/2"));
+    }
+
+    @Test
+    @DisplayName("T-045: la ventana de los ENVIO_INCIERTO es de 15 min (MINUTOS_ANTES_DE_VERIFICAR) y la de los demás, de 5")
+    void consultaHoraria_ventanas() {
+        var servicio = mock(ComprobanteElectronicoService.class);
+        var limiteGeneral = org.mockito.ArgumentCaptor.forClass(java.time.LocalDateTime.class);
+        var limiteIncierto = org.mockito.ArgumentCaptor.forClass(java.time.LocalDateTime.class);
+
+        jobConServicio(servicio).consultarEstadosPendientes();
+
+        verify(repository).findParaSondeo(limiteGeneral.capture(), org.mockito.ArgumentMatchers.anyInt(), any());
+        verify(repository).findInciertosParaSondeo(limiteIncierto.capture(), org.mockito.ArgumentMatchers.anyInt(), any());
+        assertThat(java.time.Duration.between(limiteIncierto.getValue(), limiteGeneral.getValue()).toMinutes()).isEqualTo(
+            api.astro.whats_orders_manager.modules.facturacion.electronica.service.impl.ComprobanteElectronicoServiceImpl
+                .MINUTOS_ANTES_DE_VERIFICAR - 5);
+    }
+
+    @Test
+    @DisplayName("T-045: un ENVIO_INCIERTO que la consulta deja igual, o que falla con excepción, cuenta (registrarConsultaIncierta); uno que sale del estado, no")
+    void consultaHoraria_cuentaLasConsultasSinResolver() {
+        var servicio = mock(ComprobanteElectronicoService.class);
+        when(repository.findInciertosParaSondeo(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(AmbienteHacienda.SANDBOX)))
+            .thenReturn(List.of(pendiente(1, EstadoComprobante.ENVIO_INCIERTO, 0), pendiente(2, EstadoComprobante.ENVIO_INCIERTO, 0),
+                pendiente(3, EstadoComprobante.ENVIO_INCIERTO, 0)));
+        when(repository.findParaSondeo(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(AmbienteHacienda.SANDBOX)))
+            .thenReturn(List.of(pendiente(4, EstadoComprobante.ENVIADO, 0)));
+        when(servicio.consultarYActualizarEstado(1L)).thenReturn(resultado(EstadoComprobante.ENVIO_INCIERTO, 1, null));
+        when(servicio.consultarYActualizarEstado(2L)).thenThrow(new RuntimeException("sin red"));
+        when(servicio.consultarYActualizarEstado(3L)).thenReturn(resultado(EstadoComprobante.NO_TRANSMITIDO, 1, null));
+        // un ENVIADO cuya consulta lo deja en ENVIO_INCIERTO (404) no cuenta: venía de otro estado
+        when(servicio.consultarYActualizarEstado(4L)).thenReturn(resultado(EstadoComprobante.ENVIO_INCIERTO, 1, null));
+
+        jobConServicio(servicio).consultarEstadosPendientes();
+
+        verify(servicio).registrarConsultaIncierta(1L);
+        verify(servicio).registrarConsultaIncierta(2L);
+        verify(servicio, never()).registrarConsultaIncierta(3L);
+        verify(servicio, never()).registrarConsultaIncierta(4L);
+    }
+
+    @Test
+    @DisplayName("T-045: ambiente distinto en la consulta de un ENVIO_INCIERTO → no se cuenta; el excluido por ambiente suma los dos conteos")
+    void consultaHoraria_ambienteDistintoNoCuenta() {
+        var servicio = mock(ComprobanteElectronicoService.class);
+        when(repository.findInciertosParaSondeo(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(AmbienteHacienda.SANDBOX)))
+            .thenReturn(List.of(pendiente(1, EstadoComprobante.ENVIO_INCIERTO, 0)));
+        when(repository.countParaSondeoDeOtroAmbiente(any(), org.mockito.ArgumentMatchers.anyInt(), any())).thenReturn(1L);
+        when(repository.countInciertosParaSondeoDeOtroAmbiente(any(), org.mockito.ArgumentMatchers.anyInt(), any())).thenReturn(2L);
+        when(servicio.consultarYActualizarEstado(1L)).thenThrow(new api.astro.whats_orders_manager.modules.facturacion
+            .electronica.exception.AmbienteDistintoException(AmbienteHacienda.PRODUCCION, AmbienteHacienda.SANDBOX));
+
+        jobConServicio(servicio).consultarEstadosPendientes();
+
+        verify(servicio, never()).registrarConsultaIncierta(anyLong());
+        assertThat(mensajes()).anyMatch(m -> m.contains("3 excluidos por ambiente"));
+    }
+
+    @Test
+    @DisplayName("T-045: con la configuración ilegible, los ENVIO_INCIERTO también se consultan sin filtro de ambiente (T-041)")
+    void consultaHoraria_configuracionIlegible_incluyeInciertos() {
+        var servicio = mock(ComprobanteElectronicoService.class);
+        when(guard.ambienteActivo()).thenReturn(java.util.Optional.empty());
+        when(repository.findInciertosParaSondeoSinFiltroDeAmbiente(any(), org.mockito.ArgumentMatchers.anyInt()))
+            .thenReturn(List.of(pendiente(8, EstadoComprobante.ENVIO_INCIERTO, 0)));
+        when(servicio.consultarYActualizarEstado(8L)).thenReturn(resultado(EstadoComprobante.ACEPTADO, 1, null));
+
+        jobConServicio(servicio).consultarEstadosPendientes();
+
+        verify(servicio).consultarYActualizarEstado(8L);
+    }
 }

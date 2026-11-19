@@ -187,20 +187,31 @@ public class ComprobanteReintentosJob {
         
         try {
             // Comprobantes recibidos por Hacienda (ENVIADO), en proceso o con ind-estado "error" (ERROR_HACIENDA,
-            // hasta el máximo de consultas seguidas), enviados hace más de 5 minutos. ENVIO_INCIERTO no se consulta
-            // aquí: se resuelve con "Consultar estado en Hacienda" (ADR-030, ADR-031).
+            // hasta el máximo de consultas seguidas), enviados hace más de 5 minutos. T-045 (ADR-049): también los
+            // ENVIO_INCIERTO con 15 minutos o más desde el último envío (MINUTOS_ANTES_DE_VERIFICAR) y consultas
+            // automáticas sin resolver por debajo del máximo: un 404 los pasa a NO_TRANSMITIDO (el job de reintentos
+            // los reenvía con la misma clave) y una respuesta de Hacienda se adopta. Los que llegan al máximo quedan
+            // para "Consultar estado en Hacienda" (que reinicia el contador) o ATV.
             // T-044: solo los del ambiente activo; con la configuración ilegible, sin filtro (comportamiento de T-041)
-            LocalDateTime limite = LocalDateTime.now(clock).minusMinutes(5);
+            LocalDateTime ahora = LocalDateTime.now(clock);
+            LocalDateTime limite = ahora.minusMinutes(5);
+            LocalDateTime limiteIncierto = ahora.minusMinutes(ComprobanteElectronicoServiceImpl.MINUTOS_ANTES_DE_VERIFICAR);
             Optional<AmbienteHacienda> activo = ambienteGuard.ambienteActivo();
-            List<ComprobanteElectronico> enviados;
+            List<ComprobanteElectronico> enviados = new java.util.ArrayList<>();
             if (activo.isPresent()) {
-                enviados = comprobanteRepository.findParaSondeo(limite, maxConsultasErrorHacienda, activo.get());
-                log.info("Consulta de estados: {} excluidos por ambiente (ambiente activo {})",
-                    comprobanteRepository.countParaSondeoDeOtroAmbiente(limite, maxConsultasErrorHacienda, activo.get()),
-                    activo.get());
+                enviados.addAll(comprobanteRepository.findParaSondeo(limite, maxConsultasErrorHacienda, activo.get()));
+                enviados.addAll(comprobanteRepository.findInciertosParaSondeo(limiteIncierto, maxConsultasErrorHacienda,
+                    activo.get()));
+                long excluidos = comprobanteRepository.countParaSondeoDeOtroAmbiente(limite, maxConsultasErrorHacienda,
+                        activo.get())
+                    + comprobanteRepository.countInciertosParaSondeoDeOtroAmbiente(limiteIncierto,
+                        maxConsultasErrorHacienda, activo.get());
+                log.info("Consulta de estados: {} excluidos por ambiente (ambiente activo {})", excluidos, activo.get());
             } else {
                 log.warn("Consulta de estados: ambiente activo no disponible; sin filtro por ambiente (T-041)");
-                enviados = comprobanteRepository.findParaSondeoSinFiltroDeAmbiente(limite, maxConsultasErrorHacienda);
+                enviados.addAll(comprobanteRepository.findParaSondeoSinFiltroDeAmbiente(limite, maxConsultasErrorHacienda));
+                enviados.addAll(comprobanteRepository.findInciertosParaSondeoSinFiltroDeAmbiente(limiteIncierto,
+                    maxConsultasErrorHacienda));
             }
             
             if (enviados.isEmpty()) {
@@ -212,14 +223,28 @@ public class ComprobanteReintentosJob {
             
             int consultados = 0;
             for (ComprobanteElectronico comprobante : enviados) {
+                boolean eraIncierto = comprobante.getEstado() == EstadoComprobante.ENVIO_INCIERTO;
                 try {
-                    comprobanteService.consultarYActualizarEstado(comprobante.getId());
+                    ComprobanteElectronicoDTO resultado = comprobanteService.consultarYActualizarEstado(comprobante.getId());
                     consultados++;
+                    if (eraIncierto && resultado != null && resultado.getEstado() == EstadoComprobante.ENVIO_INCIERTO) {
+                        // T-045: la consulta no lo sacó de ENVIO_INCIERTO (404 antes de tiempo o respuesta sin estado)
+                        comprobanteService.registrarConsultaIncierta(comprobante.getId());
+                    }
                 } catch (AmbienteDistintoException e) {
                     log.info("Comprobante {} es de otro ambiente que el activo; no se consulta", comprobante.getId());
                 } catch (Exception e) {
                     log.error("❌ Error consultando estado de {}: {}", 
                         comprobante.getId(), e.getMessage());
+                    if (eraIncierto) {
+                        // T-045: error de red o similar; la transacción de la consulta se revirtió, el contador se
+                        // guarda en una propia para que el ENVIO_INCIERTO no se consulte sin fin
+                        try {
+                            comprobanteService.registrarConsultaIncierta(comprobante.getId());
+                        } catch (Exception ex) {
+                            log.error("❌ No se pudo contar la consulta de {}: {}", comprobante.getId(), ex.getMessage());
+                        }
+                    }
                 }
             }
             

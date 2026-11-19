@@ -648,11 +648,28 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         }
     }
 
+    @Override
+    @Transactional
+    public void registrarConsultaIncierta(Long comprobanteId) {
+        ComprobanteElectronico comprobante = repository.findById(comprobanteId)
+            .orElseThrow(() -> new IllegalArgumentException("Comprobante no encontrado"));
+        if (comprobante.getEstado() != EstadoComprobante.ENVIO_INCIERTO) {
+            return;
+        }
+        int consultas = (comprobante.getConsultasErrorHacienda() != null ? comprobante.getConsultasErrorHacienda() : 0) + 1;
+        comprobante.setConsultasErrorHacienda(consultas);
+        repository.save(comprobante);
+        if (consultas >= maxConsultasErrorHacienda) {
+            log.warn("Comprobante {}: {} consultas automáticas sin resolver el ENVIO_INCIERTO; se deja de consultar "
+                + "(use «Consultar estado en Hacienda» o revise en ATV)", comprobante.getClaveNumerica(), consultas);
+        }
+    }
+
     /**
      * "Consultar estado en Hacienda" (ADR-031 §4): GET /recepcion/{clave}, de solo lectura, para un comprobante
      * ENVIADO, PROCESANDO, ENVIO_INCIERTO o ERROR_HACIENDA, como máximo 1 vez cada 30 s por comprobante. Un 404 se
      * interpreta según el estado de origen ({@link #interpretarNoExiste}); otra respuesta se adopta como en el sondeo.
-     * En ERROR_HACIENDA, el contador de consultas con "error" vuelve a 0 antes de aplicar la respuesta, de modo que el
+     * En ERROR_HACIENDA o ENVIO_INCIERTO, el contador de consultas (con "error" o sin resolver) vuelve a 0 antes de aplicar la respuesta, de modo que el
      * sondeo lo vuelve a incluir.
      *
      * @throws ConsultaManualNoPermitidaException (409) si el estado no se consulta a mano
@@ -674,7 +691,8 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         ConfiguracionHacienda config = configuracionActivaDe(comprobante.getEmpresa());
         RespuestaHaciendaDTO respuesta = haciendaApi.consultarComprobante(comprobante.getClaveNumerica(), config.getId());
-        if (estadoPrevio == EstadoComprobante.ERROR_HACIENDA) {
+        if (estadoPrevio == EstadoComprobante.ERROR_HACIENDA || estadoPrevio == EstadoComprobante.ENVIO_INCIERTO) {
+            // T-045 (ADR-049 §3): también un ENVIO_INCIERTO que llegó al tope vuelve al sondeo
             comprobante.setConsultasErrorHacienda(0);
         }
         String mensaje;
@@ -709,6 +727,7 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             LocalDateTime desde = disponibleParaVerificar(comprobante);
             if (desde == null || !LocalDateTime.now(clock).isBefore(desde)) {
                 comprobante.setEstado(EstadoComprobante.NO_TRANSMITIDO);
+                comprobante.setConsultasErrorHacienda(0); // T-045: salió de ENVIO_INCIERTO
                 mensaje = "Hacienda no tiene el comprobante: queda como no transmitido y se puede corregir y reenviar "
                     + "con la misma clave.";
             } else {
@@ -781,16 +800,24 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
                 yield EstadoComprobante.ENVIO_INCIERTO;
             }
         };
+        EstadoComprobante previo = comprobante.getEstado();
         comprobante.setEstado(estado);
         if (comprobante.esDeNota() && (estado == EstadoComprobante.ACEPTADO || estado == EstadoComprobante.RECHAZADO)) {
             // Efectos de la nota (ADR-037 §3) en esta misma transacción: si fallan, el estado tampoco se guarda
             eventPublisher.publishEvent(new ComprobanteNotaResueltoEvent(comprobante));
         }
         if (estado != EstadoComprobante.ERROR_HACIENDA) {
-            comprobante.setConsultasErrorHacienda(0);
+            // T-045: un ENVIO_INCIERTO que sigue igual conserva el contador de consultas sin resolver (lo incrementa
+            // el job con registrarConsultaIncierta); salir de ese estado, o cualquier otro, lo reinicia
+            if (!(estado == EstadoComprobante.ENVIO_INCIERTO && previo == EstadoComprobante.ENVIO_INCIERTO)) {
+                comprobante.setConsultasErrorHacienda(0);
+            }
             return;
         }
-        int consultas = (comprobante.getConsultasErrorHacienda() != null ? comprobante.getConsultasErrorHacienda() : 0) + 1;
+        // T-045: viniendo de ENVIO_INCIERTO el contador era de consultas sin resolver: el de "error" empieza en 0
+        int previas = previo == EstadoComprobante.ERROR_HACIENDA && comprobante.getConsultasErrorHacienda() != null
+            ? comprobante.getConsultasErrorHacienda() : 0;
+        int consultas = previas + 1;
         comprobante.setConsultasErrorHacienda(consultas);
         if (comprobante.requiereRevisionEnAtv(maxConsultasErrorHacienda)) {
             comprobante.setMensajeRespuesta(mensajeRevisarEnAtv(consultas)
