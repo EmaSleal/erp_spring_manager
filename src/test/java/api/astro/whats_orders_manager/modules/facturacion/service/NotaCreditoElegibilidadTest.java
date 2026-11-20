@@ -31,7 +31,7 @@ class NotaCreditoElegibilidadTest {
     private final PagoService pagos = mock(PagoService.class);
     private final PermisoService permisos = mock(PermisoService.class);
     private final NotaCreditoElegibilidad elegibilidad =
-        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, mock(AmbienteComprobanteGuard.class),
+        new NotaCreditoElegibilidad(comprobantes, notas, permisos, mock(AmbienteComprobanteGuard.class),
             mock(NotaCreditoTopes.class));
 
     @BeforeEach

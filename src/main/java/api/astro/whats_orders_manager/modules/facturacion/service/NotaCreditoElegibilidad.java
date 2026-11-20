@@ -38,7 +38,6 @@ public class NotaCreditoElegibilidad {
 
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final NotaFacturaRepository notaRepository;
-    private final PagoService pagoService;
     private final PermisoService permisoService;
     private final AmbienteComprobanteGuard ambienteGuard;
     private final NotaCreditoTopes topes;

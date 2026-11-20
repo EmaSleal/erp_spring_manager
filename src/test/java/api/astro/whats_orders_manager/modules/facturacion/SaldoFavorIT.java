@@ -8,7 +8,9 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.NaturalezaCuent
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoCuenta;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaContableRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.dto.RespuestaHaciendaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -162,6 +164,8 @@ class SaldoFavorIT {
     @Autowired private XmlGeneratorService xmlGenerator;
     @Autowired private FirmaDigitalService firmaDigital;
     @Autowired private PagoService pagoService;
+    @Autowired private AsientoContableService asientoContableService;
+    @Autowired private AsientoContableRepository asientoRepository;
     @Autowired private TipoCambioService tipoCambioService;
 
     private TransactionTemplate tx;
@@ -829,6 +833,87 @@ class SaldoFavorIT {
         assertThat(pagos.get(0).get("tipoPago").asText()).isEqualTo("NOTA_CREDITO");
         assertThat(pagos.get(0).get("idNotaOrigen").asLong()).isEqualTo(s.idNota());
         assertThat(pagos.get(0).get("claveNotaOrigen").asText()).hasSize(50);
+    }
+
+    // ── Revisión 1 (criterios 23 a 25) ───────────────────────────────────────
+
+    @Test
+    @DisplayName("criterio 23: la aplicación de un saldo (NOTA_CREDITO) no entra en el detalle de caja ni en los pagos del día; el detalle suma igual que el total")
+    void cajaYPagosDelDia_excluyenAplicacionesDeSaldo() throws Exception {
+        Saldo s = saldoCrc(null);
+        int f2 = facturaAceptada(s.idCliente(), MonedaFE.CRC, "1");
+        long idEfectivo = pagar(f2, "1000.00", MonedaFE.CRC, null);
+        MvcResult r = aplicar(s.id(), f2, "300.00");
+        assertThat(r.getResponse().getStatus()).as(r.getResponse().getContentAsString()).isEqualTo(201);
+        long idNc = jdbc.queryForObject("SELECT id_pago FROM pagos WHERE id_factura = ? AND tipo_pago = 'NOTA_CREDITO'",
+                Long.class, f2);
+
+        var reporte = pagoService.buildReporteCaja(LocalDate.now());
+        List<Long> idsDetalle = reporte.getPagosDetalle().stream().map(p -> p.getIdPago()).toList();
+        assertThat(idsDetalle).contains(idEfectivo).doesNotContain(idNc);
+        // el detalle (válidos, en CRC como los totales; el día puede traer pagos de otras pruebas) suma igual que el total
+        assertThat(reporte.getPagosDetalle().stream().filter(p -> p.esValido())
+                .map(p -> api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda
+                        .montoEnCrcReporte(p.getMonto(), p.getMoneda(), p.getTipoCambio()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)).as("el detalle suma igual que el total de caja")
+                .isEqualByComparingTo(reporte.getTotalIngresos());
+        assertThat(reporte.getPagosDetalle().stream().filter(p -> p.esValido()).count())
+                .isEqualTo(reporte.getCantidadPagos());
+
+        List<Long> delDia = pagoService.findPagosDelDia().stream().map(p -> p.getIdPago()).toList();
+        assertThat(delDia).contains(idEfectivo).doesNotContain(idNc);
+        assertThat(pagoService.countPagosDelDia()).isEqualTo(delDia.size());
+        assertThat(pagoService.findByFechaPagoBetween(LocalDate.now().atStartOfDay(),
+                LocalDate.now().atTime(23, 59, 59)).stream().map(p -> p.getIdPago()).toList()).doesNotContain(idNc);
+        assertThat(pagoService.countByMetodoPagoAndFecha(MetodoPago.OTROS, LocalDate.now().atStartOfDay(),
+                LocalDate.now().atTime(23, 59, 59))).as("OTROS solo lo usa la aplicación del saldo").isZero();
+    }
+
+    private static final String MSG_SIN_ASIENTO = "La factura tiene pagos y no tiene asiento de venta vigente; "
+            + "regularice su contabilidad antes de emitir la nota";
+
+    @Test
+    @DisplayName("criterio 24: factura con pagos y sin asiento de venta vigente: la nota (total o parcial) responde 409 con el mensaje fijo, sin nota ni comprobante")
+    void notaSobreFacturaConPagosSinAsientoDeVenta() throws Exception {
+        int f = facturaAceptada(null, MonedaFE.CRC, "1");
+        pagar(f, "1000.00", MonedaFE.CRC, null);
+        Long idVenta = jdbc.queryForObject("SELECT id FROM asientos_contables WHERE factura_id = ? "
+                + "AND tipo = 'AUTOMATICO_VENTA' AND asiento_revertido_id IS NULL", Long.class, f);
+        tx.executeWithoutResult(st -> asientoContableService.generarAsientoReversion(
+                asientoRepository.findById(idVenta).orElseThrow(), "Histórico T-048"));
+        int notasAntes = jdbc.queryForObject("SELECT COUNT(*) FROM nota_factura", Integer.class);
+        int comprobantesAntes = jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico", Integer.class);
+
+        for (Map<String, Object> cuerpo : List.of(
+                Map.<String, Object>of("idFactura", f, "codigoReferencia", "01", "razon", "Anulación total"),
+                Map.<String, Object>of("idFactura", f, "codigoReferencia", "02", "razon", "Parcial",
+                        "lineas", List.of(acreditar(lineas(f).get(0), "100.00"))))) {
+            MvcResult r = mockMvc.perform(post("/api/facturas/notas-credito")
+                    .with(user(USUARIO).roles("ADMIN")).with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(cuerpo))).andReturn();
+            assertThat(r.getResponse().getStatus()).as(r.getResponse().getContentAsString()).isEqualTo(409);
+            assertThat(mensaje(r)).isEqualTo(MSG_SIN_ASIENTO);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM nota_factura", Integer.class)).isEqualTo(notasAntes);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobante_electronico", Integer.class))
+                .isEqualTo(comprobantesAntes);
+    }
+
+    @Test
+    @DisplayName("criterio 25: el pago NOTA_CREDITO del detalle de la factura trae numeroNotaOrigen con el consecutivo de la nota, no la clave")
+    void numeroNotaOrigenEnElDetalle() throws Exception {
+        Saldo s = saldoCrc(null);
+        int f2 = facturaAceptada(s.idCliente(), MonedaFE.CRC, "1");
+        aplicar(s.id(), f2, "100.00");
+        String consecutivo = jdbc.queryForObject("SELECT consecutivo FROM comprobante_electronico "
+                + "WHERE nota_factura_id = ? AND vigente = b'1'", String.class, s.idNota());
+
+        MvcResult det = mockMvc.perform(get("/facturas/detalle/" + f2).with(user(USUARIO).roles("ADMIN"))).andReturn();
+        JsonNode pago = objectMapper.readTree(det.getResponse().getContentAsString()).get("pagos").get(0);
+
+        assertThat(pago.get("numeroNotaOrigen").asText()).isEqualTo(consecutivo).hasSize(20);
+        assertThat(pago.get("claveNotaOrigen").asText()).hasSize(50);
     }
 
     // ── Apoyo: escenarios ────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service;
 
+import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest.LineaAcreditar;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
@@ -19,6 +20,7 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +63,7 @@ public class NotaFacturaService {
     private final NotaFacturaRepository notaRepository;
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final ComprobanteElectronicoService comprobanteService;
-    private final PagoService pagoService;
+    private final AsientoContableService asientoContableService;
     private final CalculadoraImpuestoService calculadoraImpuestoService;
     private final Clock clock;
     private final AmbienteComprobanteGuard ambienteGuard;
@@ -82,6 +84,8 @@ public class NotaFacturaService {
     public static final String MENSAJE_TOPE_LINEA = "El monto a acreditar supera el disponible de la línea";
     public static final String MENSAJE_TOPE_FACTURA = "La suma de las notas supera el total del comprobante aceptado";
     public static final String MENSAJE_ACREDITADA_TOTALMENTE = "La factura ya está acreditada totalmente";
+    public static final String MENSAJE_PAGOS_SIN_ASIENTO = "La factura tiene pagos y no tiene asiento de venta vigente; "
+        + "regularice su contabilidad antes de emitir la nota";
     public static final String MENSAJE_TOTAL_CON_PARCIALES =
         "La factura tiene notas parciales; acredite el resto con una nota parcial";
 
@@ -197,6 +201,12 @@ public class NotaFacturaService {
         } else if (notaRepository.existsByFactura_IdFacturaAndEstadoIn(idFactura, NotaCreditoTopes.CUENTAN)) {
             throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura()
                 + " ya tiene una nota de crédito en trámite o aplicada");
+        }
+        // T-048 revisión 1: con pagos, el excedente de la nota se acredita a un saldo a favor con su asiento; sin asiento
+        // de venta vigente no habría asiento de la nota ni crédito previo a 2.1.05 (el auxiliar dejaría de cuadrar)
+        if (factura.getPagos() != null && factura.getPagos().stream().anyMatch(Pago::esValido)
+            && asientoContableService.obtenerAsientosVentaVigentes(factura).isEmpty()) {
+            throw new NotaFacturaConflictoException(MENSAJE_PAGOS_SIN_ASIENTO);
         }
         // T-048 (ADR-053, ADR-057): una factura con pagos admite la nota; al aplicarse, el excedente sobre el saldo
         // pendiente se acredita a un saldo a favor del cliente (NotaFacturaEfectos)

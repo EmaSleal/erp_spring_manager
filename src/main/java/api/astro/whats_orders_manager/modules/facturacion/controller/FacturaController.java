@@ -568,6 +568,7 @@ public class FacturaController {
                 pago.setIdAplicacionSaldoFavor(a.id());
                 pago.setIdNotaOrigen(a.idNota());
                 pago.setClaveNotaOrigen(a.claveNota());
+                pago.setNumeroNotaOrigen(a.numeroNota());
             }
         }
     }

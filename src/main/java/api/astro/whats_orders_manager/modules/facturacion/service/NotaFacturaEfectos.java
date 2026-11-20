@@ -101,6 +101,11 @@ public class NotaFacturaEfectos {
         // si hay excedente, a saldos a favor), total o parcial; ya no se revierte el asiento de venta. Los asientos de
         // reversión de notas anteriores no se tocan
         List<AsientoContable> ventas = asientoContableService.obtenerAsientosVentaVigentes(factura);
+        if (ventas.isEmpty() && excedente.signum() > 0) {
+            // T-048 revisión 1: nunca un saldo a favor sin el asiento de la nota que lo acredita a 2.1.05.00x
+            throw new IllegalStateException("La nota " + nota.getId() + " tiene excedente sobre una factura sin asiento "
+                + "de venta vigente: no se crea el saldo a favor sin asiento");
+        }
         if (ventas.isEmpty()) {
             log.warn("Factura {} sin asiento de venta vigente: la nota {} se aplica sin asiento contable",
                 factura.getNumeroFactura(), nota.getId());

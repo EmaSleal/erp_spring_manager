@@ -541,7 +541,7 @@ class NotaCreditoXmlTest {
         when(comprobanteService.generarYFirmarDesdeNota(any())).thenReturn(comprobanteDeLaNotaVacio());
         Clock reloj = Clock.fixed(FECHA_NOTA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
 
-        new NotaFacturaService(facturas, notas, comprobantes, comprobanteService, pagos,
+        new NotaFacturaService(facturas, notas, comprobantes, comprobanteService, mock(api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService.class),
                 new CalculadoraImpuestoService(null), reloj, mock(AmbienteComprobanteGuard.class),
                 new api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService("ORIGINAL"),
                 new api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoTopes(notas,

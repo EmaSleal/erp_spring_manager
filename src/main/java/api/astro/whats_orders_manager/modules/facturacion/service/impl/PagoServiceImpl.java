@@ -737,7 +737,8 @@ public class PagoServiceImpl implements PagoService {
             }
         }
 
-        // pagosDetalle: all payments in range regardless of estado (pre-existing behavior — do not filter)
+        // pagosDetalle: all payments in range regardless of estado (pre-existing behavior), except NOTA_CREDITO
+        // applications (T-048: not money received; the repository query excludes them like the totals do)
         List<PagoDTO> detalle = pagoMapper.toDTOList(findByFechaPagoBetween(inicio, fin));
         reporte.setPagosDetalle(detalle);
         reporte.calcularTotales();

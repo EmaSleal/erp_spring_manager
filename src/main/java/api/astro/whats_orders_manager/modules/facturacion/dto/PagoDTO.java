@@ -120,6 +120,8 @@ public class PagoDTO {
     // Pago NOTA_CREDITO (T-048): aplicación del saldo a favor de la que nace y su nota de origen; solo lectura, null en los demás
     private Long idAplicacionSaldoFavor;
     private Long idNotaOrigen;
+    /** Consecutivo de la nota de origen; la clave solo si la nota no tiene consecutivo. */
+    private String numeroNotaOrigen;
     private String claveNotaOrigen;
 
     // Campos de anulación

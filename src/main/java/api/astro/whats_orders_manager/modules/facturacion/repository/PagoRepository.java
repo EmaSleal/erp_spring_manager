@@ -95,7 +95,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param fechaFin Fecha final del rango
      * @return Lista de pagos en el rango
      */
-    @Query("SELECT p FROM Pago p WHERE p.fechaPago BETWEEN :fechaInicio AND :fechaFin ORDER BY p.fechaPago DESC")
+    // T-048 (revisión 1): un pago NOTA_CREDITO no es dinero recibido; el detalle de caja debe sumar igual que su total
+    @Query("SELECT p FROM Pago p WHERE p.fechaPago BETWEEN :fechaInicio AND :fechaFin "
+        + "AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago DESC")
     List<Pago> findByFechaPagoBetween(
         @Param("fechaInicio") LocalDateTime fechaInicio,
         @Param("fechaFin") LocalDateTime fechaFin
@@ -109,9 +111,10 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param fechaFin Fecha final
      * @return Cantidad de pagos
      */
+    // T-048 (revisión 1): sin pagos NOTA_CREDITO (no son dinero), igual que los totales por método
     @Query("SELECT COUNT(p) FROM Pago p WHERE p.metodoPago = :metodoPago " +
            "AND p.fechaPago BETWEEN :fechaInicio AND :fechaFin " +
-           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO')")
+           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO') AND p.tipoPago <> 'NOTA_CREDITO'")
     long countByMetodoPagoAndFecha(
         @Param("metodoPago") MetodoPago metodoPago,
         @Param("fechaInicio") LocalDateTime fechaInicio,
@@ -155,14 +158,18 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * Obtiene pagos creados hoy para reporte de caja diaria.
      * @return Lista de pagos del día
      */
-    @Query("SELECT p FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE ORDER BY p.fechaPago")
+    // T-048 (revisión 1): sin pagos NOTA_CREDITO (una aplicación de saldo a favor no es un ingreso del día)
+    @Query("SELECT p FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE "
+        + "AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago")
     List<Pago> findPagosDelDia();
     
     /**
      * Cuenta pagos creados hoy.
      * @return Cantidad de pagos del día
      */
-    @Query("SELECT COUNT(p) FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE")
+    // T-048 (revisión 1): misma regla que findPagosDelDia
+    @Query("SELECT COUNT(p) FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE "
+        + "AND p.tipoPago <> 'NOTA_CREDITO'")
     long countPagosDelDia();
     
     /**

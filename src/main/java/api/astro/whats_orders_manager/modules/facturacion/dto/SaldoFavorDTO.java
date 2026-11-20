@@ -21,7 +21,8 @@ public final class SaldoFavorDTO {
      * Una aplicación (VIGENTE o REVERSADA). Los diferenciales están en CRC; {@code diferencialNeto} positivo es ganancia.
      * Los campos del TC del día y de la reversión son null cuando no aplican.
      */
-    public record Aplicacion(Long id, Long idSaldoFavor, Long idNota, String claveNota, String estado, BigDecimal monto,
+    public record Aplicacion(Long id, Long idSaldoFavor, Long idNota, String numeroNota, String claveNota,
+                             String estado, BigDecimal monto,
                              String moneda, Integer idFactura, String numeroFactura, Long idPago, String numeroPago,
                              LocalDateTime fechaAplicacion, Integer usuarioId, BigDecimal tipoCambioOrigen,
                              BigDecimal tipoCambioFactura, LocalDate tcDiaFecha, BigDecimal tcDiaValor,

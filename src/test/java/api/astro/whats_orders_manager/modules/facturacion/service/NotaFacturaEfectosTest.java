@@ -219,6 +219,34 @@ class NotaFacturaEfectosTest {
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.EN_TRAMITE);
     }
 
+    @Test
+    @DisplayName("T-048 revisión 1 (criterio 24): excedente sin asiento de venta vigente: no se crea el saldo y la nota sigue EN_TRAMITE con un mensaje claro")
+    void excedenteSinAsientoDeVenta_noCreaSaldo() {
+        when(asientoService.obtenerAsientosVentaVigentes(factura)).thenReturn(List.of());
+        factura.getPagos().add(pagoValido("120.00"));
+        NotaFactura nota = nota("01");
+
+        assertThatThrownBy(() -> efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO)))
+                .hasMessageContaining("tiene excedente sobre una factura sin asiento de venta vigente");
+
+        verify(saldoFavorService, never()).crearDesdeNota(any(), any(), any());
+        verify(facturaService, never()).anularPorNotaCredito(any(), any());
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.EN_TRAMITE);
+    }
+
+    @Test
+    @DisplayName("T-048 revisión 1 (criterio 24): sin pagos y sin asiento de venta se conserva el comportamiento de T-047 (asiento omitido, nota aplicada)")
+    void sinPagosSinAsiento_comoT047() {
+        when(asientoService.obtenerAsientosVentaVigentes(factura)).thenReturn(List.of());
+        NotaFactura nota = nota("01");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
+
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any(), any(), any());
+        verify(saldoFavorService, never()).crearDesdeNota(any(), any(), any());
+    }
+
     private static Pago pagoValido(String montoAplicado) {
         Pago pago = new Pago();
         pago.setEstado(api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago.CONFIRMADO);

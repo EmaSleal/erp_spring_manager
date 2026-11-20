@@ -57,7 +57,7 @@ class NotaFacturaParcialTest {
     private final PagoService pagos = mock(PagoService.class);
     private final CalculadoraImpuestoService calculadora = new CalculadoraImpuestoService(null);
     private final NotaFacturaService servicio = new NotaFacturaService(facturas, notas, comprobantes,
-            comprobanteService, pagos, calculadora,
+            comprobanteService, mock(api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService.class), calculadora,
             Clock.fixed(EMISION.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()),
             mock(AmbienteComprobanteGuard.class), new AtribucionFiscalService("ORIGINAL"),
             new NotaCreditoTopes(notas, calculadora));

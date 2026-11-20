@@ -369,8 +369,15 @@ public class SaldoFavorService {
         if (idsPago.isEmpty()) {
             return Map.of();
         }
-        return aplicacionRepository.findPorPagos(idsPago).stream()
-            .collect(Collectors.toMap(a -> a.getPago().getIdPago(), this::aAplicacionDTO, (a, b) -> a));
+        List<AplicacionSaldoFavor> aplicaciones = aplicacionRepository.findPorPagos(idsPago);
+        // consecutivos de las notas en una sola consulta (sin N+1)
+        Map<Long, String> consecutivos = comprobanteRepository.findByNotaFactura_IdInAndVigenteTrue(aplicaciones.stream()
+            .map(a -> a.getSaldo().getNota().getId()).distinct().toList()).stream()
+            .filter(c -> c.getConsecutivo() != null && !c.getConsecutivo().isBlank())
+            .collect(Collectors.toMap(c -> c.getNotaFactura().getId(), ComprobanteElectronico::getConsecutivo,
+                (a, b) -> a));
+        return aplicaciones.stream().collect(Collectors.toMap(a -> a.getPago().getIdPago(),
+            a -> aAplicacionDTO(a, consecutivos.get(a.getSaldo().getNota().getId())), (a, b) -> a));
     }
 
     /** Resumen de una aplicación (respuesta de aplicar y reversar). */
@@ -395,9 +402,18 @@ public class SaldoFavorService {
     }
 
     private SaldoFavorDTO.Aplicacion aAplicacionDTO(AplicacionSaldoFavor a) {
+        return aAplicacionDTO(a, comprobanteRepository
+            .findFirstByNotaFactura_IdAndVigenteTrue(a.getSaldo().getNota().getId())
+            .map(ComprobanteElectronico::getConsecutivo).orElse(null));
+    }
+
+    /** {@code consecutivo} de la nota (null si no tiene): sin él, el número de la nota es su clave. */
+    private SaldoFavorDTO.Aplicacion aAplicacionDTO(AplicacionSaldoFavor a, String consecutivo) {
         Factura f = a.getFactura();
         NotaFactura nota = a.getSaldo().getNota();
-        return new SaldoFavorDTO.Aplicacion(a.getId(), a.getSaldo().getId(), nota.getId(), a.getSaldo().getClaveNota(),
+        String numeroNota = consecutivo != null && !consecutivo.isBlank() ? consecutivo : a.getSaldo().getClaveNota();
+        return new SaldoFavorDTO.Aplicacion(a.getId(), a.getSaldo().getId(), nota.getId(), numeroNota,
+            a.getSaldo().getClaveNota(),
             a.getEstado().name(), a.getMonto(), a.getSaldo().getMoneda(), f.getIdFactura(), f.getNumeroFactura(),
             a.getPago().getIdPago(), a.getPago().getNumeroPago(), a.getFechaAplicacion(), a.getUsuarioId(),
             a.getTipoCambioOrigen(), a.getTipoCambioFactura(), a.getTcDiaFecha(), a.getTcDiaValor(), a.getTcDiaTipo(),
