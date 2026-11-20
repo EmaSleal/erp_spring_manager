@@ -1204,6 +1204,50 @@ class NotaCreditoIT {
         }
     }
 
+    @Test
+    @DisplayName("T-046: editar los montos de una sustituta 15 (cuerpo sin los campos @JsonIgnore) conserva fecha "
+            + "contable y período, y el asiento de venta nuevo lleva la fecha contable de la sustituta")
+    void sustituta_editarMontos_conservaAtribucion() throws Exception {
+        int idFactura = facturaAceptada();
+        jdbc.update("UPDATE comprobante_electronico SET fecha_emision = '2026-09-29 10:15:30' WHERE factura_id = ? "
+                + "AND vigente = b'1'", idFactura);
+        Nota nota = emitirOk(idFactura, "13", "Anulación para sustituir");
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        MvcResult creada = sustituta(idFactura, null);
+        assertThat(creada.getResponse().getStatus()).as(creada.getResponse().getContentAsString()).isEqualTo(201);
+        int idSustituta = objectMapper.readTree(creada.getResponse().getContentAsString()).get("data")
+                .get("idFactura").asInt();
+
+        // Lo que llega del controlador: la factura sin fechaContable ni periodoFiscalAtribucion (@JsonIgnore)
+        tx.executeWithoutResult(s -> {
+            Factura actual = facturaRepository.findById(idSustituta).orElseThrow();
+            Factura editada = new Factura();
+            editada.setIdFactura(idSustituta);
+            editada.setCliente(actual.getCliente());
+            editada.setNumeroFactura(actual.getNumeroFactura());
+            editada.setSerie(actual.getSerie());
+            editada.setMonedaFE(actual.getMonedaFE());
+            editada.setTipoCambio(actual.getTipoCambio());
+            editada.setSubtotal(new BigDecimal("2000.00"));
+            editada.setIgv(new BigDecimal("260.00"));
+            editada.setTotal(new BigDecimal("2260.00"));
+            editada.setAnulada(false);
+            editada.setCreateDate(actual.getCreateDate());
+            facturaService.save(editada);
+        });
+
+        Map<String, Object> fila = jdbc.queryForMap("SELECT fecha_contable, periodo_fiscal_atribucion, "
+                + "sustituye_factura_id, codigo_sustitucion FROM factura WHERE id_factura = ?", idSustituta);
+        assertThat(fila.get("fecha_contable").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        assertThat(fila.get("periodo_fiscal_atribucion")).isEqualTo("2026-09");
+        assertThat(fila.get("codigo_sustitucion")).isEqualTo("15");
+        List<Map<String, Object>> ventas = jdbc.queryForList("SELECT fecha FROM asientos_contables WHERE factura_id = ? "
+                + "AND tipo = 'AUTOMATICO_VENTA' AND asiento_revertido_id IS NULL", idSustituta);
+        assertThat(ventas).isNotEmpty().allSatisfy(v ->
+                assertThat(v.get("fecha").toString()).isEqualTo(LocalDate.now(reloj).toString()));
+    }
+
     @ParameterizedTest(name = "nota {0} → sustituta {1}")
     @org.junit.jupiter.params.provider.CsvSource({"01,07", "13,15"})
     @DisplayName("T-039 review 1 (ADR-037 §6, criterios 18-21): la sustituta no mueve inventario ni genera costo de venta; "
