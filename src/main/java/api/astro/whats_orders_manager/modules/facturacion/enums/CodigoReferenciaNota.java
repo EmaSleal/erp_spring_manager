@@ -16,14 +16,15 @@ import java.util.Optional;
  *       01, 02, 06, 12 y la sustituta 07 → mes de emisión; 13, 14 y la sustituta 15 → mes de la factura original. No
  *       decide la fecha del asiento, que es siempre la fecha del documento. El 15 puede cambiarse por configuración
  *       ({@code AtribucionFiscalService}). El resto no tiene regla (null).</li>
- *   <li>{@code habilitadoEnT032}: solo la nota total (01 y 13) se emite en esta fase; el resto llega con T-033.</li>
+ *   <li>{@code habilitadoEnT032}: se emiten la nota total (01 y 13, T-032) y la parcial (02 y 14, T-047, ADR-051);
+ *       el resto llega en fases posteriores.</li>
  * </ul>
  */
 @Getter
 public enum CodigoReferenciaNota {
 
     ANULA_DOCUMENTO("01", "Anula documento de referencia", true, PeriodoAtribucion.EMISION, true),
-    CORRIGE_MONTO("02", "Corrige monto", true, PeriodoAtribucion.EMISION, false),
+    CORRIGE_MONTO("02", "Corrige monto", true, PeriodoAtribucion.EMISION, true),
     REFERENCIA_OTRO_DOCUMENTO("04", "Referencia a otro documento", true, null, false),
     SUSTITUYE_PROVISIONAL_CONTINGENCIA("05", "Sustituye comprobante provisional por contingencia", true, null, false),
     DEVOLUCION_MERCANCIA("06", "Devolución de mercancía", true, PeriodoAtribucion.EMISION, false),
@@ -37,7 +38,7 @@ public enum CodigoReferenciaNota {
     ANULA_DOCUMENTO_ERROR_MATERIAL("13", "Anula documento de referencia por error material", true,
             PeriodoAtribucion.ORIGINAL, true),
     CORRIGE_MONTO_ERROR_MATERIAL("14", "Corrige monto por error material", true,
-            PeriodoAtribucion.ORIGINAL, false),
+            PeriodoAtribucion.ORIGINAL, true),
     SUSTITUYE_COMPROBANTE_ERROR_MATERIAL("15", "Sustituye comprobante electrónico por error material", false,
             PeriodoAtribucion.ORIGINAL, false),
     SUSTITUYE_COMPROBANTE_RECHAZADO("16", "Sustituye comprobante electrónico rechazado", false, null, false),
@@ -57,6 +58,16 @@ public enum CodigoReferenciaNota {
         this.validoEnNotaCredito = validoEnNotaCredito;
         this.periodoAtribucion = periodoAtribucion;
         this.habilitadoEnT032 = habilitadoEnT032;
+    }
+
+    /** Nota total: 01 y 13 (acreditan toda la factura y la anulan). */
+    public boolean esTotal() {
+        return this == ANULA_DOCUMENTO || this == ANULA_DOCUMENTO_ERROR_MATERIAL;
+    }
+
+    /** Nota parcial: 02 y 14 (acreditan un monto por línea con IVA incluido; la factura no se anula). */
+    public boolean esParcial() {
+        return this == CORRIGE_MONTO || this == CORRIGE_MONTO_ERROR_MATERIAL;
     }
 
     /** Código de la nota 9, o vacío si no existe (p. ej. "03"). */

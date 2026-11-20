@@ -31,7 +31,8 @@ class NotaCreditoElegibilidadTest {
     private final PagoService pagos = mock(PagoService.class);
     private final PermisoService permisos = mock(PermisoService.class);
     private final NotaCreditoElegibilidad elegibilidad =
-        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, mock(AmbienteComprobanteGuard.class));
+        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, mock(AmbienteComprobanteGuard.class),
+            mock(NotaCreditoTopes.class));
 
     @BeforeEach
     void setUp() {
@@ -95,12 +96,41 @@ class NotaCreditoElegibilidadTest {
     }
 
     @Test
-    @DisplayName("con una nota en trámite (o aplicada) → no")
+    @DisplayName("con una nota en trámite → no")
     void conNotaEnTramite() {
-        when(notas.existsByFactura_IdFacturaAndEstadoIn(7,
-            java.util.EnumSet.of(EstadoNotaFactura.EN_TRAMITE, EstadoNotaFactura.APLICADA))).thenReturn(true);
+        when(notas.existsByFactura_IdFacturaAndEstadoIn(7, java.util.EnumSet.of(EstadoNotaFactura.EN_TRAMITE)))
+            .thenReturn(true);
         assertThat(elegibilidad.evaluar(factura(false), "gerente"))
             .isEqualTo(new NotaCreditoElegibilidad.Resultado(false, null));
+    }
+
+    @Test
+    @DisplayName("T-047: con una nota total aplicada (no parcial) → no")
+    void conNotaTotalAplicada() {
+        when(notas.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaNotIn(7,
+            java.util.EnumSet.of(EstadoNotaFactura.APLICADA), java.util.Set.of("02", "14"))).thenReturn(true);
+        assertThat(elegibilidad.evaluar(factura(false), "gerente"))
+            .isEqualTo(new NotaCreditoElegibilidad.Resultado(false, null));
+    }
+
+    @Test
+    @DisplayName("T-047: con notas parciales aplicadas o en trámite solo procede otra parcial (la total, con motivo)")
+    void conNotasParciales() {
+        when(notas.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(7, NotaCreditoTopes.CUENTAN,
+            java.util.Set.of("02", "14"))).thenReturn(true);
+        NotaCreditoElegibilidad.Resultado r = elegibilidad.evaluar(factura(false), "gerente");
+        assertThat(r.puedeEmitir()).isTrue();
+        assertThat(r.puedeParcial()).isTrue();
+        assertThat(r.puedeTotal()).isFalse();
+        assertThat(r.motivoTotal()).isEqualTo("La factura tiene notas parciales; acredite el resto con una nota parcial");
+    }
+
+    @Test
+    @DisplayName("T-047: factura acreditada totalmente → no admite ninguna nota")
+    void acreditadaTotalmente() {
+        Factura f = factura(false);
+        f.setAcreditadaTotalmente(true);
+        assertThat(elegibilidad.evaluar(f, "gerente")).isEqualTo(new NotaCreditoElegibilidad.Resultado(false, null));
     }
 
     @Test

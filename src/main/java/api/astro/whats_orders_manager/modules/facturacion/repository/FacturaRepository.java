@@ -32,9 +32,11 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
                            @Param("startOfTomorrow") LocalDateTime startOfTomorrow);
     
     /**
-     * Suma el total de facturas no entregadas (pendientes)
+     * Suma el total de facturas no entregadas (pendientes), neto de lo acreditado por notas de crédito parciales
+     * (T-047); no cuenta anuladas ni acreditadas totalmente.
      */
-    @Query("SELECT COALESCE(SUM(f.total), 0) FROM Factura f WHERE f.entregado = false")
+    @Query("SELECT COALESCE(SUM(f.total - f.montoAcreditado), 0) FROM Factura f WHERE f.entregado = false " +
+           "AND f.anulada = false AND f.acreditadaTotalmente = false")
     BigDecimal sumTotalPendiente();
     
     /**
@@ -55,12 +57,13 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
     
     /**
      * Busca facturas con pago vencido para enviar recordatorios
-     * Criterios: fechaPago < hoy, entregado = true, cliente con email
+     * Criterios: fechaPago < hoy, entregado = true, no anulada ni acreditada totalmente (T-047), cliente con email
      * @return Lista de facturas con pago vencido
      */
     @Query("SELECT f FROM Factura f " +
            "WHERE f.fechaPago < CURRENT_DATE " +
            "AND f.entregado = true " +
+           "AND f.anulada = false AND f.acreditadaTotalmente = false " +
            "AND f.cliente.email IS NOT NULL")
     List<Factura> findFacturasConPagoVencido();
     
@@ -158,7 +161,7 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
            "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
            "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
            "AND (:entregado IS NULL OR f.entregado = :entregado) " +
-           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL')) " +
+           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL' AND f.acreditadaTotalmente = false)) " +
            "AND (:sinFE IS NULL OR (" + PREDICADO_SIN_COMPROBANTE + ")) " +
            "AND (:estadoFE IS NULL OR c.estado = :estadoFE) " +
            "AND (:sustitutaPendiente IS NULL OR (" + PREDICADO_SUSTITUTA_PENDIENTE + "))",
@@ -166,7 +169,7 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
            "WHERE (:startDate IS NULL OR CAST(f.fechaEntrega AS date) >= :startDate) " +
            "AND (:endDate IS NULL OR CAST(f.fechaEntrega AS date) <= :endDate) " +
            "AND (:entregado IS NULL OR f.entregado = :entregado) " +
-           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL')) " +
+           "AND (:pagada IS NULL OR (:pagada = true AND f.estadoPago = 'PAGADO_TOTAL') OR (:pagada = false AND f.estadoPago <> 'PAGADO_TOTAL' AND f.acreditadaTotalmente = false)) " +
            "AND (:sinFE IS NULL OR (" + PREDICADO_SIN_COMPROBANTE + ")) " +
            "AND (:estadoFE IS NULL OR c.estado = :estadoFE) " +
            "AND (:sustitutaPendiente IS NULL OR (" + PREDICADO_SUSTITUTA_PENDIENTE + "))")

@@ -162,6 +162,37 @@ class NotaCreditoXmlTest {
         assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
     }
 
+    @ParameterizedTest(name = "código {0}")
+    @ValueSource(strings = {"02", "14"})
+    @DisplayName("T-047 (criterios 6 y 16): la nota parcial firmada valida contra el XSD; referencia como la total; resumen = suma de líneas")
+    void notaParcial_validaContraXsd(String codigo) throws Exception {
+        // línea 1 gravada (13 %): 1130.00 con IVA; línea 2 exenta: 250.00
+        String xml = xmlFirmadoDeLaNotaParcial(codigo, "Corrección de monto",
+                List.of(acreditar(1, "1130.00"), acreditar(2, "250.00")));
+
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
+        Element raiz = raiz(xml);
+        Element info = hijo(raiz, "InformacionReferencia");
+        assertThat(texto(info, "TipoDocIR")).isEqualTo("01");
+        assertThat(texto(info, "Numero")).isEqualTo(CLAVE_FACTURA);
+        assertThat(texto(info, "FechaEmisionIR"))
+                .isEqualTo(FECHA_FACTURA.atOffset(ZoneOffset.of("-06:00")).toString());
+        assertThat(texto(info, "Codigo")).isEqualTo(codigo);
+        Element resumen = hijo(raiz, "ResumenFactura");
+        assertThat(texto(resumen, "TotalComprobante")).isEqualTo("1380.00000");
+        assertThat(texto(resumen, "TotalImpuesto")).isEqualTo("130.00000");
+        assertThat(texto(resumen, "TotalGravado")).isEqualTo("1000.00000");
+        assertThat(texto(resumen, "TotalExento")).isEqualTo("250.00000");
+        // las líneas del XML son las de la nota: mismas cantidades, bases y montos totales por línea
+        List<Element> lineas = hijos(hijo(raiz, "DetalleServicio"), "LineaDetalle");
+        assertThat(lineas).hasSize(2);
+        assertThat(texto(lineas.get(0), "MontoTotalLinea")).isEqualTo("1130.00000");
+        assertThat(texto(lineas.get(0), "SubTotal")).isEqualTo("1000.00000");
+        assertThat(texto(lineas.get(0), "Cantidad")).isEqualTo("2.000");
+        assertThat(texto(lineas.get(0), "PrecioUnitario")).isEqualTo("500.00000");
+        assertThat(texto(lineas.get(1), "MontoTotalLinea")).isEqualTo("250.00000");
+    }
+
     @Test
     @DisplayName("regresión (criterio 32): la factura firmada del flujo real valida contra FacturaElectronica_V4.4.xsd")
     void factura_validaContraXsd() {
@@ -461,6 +492,18 @@ class NotaCreditoXmlTest {
         return firma.firmarXml(xml, p12.toString(), PIN);
     }
 
+    private static api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest.LineaAcreditar acreditar(
+            int idLinea, String monto) {
+        return new api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest.LineaAcreditar(
+                idLinea, new BigDecimal(monto));
+    }
+
+    private String xmlFirmadoDeLaNotaParcial(String codigo, String razon,
+            List<api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest.LineaAcreditar> lineas) {
+        String xml = generador.generarXmlNotaCredito(comprobanteDeLaNota(nota(codigo, razon, lineas)));
+        return firma.firmarXml(xml, p12.toString(), PIN);
+    }
+
     private ComprobanteElectronico comprobanteDeLaNota(NotaFactura nota) {
         return ComprobanteElectronico.builder()
                 .notaFactura(nota)
@@ -475,6 +518,12 @@ class NotaCreditoXmlTest {
 
     /** Nota total armada por NotaFacturaService, como al emitirla (repositorios simulados). */
     private NotaFactura nota(String codigo, String razon) {
+        return nota(codigo, razon, null);
+    }
+
+    /** Nota (total sin líneas, parcial con líneas) armada por NotaFacturaService con repositorios simulados. */
+    private NotaFactura nota(String codigo, String razon,
+                             List<api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest.LineaAcreditar> lineas) {
         FacturaRepository facturas = mock(FacturaRepository.class);
         NotaFacturaRepository notas = mock(NotaFacturaRepository.class);
         ComprobanteElectronicoRepository comprobantes = mock(ComprobanteElectronicoRepository.class);
@@ -494,8 +543,10 @@ class NotaCreditoXmlTest {
 
         new NotaFacturaService(facturas, notas, comprobantes, comprobanteService, pagos,
                 new CalculadoraImpuestoService(null), reloj, mock(AmbienteComprobanteGuard.class),
-                new api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService("ORIGINAL"))
-                .emitirNotaCreditoTotal(77, TipoNotaFactura.CREDITO, codigo, razon, "admin");
+                new api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService("ORIGINAL"),
+                new api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoTopes(notas,
+                        new CalculadoraImpuestoService(null)))
+                .emitirNotaCredito(77, TipoNotaFactura.CREDITO, codigo, razon, lineas, "admin");
 
         ArgumentCaptor<NotaFactura> captor = ArgumentCaptor.forClass(NotaFactura.class);
         verify(comprobanteService).generarYFirmarDesdeNota(captor.capture());
@@ -545,6 +596,16 @@ class NotaCreditoXmlTest {
             }
         }
         throw new AssertionError("Sin elemento " + nombre + " en " + padre.getLocalName());
+    }
+
+    private static List<Element> hijos(Element padre, String nombre) {
+        List<Element> lista = new ArrayList<>();
+        for (Node n = padre.getFirstChild(); n != null; n = n.getNextSibling()) {
+            if (n instanceof Element e && nombre.equals(e.getLocalName())) {
+                lista.add(e);
+            }
+        }
+        return lista;
     }
 
     private static Element anterior(Element e) {

@@ -13,5 +13,6 @@ public record NotaCreditoListaDTO(Long id, String numero, Integer idFactura, Str
                                   BigDecimal total, String moneda, LocalDateTime fechaEmision, String estado,
                                   Long idComprobante, String estadoComprobante, LocalDateTime fechaEnvioComprobante,
                                   boolean puedeReenviar, boolean consultableEnHacienda, String ambiente,
-                                  boolean ambienteCoincide, String motivoAmbiente) {
+                                  boolean ambienteCoincide, String motivoAmbiente,
+                                  boolean parcial) {
 }

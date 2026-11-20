@@ -129,6 +129,11 @@ public class NotaFactura {
             .orElseThrow(() -> new IllegalStateException("Código de referencia desconocido: " + codigoReferencia));
     }
 
+    /** Nota parcial (códigos 02 y 14, ADR-051): acredita un monto por línea; la factura no se anula. */
+    public boolean esParcial() {
+        return CodigoReferenciaNota.deCodigo(codigoReferencia).map(CodigoReferenciaNota::esParcial).orElse(false);
+    }
+
     public void agregarLinea(LineaNotaFactura linea) {
         linea.setNota(this);
         lineas.add(linea);

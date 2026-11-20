@@ -100,6 +100,9 @@ function renderizarAsientos(asientos) {
             case 'AUTOMATICO_PAGO':
                 tipoBadge = '<span class="badge bg-success">Auto-Pago</span>';
                 break;
+            case 'AUTOMATICO_NOTA_CREDITO':
+                tipoBadge = '<span class="badge bg-danger">Auto-Nota crédito</span>';
+                break;
             case 'AJUSTE':
                 tipoBadge = '<span class="badge bg-warning">Ajuste</span>';
                 break;

@@ -15,12 +15,34 @@
     const ADVERTENCIA_MISMO_MES = 'La factura es de este mismo mes: el código 01 tiene el mismo efecto';
     const ZONA_FISCAL = 'America/Costa_Rica';
 
+    const ADVERTENCIA_MISMO_MES_14 = 'La factura es de este mismo mes: el código 02 tiene el mismo efecto';
+    const ERROR_LINEA_MONTO = 'El monto debe ser un número mayor que 0';
+    const ERROR_LINEA_DECIMALES = 'El monto admite dos decimales como máximo';
+    const ERROR_LINEA_TOPE = 'El monto supera el disponible de la línea';
+    const ERROR_FACTURA_TOPE = 'La suma de los montos supera el disponible de la factura';
+    const ERROR_SIN_LINEAS = 'Indique el monto a acreditar de al menos una línea';
+
     const CODIGOS = [
         { codigo: '01', nombre: 'Anula documento de referencia',
-          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la nota.' },
+          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la nota.',
+          parcial: false },
         { codigo: '13', nombre: 'Anula documento de referencia por error material',
-          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original' }
+          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original',
+          parcial: false },
+        // T-047 (ADR-051): nota parcial, con monto por línea
+        { codigo: '02', nombre: 'Corrige monto',
+          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la nota.',
+          parcial: true },
+        { codigo: '14', nombre: 'Corrige monto por error material',
+          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original',
+          parcial: true }
     ];
+
+    /** Códigos de la modalidad: 'TOTAL' (01, 13) o 'PARCIAL' (02, 14). */
+    function codigosDe(modalidad) {
+        const parcial = modalidad === 'PARCIAL';
+        return CODIGOS.filter((c) => c.parcial === parcial);
+    }
 
     // ---- Botón «Emitir nota de crédito» (solo banderas del servidor; sin roles) ----
 
@@ -66,7 +88,7 @@
     function textoEfecto(codigo, periodoOriginal) {
         const c = CODIGOS.find((x) => x.codigo === codigo);
         if (!c) return '';
-        if (codigo === '13' && typeof periodoOriginal === 'string' && /^\d{4}-\d{2}$/.test(periodoOriginal)) {
+        if ((codigo === '13' || codigo === '14') && typeof periodoOriginal === 'string' && /^\d{4}-\d{2}$/.test(periodoOriginal)) {
             return c.efecto + ' (' + periodoOriginal + ')';
         }
         return c.efecto;
@@ -74,8 +96,11 @@
 
     /** Advertencia fija, no bloqueante: la nota 13 sobre una factura del mes en curso equivale a la 01 (ADR-050 §4). */
     function advertenciaMismoMes(codigo, periodoOriginal, ahora) {
-        return codigo === '13' && typeof periodoOriginal === 'string' && periodoOriginal === mesActual(ahora)
-            ? ADVERTENCIA_MISMO_MES : '';
+        if ((codigo !== '13' && codigo !== '14') || typeof periodoOriginal !== 'string'
+            || periodoOriginal !== mesActual(ahora)) {
+            return '';
+        }
+        return codigo === '14' ? ADVERTENCIA_MISMO_MES_14 : ADVERTENCIA_MISMO_MES;
     }
 
     function nombreCodigo(codigo) {
@@ -83,13 +108,81 @@
         return c ? c.nombre : '';
     }
 
-    function cuerpoPedido(idFactura, codigo, razon) {
-        return {
+    /** Pedido de la nota; `lineas` ([{idLineaFactura, montoAcreditar}]) solo en la nota parcial (02/14). */
+    function cuerpoPedido(idFactura, codigo, razon, lineas) {
+        const cuerpo = {
             idFactura: idFactura,
             tipo: 'CREDITO',
             codigoReferencia: codigo,
             razon: typeof razon === 'string' ? razon.trim() : ''
         };
+        if (Array.isArray(lineas) && lineas.length > 0) cuerpo.lineas = lineas;
+        return cuerpo;
+    }
+
+    // ---- Nota parcial (T-047): montos por línea con IVA incluido, topes y total en vivo ----
+
+    /** Céntimos enteros de un monto con a lo sumo dos decimales; null si no es un número decimal simple. */
+    function aCentimos(valor) {
+        const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(String(valor).trim());
+        return m ? Number(m[1]) * 100 + Number(((m[2] || '') + '00').slice(0, 2)) : null;
+    }
+
+    function deCentimos(c) {
+        return Math.floor(c / 100) + '.' + String(c % 100).padStart(2, '0');
+    }
+
+    /**
+     * Error del monto escrito en una línea frente a su disponible, o null. Vacío = la línea no se acredita (sin error).
+     * Un número con más de dos decimales, cero o negativo, o mayor que el disponible se rechaza; el límite exacto pasa.
+     */
+    function validarMontoLinea(texto, disponible) {
+        const t = typeof texto === 'string' ? texto.trim() : '';
+        if (t === '') return null;
+        if (!/^-?\d+(\.\d+)?$/.test(t)) return 'El monto debe ser un número';
+        const c = aCentimos(t);
+        if (c === null) return t.startsWith('-') ? ERROR_LINEA_MONTO : ERROR_LINEA_DECIMALES;
+        if (c <= 0) return ERROR_LINEA_MONTO;
+        const d = Math.round(Number(disponible) * 100);
+        return c > d ? ERROR_LINEA_TOPE : null;
+    }
+
+    /**
+     * Estado de la nota parcial a partir de las líneas del servidor (notaCreditoLineas), lo escrito por línea
+     * ({idLineaFactura: texto}) y el disponible de la factura (notaCreditoDisponible).
+     * Devuelve {total, lineas, errores, errorGeneral, valido}; el total en vivo se suma en céntimos.
+     */
+    function calcularParcial(lineasServidor, entradas, disponibleFactura) {
+        const errores = {};
+        const lineas = [];
+        let suma = 0;
+        (lineasServidor || []).forEach((l) => {
+            const texto = entradas ? entradas[l.idLineaFactura] : '';
+            const error = validarMontoLinea(texto, l.disponible);
+            if (error) {
+                errores[l.idLineaFactura] = error;
+                return;
+            }
+            const c = typeof texto === 'string' && texto.trim() !== '' ? aCentimos(texto) : null;
+            if (c !== null) {
+                suma += c;
+                lineas.push({ idLineaFactura: l.idLineaFactura, montoAcreditar: Number(deCentimos(c)) });
+            }
+        });
+        let errorGeneral = '';
+        if (Object.keys(errores).length === 0) {
+            if (lineas.length === 0) errorGeneral = ERROR_SIN_LINEAS;
+            else if (suma > Math.round(Number(disponibleFactura) * 100)) errorGeneral = ERROR_FACTURA_TOPE;
+        }
+        return {
+            total: deCentimos(suma), lineas: lineas, errores: errores, errorGeneral: errorGeneral,
+            valido: Object.keys(errores).length === 0 && errorGeneral === ''
+        };
+    }
+
+    /** «Total» o «Parcial» según la bandera `parcial` que da el servidor. */
+    function textoModalidad(nota) {
+        return nota && nota.parcial === true ? 'Parcial' : 'Total';
     }
 
     // ---- Mensajes ----
@@ -286,6 +379,33 @@
     }
 
     /**
+     * Tabla de líneas de la nota parcial: línea, descripción, total, acreditado, disponible y el campo de monto (IVA
+     * incluido). Todo por createElement + textContent; `onInput(input)` se engancha a cada campo.
+     */
+    function pintarLineasParcial(doc, cuerpo, lineas, moneda, onInput) {
+        (lineas || []).forEach((l) => {
+            const tr = doc.createElement('tr');
+            tr.appendChild(celda(doc, String(l.numeroLinea == null ? '' : l.numeroLinea)));
+            tr.appendChild(celda(doc, l.descripcion || '-'));
+            tr.appendChild(celda(doc, formatearMonto(l.total, moneda), 'text-end'));
+            tr.appendChild(celda(doc, formatearMonto(l.acreditado, moneda), 'text-end'));
+            tr.appendChild(celda(doc, formatearMonto(l.disponible, moneda), 'text-end'));
+            const input = el(doc, 'input', null, 'form-control form-control-sm text-end nc-monto-linea');
+            input.setAttribute('type', 'text');
+            input.setAttribute('inputmode', 'decimal');
+            input.setAttribute('data-id-linea', String(l.idLineaFactura));
+            input.setAttribute('aria-label', 'Monto a acreditar (IVA incluido) de la línea ' + l.numeroLinea);
+            if (Number(l.disponible) <= 0) input.setAttribute('disabled', 'disabled');
+            if (onInput) input.addEventListener('input', () => onInput(input));
+            const feedback = el(doc, 'div', null, 'invalid-feedback d-block nc-monto-error');
+            const td = celda(doc, input);
+            td.appendChild(feedback);
+            tr.appendChild(td);
+            cuerpo.appendChild(tr);
+        });
+    }
+
+    /**
      * Fila del listado. acciones: {verFactura(n), consultar(n, boton), reenviar(n, boton)}.
      * Todo el texto dinámico (número, cliente, estados...) entra por textContent.
      */
@@ -300,7 +420,10 @@
         });
         tr.appendChild(celda(doc, fac));
         tr.appendChild(celda(doc, n.clienteNombre || '-'));
-        tr.appendChild(celda(doc, (n.codigoReferencia || '') + ' - ' + (n.codigoNombre || '')));
+        const tdCodigo = celda(doc, (n.codigoReferencia || '') + ' - ' + (n.codigoNombre || ''));
+        tdCodigo.appendChild(el(doc, 'span', textoModalidad(n), 'badge ms-1 '
+            + (n.parcial === true ? 'bg-info text-dark' : 'bg-secondary')));
+        tr.appendChild(tdCodigo);
         tr.appendChild(celda(doc, formatearMonto(n.total, n.moneda) + ' ' + (n.moneda || ''), 'text-end'));
         tr.appendChild(celda(doc, formatearFecha(n.fechaEmision, true)));
         tr.appendChild(celda(doc, badge(doc, badgeNota(n.estado))));
@@ -335,6 +458,8 @@
 
     global.NotaCredito = {
         RAZON_MIN, RAZON_MAX, MOTIVO_PAGOS, AVISO_RESUMEN, ERROR_RAZON, CODIGOS,
+        codigosDe, aCentimos, deCentimos, validarMontoLinea, calcularParcial, textoModalidad, pintarLineasParcial,
+        ERROR_SIN_LINEAS, ERROR_LINEA_TOPE, ERROR_FACTURA_TOPE,
         estadoBoton, contadorRazon, validarRazon, textoEfecto, advertenciaMismoMes, mesActual, ADVERTENCIA_MISMO_MES, nombreCodigo, cuerpoPedido,
         mensajeResultado, mensajeDeError, formatearMonto, resumen,
         badgeNota, badgeComprobante, queryListado, textoPagina, resultadoReenvio, resultadoConsulta, formatearFecha, formatearDia,

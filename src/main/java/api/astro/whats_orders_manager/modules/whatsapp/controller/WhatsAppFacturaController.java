@@ -306,7 +306,7 @@ public class WhatsAppFacturaController {
             
             // Calcular total pendiente
             BigDecimal totalPendiente = facturas.stream()
-                    .map(Factura::getTotal)
+                    .map(Factura::calcularSaldoPendiente)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             
             Map<String, Object> response = new HashMap<>();

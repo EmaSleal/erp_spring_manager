@@ -143,7 +143,7 @@ class NotaCreditoRestControllerTest {
                 .estado(EstadoComprobante.FIRMADO).build();
         ComprobanteElectronico enviado = ComprobanteElectronico.builder().id(30L).claveNumerica("506CLAVE")
                 .estado(EstadoComprobante.ENVIADO).build();
-        when(notaService.emitirNotaCreditoTotal(7, null, "01", "Anulación total", "gerente")).thenReturn(nota);
+        when(notaService.emitirNotaCredito(7, null, "01", "Anulación total", null, "gerente")).thenReturn(nota);
         when(notaService.obtener(5L)).thenReturn(Optional.of(new NotaFacturaService.NotaConComprobante(nota, firmado)),
                 Optional.of(new NotaFacturaService.NotaConComprobante(nota, enviado)));
 
@@ -161,7 +161,7 @@ class NotaCreditoRestControllerTest {
     @Test
     @DisplayName("pedido inválido → 400 con el mensaje de validación")
     void invalido_400() throws Exception {
-        when(notaService.emitirNotaCreditoTotal(anyInt(), any(), anyString(), anyString(), anyString()))
+        when(notaService.emitirNotaCredito(anyInt(), any(), anyString(), anyString(), any(), anyString()))
                 .thenThrow(new NotaFacturaPedidoInvalidoException("estará disponible en una fase posterior"));
 
         mockMvc.perform(post("/api/facturas/notas-credito").contentType(MediaType.APPLICATION_JSON).content(CUERPO)
@@ -184,7 +184,7 @@ class NotaCreditoRestControllerTest {
     @Test
     @DisplayName("factura inexistente → 404")
     void facturaInexistente_404() throws Exception {
-        when(notaService.emitirNotaCreditoTotal(anyInt(), any(), anyString(), anyString(), anyString()))
+        when(notaService.emitirNotaCredito(anyInt(), any(), anyString(), anyString(), any(), anyString()))
                 .thenThrow(new NoSuchElementException("detalle interno"));
 
         mockMvc.perform(post("/api/facturas/notas-credito").contentType(MediaType.APPLICATION_JSON).content(CUERPO)
@@ -196,7 +196,7 @@ class NotaCreditoRestControllerTest {
     @Test
     @DisplayName("la factura no admite la nota → 409 con el mensaje del caso")
     void conflicto_409() throws Exception {
-        when(notaService.emitirNotaCreditoTotal(anyInt(), any(), anyString(), anyString(), anyString()))
+        when(notaService.emitirNotaCredito(anyInt(), any(), anyString(), anyString(), any(), anyString()))
                 .thenThrow(new NotaFacturaConflictoException("La factura F-7 ya está anulada"));
 
         mockMvc.perform(post("/api/facturas/notas-credito").contentType(MediaType.APPLICATION_JSON).content(CUERPO)
@@ -208,7 +208,7 @@ class NotaCreditoRestControllerTest {
     @Test
     @DisplayName("error inesperado → 500 genérico, sin el mensaje de la excepción")
     void errorInesperado_sinDetalle() throws Exception {
-        when(notaService.emitirNotaCreditoTotal(anyInt(), any(), anyString(), anyString(), anyString()))
+        when(notaService.emitirNotaCredito(anyInt(), any(), anyString(), anyString(), any(), anyString()))
                 .thenThrow(new IllegalStateException("ruta /secreta/cert.p12 sin PIN"));
 
         mockMvc.perform(post("/api/facturas/notas-credito").contentType(MediaType.APPLICATION_JSON).content(CUERPO)
@@ -253,7 +253,7 @@ class NotaCreditoRestControllerTest {
     void listado_filtros() throws Exception {
         NotaCreditoListaDTO fila = new NotaCreditoListaDTO(5L, "NC-5", 7, "FA01-00007", "Cliente", "01",
                 "Anula documento de referencia", new BigDecimal("1630.00"), "CRC",
-                LocalDateTime.of(2026, 11, 12, 10, 0), "APLICADA", 30L, "ACEPTADO", null, false, false, "SANDBOX", true, null);
+                LocalDateTime.of(2026, 11, 12, 10, 0), "APLICADA", 30L, "ACEPTADO", null, false, false, "SANDBOX", true, null, false);
         when(consultaService.listar(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(new NotaCreditoPaginaDTO(List.of(fila), 1, 10, 11, 2));
 
@@ -296,7 +296,7 @@ class NotaCreditoRestControllerTest {
                 "Anula documento de referencia", "Anulación total", null, null, "CRC", BigDecimal.ONE, BigDecimal.TEN,
                 BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.TEN, "gerente", 7, "FA01-00007", "Cliente", "506ORIGINAL",
                 null, List.of(), null, List.of(), 90L, "ASI-2026-0001", true, null,
-                java.time.LocalDate.of(2026, 11, 12), "2026-11", java.time.LocalDate.of(2026, 11, 12));
+                java.time.LocalDate.of(2026, 11, 12), "2026-11", java.time.LocalDate.of(2026, 11, 12), false);
         when(consultaService.detalle(5L)).thenReturn(Optional.of(dto));
         when(consultaService.detalle(6L)).thenReturn(Optional.empty());
 

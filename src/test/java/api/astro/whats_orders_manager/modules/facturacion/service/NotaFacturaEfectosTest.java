@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,8 +48,11 @@ class NotaFacturaEfectosTest {
     private final AsientoContableService asientoService = mock(AsientoContableService.class);
     private final FacturaService facturaService = mock(FacturaService.class);
     private final PagoService pagoService = mock(PagoService.class);
+    private final api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository facturaRepository =
+            mock(api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository.class);
     private final NotaFacturaEfectos efectos = new NotaFacturaEfectos(notaRepository, asientoService, facturaService,
-            pagoService, Clock.fixed(AHORA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()));
+            pagoService, Clock.fixed(AHORA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()),
+            facturaRepository);
 
     private Factura factura;
     private AsientoContable venta;
@@ -66,27 +70,27 @@ class NotaFacturaEfectosTest {
     }
 
     @Test
-    @DisplayName("ACEPTADO (01): reversión fechada con la emisión de la nota, factura anulada y nota APLICADA")
+    @DisplayName("ACEPTADO (01): asiento de la nota fechado con su emisión, factura anulada y nota APLICADA")
     void aceptado_codigo01() {
         NotaFactura nota = nota("01");
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService).generarAsientoReversion(eq(venta), anyString(), eq(EMISION_NOTA.toLocalDate()), eq(nota));
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()));
+        verify(asientoService, never()).generarAsientoReversion(any(), anyString(), any(), any());
         verify(facturaService).anularPorNotaCredito(eq(factura), any());
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
         assertThat(nota.getFechaAplicacion()).isEqualTo(AHORA);
     }
 
     @Test
-    @DisplayName("ACEPTADO (13): reversión con la fecha de la nota (ADR-050), no la del asiento de venta original")
+    @DisplayName("ACEPTADO (13): asiento con la fecha de la nota (ADR-050), no la del asiento de venta original")
     void aceptado_codigo13() {
         NotaFactura nota = nota("13");
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService).generarAsientoReversion(eq(venta), anyString(), eq(EMISION_NOTA.toLocalDate()),
-                eq(nota));
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()));
         assertThat(NotaFacturaEfectos.fechaDelAsiento(nota)).isEqualTo(EMISION_NOTA.toLocalDate())
                 .isNotEqualTo(FECHA_VENTA);
         assertThat(NotaFacturaEfectos.fechaDelAsiento(nota("01"))).isEqualTo(EMISION_NOTA.toLocalDate());
@@ -122,19 +126,19 @@ class NotaFacturaEfectosTest {
         efectos.alResolverseComprobante(evento);
         efectos.alResolverseComprobante(evento);
 
-        verify(asientoService, times(1)).generarAsientoReversion(any(), anyString(), any(), any());
+        verify(asientoService, times(1)).generarAsientoNotaCredito(any(), any(), any());
         verify(facturaService, times(1)).anularPorNotaCredito(any(), any());
     }
 
     @Test
-    @DisplayName("sin asiento de venta vigente: se omite la reversión y el resto se aplica")
+    @DisplayName("sin asiento de venta vigente: se omite el asiento y el resto se aplica")
     void sinAsientoDeVenta() {
         when(asientoService.obtenerAsientosVentaVigentes(factura)).thenReturn(List.of());
         NotaFactura nota = nota("01");
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService, never()).generarAsientoReversion(any(), anyString(), any(), any());
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
         verify(facturaService).anularPorNotaCredito(eq(factura), any());
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
     }
@@ -147,9 +151,9 @@ class NotaFacturaEfectosTest {
 
         assertThatThrownBy(() -> efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO)))
                 .isInstanceOf(NotaFacturaEfectosException.class)
-                .hasMessageContaining("pagos aplicados").hasMessageContaining("nota de crédito total 5");
+                .hasMessageContaining("pagos aplicados").hasMessageContaining("nota de crédito 5");
 
-        verify(asientoService, never()).generarAsientoReversion(any(), anyString(), any(), any());
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
         verify(facturaService, never()).anularPorNotaCredito(any(), any());
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.EN_TRAMITE);
         assertThat(nota.getFechaAplicacion()).isNull();
@@ -163,7 +167,7 @@ class NotaFacturaEfectosTest {
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.RECHAZADO));
 
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.RECHAZADA);
-        verify(asientoService, never()).generarAsientoReversion(any(), anyString(), any(), any());
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
         verify(facturaService, never()).anularPorNotaCredito(any(), any());
     }
 
@@ -190,6 +194,76 @@ class NotaFacturaEfectosTest {
         efectos.alResolverseComprobante(evento);
 
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.EN_TRAMITE);
+    }
+
+
+    @Test
+    @DisplayName("T-047 ACEPTADO (02, parcial): asiento de la nota, lo acreditado sube, la factura no se anula")
+    void aceptado_parcial() {
+        factura.setTotal(new BigDecimal("300.00"));
+        NotaFactura nota = notaParcial("02", "100.00", "300.00");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
+
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()));
+        verify(facturaService, never()).anularPorNotaCredito(any(), any());
+        assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("100.00");
+        assertThat(factura.estaAcreditadaTotalmente()).isFalse();
+        assertThat(factura.calcularSaldoPendiente()).isEqualByComparingTo("200.00");
+        verify(facturaRepository).save(factura);
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
+    }
+
+    @Test
+    @DisplayName("T-047: la parcial que completa el TotalComprobante deja la factura acreditada totalmente, sin anular")
+    void aceptado_parcialCompletaElTotal() {
+        factura.setTotal(new BigDecimal("300.00"));
+        factura.setMontoAcreditado(new BigDecimal("180.00"));
+
+        efectos.alResolverseComprobante(evento(notaParcial("14", "120.00", "300.00"), EstadoComprobante.ACEPTADO));
+
+        assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("300.00");
+        assertThat(factura.estaAcreditadaTotalmente()).isTrue();
+        assertThat(factura.estaAnulada()).isFalse();
+        assertThat(factura.calcularSaldoPendiente()).isEqualByComparingTo("0");
+        verify(facturaService, never()).anularPorNotaCredito(any(), any());
+    }
+
+    @Test
+    @DisplayName("T-047 criterio 22/26: si el asiento falla (p. ej. falta el parámetro contable) nada se aplica y la nota sigue EN_TRAMITE")
+    void parametroAusente_notaSigueEnTramite() {
+        when(asientoService.generarAsientoNotaCredito(any(), any(), any()))
+                .thenThrow(new IllegalStateException("Parámetro contable no configurado: NOTA_CREDITO_ANULACIONES_DESCUENTOS"));
+        factura.setTotal(new BigDecimal("300.00"));
+        NotaFactura nota = notaParcial("02", "100.00", "300.00");
+
+        assertThatThrownBy(() -> efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO)))
+                .hasMessageContaining("NOTA_CREDITO_ANULACIONES_DESCUENTOS");
+
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.EN_TRAMITE);
+        assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("0");
+        verify(facturaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("T-047: una parcial RECHAZADA no deja efectos")
+    void parcialRechazada() {
+        NotaFactura nota = notaParcial("02", "100.00", "300.00");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.RECHAZADO));
+
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.RECHAZADA);
+        assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("0");
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
+    }
+
+    private NotaFactura notaParcial(String codigo, String total, String totalComprobante) {
+        NotaFactura nota = nota(codigo);
+        nota.setTotal(new BigDecimal(total));
+        nota.setComprobanteReferencia(ComprobanteElectronico.builder().id(1L).claveNumerica("CLAVE-F")
+                .xmlComprobante("<FacturaElectronica><ResumenFactura><TotalComprobante>" + totalComprobante
+                        + "</TotalComprobante></ResumenFactura></FacturaElectronica>").build());
+        return nota;
     }
 
     private NotaFactura nota(String codigo) {

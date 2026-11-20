@@ -102,7 +102,8 @@ public class NotaCreditoConsultaService {
             lineas.add(new LineaNotaCreditoDTO(l.getNumeroLinea(),
                 l.getProducto() != null ? l.getProducto().getDescripcion() : null, l.getDescripcion(),
                 l.getCodigoCabys(), l.getCantidad(), l.getUnidadMedida(), l.getPrecioUnitario(), l.getDescuento(),
-                l.getTarifaIva(), l.getMontoIva(), l.getSubtotal(), l.getTotal()));
+                l.getTarifaIva(), l.getMontoIva(), l.getSubtotal(), l.getTotal(),
+                l.getLineaFactura() != null ? l.getLineaFactura().getIdLineaFactura() : null));
         }
         Optional<AsientoContable> asiento = asientoRepository.findFirstByNotaFactura_IdOrderByIdAsientoAsc(nota.getId());
         boolean sustituta = nota.getEstado() == EstadoNotaFactura.APLICADA
@@ -119,7 +120,7 @@ public class NotaCreditoConsultaService {
             asiento.map(AsientoContable::getIdAsiento).orElse(null),
             asiento.map(AsientoContable::getNumero).orElse(null), sustituta, motivoSustituta,
             nota.getFechaContable(), nota.getPeriodoFiscalAtribucion(),
-            asiento.map(AsientoContable::getFecha).orElse(null));
+            asiento.map(AsientoContable::getFecha).orElse(null), nota.esParcial());
     }
 
     private NotaCreditoListaDTO fila(NotaFactura n, ComprobanteElectronico c, Optional<AmbienteHacienda> activo) {
@@ -132,7 +133,7 @@ public class NotaCreditoConsultaService {
             c != null ? c.getFechaEnvio() : null, c != null && c.getEstado() != null && c.puedeReenviar(),
             ComprobanteNotaDTO.consultable(c), c != null && c.getAmbiente() != null ? c.getAmbiente().name() : null,
             c == null || AmbienteComprobanteGuard.coincide(c.getAmbiente(), activo),
-            c != null ? AmbienteComprobanteGuard.motivo(c.getAmbiente(), activo) : null);
+            c != null ? AmbienteComprobanteGuard.motivo(c.getAmbiente(), activo) : null, n.esParcial());
     }
 
     private static String nombreDe(NotaFactura nota) {

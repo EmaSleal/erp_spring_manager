@@ -207,8 +207,24 @@ public class FacturaController {
                 authentication.getName());
             detalle.setPuedeEmitirNotaCredito(notaCredito.puedeEmitir());
             detalle.setMotivoNotaCreditoNoDisponible(notaCredito.motivoNoDisponible());
+            detalle.setPuedeEmitirNotaTotal(notaCredito.puedeTotal());
+            detalle.setMotivoNotaTotalNoDisponible(notaCredito.motivoTotal());
+            detalle.setPuedeEmitirNotaParcial(notaCredito.puedeParcial());
             if (notaCredito.puedeEmitir()) {
                 notaCreditoElegibilidad.periodoFacturaOriginal(factura).ifPresent(detalle::setPeriodoFacturaOriginal);
+            }
+            if (notaCredito.puedeParcial()) {
+                // T-047: total, acreditado y disponible por línea y por factura salen del servidor (criterio 12)
+                notaCreditoElegibilidad.disponible(factura).ifPresent(d -> {
+                    detalle.setNotaCreditoTotalComprobante(d.totalComprobante());
+                    detalle.setNotaCreditoTotalAcreditado(d.totalAcreditado());
+                    detalle.setNotaCreditoDisponible(d.disponible());
+                    detalle.setNotaCreditoLineas(d.lineas().stream()
+                        .map(l -> new api.astro.whats_orders_manager.modules.facturacion.dto.LineaNotaDisponibleDTO(
+                            l.idLineaFactura(), l.numeroLinea(), l.descripcion(), l.total(), l.acreditado(),
+                            l.disponible()))
+                        .toList());
+                });
             }
             return ResponseEntity.ok(detalle);
                     

@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
 public record NotaFacturaDTO(Long id, Integer idFactura, TipoNotaFactura tipo, String codigoReferencia, String razon,
                              EstadoNotaFactura estado, LocalDateTime fechaEmision, LocalDateTime fechaAplicacion,
                              String moneda, BigDecimal total, String claveReferencia, Long idComprobante,
-                             String claveComprobante, EstadoComprobante estadoComprobante) {
+                             String claveComprobante, EstadoComprobante estadoComprobante,
+                             boolean parcial) {
 
     public static NotaFacturaDTO de(NotaFactura nota, ComprobanteElectronico comprobante) {
         return new NotaFacturaDTO(nota.getId(), nota.getFactura().getIdFactura(), nota.getTipo(),
@@ -23,6 +24,6 @@ public record NotaFacturaDTO(Long id, Integer idFactura, TipoNotaFactura tipo, S
             nota.getFechaAplicacion(), nota.getMoneda(), nota.getTotal(), nota.getClaveReferencia(),
             comprobante != null ? comprobante.getId() : null,
             comprobante != null ? comprobante.getClaveNumerica() : null,
-            comprobante != null ? comprobante.getEstado() : null);
+            comprobante != null ? comprobante.getEstado() : null, nota.esParcial());
     }
 }

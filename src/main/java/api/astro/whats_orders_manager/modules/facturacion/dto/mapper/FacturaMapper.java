@@ -68,6 +68,8 @@ public class FacturaMapper {
                 .pagos(toPagoDTOList(factura.getPagos()))
                 .totalPagado(factura.calcularTotalPagado())
                 .saldoPendiente(factura.calcularSaldoPendiente())
+                .totalAcreditado(factura.calcularTotalAcreditado())
+                .acreditadaTotalmente(factura.estaAcreditadaTotalmente())
                 .createBy(factura.getCreateBy())
                 .updateBy(factura.getUpdateBy())
                 //cast factura.getUpdateDate() from LocalDateTime to java.sql.Date
