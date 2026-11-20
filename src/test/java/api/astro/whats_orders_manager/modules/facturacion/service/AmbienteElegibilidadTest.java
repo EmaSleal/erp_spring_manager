@@ -39,7 +39,7 @@ class AmbienteElegibilidadTest {
     private final PermisoService permisos = mock(PermisoService.class);
     private final AmbienteComprobanteGuard guard = mock(AmbienteComprobanteGuard.class);
     private final NotaCreditoElegibilidad notaCredito =
-        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, guard);
+        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, guard, mock(NotaCreditoTopes.class));
     private final ComprobanteElectronico aceptado = ComprobanteElectronico.builder().id(1L)
         .estado(EstadoComprobante.ACEPTADO).vigente(true).ambiente(AmbienteHacienda.SANDBOX).build();
 
@@ -100,7 +100,7 @@ class AmbienteElegibilidadTest {
         when(facturas.findByIdParaActualizar(7)).thenReturn(Optional.of(f));
         NotaFacturaService servicio = new NotaFacturaService(facturas, notasRepo, comprobantes, comprobanteService, pagos,
             new api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService(null),
-            java.time.Clock.systemUTC(), guard, new AtribucionFiscalService("ORIGINAL"));
+            java.time.Clock.systemUTC(), guard, new AtribucionFiscalService("ORIGINAL"), mock(NotaCreditoTopes.class));
 
         assertThatThrownBy(() -> servicio.emitirNotaCreditoTotal(7,
             api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura.CREDITO, "01", "Anulación", "gerente"))

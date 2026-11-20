@@ -186,6 +186,19 @@ function openModal(button) {
                 document.getElementById("modal-total").innerText = `${monedaSimbolo}${parseFloat(data.total || 0).toFixed(2)}`;
             }
             
+            // T-047: total acreditado por notas de crédito, saldo y marca «Acreditada totalmente» (solo textContent)
+            const acreditadoSection = document.getElementById('nc-acreditado-section');
+            if (acreditadoSection) {
+                const acreditado = parseFloat(data.totalAcreditado || 0);
+                const hay = acreditado > 0 || data.acreditadaTotalmente === true;
+                acreditadoSection.style.display = hay ? '' : 'none';
+                if (hay) {
+                    document.getElementById('nc-total-acreditado').textContent = NotaCredito.formatearMonto(acreditado, data.monedaFE);
+                    document.getElementById('nc-saldo').textContent = NotaCredito.formatearMonto(data.saldoPendiente || 0, data.monedaFE);
+                    document.getElementById('nc-acreditada-badge').style.display = data.acreditadaTotalmente === true ? '' : 'none';
+                }
+            }
+
             // Mostrar información de pagos si existe
             const pagosSection = document.getElementById('pagos-section');
             const modalPagosInfo = document.getElementById('modal-pagos-info');

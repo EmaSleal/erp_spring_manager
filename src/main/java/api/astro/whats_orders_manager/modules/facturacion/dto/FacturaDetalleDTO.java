@@ -70,6 +70,10 @@ public class FacturaDetalleDTO {
     // Cálculos
     private BigDecimal totalPagado;
     private BigDecimal saldoPendiente;
+    /** Notas de crédito parciales APLICADAS (T-047). */
+    private BigDecimal totalAcreditado;
+    /** La suma de las notas parciales alcanzó el total: saldo 0, factura sin anular (T-047). */
+    private Boolean acreditadaTotalmente;
     
     // Facturación electrónica: comprobante vigente (ADR-031; null si no tiene). Solo estos datos, nunca la entidad
     private Long idComprobante;
@@ -105,6 +109,21 @@ public class FacturaDetalleDTO {
     // motivoNotaCreditoNoDisponible lo deja deshabilitado con ese texto; con ambos vacíos no hay botón.
     private Boolean puedeEmitirNotaCredito;
     private String motivoNotaCreditoNoDisponible;
+    /**
+     * T-047 (ADR-051): modalidades que admite el modal. puedeEmitirNotaTotal: 01 o 13; puedeEmitirNotaParcial: 02 o 14.
+     * motivoNotaTotalNoDisponible explica por qué no procede la total cuando la parcial sí (notas parciales previas).
+     */
+    private Boolean puedeEmitirNotaTotal;
+    private String motivoNotaTotalNoDisponible;
+    private Boolean puedeEmitirNotaParcial;
+    /** TotalComprobante del comprobante ACEPTADO; null si no se calcula (la factura no admite nota parcial). */
+    private BigDecimal notaCreditoTotalComprobante;
+    /** Suma de las notas APLICADAS y EN_TRAMITE de la factura. */
+    private BigDecimal notaCreditoTotalAcreditado;
+    /** TotalComprobante menos lo acreditado: tope de la nota parcial nueva. */
+    private BigDecimal notaCreditoDisponible;
+    /** Por línea de factura: total, ya acreditado y disponible (con IVA incluido, moneda de la factura). */
+    private List<LineaNotaDisponibleDTO> notaCreditoLineas;
     /** T-046: mes (AAAA-MM) del comprobante ACEPTADO vigente, al que la nota 13 atribuye el IVA; null si no lo hay. */
     private String periodoFacturaOriginal;
 

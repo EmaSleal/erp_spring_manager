@@ -168,4 +168,20 @@ class SustitucionElegibilidadTest {
         comprobanteNota.setConsecutivo(" ");
         assertThat(SustitucionElegibilidad.numeroDeNota(nota, comprobanteNota)).isEqualTo("NC-9");
     }
+
+    @Test
+    @DisplayName("T-047 (criterio 35): una factura acreditada totalmente (sin anular) no es elegible para sustituta")
+    void acreditadaTotalmente_noEsElegible() {
+        original.setAnulada(false);
+        original.setAcreditadaTotalmente(true);
+        original.setMontoAcreditado(new java.math.BigDecimal("1630.00"));
+        // sus notas parciales APLICADAS no son 01/13: no hay nota que anule
+        nota.setCodigoReferencia("02");
+
+        var e = regla.evaluar(original);
+
+        assertThat(e.elegible()).isFalse();
+        assertThat(regla.evaluarSinSustituta(original).elegible()).isFalse();
+        assertThat(regla.puedeEmitirSustituta(original)).isFalse();
+    }
 }

@@ -100,6 +100,10 @@ public class WhatsAppFacturaService {
         if (factura.getFechaPago() != null) {
             throw new IllegalStateException("La factura ya está pagada");
         }
+        // T-047: sin recordatorio para anuladas, acreditadas totalmente o sin saldo
+        if (!factura.admiteRecordatorioDePago()) {
+            throw new IllegalStateException("La factura no tiene saldo pendiente de cobro");
+        }
         
         if (!puedeEnviarWhatsApp(factura)) return null;
 
@@ -173,6 +177,8 @@ public class WhatsAppFacturaService {
         // Buscar todas las facturas del cliente y filtrar las que no tienen fecha de pago
         return facturaRepository.findByClienteIdCliente(idCliente).stream()
                 .filter(f -> f.getFechaPago() == null)
+                // T-047: sin anuladas, acreditadas totalmente ni facturas sin saldo
+                .filter(Factura::admiteRecordatorioDePago)
                 .toList();
     }
     
@@ -248,7 +254,7 @@ public class WhatsAppFacturaService {
                 "¿Necesitas ayuda? Contáctanos. 📞",
                 factura.getCliente().getNombre(),
                 factura.getNumeroFactura(),
-                formatearMoneda(factura.getTotal())
+                formatearMoneda(factura.calcularSaldoPendiente())
         );
     }
     
@@ -282,9 +288,9 @@ public class WhatsAppFacturaService {
                     "%d. %s - %s\n",
                     i + 1,
                     f.getNumeroFactura(),
-                    formatearMoneda(f.getTotal())
+                    formatearMoneda(f.calcularSaldoPendiente())
             ));
-            totalPendiente = totalPendiente.add(f.getTotal());
+            totalPendiente = totalPendiente.add(f.calcularSaldoPendiente());
         }
         
         if (facturas.size() > 5) {

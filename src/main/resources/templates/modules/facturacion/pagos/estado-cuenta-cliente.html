@@ -64,6 +64,11 @@
                     <div th:replace="~{shared/fragments/stat-card :: statCard(${estadoCuenta.saldoPendiente != null and estadoCuenta.saldoPendiente.signum() > 0} ? 'bg-danger' : 'bg-secondary', 'Saldo Pendiente', '₡ ' + ${#numbers.formatDecimal(estadoCuenta.saldoPendiente ?: 0, 1, 2)}, 'fas fa-exclamation-circle fa-3x', 'text-white-50')}"></div>
                 </div>
             </div>
+            <p class="text-muted small mb-4" th:if="${estadoCuenta.totalAcreditado != null and estadoCuenta.totalAcreditado.signum() > 0}">
+                <i class="fas fa-file-circle-minus me-1"></i>Total acreditado por notas de crédito:
+                <strong th:text="'₡ ' + ${#numbers.formatDecimal(estadoCuenta.totalAcreditado, 1, 2)}">₡ 0.00</strong>
+                (ya descontado del saldo pendiente)
+            </p>
 
             <!-- Client Info Card -->
             <div class="card shadow-sm border-0 mb-4">

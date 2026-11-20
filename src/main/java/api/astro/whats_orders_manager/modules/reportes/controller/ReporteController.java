@@ -735,6 +735,10 @@ public class ReporteController {
             LocalDate hoy = LocalDate.now();
             
             for (Factura factura : todasFacturas) {
+                if (factura.estaAcreditadaTotalmente()) {
+                    // T-047: acreditada totalmente por notas de crédito: ni pagada ni pendiente ni vencida
+                    continue;
+                }
                 if (factura.getFechaPago() != null) {
                     // Factura pagada
                     estadoCounts.put("Pagadas", estadoCounts.get("Pagadas") + 1);

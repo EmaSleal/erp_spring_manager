@@ -114,6 +114,15 @@
                         </h5>
                     </div>
                     
+                    <!-- T-047: notas de crédito parciales (total acreditado, saldo, acreditada totalmente) -->
+                    <div class="mt-3" id="nc-acreditado-section" style="display: none;">
+                        <div class="d-flex flex-wrap justify-content-end gap-3 align-items-center">
+                            <span id="nc-acreditada-badge" class="badge bg-success" style="display: none;">Acreditada totalmente</span>
+                            <span><strong>Total acreditado:</strong> <span id="nc-total-acreditado"></span></span>
+                            <span><strong>Saldo:</strong> <span id="nc-saldo"></span></span>
+                        </div>
+                    </div>
+
                     <!-- Información de Pagos -->
                     <div class="mt-4" id="pagos-section" style="display: none;">
                         <h6 class="text-secondary fw-bold mb-3">
@@ -173,12 +182,21 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3" id="nc-modalidad-grupo">
+                        <label class="form-label fw-bold d-block">Modalidad</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="nc-modalidad" id="nc-modalidad-total" value="TOTAL" checked>
+                            <label class="form-check-label" for="nc-modalidad-total">Total</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="nc-modalidad" id="nc-modalidad-parcial" value="PARCIAL">
+                            <label class="form-check-label" for="nc-modalidad-parcial">Parcial</label>
+                        </div>
+                        <div id="nc-modalidad-motivo" class="form-text text-muted"></div>
+                    </div>
                     <div class="mb-3">
                         <label for="nc-codigo" class="form-label fw-bold">Código de referencia</label>
-                        <select id="nc-codigo" class="form-select">
-                            <option value="01">01 - Anula documento de referencia</option>
-                            <option value="13">13 - Anula documento de referencia por error material</option>
-                        </select>
+                        <select id="nc-codigo" class="form-select"></select>
                         <div id="nc-efecto" class="form-text"></div>
                         <div id="nc-advertencia" class="form-text text-warning" style="display:none"></div>
                     </div>
@@ -189,6 +207,28 @@
                             <div id="nc-razon-error" class="invalid-feedback d-block"></div>
                             <small id="nc-contador" class="text-muted ms-auto">0/180</small>
                         </div>
+                    </div>
+                    <div id="nc-parcial" class="mb-3" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-2">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Descripción</th>
+                                        <th class="text-end">Total</th>
+                                        <th class="text-end">Ya acreditado</th>
+                                        <th class="text-end">Disponible</th>
+                                        <th style="min-width: 11rem;">Monto a acreditar (IVA incluido)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nc-lineas"></tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Disponible de la factura: <span id="nc-disponible-factura"></span></small>
+                            <strong>Total de la nota: <span id="nc-total-nota">0.00</span></strong>
+                        </div>
+                        <div id="nc-parcial-error" class="text-danger small"></div>
                     </div>
                     <div class="border rounded p-3 mb-3 bg-light">
                         <h6 class="fw-bold mb-2">Resumen</h6>

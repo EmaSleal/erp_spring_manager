@@ -18,7 +18,9 @@ public enum TipoAsiento {
     AUTOMATICO_PAGO("Automático - Pago", "Generado automáticamente al registrar un pago"),
     AUTOMATICO_COMPRA("Automático - Compra", "Generado automáticamente al contabilizar una compra"),
     AUTOMATICO_GASTO("Automático - Gasto", "Generado automáticamente al registrar un gasto"),
-    AUTOMATICO_NOMINA("Automático - Nómina", "Generado automáticamente al procesar nómina");
+    AUTOMATICO_NOMINA("Automático - Nómina", "Generado automáticamente al procesar nómina"),
+    /** T-047: asiento de una nota de crédito (total o parcial); no cuenta como venta en ninguna consulta por tipo. */
+    AUTOMATICO_NOTA_CREDITO("Automático - Nota de crédito", "Generado automáticamente al aplicarse una nota de crédito");
     
     private final String nombre;
     private final String descripcion;

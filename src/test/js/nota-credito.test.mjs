@@ -247,6 +247,125 @@ test('ningún JS nuevo asigna innerHTML/outerHTML ni usa insertAdjacentHTML ni d
     }
 });
 
+// ---- T-047 nota parcial (ADR-051): total en vivo, topes, pedido y pintado ----
+
+const LINEAS = [
+    { idLineaFactura: 11, numeroLinea: 1, descripcion: 'Arroz', total: 113.00, acreditado: 0, disponible: 113.00 },
+    { idLineaFactura: 12, numeroLinea: 2, descripcion: 'Frijol', total: 50.00, acreditado: 20.00, disponible: 30.00 }
+];
+
+test('T-047 códigos por modalidad: total 01/13, parcial 02/14, con su texto de efecto (ADR-050)', () => {
+    const n = cargar();
+    assert.equal(n.codigosDe('TOTAL').map((c) => c.codigo).join(), '01,13');
+    assert.equal(n.codigosDe('PARCIAL').map((c) => c.codigo).join(), '02,14');
+    assert.match(n.textoEfecto('02'), /fecha de la nota; el IVA se atribuye al mes de la nota/);
+    assert.equal(n.textoEfecto('14', '2026-09'),
+        'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original (2026-09)');
+    assert.equal(n.nombreCodigo('02'), 'Corrige monto');
+    assert.equal(n.nombreCodigo('14'), 'Corrige monto por error material');
+});
+
+test('T-047 advertencia del 14 sobre una factura del mismo mes; el 02 no la lleva', () => {
+    const n = cargar();
+    const ahora = new Date('2026-11-15T12:00:00Z');
+    assert.match(n.advertenciaMismoMes('14', '2026-11', ahora), /mismo mes: el código 02 tiene el mismo efecto/);
+    assert.equal(n.advertenciaMismoMes('14', '2026-10', ahora), '');
+    assert.equal(n.advertenciaMismoMes('02', '2026-11', ahora), '');
+    assert.equal(n.advertenciaMismoMes('13', '2026-11', ahora), n.ADVERTENCIA_MISMO_MES);
+});
+
+test('T-047 monto por línea: vacío no cuenta; dos decimales; límite exacto ok, +0.01 rechazado', () => {
+    const n = cargar();
+    assert.equal(n.validarMontoLinea('', 30), null);
+    assert.equal(n.validarMontoLinea('30.00', 30), null);
+    assert.equal(n.validarMontoLinea('30', 30), null);
+    assert.match(n.validarMontoLinea('30.01', 30), /supera el disponible de la línea/);
+    assert.match(n.validarMontoLinea('0', 30), /mayor que 0/);
+    assert.match(n.validarMontoLinea('-1', 30), /mayor que 0/);
+    assert.match(n.validarMontoLinea('1.234', 30), /dos decimales/);
+    assert.match(n.validarMontoLinea('abc', 30), /número/);
+});
+
+test('T-047 total en vivo: suma en céntimos sin deriva de coma flotante', () => {
+    const n = cargar();
+    const r = n.calcularParcial(LINEAS, { 11: '0.10', 12: '0.20' }, 143);
+    assert.equal(r.total, '0.30');
+    assert.equal(r.valido, true);
+    assert.deepEqual(JSON.parse(JSON.stringify(r.lineas)),
+        [{ idLineaFactura: 11, montoAcreditar: 0.1 }, { idLineaFactura: 12, montoAcreditar: 0.2 }]);
+    assert.equal(n.calcularParcial(LINEAS, {}, 143).total, '0.00');
+});
+
+test('T-047 el tope de la línea y el de la factura se validan; el límite exacto pasa y un céntimo más no', () => {
+    const n = cargar();
+    const ok = n.calcularParcial(LINEAS, { 11: '113.00', 12: '30.00' }, 143);
+    assert.equal(ok.valido, true);
+    assert.equal(ok.total, '143.00');
+    const linea = n.calcularParcial(LINEAS, { 12: '30.01' }, 143);
+    assert.equal(linea.valido, false);
+    assert.match(linea.errores[12], /supera el disponible/);
+    // tope de factura menor que la suma de las líneas
+    const fac = n.calcularParcial(LINEAS, { 11: '100.00', 12: '30.00' }, 129.99);
+    assert.equal(fac.valido, false);
+    assert.match(fac.errorGeneral, /supera el disponible de la factura/);
+    assert.equal(n.calcularParcial(LINEAS, { 11: '100.00', 12: '30.00' }, 130).valido, true);
+});
+
+test('T-047 sin ninguna línea con monto no es válido (la nota necesita al menos una línea)', () => {
+    const n = cargar();
+    const r = n.calcularParcial(LINEAS, { 11: '', 12: '' }, 143);
+    assert.equal(r.valido, false);
+    assert.equal(r.lineas.length, 0);
+});
+
+test('T-047 pedido parcial lleva lineas; el total no las lleva', () => {
+    const n = cargar();
+    assert.equal(JSON.stringify(n.cuerpoPedido(7, '02', ' Precio mal ', [{ idLineaFactura: 11, montoAcreditar: 10.5 }])),
+        '{"idFactura":7,"tipo":"CREDITO","codigoReferencia":"02","razon":"Precio mal",'
+        + '"lineas":[{"idLineaFactura":11,"montoAcreditar":10.5}]}');
+    assert.equal(JSON.stringify(n.cuerpoPedido(7, '01', 'Anula')),
+        '{"idFactura":7,"tipo":"CREDITO","codigoReferencia":"01","razon":"Anula"}');
+});
+
+test('T-047 el error del servidor (409 de tope) se muestra tal cual, sin cerrar el modal', () => {
+    const n = cargar();
+    assert.equal(n.mensajeDeError(409, { message: 'El monto a acreditar supera el disponible de la línea' }),
+        'El monto a acreditar supera el disponible de la línea');
+});
+
+test('T-047 modalidad de la nota en listado y detalle: Total o Parcial', () => {
+    const n = cargar();
+    assert.equal(n.textoModalidad({ parcial: true }), 'Parcial');
+    assert.equal(n.textoModalidad({ parcial: false }), 'Total');
+    assert.equal(n.textoModalidad({}), 'Total');
+});
+
+test('T-047 la tabla de líneas pinta datos hostiles con textContent y el campo de monto', () => {
+    const n = cargar();
+    const mal = '<img src=x onerror=alert(1)>';
+    const doc = documentoFalso();
+    const cuerpo = doc.createElement('tbody');
+    n.pintarLineasParcial(doc, cuerpo, [{ ...LINEAS[0], descripcion: mal }, LINEAS[1]], 'CRC', () => {});
+    assert.equal(cuerpo.hijos.length, 2);
+    const fila = cuerpo.hijos[0];
+    assert.equal(fila.hijos[1]._texto, mal);
+    assert.equal(fila.hijos[2]._texto, '₡113.00');
+    assert.equal(fila.hijos[3]._texto, '₡0.00');
+    assert.equal(fila.hijos[4]._texto, '₡113.00');
+    const input = fila.hijos[5].hijos[0];
+    assert.equal(input.tag, 'input');
+    assert.equal(input.attrs['data-id-linea'], '11');
+    assert.equal(cuerpo.hijos[1].hijos[3]._texto, '₡20.00');
+    assert.equal(cuerpo.hijos[1].hijos[4]._texto, '₡30.00');
+});
+
+test('T-047 el modal pinta con textContent y no usa innerHTML (inspección del fuente)', () => {
+    const codigo = fs.readFileSync(path.join(JS, 'nota-credito-modal.js'), 'utf8');
+    assert.match(codigo, /pintarLineasParcial/);
+    assert.match(codigo, /textContent/);
+    assert.doesNotMatch(codigo, /\.(innerHTML|outerHTML)\s*[+\-]?=/);
+});
+
 // ---- orden de scripts ----
 
 test('nota-credito.js carga antes de facturas.js (y sustitucion-factura.js también)', () => {

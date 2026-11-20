@@ -521,6 +521,8 @@ public class EmailServiceImpl implements EmailService {
             Context context = new Context();
             context.setVariable("empresa", empresa);
             context.setVariable("factura", factura);
+            // T-047: el recordatorio muestra el saldo pendiente (total - acreditado - pagado), no el total
+            context.setVariable("saldoPendiente", factura.calcularSaldoPendiente());
             context.setVariable("cliente", factura.getCliente());
             context.setVariable("lineas", lineas);
             context.setVariable("diasRetraso", diasRetraso);
