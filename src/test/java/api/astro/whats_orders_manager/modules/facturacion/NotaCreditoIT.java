@@ -876,7 +876,7 @@ class NotaCreditoIT {
                 .getConsecutivoNotaCredito();
         MvcResult excede = emitirParcial(idFactura, "02", "Excede", acreditar(lineas.get(1), "300.01"));
         assertThat(excede.getResponse().getStatus()).isEqualTo(409);
-        assertThat(excede.getResponse().getContentAsString()).contains("supera el disponible");
+        assertThat(excede.getResponse().getContentAsString()).contains(NotaFacturaService.MENSAJE_TOPE_LINEA);
         assertThat(notas(idFactura)).isEqualTo(2);
         assertThat(configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
                 .getConsecutivoNotaCredito()).as("sin consecutivo").isEqualTo(consecutivo);
@@ -908,7 +908,7 @@ class NotaCreditoIT {
 
         MvcResult otra = emitirParcial(idFactura, "02", "Otra", acreditar(lineas.get(0), "0.01"));
         assertThat(otra.getResponse().getStatus()).isEqualTo(409);
-        assertThat(otra.getResponse().getContentAsString()).contains("acreditada totalmente");
+        assertThat(otra.getResponse().getContentAsString()).contains(NotaFacturaService.MENSAJE_ACREDITADA_TOTALMENTE);
         assertThat(emitir(idFactura, "01", "Total").getResponse().getStatus()).isEqualTo(409);
         assertThat(sustituta(idFactura, null).getResponse().getStatus())
                 .as("una factura acreditada totalmente no es elegible para sustituta").isEqualTo(409);
@@ -1020,7 +1020,7 @@ class NotaCreditoIT {
                 .getConsecutivoNotaCredito();
         MvcResult ajena = emitirParcial(idFactura, "02", "Línea ajena", acreditar(999_999, "10.00"));
         assertThat(ajena.getResponse().getStatus()).isEqualTo(409);
-        assertThat(ajena.getResponse().getContentAsString()).contains("no pertenece a la factura");
+        assertThat(ajena.getResponse().getContentAsString()).contains(NotaFacturaService.MENSAJE_LINEA_AJENA);
         assertThat(notas(idFactura)).isZero();
         assertThat(configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
                 .getConsecutivoNotaCredito()).isEqualTo(consecutivo);

@@ -77,6 +77,11 @@ public class NotaFacturaService {
         + "para acreditar un monto por línea use el código 02 o 14";
     public static final String MENSAJE_LINEA_INVALIDA = "Cada línea debe indicar la línea de la factura y un monto a "
         + "acreditar mayor que 0 con dos decimales como máximo";
+    public static final String MENSAJE_LINEA_REPETIDA = "Una línea de la factura no puede repetirse en la nota";
+    public static final String MENSAJE_LINEA_AJENA = "La línea indicada no pertenece a la factura";
+    public static final String MENSAJE_TOPE_LINEA = "El monto a acreditar supera el disponible de la línea";
+    public static final String MENSAJE_TOPE_FACTURA = "La suma de las notas supera el total del comprobante aceptado";
+    public static final String MENSAJE_ACREDITADA_TOTALMENTE = "La factura ya está acreditada totalmente";
     public static final String MENSAJE_TOTAL_CON_PARCIALES =
         "La factura tiene notas parciales; acredite el resto con una nota parcial";
 
@@ -129,8 +134,7 @@ public class NotaFacturaService {
                     throw new NotaFacturaPedidoInvalidoException(MENSAJE_LINEA_INVALIDA);
                 }
                 if (!vistas.add(l.idLineaFactura())) {
-                    throw new NotaFacturaPedidoInvalidoException("La línea de factura " + l.idLineaFactura()
-                        + " está repetida en la nota");
+                    throw new NotaFacturaPedidoInvalidoException(MENSAJE_LINEA_REPETIDA);
                 }
             }
         } else if (conLineas) {
@@ -179,8 +183,7 @@ public class NotaFacturaService {
             throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura() + " ya está anulada");
         }
         if (factura.estaAcreditadaTotalmente()) {
-            throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura()
-                + " ya está acreditada totalmente por notas de crédito");
+            throw new NotaFacturaConflictoException(MENSAJE_ACREDITADA_TOTALMENTE);
         }
         if (codigo.esTotal() && notaRepository.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(idFactura,
                 NotaCreditoTopes.CUENTAN, CODIGOS_PARCIALES)) {
@@ -322,8 +325,7 @@ public class NotaFacturaService {
         }
         for (Integer id : montoPorLinea.keySet()) {
             if (!idsFactura.contains(id)) {
-                throw new NotaFacturaConflictoException("La línea " + id + " no pertenece a la factura "
-                    + factura.getNumeroFactura());
+                throw new NotaFacturaConflictoException(MENSAJE_LINEA_AJENA);
             }
         }
         List<String> sinCabys = DatosFeProducto.productosSinCabys(seleccionadas);
@@ -343,9 +345,7 @@ public class NotaFacturaService {
             BigDecimal yaAcreditado = acreditadoPorLinea.getOrDefault(linea.getIdLineaFactura(), BigDecimal.ZERO);
             BigDecimal disponible = totalLinea.subtract(yaAcreditado);
             if (monto.compareTo(disponible) > 0) {
-                throw new NotaFacturaConflictoException("El monto a acreditar de la línea " + linea.getNumeroLinea()
-                    + " (" + monto.toPlainString() + ") supera el disponible de la línea ("
-                    + disponible.max(BigDecimal.ZERO).toPlainString() + " de " + totalLinea.toPlainString() + ")");
+                throw new NotaFacturaConflictoException(MENSAJE_TOPE_LINEA);
             }
             BigDecimal cantidad = NotaCreditoTopes.cantidad(linea);
             DesgloseImpuesto desglose = calculadoraImpuestoService.desglosar(monto,
@@ -385,10 +385,7 @@ public class NotaFacturaService {
         BigDecimal totalComprobante = NotaCreditoTopes.totalComprobante(aceptado);
         BigDecimal acreditado = topes.acreditadoDeLaFactura(factura.getIdFactura());
         if (acreditado.add(nota.getTotal()).compareTo(totalComprobante) > 0) {
-            throw new NotaFacturaConflictoException("La suma de las notas de crédito de la factura "
-                + factura.getNumeroFactura() + " (" + acreditado.add(nota.getTotal()).toPlainString()
-                + ") supera el total del comprobante aceptado (" + totalComprobante.toPlainString()
-                + "); disponible: " + totalComprobante.subtract(acreditado).max(BigDecimal.ZERO).toPlainString());
+            throw new NotaFacturaConflictoException(MENSAJE_TOPE_FACTURA);
         }
     }
 

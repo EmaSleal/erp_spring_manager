@@ -157,7 +157,7 @@ class NotaFacturaParcialTest {
         assertThat(emitir("02", acreditar(1, "2260.00")).getTotal()).isEqualByComparingTo("2260.00");
 
         assertThatThrownBy(() -> emitir("02", acreditar(1, "2260.01")))
-                .isInstanceOf(NotaFacturaConflictoException.class).hasMessageContaining("supera el disponible");
+                .isInstanceOf(NotaFacturaConflictoException.class).hasMessage(NotaFacturaService.MENSAJE_TOPE_LINEA);
     }
 
     @Test
@@ -178,14 +178,14 @@ class NotaFacturaParcialTest {
 
         assertThatThrownBy(() -> emitir("02", acreditar(2, "1.01")))
                 .isInstanceOf(NotaFacturaConflictoException.class)
-                .hasMessageContaining("supera el total del comprobante aceptado");
+                .hasMessage(NotaFacturaService.MENSAJE_TOPE_FACTURA);
     }
 
     @Test
     @DisplayName("la línea debe pertenecer a la factura → 409 sin nota ni comprobante")
     void lineaAjena() {
         assertThatThrownBy(() -> emitir("02", acreditar(999, "10.00")))
-                .isInstanceOf(NotaFacturaConflictoException.class).hasMessageContaining("no pertenece a la factura");
+                .isInstanceOf(NotaFacturaConflictoException.class).hasMessage(NotaFacturaService.MENSAJE_LINEA_AJENA);
         verify(notas, never()).saveAndFlush(any());
         verify(comprobanteService, never()).generarYFirmarDesdeNota(any());
     }
@@ -222,7 +222,7 @@ class NotaFacturaParcialTest {
         when(notas.existsByFactura_IdFacturaAndEstadoIn(anyInt(), anyCollection())).thenReturn(false);
         factura.setAcreditadaTotalmente(true);
         assertThatThrownBy(() -> emitir("02", acreditar(1, "10.00")))
-                .isInstanceOf(NotaFacturaConflictoException.class).hasMessageContaining("acreditada totalmente");
+                .isInstanceOf(NotaFacturaConflictoException.class).hasMessage(NotaFacturaService.MENSAJE_ACREDITADA_TOTALMENTE);
 
         factura.setAcreditadaTotalmente(false);
         factura.setAnulada(true);

@@ -84,7 +84,7 @@ class NotaFacturaPedidoTest {
         assertThatThrownBy(() -> NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "02", RAZON,
                 java.util.List.of(new EmitirNotaCreditoRequest.LineaAcreditar(3, BigDecimal.ONE),
                         new EmitirNotaCreditoRequest.LineaAcreditar(3, BigDecimal.TEN))))
-                .isInstanceOf(NotaFacturaPedidoInvalidoException.class).hasMessageContaining("repetida");
+                .isInstanceOf(NotaFacturaPedidoInvalidoException.class).hasMessage(NotaFacturaService.MENSAJE_LINEA_REPETIDA);
         // 10.50 y 10.5 (misma cantidad) son válidos
         assertThat(NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "02", RAZON,
                 java.util.List.of(new EmitirNotaCreditoRequest.LineaAcreditar(1, new java.math.BigDecimal("10.5")))))

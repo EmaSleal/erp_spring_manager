@@ -37,6 +37,7 @@
         vaciar(dl);
         par(dl, 'Número', d.numero);
         par(dl, 'Estado', NC.badge(document, NC.badgeNota(d.estado)));
+        par(dl, 'Modalidad', NC.textoModalidad(d));
         par(dl, 'Código', d.codigoReferencia + ' - ' + (d.codigoNombre || ''));
         par(dl, 'Razón', d.razon);
         par(dl, 'Fecha de emisión', NC.formatearFecha(d.fechaEmision, true));
