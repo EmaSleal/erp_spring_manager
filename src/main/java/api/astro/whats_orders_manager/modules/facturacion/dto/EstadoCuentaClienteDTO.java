@@ -25,6 +25,8 @@ public class EstadoCuentaClienteDTO {
     // Aggregated summary
     private BigDecimal totalFacturado;
     private BigDecimal totalPagado;
+    /** Notas de crédito parciales APLICADAS de las facturas no anuladas (T-047). */
+    private BigDecimal totalAcreditado;
     private BigDecimal saldoPendiente;
     private int totalFacturas;
     private int facturasPendientes;

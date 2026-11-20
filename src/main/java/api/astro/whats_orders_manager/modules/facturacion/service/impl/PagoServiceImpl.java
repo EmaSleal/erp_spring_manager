@@ -191,6 +191,10 @@ public class PagoServiceImpl implements PagoService {
             if (factura.estaAnulada()) {
                 throw new IllegalStateException("No se pueden registrar pagos sobre una factura anulada");
             }
+            if (factura.estaAcreditadaTotalmente()) {
+                throw new IllegalStateException(
+                    "No se pueden registrar pagos sobre una factura acreditada totalmente por notas de crédito");
+            }
             // ADR-037 §3: con una nota de crédito en trámite la factura no admite pagos (T-032)
             notaFacturaPrecondiciones.exigirSinNotaEnTramite(factura.getIdFactura(), "registrar un pago");
 
@@ -735,9 +739,16 @@ public class PagoServiceImpl implements PagoService {
                 : (p.getMonto() != null ? p.getMonto() : BigDecimal.ZERO))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal saldoPendiente = totalFacturado.subtract(totalPagado);
+        // T-047: las notas de crédito parciales APLICADAS bajan el saldo (una factura anulada no suma)
+        BigDecimal totalAcreditado = facturaEntities.stream()
+            .filter(f -> !f.estaAnulada())
+            .map(Factura::calcularTotalAcreditado)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal saldoPendiente = totalFacturado.subtract(totalAcreditado).subtract(totalPagado);
 
         int facturasPendientes = (int) facturaEntities.stream()
+            .filter(f -> !f.estaAcreditadaTotalmente())
             .filter(f -> f.getEstadoPago() != null && f.getEstadoPago().tieneSaldoPendiente())
             .count();
 
@@ -749,6 +760,7 @@ public class PagoServiceImpl implements PagoService {
             .telefono(cliente.getTelefono())
             .totalFacturado(totalFacturado)
             .totalPagado(totalPagado)
+            .totalAcreditado(totalAcreditado)
             .saldoPendiente(saldoPendiente)
             .totalFacturas(facturaEntities.size())
             .facturasPendientes(facturasPendientes)

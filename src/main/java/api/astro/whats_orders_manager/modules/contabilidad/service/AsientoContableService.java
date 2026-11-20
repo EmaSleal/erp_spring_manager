@@ -15,6 +15,7 @@ import api.astro.whats_orders_manager.modules.contabilidad.repository.DetalleAsi
 import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
+import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
@@ -398,6 +399,13 @@ public class AsientoContableService {
     public static final String CLAVE_VENTA_INGRESOS = "VENTA_INGRESOS";
     /** Clave de la cuenta de IVA por pagar (CR en venta). */
     public static final String CLAVE_VENTA_IVA_POR_PAGAR = "VENTA_IVA_POR_PAGAR";
+    /** Clave de la cuenta de devoluciones sobre ventas: débito por la base de la nota código 06 (ADR-054, 4.1.02.001). */
+    public static final String CLAVE_NOTA_CREDITO_DEVOLUCIONES = "NOTA_CREDITO_DEVOLUCIONES";
+    /**
+     * Clave de la cuenta de anulaciones, descuentos y rebajas sobre ventas: débito por la base de las notas códigos 01
+     * y 02 (ADR-054, 4.1.02.002).
+     */
+    public static final String CLAVE_NOTA_CREDITO_ANULACIONES_DESCUENTOS = "NOTA_CREDITO_ANULACIONES_DESCUENTOS";
     /** Clave de la cuenta de anticipos de clientes (CR en cobro sin factura). */
     public static final String CLAVE_COBRO_ANTICIPOS_CLIENTES = "COBRO_ANTICIPOS_CLIENTES";
     /** Prefijo de las claves de caja/banco por método de pago: COBRO_CAJA_&lt;MetodoPago&gt;. */
@@ -455,6 +463,139 @@ public class AsientoContableService {
 
         log.info("Asiento de venta generado y contabilizado: {}", guardado.getNumero());
         return guardado;
+    }
+
+    /**
+     * Asiento de una nota de crédito aceptada, total o parcial (ADR-051 §5, ADR-052, ADR-054). Reemplaza la reversión
+     * espejo del asiento de venta (que se conserva solo para las notas ya registradas).
+     *
+     * Estructura (montos en CRC al tipo de cambio de la factura, el mismo del asiento de venta, ADR-011):
+     *   DR cuenta de la base (único punto de decisión: {@link #resolverCuentaBaseNota}) — base de la nota
+     *   DR VENTA_IVA_POR_PAGAR (solo si el impuesto &gt; 0)                               — impuesto de la nota
+     *   CR VENTA_CXC_CLIENTES                                                             — total de la nota
+     * El residuo de redondeo (como máximo un céntimo) se lleva a la línea de la base.
+     *
+     * El asiento queda enlazado a la nota y a la factura; su tipo es AUTOMATICO_VENTA y se distingue del asiento de venta
+     * por su nota (las consultas de venta vigente excluyen los asientos con nota).
+     *
+     * @param ventaOriginal asiento de venta vigente de la factura (de él sale la cuenta de ventas para 13 y 14)
+     * @param fecha         fecha contable de la nota (ADR-050)
+     * @throws IllegalStateException falta un parámetro contable (el mensaje lo nombra), código sin cuenta definida o
+     *                               el asiento no cuadra
+     */
+    @Transactional
+    public AsientoContable generarAsientoNotaCredito(NotaFactura nota, AsientoContable ventaOriginal, LocalDate fecha) {
+        if (nota == null || nota.getFactura() == null) {
+            throw new IllegalArgumentException("La nota y su factura son obligatorias para generar el asiento");
+        }
+        if (fecha == null) {
+            throw new IllegalArgumentException("La fecha contable de la nota es obligatoria");
+        }
+        Factura factura = nota.getFactura();
+        BigDecimal tipoCambio = resolverTipoCambio(factura);
+
+        CuentaContable cuentaBase = resolverCuentaBaseNota(nota.getCodigoReferencia(), ventaOriginal);
+        CuentaContable cuentaCxC = resolverCuenta(CLAVE_VENTA_CXC_CLIENTES);
+
+        BigDecimal totalCrc = convertirACrc(nota.getTotal(), tipoCambio);
+        BigDecimal impuestoCrc = convertirACrc(nota.getImpuesto(), tipoCambio);
+        BigDecimal baseCrc = convertirACrc(nota.getSubtotal(), tipoCambio);
+        BigDecimal diferencia = totalCrc.subtract(baseCrc).subtract(impuestoCrc);
+        if (diferencia.signum() != 0 && diferencia.abs().compareTo(TOLERANCIA_REDONDEO) <= 0) {
+            baseCrc = baseCrc.add(diferencia);
+        }
+        String nombreCliente = nombreCliente(factura.getCliente());
+
+        AsientoContable asiento = new AsientoContable();
+        asiento.setNumero(generarNumeroAsiento());
+        asiento.setFecha(fecha);
+        asiento.setConcepto(truncar("Nota de crédito " + nota.getId() + " (código " + nota.getCodigoReferencia()
+            + ") sobre factura " + factura.getNumeroFactura() + nombreCliente, 500));
+        asiento.setTipo(TipoAsiento.AUTOMATICO_VENTA);
+        asiento.setEstado(EstadoAsiento.BORRADOR);
+        asiento.setFactura(factura);
+        asiento.setNotaFactura(nota);
+
+        List<DetalleAsiento> detalles = new ArrayList<>();
+        if (baseCrc.signum() > 0) {
+            DetalleAsiento debitoBase = new DetalleAsiento();
+            debitoBase.setCuenta(cuentaBase);
+            debitoBase.setDebe(baseCrc);
+            debitoBase.setDescripcion("Base de la nota de crédito " + nota.getCodigoReferencia());
+            debitoBase.setAsiento(asiento);
+            detalles.add(debitoBase);
+        }
+        if (impuestoCrc.signum() > 0) {
+            DetalleAsiento debitoIva = new DetalleAsiento();
+            debitoIva.setCuenta(resolverCuenta(CLAVE_VENTA_IVA_POR_PAGAR));
+            debitoIva.setDebe(impuestoCrc);
+            debitoIva.setDescripcion("IVA por pagar");
+            debitoIva.setAsiento(asiento);
+            detalles.add(debitoIva);
+        }
+        DetalleAsiento creditoCxC = new DetalleAsiento();
+        creditoCxC.setCuenta(cuentaCxC);
+        creditoCxC.setHaber(totalCrc);
+        creditoCxC.setDescripcion("Cuentas por cobrar" + nombreCliente);
+        creditoCxC.setAsiento(asiento);
+        detalles.add(creditoCxC);
+        asiento.setDetalles(detalles);
+
+        validarCuadre(asiento, "nota de crédito");
+        AsientoContable guardado = asientoRepository.save(asiento);
+        guardado.contabilizar();
+        guardado = asientoRepository.save(guardado);
+        log.info("Asiento {} de la nota de crédito {} (código {}) generado y contabilizado", guardado.getNumero(),
+            nota.getId(), nota.getCodigoReferencia());
+        return guardado;
+    }
+
+    /**
+     * Único punto de decisión de la cuenta que recibe el débito por la base de una nota de crédito (ADR-052, ADR-054).
+     * Sin rama por defecto: todo código sin cuenta definida se rechaza.
+     * <ul>
+     *   <li>01 y 02 → parámetro {@value #CLAVE_NOTA_CREDITO_ANULACIONES_DESCUENTOS} (4.1.02.002);</li>
+     *   <li>06 → parámetro {@value #CLAVE_NOTA_CREDITO_DEVOLUCIONES} (4.1.02.001);</li>
+     *   <li>13 y 14 → la cuenta de ventas del asiento de venta original;</li>
+     *   <li>12 → rechazado (P-105, nota por exoneración aún no soportada); el resto de códigos → rechazado.</li>
+     * </ul>
+     *
+     * @param ventaOriginal asiento de venta de la factura; solo se lee para 13 y 14
+     * @throws IllegalStateException código rechazado, parámetro contable no configurado o cuenta no utilizable
+     */
+    public CuentaContable resolverCuentaBaseNota(String codigoReferencia, AsientoContable ventaOriginal) {
+        CodigoReferenciaNota codigo = CodigoReferenciaNota.deCodigo(codigoReferencia)
+            .orElseThrow(() -> new IllegalStateException("Código de referencia desconocido: " + codigoReferencia
+                + "; no tiene cuenta contable para la base de la nota de crédito"));
+        return switch (codigo) {
+            case ANULA_DOCUMENTO, CORRIGE_MONTO -> resolverCuenta(CLAVE_NOTA_CREDITO_ANULACIONES_DESCUENTOS);
+            case DEVOLUCION_MERCANCIA -> resolverCuenta(CLAVE_NOTA_CREDITO_DEVOLUCIONES);
+            case ANULA_DOCUMENTO_ERROR_MATERIAL, CORRIGE_MONTO_ERROR_MATERIAL -> cuentaDeVentasDe(ventaOriginal);
+            case CREDITO_EXONERACION_POSTERIOR -> throw new IllegalStateException(
+                "Nota 12 por exoneración aún no soportada (P-105)");
+            case REFERENCIA_OTRO_DOCUMENTO, SUSTITUYE_PROVISIONAL_CONTINGENCIA, SUSTITUYE_COMPROBANTE, FACTURA_ENDOSADA,
+                 NOTA_CREDITO_FINANCIERA, NOTA_DEBITO_FINANCIERA, PROVEEDOR_NO_DOMICILIADO,
+                 SUSTITUYE_COMPROBANTE_ERROR_MATERIAL, SUSTITUYE_COMPROBANTE_RECHAZADO, PAGO_A_COMPROBANTE, OTROS ->
+                throw new IllegalStateException("El código " + codigo.getCodigo() + " (" + codigo.getNombre()
+                    + ") no tiene cuenta contable definida para la base de la nota de crédito");
+        };
+    }
+
+    /** Cuenta de ventas del asiento de venta original: su línea de crédito que no es el IVA por pagar. */
+    private CuentaContable cuentaDeVentasDe(AsientoContable ventaOriginal) {
+        if (ventaOriginal == null) {
+            throw new IllegalStateException("Las notas 13 y 14 toman la cuenta de ventas del asiento de venta "
+                + "original, y la factura no tiene uno vigente");
+        }
+        String codigoIva = parametroContableRepository.findByClave(CLAVE_VENTA_IVA_POR_PAGAR)
+            .map(ParametroContable::getCuentaContable).map(CuentaContable::getCodigo).orElse(null);
+        return ventaOriginal.getDetalles().stream()
+            .filter(d -> d.getHaber() != null && d.getHaber().signum() > 0 && d.getCuenta() != null)
+            .map(DetalleAsiento::getCuenta)
+            .filter(c -> !Objects.equals(c.getCodigo(), codigoIva))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("El asiento de venta " + ventaOriginal.getNumero()
+                + " no tiene una línea de crédito a ventas"));
     }
 
     /**

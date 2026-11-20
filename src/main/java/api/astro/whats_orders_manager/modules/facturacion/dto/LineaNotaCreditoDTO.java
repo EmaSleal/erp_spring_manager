@@ -6,5 +6,6 @@ import java.math.BigDecimal;
 public record LineaNotaCreditoDTO(Integer numeroLinea, String producto, String descripcion, String codigoCabys,
                                   BigDecimal cantidad, String unidadMedida, BigDecimal precioUnitario,
                                   BigDecimal descuento, BigDecimal tarifaIva, BigDecimal montoIva,
-                                  BigDecimal subtotal, BigDecimal total) {
+                                  BigDecimal subtotal, BigDecimal total,
+                                  Integer idLineaFactura) {
 }

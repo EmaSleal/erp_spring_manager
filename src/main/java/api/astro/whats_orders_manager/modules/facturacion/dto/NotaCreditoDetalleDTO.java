@@ -18,5 +18,5 @@ public record NotaCreditoDetalleDTO(Long id, String numero, String estado, Strin
                                     boolean puedeEmitirSustituta,
                                     String motivoSustitutaNoDisponible,
                                     LocalDate fechaContable, String periodoFiscalAtribucion,
-                                    LocalDate fechaAsientoReversion) {
+                                    LocalDate fechaAsientoReversion, boolean parcial) {
 }

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,34 @@ import java.util.Optional;
 public interface NotaFacturaRepository extends JpaRepository<NotaFactura, Long>, JpaSpecificationExecutor<NotaFactura> {
 
     boolean existsByFactura_IdFacturaAndEstadoIn(Integer idFactura, Collection<EstadoNotaFactura> estados);
+
+    /** T-047: ¿la factura tiene notas en esos estados con alguno de esos códigos de referencia? (parciales: 02 y 14). */
+    boolean existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(Integer idFactura,
+                                                                      Collection<EstadoNotaFactura> estados,
+                                                                      Collection<String> codigos);
+
+    /** T-047: ¿la factura tiene notas en esos estados con un código distinto de los dados? (no parciales: 01, 13...). */
+    boolean existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaNotIn(Integer idFactura,
+                                                                         Collection<EstadoNotaFactura> estados,
+                                                                         Collection<String> codigos);
+
+    /**
+     * T-047 (ADR-051): total acreditado por línea de factura por las notas en esos estados (APLICADA y EN_TRAMITE para
+     * los topes). Cada fila: {idLineaFactura (Integer), total acreditado (BigDecimal)}.
+     */
+    @org.springframework.data.jpa.repository.Query("SELECT l.lineaFactura.idLineaFactura, SUM(l.total) "
+        + "FROM LineaNotaFactura l WHERE l.nota.factura.idFactura = :idFactura AND l.nota.estado IN :estados "
+        + "AND l.lineaFactura IS NOT NULL GROUP BY l.lineaFactura.idLineaFactura")
+    List<Object[]> acreditadoPorLinea(@org.springframework.data.repository.query.Param("idFactura") Integer idFactura,
+                                      @org.springframework.data.repository.query.Param("estados")
+                                      Collection<EstadoNotaFactura> estados);
+
+    /** T-047: suma de los totales de las notas de la factura en esos estados (0 si no hay). */
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(n.total), 0) FROM NotaFactura n "
+        + "WHERE n.factura.idFactura = :idFactura AND n.estado IN :estados")
+    BigDecimal sumaTotalPorFactura(@org.springframework.data.repository.query.Param("idFactura") Integer idFactura,
+                                   @org.springframework.data.repository.query.Param("estados")
+                                   Collection<EstadoNotaFactura> estados);
 
     List<NotaFactura> findByFactura_IdFacturaOrderByIdAsc(Integer idFactura);
 

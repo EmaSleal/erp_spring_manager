@@ -266,7 +266,9 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         table.addCell(labelValueCell("Código:", safe(nota.getCodigoReferencia())
                 + (codigo != null ? " " + codigo.getNombre() : "")));
         table.addCell(labelValueCell("Razón:", safe(nota.getRazon())));
-        table.addCell(noB());
+        // T-047: la nota parcial acredita un monto por línea; sus líneas y montos son los de la nota
+        table.addCell(labelValueCell("Modalidad:", nota.esParcial()
+                ? "Nota de crédito parcial (acredita un monto por línea)" : "Nota de crédito total"));
         doc.add(table);
     }
 

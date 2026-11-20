@@ -242,6 +242,11 @@ class NotaCreditoIT {
                         cuenta("9.4.01.001", "Ventas", TipoCuenta.INGRESO));
                 param(AsientoContableService.CLAVE_VENTA_IVA_POR_PAGAR,
                         cuenta("9.2.01.002", "IVA por pagar", TipoCuenta.PASIVO));
+                // T-047 (ADR-054): grupo 4.1.02 y sus dos hojas, con los parámetros explícitos de la nota de crédito
+                param(AsientoContableService.CLAVE_NOTA_CREDITO_DEVOLUCIONES,
+                        cuenta("9.4.02.001", "Devoluciones sobre ventas", TipoCuenta.INGRESO));
+                param(AsientoContableService.CLAVE_NOTA_CREDITO_ANULACIONES_DESCUENTOS,
+                        cuenta("9.4.02.002", "Anulaciones, descuentos y rebajas sobre ventas", TipoCuenta.INGRESO));
             }
             ConfiguracionEmpresa empresa = empresaRepository.findFirstByOrderByIdConfiguracionAsc()
                     .orElseGet(() -> ConfiguracionEmpresa.builder().razonSocial("Empresa T032 S.A.").build());
@@ -361,7 +366,7 @@ class NotaCreditoIT {
     }
 
     @ParameterizedTest(name = "código {0}")
-    @ValueSource(strings = {"02", "06", "14"})
+    @ValueSource(strings = {"06", "12", "99"})
     @DisplayName("otro código → 400 «disponible en una fase posterior», sin nota")
     void codigoDeFasePosterior_400(String codigo) throws Exception {
         int idFactura = facturaAceptada();
@@ -430,7 +435,7 @@ class NotaCreditoIT {
     }
 
     @Test
-    @DisplayName("d) factura con pagos aplicados → 409 «se habilitará con la nota parcial y el saldo a favor»")
+    @DisplayName("d) factura con pagos aplicados → 409 «se habilitará con el saldo a favor del cliente»")
     void facturaConPagos_409() throws Exception {
         int idFactura = facturaAceptada();
         doReturn(List.of(new Pago())).when(pagoService).findPagosValidosByFacturaId(idFactura);
@@ -439,7 +444,7 @@ class NotaCreditoIT {
 
         assertThat(result.getResponse().getStatus()).isEqualTo(409);
         assertThat(result.getResponse().getContentAsString())
-                .contains("se habilitará con la nota parcial y el saldo a favor");
+                .contains("se habilitará con el saldo a favor del cliente");
         assertThat(notas(idFactura)).isZero();
     }
 
@@ -530,8 +535,8 @@ class NotaCreditoIT {
     // ── Estados y efectos ────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("ACEPTADO (01): reversión espejo contabilizada ligada a nota y factura, factura anulada, nota APLICADA; "
-            + "un segundo sondeo no repite los efectos")
+    @DisplayName("ACEPTADO (01): asiento de la nota (DR anulaciones y descuentos + IVA, CR cuentas por cobrar) ligado a nota "
+            + "y factura, factura anulada, nota APLICADA, venta original intacta; un segundo sondeo no repite los efectos")
     void aceptado_aplicaEfectosUnaVez() throws Exception {
         int idFactura = facturaAceptada();
         Long idVenta = asientoVentaVigente(idFactura);
@@ -553,15 +558,24 @@ class NotaCreditoIT {
         assertThat((String) f.get("motivo_anulacion")).contains("Nota de crédito " + nota.id()).contains(nota.clave());
         assertThat(f.get("fecha_anulacion")).isNotNull();
 
-        List<Map<String, Object>> reversiones = jdbc.queryForList("SELECT id, fecha, estado, factura_id, "
-                + "nota_factura_id FROM asientos_contables WHERE asiento_revertido_id = ?", idVenta);
-        assertThat(reversiones).hasSize(1);
-        Map<String, Object> reversion = reversiones.get(0);
-        assertThat(reversion.get("estado")).isEqualTo("CONTABILIZADO");
-        assertThat(((Number) reversion.get("factura_id")).intValue()).isEqualTo(idFactura);
-        assertThat(((Number) reversion.get("nota_factura_id")).longValue()).isEqualTo(nota.id());
-        assertThat(reversion.get("fecha").toString()).isEqualTo(LocalDate.now(reloj).toString());
-        assertThat(espejo(idVenta, ((Number) reversion.get("id")).longValue())).isTrue();
+        // ADR-052: ya no se revierte el asiento de venta; la nota tiene su propio asiento
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM asientos_contables WHERE asiento_revertido_id = ?",
+                Integer.class, idVenta)).isZero();
+        assertThat(asientoVentaVigente(idFactura)).isEqualTo(idVenta);
+        List<Map<String, Object>> asientos = jdbc.queryForList("SELECT id, fecha, estado, factura_id, "
+                + "nota_factura_id, asiento_revertido_id FROM asientos_contables WHERE nota_factura_id = ?", nota.id());
+        assertThat(asientos).hasSize(1);
+        Map<String, Object> asiento = asientos.get(0);
+        assertThat(asiento.get("estado")).isEqualTo("CONTABILIZADO");
+        assertThat(asiento.get("asiento_revertido_id")).isNull();
+        assertThat(((Number) asiento.get("factura_id")).intValue()).isEqualTo(idFactura);
+        assertThat(asiento.get("fecha").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        long idAsiento = ((Number) asiento.get("id")).longValue();
+        // base 1500.00 (1000 + 500 exento), IVA 130.00, total 1630.00
+        assertThat(debeEn(idAsiento, "9.4.02.002")).isEqualByComparingTo("1500.00");
+        assertThat(debeEn(idAsiento, "9.2.01.002")).isEqualByComparingTo("130.00");
+        assertThat(haberEn(idAsiento, "9.1.02.001")).isEqualByComparingTo("1630.00");
+        assertCuadra(idAsiento);
         // T-046: 01 → fecha contable y período en el mes de emisión de la nota
         Map<String, Object> atribucion = jdbc.queryForMap(
                 "SELECT fecha_contable, periodo_fiscal_atribucion FROM nota_factura WHERE id = ?", nota.id());
@@ -571,8 +585,8 @@ class NotaCreditoIT {
     }
 
     @Test
-    @DisplayName("T-046 ACEPTADO (13) sobre una factura de un mes anterior: reversión con la fecha de la nota y "
-            + "período de atribución = mes de la factura original (ADR-050)")
+    @DisplayName("T-046 ACEPTADO (13) sobre una factura de un mes anterior: asiento con la fecha de la nota, base a la "
+            + "cuenta de ventas del original y período de atribución = mes de la factura original (ADR-050)")
     void aceptado_codigo13_fechaDeLaNota_periodoDelOriginal() throws Exception {
         int idFactura = facturaAceptada();
         Long idVenta = asientoVentaVigente(idFactura);
@@ -584,8 +598,14 @@ class NotaCreditoIT {
 
         comprobanteService.consultarYActualizarEstado(nota.idComprobante());
 
-        assertThat(jdbc.queryForObject("SELECT fecha FROM asientos_contables WHERE asiento_revertido_id = ?",
-                java.sql.Date.class, idVenta).toLocalDate()).isEqualTo(LocalDate.now(reloj));
+        assertThat(jdbc.queryForObject("SELECT fecha FROM asientos_contables WHERE nota_factura_id = ?",
+                java.sql.Date.class, nota.id()).toLocalDate()).isEqualTo(LocalDate.now(reloj));
+        long idAsiento = jdbc.queryForObject("SELECT id FROM asientos_contables WHERE nota_factura_id = ?",
+                Long.class, nota.id());
+        // 13 → la cuenta de ventas del asiento original (9.4.01.001), no 4.1.02
+        assertThat(debeEn(idAsiento, "9.4.01.001")).isEqualByComparingTo("1500.00");
+        assertThat(debeEn(idAsiento, "9.4.02.002")).isZero();
+        assertCuadra(idAsiento);
         Map<String, Object> n = jdbc.queryForMap(
                 "SELECT fecha_contable, periodo_fiscal_atribucion FROM nota_factura WHERE id = ?", nota.id());
         assertThat(n.get("fecha_contable").toString()).isEqualTo(LocalDate.now(reloj).toString());
@@ -769,6 +789,326 @@ class NotaCreditoIT {
                 facturaDeLaNota)).isTrue();
     }
 
+    // ── T-047: nota de crédito parcial (ADR-051) ─────────────────────────────
+
+    @Test
+    @DisplayName("T-047: dos parciales sucesivas (02 y luego 14) con sus asientos proporcionales, el saldo y los topes; "
+            + "una tercera que excede → 409 sin consecutivo")
+    void parcial_02y14_sucesivas_asientosSaldoYTopes() throws Exception {
+        int idFactura = facturaAceptada();
+        jdbc.update("UPDATE comprobante_electronico SET fecha_emision = '2026-09-29 10:15:30' WHERE factura_id = ? "
+                + "AND vigente = b'1'", idFactura);
+        List<Integer> lineas = lineasDeFactura(idFactura);
+        Long idVenta = asientoVentaVigente(idFactura);
+        String clave = claveVigente(idFactura);
+
+        // Nota 1 (02): mitad de la línea A, 565.00 con IVA = base 500.00 + IVA 65.00
+        Nota n1 = emitirParcialOk(idFactura, "02", "Corrección de precio de A", acreditar(lineas.get(0), "565.00"));
+        Map<String, Object> fila1 = jdbc.queryForMap("SELECT estado, codigo_referencia, subtotal, impuesto, total, "
+                + "periodo_fiscal_atribucion, fecha_contable FROM nota_factura WHERE id = ?", n1.id());
+        assertThat(fila1.get("estado")).isEqualTo("EN_TRAMITE");
+        assertThat((BigDecimal) fila1.get("subtotal")).isEqualByComparingTo("500.00");
+        assertThat((BigDecimal) fila1.get("impuesto")).isEqualByComparingTo("65.00");
+        assertThat((BigDecimal) fila1.get("total")).isEqualByComparingTo("565.00");
+        // ADR-050: el 02 atribuye al mes de la nota; la fecha contable es la de la nota
+        assertThat(fila1.get("periodo_fiscal_atribucion"))
+                .isEqualTo(java.time.YearMonth.from(LocalDate.now(reloj)).toString());
+        assertThat(fila1.get("fecha_contable").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        List<Map<String, Object>> lineasNota = lineasNota(n1.id());
+        assertThat(lineasNota).hasSize(1);
+        assertThat(lineasNota.get(0).get("descripcion")).isEqualTo("Producto A gravado 13 %");
+        assertThat((BigDecimal) lineasNota.get(0).get("precio_unitario")).isEqualByComparingTo("500.00000");
+        assertThat(jdbc.queryForObject("SELECT linea_factura_id FROM linea_nota_factura WHERE nota_factura_id = ?",
+                Integer.class, n1.id())).isEqualTo(lineas.get(0));
+        String xml1 = jdbc.queryForObject("SELECT xml_comprobante FROM comprobante_electronico WHERE id = ?",
+                String.class, n1.idComprobante());
+        assertThat(XmlValidator.erroresContraXsd(xml1, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
+        assertThat(xml1).contains("<Numero>" + clave + "</Numero>").contains("<Codigo>02</Codigo>")
+                .contains("<TotalComprobante>565.00000</TotalComprobante>");
+        assertThat(detalle(n1.id()).get("parcial").asBoolean()).isTrue();
+
+        aceptar(n1);
+        assertThat(estadoNota(n1.id())).isEqualTo("APLICADA");
+        assertThat(jdbc.queryForObject("SELECT anulada FROM factura WHERE id_factura = ?", Boolean.class, idFactura))
+                .as("la parcial no anula la factura").isFalse();
+        assertThat(asientoVentaVigente(idFactura)).as("la venta original sigue vigente").isEqualTo(idVenta);
+        long asiento1 = jdbc.queryForObject("SELECT id FROM asientos_contables WHERE nota_factura_id = ?", Long.class,
+                n1.id());
+        assertThat(debeEn(asiento1, "9.4.02.002")).isEqualByComparingTo("500.00");
+        assertThat(debeEn(asiento1, "9.2.01.002")).isEqualByComparingTo("65.00");
+        assertThat(haberEn(asiento1, "9.1.02.001")).isEqualByComparingTo("565.00");
+        assertCuadra(asiento1);
+        assertThat(jdbc.queryForObject("SELECT fecha FROM asientos_contables WHERE id = ?", java.sql.Date.class,
+                asiento1).toLocalDate()).isEqualTo(LocalDate.now(reloj));
+        // saldo: baja en lo acreditado, en el detalle de la factura y en el estado de cuenta del cliente
+        JsonNode factura1 = detalleFactura(idFactura);
+        assertThat(factura1.get("totalAcreditado").decimalValue()).isEqualByComparingTo("565.00");
+        assertThat(factura1.get("saldoPendiente").decimalValue()).isEqualByComparingTo("1065.00");
+        assertThat(factura1.get("acreditadaTotalmente").asBoolean()).isFalse();
+        assertThat(factura1.get("puedeEmitirNotaTotal").asBoolean()).isFalse();
+        assertThat(factura1.get("puedeEmitirNotaParcial").asBoolean()).isTrue();
+        assertThat(factura1.get("motivoNotaTotalNoDisponible").asText())
+                .isEqualTo("La factura tiene notas parciales; acredite el resto con una nota parcial");
+        assertThat(saldoDelCliente(idFactura)).isEqualByComparingTo("1065.00");
+
+        // Nota 2 (14): resto de A (565.00) y 200.00 de B (exento): base 700.00 e IVA 65.00
+        Nota n2 = emitirParcialOk(idFactura, "14", "Error material en A y B", acreditar(lineas.get(0), "565.00"),
+                acreditar(lineas.get(1), "200.00"));
+        assertThat(jdbc.queryForObject("SELECT periodo_fiscal_atribucion FROM nota_factura WHERE id = ?",
+                String.class, n2.id())).as("el 14 atribuye al mes de la factura original").isEqualTo("2026-09");
+        aceptar(n2);
+        long asiento2 = jdbc.queryForObject("SELECT id FROM asientos_contables WHERE nota_factura_id = ?", Long.class,
+                n2.id());
+        assertThat(debeEn(asiento2, "9.4.01.001")).as("14: base a la cuenta de ventas del original")
+                .isEqualByComparingTo("700.00");
+        assertThat(debeEn(asiento2, "9.4.02.002")).isZero();
+        assertThat(debeEn(asiento2, "9.2.01.002")).isEqualByComparingTo("65.00");
+        assertThat(haberEn(asiento2, "9.1.02.001")).isEqualByComparingTo("765.00");
+        assertCuadra(asiento2);
+        assertThat(jdbc.queryForObject("SELECT fecha FROM asientos_contables WHERE id = ?", java.sql.Date.class,
+                asiento2).toLocalDate()).as("fecha contable = la de la nota").isEqualTo(LocalDate.now(reloj));
+        assertThat(jdbc.queryForObject("SELECT monto_acreditado FROM factura WHERE id_factura = ?", BigDecimal.class,
+                idFactura)).isEqualByComparingTo("1330.00");
+        assertThat(detalleFactura(idFactura).get("saldoPendiente").decimalValue()).isEqualByComparingTo("300.00");
+
+        // La tercera excede: a B le quedan 300.00; 300.01 → 409 sin nota ni consecutivo
+        long consecutivo = configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
+                .getConsecutivoNotaCredito();
+        MvcResult excede = emitirParcial(idFactura, "02", "Excede", acreditar(lineas.get(1), "300.01"));
+        assertThat(excede.getResponse().getStatus()).isEqualTo(409);
+        assertThat(excede.getResponse().getContentAsString()).contains("supera el disponible");
+        assertThat(notas(idFactura)).isEqualTo(2);
+        assertThat(configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
+                .getConsecutivoNotaCredito()).as("sin consecutivo").isEqualTo(consecutivo);
+    }
+
+    @Test
+    @DisplayName("T-047: parciales hasta el 100 % → acreditada totalmente (sin anular): saldo 0, sin más notas ni pagos, "
+            + "sin sustituta")
+    void parcial_llegaAl100_acreditadaTotalmente() throws Exception {
+        int idFactura = facturaAceptada();
+        List<Integer> lineas = lineasDeFactura(idFactura);
+        Nota n1 = emitirParcialOk(idFactura, "02", "Primera mitad", acreditar(lineas.get(0), "1130.00"));
+        aceptar(n1);
+        assertThat(jdbc.queryForObject("SELECT acreditada_totalmente FROM factura WHERE id_factura = ?",
+                Boolean.class, idFactura)).isFalse();
+        Nota n2 = emitirParcialOk(idFactura, "02", "El resto", acreditar(lineas.get(1), "500.00"));
+        aceptar(n2);
+
+        Map<String, Object> f = jdbc.queryForMap("SELECT anulada, acreditada_totalmente, monto_acreditado "
+                + "FROM factura WHERE id_factura = ?", idFactura);
+        assertThat((Boolean) f.get("acreditada_totalmente")).isTrue();
+        assertThat((Boolean) f.get("anulada")).as("no se anula").isFalse();
+        assertThat((BigDecimal) f.get("monto_acreditado")).isEqualByComparingTo("1630.00");
+        JsonNode detalle = detalleFactura(idFactura);
+        assertThat(detalle.get("acreditadaTotalmente").asBoolean()).isTrue();
+        assertThat(detalle.get("saldoPendiente").decimalValue()).isEqualByComparingTo("0");
+        assertThat(detalle.get("puedeEmitirNotaCredito").asBoolean()).isFalse();
+        assertThat(saldoDelCliente(idFactura)).isEqualByComparingTo("0");
+
+        MvcResult otra = emitirParcial(idFactura, "02", "Otra", acreditar(lineas.get(0), "0.01"));
+        assertThat(otra.getResponse().getStatus()).isEqualTo(409);
+        assertThat(otra.getResponse().getContentAsString()).contains("acreditada totalmente");
+        assertThat(emitir(idFactura, "01", "Total").getResponse().getStatus()).isEqualTo(409);
+        assertThat(sustituta(idFactura, null).getResponse().getStatus())
+                .as("una factura acreditada totalmente no es elegible para sustituta").isEqualTo(409);
+        Factura entidad = facturaRepository.findById(idFactura).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> {
+            api.astro.whats_orders_manager.modules.facturacion.model.Pago pago =
+                    new api.astro.whats_orders_manager.modules.facturacion.model.Pago();
+            pago.setFactura(entidad);
+            pago.setCliente(entidad.getCliente());
+            pago.setMonto(BigDecimal.ONE);
+            pagoService.registrarPago(pago);
+        });
+    }
+
+    @Test
+    @DisplayName("T-047: nota total (01 o 13) con una parcial aplicada o en trámite → 409 con el mensaje fijo")
+    void totalDespuesDeParcial_409() throws Exception {
+        int idFactura = facturaAceptada();
+        Integer lineaA = lineasDeFactura(idFactura).get(0);
+        Nota parcial = emitirParcialOk(idFactura, "02", "Parcial", acreditar(lineaA, "113.00"));
+        String mensaje = "La factura tiene notas parciales; acredite el resto con una nota parcial";
+
+        for (String codigo : new String[] {"01", "13"}) {
+            MvcResult enTramite = emitir(idFactura, codigo, "Total tras parcial");
+            assertThat(enTramite.getResponse().getStatus()).isEqualTo(409);
+            assertThat(enTramite.getResponse().getContentAsString()).contains(mensaje);
+        }
+        aceptar(parcial);
+        for (String codigo : new String[] {"01", "13"}) {
+            MvcResult aplicada = emitir(idFactura, codigo, "Total tras parcial");
+            assertThat(aplicada.getResponse().getStatus()).isEqualTo(409);
+            assertThat(objectMapper.readTree(aplicada.getResponse().getContentAsString()).get("message").asText())
+                    .isEqualTo(mensaje);
+        }
+        assertThat(notas(idFactura)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("T-047: una parcial RECHAZADA no deja efectos y no cuenta en los topes")
+    void parcialRechazada_sinEfectos_noCuentaEnTopes() throws Exception {
+        int idFactura = facturaAceptada();
+        Integer lineaB = lineasDeFactura(idFactura).get(1);
+        Nota nota = emitirParcialOk(idFactura, "02", "Será rechazada", acreditar(lineaB, "500.00"));
+        // en trámite sí cuenta: B ya no tiene disponible
+        assertThat(emitirParcial(idFactura, "02", "Otra", acreditar(lineaB, "0.01")).getResponse().getStatus())
+                .isEqualTo(409);
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("rechazado"));
+
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+
+        assertThat(estadoNota(nota.id())).isEqualTo("RECHAZADA");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM asientos_contables WHERE nota_factura_id = ?",
+                Integer.class, nota.id())).isZero();
+        Map<String, Object> f = jdbc.queryForMap("SELECT monto_acreditado, acreditada_totalmente FROM factura "
+                + "WHERE id_factura = ?", idFactura);
+        assertThat((BigDecimal) f.get("monto_acreditado")).isEqualByComparingTo("0");
+        assertThat((Boolean) f.get("acreditada_totalmente")).isFalse();
+        // rechazada: no cuenta en los topes, se puede acreditar el total de B otra vez
+        Nota nueva = emitirParcialOk(idFactura, "02", "Otra vez", acreditar(lineaB, "500.00"));
+        assertThat(estadoNota(nueva.id())).isEqualTo("EN_TRAMITE");
+    }
+
+    @Test
+    @DisplayName("T-047 criterio 24: con el parámetro contable ausente la nota no se aplica, queda EN_TRAMITE y el mensaje lo nombra")
+    void parametroAusente_notaQuedaEnTramite(CapturedOutput salida) throws Exception {
+        int idFactura = facturaAceptada();
+        Nota nota = emitirParcialOk(idFactura, "02", "Sin parámetro", acreditar(lineasDeFactura(idFactura).get(0), "113.00"));
+        Long idCuenta = jdbc.queryForObject("SELECT cuenta_contable_id FROM parametros_contables WHERE clave = "
+                + "'NOTA_CREDITO_ANULACIONES_DESCUENTOS'", Long.class);
+        jdbc.update("DELETE FROM parametros_contables WHERE clave = 'NOTA_CREDITO_ANULACIONES_DESCUENTOS'");
+        try {
+            when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+
+            org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                    () -> comprobanteService.consultarYActualizarEstado(nota.idComprobante()));
+
+            assertThat(estadoNota(nota.id())).isEqualTo("EN_TRAMITE");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM asientos_contables WHERE nota_factura_id = ?",
+                    Integer.class, nota.id())).isZero();
+            assertThat(jdbc.queryForObject("SELECT monto_acreditado FROM factura WHERE id_factura = ?",
+                    BigDecimal.class, idFactura)).isEqualByComparingTo("0");
+            assertThat(salida.getAll()).contains("Parámetro contable no configurado: NOTA_CREDITO_ANULACIONES_DESCUENTOS");
+        } finally {
+            jdbc.update("INSERT INTO parametros_contables (clave, cuenta_contable_id) VALUES (?, ?)",
+                    "NOTA_CREDITO_ANULACIONES_DESCUENTOS", idCuenta);
+        }
+        // configurado el parámetro, el siguiente sondeo la aplica
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        assertThat(estadoNota(nota.id())).isEqualTo("APLICADA");
+    }
+
+    @Test
+    @DisplayName("T-047: pedido incoherente → 400 sin nota; línea ajena → 409 sin consecutivo; detalle de la factura con lo "
+            + "disponible por línea")
+    void parcial_validaciones_yDatosDelModal() throws Exception {
+        int idFactura = facturaAceptada();
+        List<Integer> lineas = lineasDeFactura(idFactura);
+        MvcResult sinLineas = emitir(idFactura, "02", "Sin líneas");
+        assertThat(sinLineas.getResponse().getStatus()).isEqualTo(400);
+        assertThat(sinLineas.getResponse().getContentAsString()).contains(NotaFacturaService.MENSAJE_PARCIAL_SIN_LINEAS);
+        MvcResult totalConLineas = emitirParcial(idFactura, "01", "Total con líneas", acreditar(lineas.get(0), "10.00"));
+        assertThat(totalConLineas.getResponse().getStatus()).isEqualTo(400);
+        assertThat(totalConLineas.getResponse().getContentAsString()).contains(NotaFacturaService.MENSAJE_TOTAL_CON_LINEAS);
+        assertThat(emitirParcial(idFactura, "02", "Monto cero", acreditar(lineas.get(0), "0")).getResponse().getStatus())
+                .isEqualTo(400);
+        assertThat(emitirParcial(idFactura, "02", "Tres decimales", acreditar(lineas.get(0), "1.005")).getResponse()
+                .getStatus()).isEqualTo(400);
+        long consecutivo = configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
+                .getConsecutivoNotaCredito();
+        MvcResult ajena = emitirParcial(idFactura, "02", "Línea ajena", acreditar(999_999, "10.00"));
+        assertThat(ajena.getResponse().getStatus()).isEqualTo(409);
+        assertThat(ajena.getResponse().getContentAsString()).contains("no pertenece a la factura");
+        assertThat(notas(idFactura)).isZero();
+        assertThat(configuracionHaciendaRepository.findById(configHacienda.getId()).orElseThrow()
+                .getConsecutivoNotaCredito()).isEqualTo(consecutivo);
+
+        JsonNode d = detalleFactura(idFactura);
+        assertThat(d.get("puedeEmitirNotaTotal").asBoolean()).isTrue();
+        assertThat(d.get("puedeEmitirNotaParcial").asBoolean()).isTrue();
+        assertThat(d.get("notaCreditoTotalComprobante").decimalValue()).isEqualByComparingTo("1630.00");
+        assertThat(d.get("notaCreditoTotalAcreditado").decimalValue()).isEqualByComparingTo("0");
+        assertThat(d.get("notaCreditoDisponible").decimalValue()).isEqualByComparingTo("1630.00");
+        JsonNode filas = d.get("notaCreditoLineas");
+        assertThat(filas).hasSize(2);
+        assertThat(filas.get(0).get("idLineaFactura").asInt()).isEqualTo(lineas.get(0));
+        assertThat(filas.get(0).get("total").decimalValue()).isEqualByComparingTo("1130.00");
+        assertThat(filas.get(0).get("acreditado").decimalValue()).isEqualByComparingTo("0");
+        assertThat(filas.get(0).get("disponible").decimalValue()).isEqualByComparingTo("1130.00");
+
+        // con una parcial en trámite: ni nota nueva ni bandera; los acreditados la cuentan
+        emitirParcialOk(idFactura, "14", "En trámite", acreditar(lineas.get(0), "113.00"));
+        JsonNode enTramite = detalleFactura(idFactura);
+        assertThat(enTramite.get("puedeEmitirNotaCredito").asBoolean()).isFalse();
+        assertThat(enTramite.get("notaCreditoLineas").isNull()).isTrue();
+        assertThat(listar().get("contenido").get(0).get("parcial").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("T-047 (criterio 13): el PDF de la nota parcial se genera")
+    void pdfDeLaNotaParcial() throws Exception {
+        int idFactura = facturaAceptada();
+        Nota nota = emitirParcialOk(idFactura, "02", "Para el PDF", acreditar(lineasDeFactura(idFactura).get(0), "113.00"));
+        empresaService.getEmpresaPrincipal();
+
+        MvcResult pdf = mockMvc.perform(get("/facturas/notas-credito/" + nota.id() + "/pdf")
+                .with(user(USUARIO).roles("ADMIN"))).andReturn();
+
+        assertThat(pdf.getResponse().getStatus()).as(pdf.getResponse().getContentAsString()).isEqualTo(200);
+        assertThat(new String(pdf.getResponse().getContentAsByteArray(), 0, 5)).isEqualTo("%PDF-");
+    }
+
+    private static Map<String, Object> acreditar(int idLineaFactura, String monto) {
+        Map<String, Object> l = new LinkedHashMap<>();
+        l.put("idLineaFactura", idLineaFactura);
+        l.put("montoAcreditar", new BigDecimal(monto));
+        return l;
+    }
+
+    @SafeVarargs
+    private MvcResult emitirParcial(int idFactura, String codigo, String razon, Map<String, Object>... lineas)
+            throws Exception {
+        Map<String, Object> cuerpo = new LinkedHashMap<>();
+        cuerpo.put("idFactura", idFactura);
+        cuerpo.put("codigoReferencia", codigo);
+        cuerpo.put("razon", razon);
+        cuerpo.put("lineas", List.of(lineas));
+        return mockMvc.perform(post("/api/facturas/notas-credito")
+                        .with(user(USUARIO).roles("ADMIN")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cuerpo)))
+                .andReturn();
+    }
+
+    @SafeVarargs
+    private Nota emitirParcialOk(int idFactura, String codigo, String razon, Map<String, Object>... lineas)
+            throws Exception {
+        MvcResult result = emitirParcial(idFactura, codigo, razon, lineas);
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString()).isEqualTo(201);
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        return new Nota(data.get("id").asLong(), data.get("idComprobante").asLong(),
+                data.get("claveComprobante").asText());
+    }
+
+    /** Hacienda acepta el comprobante de la nota: se aplican sus efectos. */
+    private void aceptar(Nota nota) {
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+    }
+
+    private List<Integer> lineasDeFactura(int idFactura) {
+        return jdbc.queryForList("SELECT id_linea_factura FROM linea_factura WHERE id_factura = ? ORDER BY numero_linea",
+                Integer.class, idFactura);
+    }
+
+    private BigDecimal saldoDelCliente(int idFactura) {
+        Integer idCliente = jdbc.queryForObject("SELECT id_cliente FROM factura WHERE id_factura = ?", Integer.class,
+                idFactura);
+        return tx.execute(s -> pagoService.buildEstadoCuenta(idCliente).getSaldoPendiente());
+    }
+
     // ── Pagos durante una nota en trámite (criterio 30) ──────────────────────
 
     @Test
@@ -936,8 +1276,8 @@ class NotaCreditoIT {
 
         when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
         comprobanteService.consultarYActualizarEstado(nota.idComprobante());
-        Long idReversion = jdbc.queryForObject("SELECT id FROM asientos_contables WHERE asiento_revertido_id = ?",
-                Long.class, idVenta);
+        Long idReversion = jdbc.queryForObject("SELECT id FROM asientos_contables WHERE nota_factura_id = ?",
+                Long.class, nota.id());
         String numeroReversion = jdbc.queryForObject("SELECT numero FROM asientos_contables WHERE id = ?",
                 String.class, idReversion);
 
@@ -1302,7 +1642,10 @@ class NotaCreditoIT {
                 + "AND documento_origen_id IN (?, ?)", Integer.class, idFactura, idSustituta)).isEqualTo(2);
         assertThat(costosDeVenta()).as("el sistema no tiene asientos de costo de venta").isZero();
         assertThat(asientoVentaVigente(idSustituta)).as("la sustituta conserva su asiento de ingreso e IVA").isNotNull();
-        assertThat(asientoVentaVigente(idFactura)).as("el de la original quedó revertido por la nota").isNull();
+        // ADR-052: la nota ya no revierte el asiento de la venta; lo compensa con su propio asiento
+        assertThat(asientoVentaVigente(idFactura)).as("el de la original sigue vigente").isNotNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM asientos_contables WHERE nota_factura_id IS NOT NULL "
+                + "AND factura_id = ?", Integer.class, idFactura)).as("la nota tiene su asiento").isEqualTo(1);
     }
 
     private void instantanea(String paso, int idOriginal, Integer idSustituta, List<String> tabla) {
@@ -1559,6 +1902,25 @@ class NotaCreditoIT {
             haber = haber.add(dec(r.get("haber")));
         }
         return debe.compareTo(haber) == 0 && debe.signum() > 0;
+    }
+
+    private BigDecimal debeEn(long idAsiento, String codigoCuenta) {
+        return jdbc.queryForObject("SELECT COALESCE(SUM(d.debe), 0) FROM detalles_asiento d JOIN cuentas_contables c "
+                + "ON c.id = d.cuenta_id WHERE d.asiento_id = ? AND c.codigo = ?", BigDecimal.class, idAsiento,
+                codigoCuenta);
+    }
+
+    private BigDecimal haberEn(long idAsiento, String codigoCuenta) {
+        return jdbc.queryForObject("SELECT COALESCE(SUM(d.haber), 0) FROM detalles_asiento d JOIN cuentas_contables c "
+                + "ON c.id = d.cuenta_id WHERE d.asiento_id = ? AND c.codigo = ?", BigDecimal.class, idAsiento,
+                codigoCuenta);
+    }
+
+    private void assertCuadra(long idAsiento) {
+        Map<String, Object> t = jdbc.queryForMap("SELECT COALESCE(SUM(debe), 0) AS debe, COALESCE(SUM(haber), 0) AS haber "
+                + "FROM detalles_asiento WHERE asiento_id = ?", idAsiento);
+        assertThat((BigDecimal) t.get("debe")).isEqualByComparingTo((BigDecimal) t.get("haber"));
+        assertThat((BigDecimal) t.get("debe")).isPositive();
     }
 
     private static boolean cmp(Object a, Object b) {

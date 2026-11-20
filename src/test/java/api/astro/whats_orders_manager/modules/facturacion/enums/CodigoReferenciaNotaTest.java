@@ -57,9 +57,19 @@ class CodigoReferenciaNotaTest {
     }
 
     @Test
-    @DisplayName("en T-032 solo se emiten 01 y 13 (nota total)")
+    @DisplayName("T-047: se emiten 01 y 13 (nota total) y 02 y 14 (nota parcial); 06 y el resto no")
     void habilitadosEnT032() {
         assertThat(Arrays.stream(CodigoReferenciaNota.values()).filter(CodigoReferenciaNota::isHabilitadoEnT032)
+                .map(CodigoReferenciaNota::getCodigo)).containsExactly("01", "02", "13", "14");
+        assertThat(CodigoReferenciaNota.deCodigo("06").orElseThrow().isHabilitadoEnT032()).isFalse();
+    }
+
+    @Test
+    @DisplayName("T-047: totales 01 y 13; parciales 02 y 14")
+    void modalidad() {
+        assertThat(Arrays.stream(CodigoReferenciaNota.values()).filter(CodigoReferenciaNota::esTotal)
                 .map(CodigoReferenciaNota::getCodigo)).containsExactly("01", "13");
+        assertThat(Arrays.stream(CodigoReferenciaNota.values()).filter(CodigoReferenciaNota::esParcial)
+                .map(CodigoReferenciaNota::getCodigo)).containsExactly("02", "14");
     }
 }

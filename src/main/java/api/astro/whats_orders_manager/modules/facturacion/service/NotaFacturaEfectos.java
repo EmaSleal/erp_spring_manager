@@ -9,6 +9,7 @@ import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactur
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaEfectosException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,11 +29,13 @@ import java.util.List;
  * guarda el estado del comprobante y una sola vez: solo una nota EN_TRAMITE cambia.
  *
  * <ul>
- *   <li>ACEPTADO: reversión espejo del asiento de venta vigente (fecha según el código de referencia), factura anulada
- *       por la ruta interna y nota APLICADA. Sin asiento de venta vigente (facturas históricas), la reversión se omite
- *       y se registra en el log.</li>
- *   <li>Si la factura tiene pagos aplicados, o cualquier paso falla, se lanza: nada se persiste (tampoco el
- *       ACEPTADO del comprobante) y la nota sigue EN_TRAMITE para el siguiente sondeo.</li>
+ *   <li>ACEPTADO: asiento propio de la nota (ADR-052, ADR-054: débito a la cuenta de la base según el código, IVA por
+ *       pagar, crédito a cuentas por cobrar; fecha contable de la nota) y, según la modalidad, nota total (01, 13):
+ *       factura anulada por la ruta interna; nota parcial (02, 14): sube lo acreditado de la factura y, al llegar al
+ *       TotalComprobante, la marca «acreditada totalmente» sin anularla. La nota queda APLICADA. Sin asiento de venta
+ *       vigente (facturas históricas), el asiento se omite y se registra en el log.</li>
+ *   <li>Si la factura tiene pagos aplicados, o cualquier paso falla (p. ej. falta un parámetro contable), se lanza: nada
+ *       se persiste (tampoco el ACEPTADO del comprobante) y la nota sigue EN_TRAMITE para el siguiente sondeo.</li>
  *   <li>RECHAZADO: nota RECHAZADA, sin efectos; la factura admite una nota nueva.</li>
  * </ul>
  */
@@ -45,6 +49,7 @@ public class NotaFacturaEfectos {
     private final FacturaService facturaService;
     private final PagoService pagoService;
     private final Clock clock;
+    private final FacturaRepository facturaRepository;
 
     @EventListener
     @Transactional(propagation = Propagation.MANDATORY)
@@ -77,31 +82,53 @@ public class NotaFacturaEfectos {
 
     private void aplicar(NotaFactura nota, ComprobanteElectronico comprobante) {
         Factura factura = nota.getFactura();
-        // Defensa (criterio 31): la nota total no se aplica sobre una factura con pagos; los pagos quedan bloqueados
+        // Defensa (criterio 31): la nota no se aplica sobre una factura con pagos; los pagos quedan bloqueados
         // mientras la nota está en trámite (NotaFacturaPrecondiciones), así que esto solo pasa por datos previos
         if (!pagoService.findPagosValidosByFacturaId(factura.getIdFactura()).isEmpty()) {
             throw new NotaFacturaEfectosException("La factura " + factura.getNumeroFactura() + " tiene pagos aplicados: "
-                + "la nota de crédito total " + nota.getId() + " no se aplica hasta que se anulen");
+                + "la nota de crédito " + nota.getId() + " no se aplica hasta que se anulen");
         }
-        String motivo = "Nota de crédito " + nota.getId() + " (clave " + comprobante.getClaveNumerica()
-            + ") aceptada por Hacienda, código " + nota.getCodigoReferencia() + ": " + nota.getRazon();
 
+        // ADR-052/054: asiento propio de la nota (débito a la base según el código, IVA y crédito a cuentas por cobrar),
+        // total o parcial; ya no se revierte el asiento de venta. Los asientos de reversión de notas anteriores no se tocan
         List<AsientoContable> ventas = asientoContableService.obtenerAsientosVentaVigentes(factura);
         if (ventas.isEmpty()) {
-            log.warn("Factura {} sin asiento de venta vigente: la nota {} se aplica sin asiento de reversión",
+            log.warn("Factura {} sin asiento de venta vigente: la nota {} se aplica sin asiento contable",
                 factura.getNumeroFactura(), nota.getId());
-        }
-        for (AsientoContable venta : ventas) {
-            asientoContableService.generarAsientoReversion(venta, motivo, fechaDelAsiento(nota), nota);
+        } else {
+            asientoContableService.generarAsientoNotaCredito(nota, ventas.get(0), fechaDelAsiento(nota));
         }
 
-        facturaService.anularPorNotaCredito(factura, motivo);
+        if (nota.esParcial()) {
+            acreditar(factura, nota);
+        } else {
+            String motivo = "Nota de crédito " + nota.getId() + " (clave " + comprobante.getClaveNumerica()
+                + ") aceptada por Hacienda, código " + nota.getCodigoReferencia() + ": " + nota.getRazon();
+            facturaService.anularPorNotaCredito(factura, motivo);
+        }
 
         nota.setEstado(EstadoNotaFactura.APLICADA);
         nota.setFechaAplicacion(LocalDateTime.now(clock));
         notaRepository.save(nota);
-        log.info("Nota {} APLICADA: factura {} anulada, {} asiento(s) revertido(s)", nota.getId(),
-            factura.getNumeroFactura(), ventas.size());
+        log.info("Nota {} ({}) APLICADA sobre la factura {}", nota.getId(), nota.esParcial() ? "parcial" : "total",
+            factura.getNumeroFactura());
+    }
+
+    /**
+     * Nota parcial aplicada (ADR-051 §5): sube lo acreditado de la factura y, si la suma de las notas APLICADAS alcanza el
+     * TotalComprobante del comprobante ACEPTADO, la marca «acreditada totalmente». La factura no se anula; el saldo
+     * ({@code Factura.calcularSaldoPendiente}) baja en lo acreditado. Misma transacción que la nota.
+     */
+    private void acreditar(Factura factura, NotaFactura nota) {
+        BigDecimal acreditado = factura.calcularTotalAcreditado().add(nota.getTotal());
+        factura.setMontoAcreditado(acreditado);
+        BigDecimal totalComprobante = NotaCreditoTopes.totalComprobante(nota.getComprobanteReferencia());
+        if (acreditado.compareTo(totalComprobante) >= 0) {
+            factura.setAcreditadaTotalmente(true);
+            log.info("Factura {} acreditada totalmente: {} de {}", factura.getNumeroFactura(), acreditado,
+                totalComprobante);
+        }
+        facturaRepository.save(factura);
     }
 
     /**

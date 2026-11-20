@@ -62,8 +62,8 @@ public class NotaCreditoRestController {
         if (pedido == null || pedido.idFactura() == null) {
             throw new NotaFacturaPedidoInvalidoException("La factura es obligatoria");
         }
-        NotaFactura nota = notaService.emitirNotaCreditoTotal(pedido.idFactura(), pedido.tipo(),
-            pedido.codigoReferencia(), pedido.razon(), authentication.getName());
+        NotaFactura nota = notaService.emitirNotaCredito(pedido.idFactura(), pedido.tipo(),
+            pedido.codigoReferencia(), pedido.razon(), pedido.lineas(), authentication.getName());
 
         NotaFacturaDTO emitida = consultar(nota.getId());
         String mensaje = "Nota de crédito emitida";

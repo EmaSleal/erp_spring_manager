@@ -217,6 +217,20 @@ public class Factura {
     @Column(name = "motivo_anulacion", length = 500)
     private String motivoAnulacion;
 
+    // ========== NOTAS DE CRÉDITO PARCIALES (ADR-051, T-047) ==========
+
+    /**
+     * Suma de las notas de crédito parciales APLICADAS, en la moneda de la factura con IVA incluido. Lo actualiza
+     * NotaFacturaEfectos en la misma transacción en que la nota pasa a APLICADA. Las notas totales no lo tocan: anulan
+     * la factura.
+     */
+    @Column(name = "monto_acreditado", nullable = false, precision = 12, scale = 2)
+    private BigDecimal montoAcreditado = BigDecimal.ZERO;
+
+    /** La suma de las notas parciales APLICADAS alcanzó el TotalComprobante: saldo 0, sin anular, sin más notas ni pagos. */
+    @Column(name = "acreditada_totalmente", nullable = false)
+    private Boolean acreditadaTotalmente = false;
+
     @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @ToString.Exclude
     private List<LineaFactura> lineas = new ArrayList<>();
@@ -249,8 +263,22 @@ public class Factura {
      */
     @Transient
     public BigDecimal calcularSaldoPendiente() {
+        if (estaAcreditadaTotalmente()) {
+            return BigDecimal.ZERO;
+        }
         BigDecimal totalPagado = calcularTotalPagado();
-        return total != null ? total.subtract(totalPagado) : BigDecimal.ZERO;
+        return total != null ? total.subtract(calcularTotalAcreditado()).subtract(totalPagado) : BigDecimal.ZERO;
+    }
+
+    /** Total acreditado por notas parciales APLICADAS (0 si no hay). */
+    @Transient
+    public BigDecimal calcularTotalAcreditado() {
+        return montoAcreditado != null ? montoAcreditado : BigDecimal.ZERO;
+    }
+
+    @Transient
+    public boolean estaAcreditadaTotalmente() {
+        return Boolean.TRUE.equals(acreditadaTotalmente);
     }
 
     // Returns the invoice total converted to CRC for consolidated report aggregation.
@@ -270,13 +298,16 @@ public class Factura {
      * Este método debe llamarse cada vez que se registra un nuevo pago.
      */
     public void actualizarEstadoPago() {
+        if (estaAcreditadaTotalmente()) {
+            return; // sin saldo por notas de crédito: no hay estado de pago que calcular
+        }
         if (total == null || total.compareTo(BigDecimal.ZERO) == 0) {
             this.estadoPago = EstadoPagoFactura.PENDIENTE;
             return;
         }
         
         BigDecimal totalPagado = calcularTotalPagado();
-        BigDecimal saldoPendiente = total.subtract(totalPagado);
+        BigDecimal saldoPendiente = total.subtract(calcularTotalAcreditado()).subtract(totalPagado);
         
         // Verificar si está vencida
         if (fechaVencimiento != null) {
