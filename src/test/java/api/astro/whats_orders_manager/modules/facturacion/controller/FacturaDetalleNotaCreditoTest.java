@@ -66,6 +66,15 @@ class FacturaDetalleNotaCreditoTest {
     }
 
     @Test
+    @DisplayName("T-046: elegible → el detalle trae el mes de la factura original para el texto del código 13")
+    void mesDeLaFacturaOriginal() throws Exception {
+        when(elegibilidad.evaluar(factura, "gerente")).thenReturn(new NotaCreditoElegibilidad.Resultado(true, null));
+        when(elegibilidad.periodoFacturaOriginal(factura)).thenReturn(java.util.Optional.of("2026-09"));
+        mvc.perform(get("/facturas/detalle/7").principal(usuario()))
+            .andExpect(jsonPath("$.periodoFacturaOriginal").value("2026-09"));
+    }
+
+    @Test
     @DisplayName("con pagos → deshabilitada con el motivo fijo")
     void conPagos() throws Exception {
         when(elegibilidad.evaluar(factura, "gerente")).thenReturn(

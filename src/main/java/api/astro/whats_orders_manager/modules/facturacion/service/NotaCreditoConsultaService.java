@@ -117,7 +117,9 @@ public class NotaCreditoConsultaService {
             factura.getCliente() != null ? factura.getCliente().getNombre() : null, nota.getClaveReferencia(),
             nota.getFechaEmisionReferencia(), lineas, ComprobanteNotaDTO.de(vigente, activo), historial,
             asiento.map(AsientoContable::getIdAsiento).orElse(null),
-            asiento.map(AsientoContable::getNumero).orElse(null), sustituta, motivoSustituta);
+            asiento.map(AsientoContable::getNumero).orElse(null), sustituta, motivoSustituta,
+            nota.getFechaContable(), nota.getPeriodoFiscalAtribucion(),
+            asiento.map(AsientoContable::getFecha).orElse(null));
     }
 
     private NotaCreditoListaDTO fila(NotaFactura n, ComprobanteElectronico c, Optional<AmbienteHacienda> activo) {

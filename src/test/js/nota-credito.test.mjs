@@ -71,12 +71,42 @@ test('validación de la razón: 3 a 180 con recorte de espacios', () => {
 
 // ---- pedido, efecto y resumen ----
 
+test('T-046 código 13: texto de efecto con el mes de la factura original (ADR-050)', () => {
+    const n = cargar();
+    assert.equal(n.textoEfecto('13', '2026-09'),
+        'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original (2026-09)');
+    // sin mes del servidor: el texto sigue siendo correcto, sin paréntesis
+    assert.equal(n.textoEfecto('13'),
+        'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original');
+    assert.equal(n.textoEfecto('13', 'basura'), n.textoEfecto('13'));
+});
+
+test('T-046 advertencia fija del 13 sobre una factura del mismo mes (hora de Costa Rica), no bloqueante', () => {
+    const n = cargar();
+    const AVISO = 'La factura es de este mismo mes: el código 01 tiene el mismo efecto';
+    const ahora = new Date('2026-11-19T20:00:00-06:00');
+    assert.equal(n.mesActual(ahora), '2026-11');
+    assert.equal(n.advertenciaMismoMes('13', '2026-11', ahora), AVISO);
+    assert.equal(n.ADVERTENCIA_MISMO_MES, AVISO);
+    assert.equal(n.advertenciaMismoMes('13', '2026-10', ahora), '');
+    assert.equal(n.advertenciaMismoMes('01', '2026-11', ahora), '');
+    assert.equal(n.advertenciaMismoMes('13', null, ahora), '');
+    // el mes se toma en hora de Costa Rica: 2026-12-01 03:00 UTC sigue siendo noviembre allá
+    assert.equal(n.mesActual(new Date('2026-12-01T03:00:00Z')), '2026-11');
+    assert.equal(n.advertenciaMismoMes('13', '2026-11', new Date('2026-12-01T03:00:00Z')), AVISO);
+});
+
+test('T-046 fecha contable sin desfase de zona horaria', () => {
+    const n = cargar();
+    assert.equal(n.formatearDia('2026-11-12'), '12/11/2026');
+    assert.equal(n.formatearDia(null), '-');
+});
+
 test('cuerpo del pedido y texto del efecto por código', () => {
     const n = cargar();
     assert.equal(JSON.stringify(n.cuerpoPedido(7, '13', '  Error material ')),
         '{"idFactura":7,"tipo":"CREDITO","codigoReferencia":"13","razon":"Error material"}');
-    assert.match(n.textoEfecto('13'), /periodo de la factura original/);
-    assert.match(n.textoEfecto('01'), /periodo de la fecha de la nota/);
+    assert.match(n.textoEfecto('01'), /fecha de la nota; el IVA se atribuye al mes de la nota/);
     assert.equal(n.textoEfecto('99'), '');
     assert.equal(n.nombreCodigo('01'), 'Anula documento de referencia');
     assert.equal(n.nombreCodigo('13'), 'Anula documento de referencia por error material');

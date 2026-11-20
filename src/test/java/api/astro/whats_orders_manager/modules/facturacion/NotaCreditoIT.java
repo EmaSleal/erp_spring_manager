@@ -1,5 +1,8 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
+import api.astro.whats_orders_manager.modules.facturacion.enums.PeriodoAtribucion;
+import api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
@@ -159,6 +162,8 @@ class NotaCreditoIT {
     /** T-036: generador, firma y validador XSD son los reales; el certificado es uno de prueba generado con keytool. */
     @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;
     @MockitoSpyBean private PagoService pagoService;
+    /** T-046: espía para cambiar el parámetro facturacion.notas.atribucion.codigo-15 en una prueba. */
+    @MockitoSpyBean private AtribucionFiscalService atribucionFiscal;
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -557,21 +562,34 @@ class NotaCreditoIT {
         assertThat(((Number) reversion.get("nota_factura_id")).longValue()).isEqualTo(nota.id());
         assertThat(reversion.get("fecha").toString()).isEqualTo(LocalDate.now(reloj).toString());
         assertThat(espejo(idVenta, ((Number) reversion.get("id")).longValue())).isTrue();
+        // T-046: 01 → fecha contable y período en el mes de emisión de la nota
+        Map<String, Object> atribucion = jdbc.queryForMap(
+                "SELECT fecha_contable, periodo_fiscal_atribucion FROM nota_factura WHERE id = ?", nota.id());
+        assertThat(atribucion.get("fecha_contable").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        assertThat(atribucion.get("periodo_fiscal_atribucion"))
+                .isEqualTo(java.time.YearMonth.from(LocalDate.now(reloj)).toString());
     }
 
     @Test
-    @DisplayName("ACEPTADO (13): la reversión lleva la fecha del asiento de venta original")
-    void aceptado_codigo13_fechaDelOriginal() throws Exception {
+    @DisplayName("T-046 ACEPTADO (13) sobre una factura de un mes anterior: reversión con la fecha de la nota y "
+            + "período de atribución = mes de la factura original (ADR-050)")
+    void aceptado_codigo13_fechaDeLaNota_periodoDelOriginal() throws Exception {
         int idFactura = facturaAceptada();
         Long idVenta = asientoVentaVigente(idFactura);
-        jdbc.update("UPDATE asientos_contables SET fecha = '2026-10-03' WHERE id = ?", idVenta);
+        jdbc.update("UPDATE asientos_contables SET fecha = '2026-09-29' WHERE id = ?", idVenta);
+        jdbc.update("UPDATE comprobante_electronico SET fecha_emision = '2026-09-29 10:15:30' WHERE factura_id = ? "
+                + "AND vigente = b'1'", idFactura);
         Nota nota = emitirOk(idFactura, "13", "Error material en el cliente");
         when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
 
         comprobanteService.consultarYActualizarEstado(nota.idComprobante());
 
         assertThat(jdbc.queryForObject("SELECT fecha FROM asientos_contables WHERE asiento_revertido_id = ?",
-                java.sql.Date.class, idVenta).toLocalDate()).isEqualTo(LocalDate.of(2026, 10, 3));
+                java.sql.Date.class, idVenta).toLocalDate()).isEqualTo(LocalDate.now(reloj));
+        Map<String, Object> n = jdbc.queryForMap(
+                "SELECT fecha_contable, periodo_fiscal_atribucion FROM nota_factura WHERE id = ?", nota.id());
+        assertThat(n.get("fecha_contable").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        assertThat(n.get("periodo_fiscal_atribucion")).isEqualTo("2026-09");
     }
 
     @Test
@@ -928,6 +946,11 @@ class NotaCreditoIT {
         assertThat(d.get("estado").asText()).isEqualTo("APLICADA");
         assertThat(d.get("tipo").asText()).isEqualTo("CREDITO");
         assertThat(d.get("codigoReferencia").asText()).isEqualTo("01");
+        // T-046: fecha contable, período de atribución y fecha del asiento enlazado
+        assertThat(d.get("fechaContable").asText()).isEqualTo(LocalDate.now(reloj).toString());
+        assertThat(d.get("periodoFiscalAtribucion").asText())
+                .isEqualTo(java.time.YearMonth.from(LocalDate.now(reloj)).toString());
+        assertThat(d.get("fechaAsientoReversion").asText()).isEqualTo(LocalDate.now(reloj).toString());
         assertThat(d.get("codigoNombre").asText()).isEqualTo("Anula documento de referencia");
         assertThat(d.get("razon").asText()).isEqualTo("Anulación para el detalle");
         assertThat(d.get("moneda").asText()).isEqualTo("CRC");
@@ -1077,7 +1100,7 @@ class NotaCreditoIT {
     @ParameterizedTest(name = "nota {0} → sustituta {1}")
     @org.junit.jupiter.params.provider.CsvSource({"13,15,2026-09-29", "01,07,"})
     @DisplayName("T-039: factura aceptada → nota aceptada → sustituta por el endpoint → emitida con 07/15, XML válido "
-            + "contra el XSD y un solo asiento de venta (15: en el periodo de la original; 07: con su fecha)")
+            + "contra el XSD y un solo asiento de venta (T-046: asiento con su fecha de emisión; período 15 = mes original, 07 = mes de emisión)")
     void sustituta_puntaAPunta(String codigoNota, String codigoSustituta, String fechaOriginal) throws Exception {
         int idFactura = facturaAceptada();
         if (fechaOriginal != null) {
@@ -1114,8 +1137,14 @@ class NotaCreditoIT {
         List<Map<String, Object>> ventas = jdbc.queryForList("SELECT fecha FROM asientos_contables "
                 + "WHERE factura_id = ? AND tipo = 'AUTOMATICO_VENTA'", idSustituta);
         assertThat(ventas).hasSize(1);
-        LocalDate esperada = fechaOriginal != null ? LocalDate.parse(fechaOriginal) : LocalDate.now(reloj);
-        assertThat(ventas.get(0).get("fecha").toString()).isEqualTo(esperada.toString());
+        // T-046 (ADR-050): el asiento lleva la fecha de emisión de la sustituta, también con 15; el mes de la
+        // original solo decide el período de atribución
+        assertThat(ventas.get(0).get("fecha").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        Map<String, Object> atribucion = jdbc.queryForMap("SELECT fecha_contable, periodo_fiscal_atribucion "
+                + "FROM factura WHERE id_factura = ?", idSustituta);
+        assertThat(atribucion.get("fecha_contable").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        assertThat(atribucion.get("periodo_fiscal_atribucion")).isEqualTo(fechaOriginal != null
+                ? fechaOriginal.substring(0, 7) : java.time.YearMonth.from(LocalDate.now(reloj)).toString());
 
         // Una segunda sustituta de la misma original: 409 con el número de la primera y nada nuevo
         MvcResult segunda = sustituta(idFactura, null);
@@ -1144,6 +1173,80 @@ class NotaCreditoIT {
         assertThat(m.find()).as("una sola referencia").isFalse();
     }
 
+
+    @Test
+    @DisplayName("T-046: con facturacion.notas.atribucion.codigo-15 = EMISION la sustituta 15 se atribuye al mes de "
+            + "emisión; el cambio no toca la nota ya creada")
+    void sustituta15_conParametroEmision() throws Exception {
+        int idFactura = facturaAceptada();
+        jdbc.update("UPDATE comprobante_electronico SET fecha_emision = '2026-09-29 10:15:30' WHERE factura_id = ? "
+                + "AND vigente = b'1'", idFactura);
+        Nota nota = emitirOk(idFactura, "13", "Anulación para sustituir");
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        assertThat(jdbc.queryForObject("SELECT periodo_fiscal_atribucion FROM nota_factura WHERE id = ?",
+                String.class, nota.id())).isEqualTo("2026-09");
+        try {
+            org.mockito.Mockito.doReturn(PeriodoAtribucion.EMISION).when(atribucionFiscal)
+                    .atribucionDe(CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_ERROR_MATERIAL);
+
+            MvcResult creada = sustituta(idFactura, null);
+
+            assertThat(creada.getResponse().getStatus()).as(creada.getResponse().getContentAsString()).isEqualTo(201);
+            int idSustituta = objectMapper.readTree(creada.getResponse().getContentAsString()).get("data")
+                    .get("idFactura").asInt();
+            assertThat(jdbc.queryForObject("SELECT periodo_fiscal_atribucion FROM factura WHERE id_factura = ?",
+                    String.class, idSustituta)).isEqualTo(java.time.YearMonth.from(LocalDate.now(reloj)).toString());
+            assertThat(jdbc.queryForObject("SELECT periodo_fiscal_atribucion FROM nota_factura WHERE id = ?",
+                    String.class, nota.id())).as("la nota conserva su período").isEqualTo("2026-09");
+        } finally {
+            org.mockito.Mockito.reset(atribucionFiscal);
+        }
+    }
+
+    @Test
+    @DisplayName("T-046: editar los montos de una sustituta 15 (cuerpo sin los campos @JsonIgnore) conserva fecha "
+            + "contable y período, y el asiento de venta nuevo lleva la fecha contable de la sustituta")
+    void sustituta_editarMontos_conservaAtribucion() throws Exception {
+        int idFactura = facturaAceptada();
+        jdbc.update("UPDATE comprobante_electronico SET fecha_emision = '2026-09-29 10:15:30' WHERE factura_id = ? "
+                + "AND vigente = b'1'", idFactura);
+        Nota nota = emitirOk(idFactura, "13", "Anulación para sustituir");
+        when(haciendaApi.consultarComprobante(eq(nota.clave()), anyLong())).thenReturn(consulta("aceptado"));
+        comprobanteService.consultarYActualizarEstado(nota.idComprobante());
+        MvcResult creada = sustituta(idFactura, null);
+        assertThat(creada.getResponse().getStatus()).as(creada.getResponse().getContentAsString()).isEqualTo(201);
+        int idSustituta = objectMapper.readTree(creada.getResponse().getContentAsString()).get("data")
+                .get("idFactura").asInt();
+
+        // Lo que llega del controlador: la factura sin fechaContable ni periodoFiscalAtribucion (@JsonIgnore)
+        tx.executeWithoutResult(s -> {
+            Factura actual = facturaRepository.findById(idSustituta).orElseThrow();
+            Factura editada = new Factura();
+            editada.setIdFactura(idSustituta);
+            editada.setCliente(actual.getCliente());
+            editada.setNumeroFactura(actual.getNumeroFactura());
+            editada.setSerie(actual.getSerie());
+            editada.setMonedaFE(actual.getMonedaFE());
+            editada.setTipoCambio(actual.getTipoCambio());
+            editada.setSubtotal(new BigDecimal("2000.00"));
+            editada.setIgv(new BigDecimal("260.00"));
+            editada.setTotal(new BigDecimal("2260.00"));
+            editada.setAnulada(false);
+            editada.setCreateDate(actual.getCreateDate());
+            facturaService.save(editada);
+        });
+
+        Map<String, Object> fila = jdbc.queryForMap("SELECT fecha_contable, periodo_fiscal_atribucion, "
+                + "sustituye_factura_id, codigo_sustitucion FROM factura WHERE id_factura = ?", idSustituta);
+        assertThat(fila.get("fecha_contable").toString()).isEqualTo(LocalDate.now(reloj).toString());
+        assertThat(fila.get("periodo_fiscal_atribucion")).isEqualTo("2026-09");
+        assertThat(fila.get("codigo_sustitucion")).isEqualTo("15");
+        List<Map<String, Object>> ventas = jdbc.queryForList("SELECT fecha FROM asientos_contables WHERE factura_id = ? "
+                + "AND tipo = 'AUTOMATICO_VENTA' AND asiento_revertido_id IS NULL", idSustituta);
+        assertThat(ventas).isNotEmpty().allSatisfy(v ->
+                assertThat(v.get("fecha").toString()).isEqualTo(LocalDate.now(reloj).toString()));
+    }
 
     @ParameterizedTest(name = "nota {0} → sustituta {1}")
     @org.junit.jupiter.params.provider.CsvSource({"01,07", "13,15"})

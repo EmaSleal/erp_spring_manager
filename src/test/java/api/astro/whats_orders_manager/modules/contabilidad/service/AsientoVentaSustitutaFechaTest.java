@@ -32,8 +32,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
- * T-039 (criterio 7, ADR-045 §4): fecha del asiento de venta de una factura sustituta. Con código 15 se fecha con el
- * comprobante ACEPTADO de la original (su periodo); con 07 y en una venta normal, con la fecha de emisión de la factura.
+ * T-046 (criterio 3, ADR-050 §1, que cambia ADR-045 §4): fecha del asiento de venta de una factura sustituta. Con 15,
+ * con 07 y en una venta normal el asiento lleva la fecha de emisión del documento (la fecha contable guardada); el mes
+ * de la original solo decide el período fiscal de atribución, no la fecha.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -72,14 +73,24 @@ class AsientoVentaSustitutaFechaTest {
     }
 
     @Test
-    @DisplayName("sustituta con código 15: el asiento lleva la fecha del comprobante de la original")
-    void codigo15_fechaDelComprobanteOriginal() {
+    @DisplayName("sustituta con código 15: el asiento lleva su fecha de emisión, no la del comprobante de la original")
+    void codigo15_fechaDeEmision() {
         Factura sustituta = sustituta("15");
 
         AsientoContable asiento = service.generarAsientoVenta(sustituta);
 
-        assertThat(asiento.getFecha()).isEqualTo(FECHA_COMPROBANTE_ORIGINAL.toLocalDate())
-                .isNotEqualTo(FECHA_SUSTITUTA);
+        assertThat(asiento.getFecha()).isEqualTo(FECHA_SUSTITUTA)
+                .isNotEqualTo(FECHA_COMPROBANTE_ORIGINAL.toLocalDate());
+    }
+
+    @Test
+    @DisplayName("sustituta sin fecha contable: no se contabiliza")
+    void sinFechaContable_falla() {
+        Factura sustituta = sustituta("15");
+        sustituta.setFechaContable(null);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.generarAsientoVenta(sustituta))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("fecha contable");
     }
 
     @Test
@@ -112,6 +123,8 @@ class AsientoVentaSustitutaFechaTest {
         sustituta.setCreateDate(FECHA_SUSTITUTA.atTime(9, 0));
         sustituta.setFacturaSustituida(original);
         sustituta.setCodigoSustitucion(codigo);
+        sustituta.setFechaContable(FECHA_SUSTITUTA);
+        sustituta.setPeriodoFiscalAtribucion("15".equals(codigo) ? "2026-09" : "2026-11");
         sustituta.setRazonSustitucion("Sustituye la factura F-70");
         return sustituta;
     }

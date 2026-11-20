@@ -1,7 +1,5 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service;
 
-import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
-import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
@@ -878,21 +876,18 @@ public class AsientoContableService {
     }
 
     /**
-     * Fecha del asiento de venta (ADR-014, ADR-045 §4): la fecha de emisión de la factura; la sustituta con código 15
-     * (original anulada por error material) toma la fecha del comprobante ACEPTADO de la original, o sea, su periodo.
-     * La sustituta con 07 y toda venta normal usan su propia fecha de emisión.
+     * Fecha del asiento de venta (ADR-014, ADR-050 §1): la fecha de emisión de la factura, también en la sustituta 15
+     * (cambia ADR-045 §4). La sustituta usa su fecha contable guardada al crearla, que es esa misma fecha y el único
+     * punto que P-018 reemplazará por el primer período abierto. El mes del IVA va aparte
+     * ({@code periodoFiscalAtribucion}).
      */
     private LocalDate fechaContableDeVenta(Factura factura) {
-        Factura original = factura.getFacturaSustituida();
-        if (original != null
-            && CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_ERROR_MATERIAL.getCodigo()
-                .equals(factura.getCodigoSustitucion())) {
-            return original.getComprobantes().stream()
-                .filter(c -> c.getEstado() == EstadoComprobante.ACEPTADO && c.getFechaEmision() != null)
-                .findFirst()
-                .map(c -> c.getFechaEmision().toLocalDate())
-                .orElseThrow(() -> new IllegalStateException(
-                    "La factura sustituida " + original.getNumeroFactura() + " no tiene un comprobante aceptado"));
+        if (factura.getFacturaSustituida() != null) {
+            if (factura.getFechaContable() == null) {
+                throw new IllegalStateException("La factura sustituta " + factura.getNumeroFactura()
+                    + " no tiene fecha contable");
+            }
+            return factura.getFechaContable();
         }
         return factura.getFechaEmision();
     }

@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaPendienteDTO;
@@ -207,7 +208,15 @@ public class FacturaServiceImpl implements FacturaService {
                 factura.setFacturaSustituida(existente.getFacturaSustituida());
                 factura.setRazonSustitucion(existente.getRazonSustitucion());
                 factura.setCodigoSustitucion(existente.getCodigoSustitucion());
+                // ADR-050: fecha contable y período de la sustituta se fijan al crearla; el cliente no los envía
+                factura.setFechaContable(existente.getFechaContable());
+                factura.setPeriodoFiscalAtribucion(existente.getPeriodoFiscalAtribucion());
             });
+        }
+
+        // Editar una sustituta nunca la deja sin su atribución (ADR-050); al crearla la fija FacturaSustitutaService
+        if (!isNew) {
+            AtribucionFiscalService.exigirAtribucion(factura);
         }
 
         // Guardar la factura

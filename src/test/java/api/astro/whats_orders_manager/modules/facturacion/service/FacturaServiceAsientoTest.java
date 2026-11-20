@@ -192,6 +192,34 @@ class FacturaServiceAsientoTest {
         verifyNoInteractions(movimientoInventarioService);
     }
 
+    @Test
+    @DisplayName("T-046 (ADR-050): editar una sustituta conserva su fecha contable y su período (no llegan del cliente)")
+    void editarSustituta_conservaFechaContableYPeriodo() {
+        FacturaServiceImpl service = servicio(asientoServiceMock);
+        Factura original = new Factura();
+        original.setIdFactura(10);
+        Factura existente = nuevaFactura("100.00", "13.00", "113.00", MonedaFE.CRC, null);
+        existente.setIdFactura(42);
+        existente.setFacturaSustituida(original);
+        existente.setCodigoSustitucion("15");
+        existente.setRazonSustitucion("Sustituye la factura F-10");
+        existente.setFechaContable(java.time.LocalDate.of(2026, 11, 19));
+        existente.setPeriodoFiscalAtribucion("2026-09");
+        when(facturaRepository.findById(42)).thenReturn(Optional.of(existente));
+        // lo que llega del cliente: @JsonIgnore deja ambos campos en null
+        Factura editada = nuevaFactura("200.00", "26.00", "226.00", MonedaFE.CRC, null);
+        editada.setIdFactura(42);
+
+        Factura guardada = service.save(editada);
+
+        assertThat(guardada.getFechaContable()).isEqualTo(java.time.LocalDate.of(2026, 11, 19));
+        assertThat(guardada.getPeriodoFiscalAtribucion()).isEqualTo("2026-09");
+        assertThat(guardada.getFacturaSustituida()).isSameAs(original);
+        api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService
+                .exigirAtribucion(guardada);
+        verify(asientoServiceMock).sincronizarAsientoVenta(guardada);
+    }
+
     private static TotalesFacturaService totalesSimulado() {
         TotalesFacturaService totales = mock(TotalesFacturaService.class);
         when(totales.aplicarTotales(any(), any())).thenReturn(

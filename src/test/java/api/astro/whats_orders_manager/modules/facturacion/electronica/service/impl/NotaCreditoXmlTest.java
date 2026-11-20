@@ -281,6 +281,19 @@ class NotaCreditoXmlTest {
     }
 
     @Test
+    @DisplayName("T-046: la nota guarda al emitir su fecha contable (la de emisión) y su período fiscal de atribución")
+    void fechaContableYPeriodo() {
+        NotaFactura nota01 = nota("01", "Anulación total");
+        NotaFactura nota13 = nota("13", "Error material");
+
+        assertThat(nota01.getFechaContable()).isEqualTo(FECHA_NOTA.toLocalDate());
+        assertThat(nota13.getFechaContable()).isEqualTo(FECHA_NOTA.toLocalDate());
+        // la factura de este fixture es del mismo mes que la nota: ambos períodos coinciden
+        assertThat(nota01.getPeriodoFiscalAtribucion()).isEqualTo("2026-11");
+        assertThat(nota13.getPeriodoFiscalAtribucion()).isEqualTo("2026-11");
+    }
+
+    @Test
     @DisplayName("la razón escapa & y < y sigue validando contra el XSD")
     void razonConCaracteresEspeciales() throws Exception {
         String razon = "Error & <corrección> del \"precio\"";
@@ -480,7 +493,8 @@ class NotaCreditoXmlTest {
         Clock reloj = Clock.fixed(FECHA_NOTA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
 
         new NotaFacturaService(facturas, notas, comprobantes, comprobanteService, pagos,
-                new CalculadoraImpuestoService(null), reloj, mock(AmbienteComprobanteGuard.class))
+                new CalculadoraImpuestoService(null), reloj, mock(AmbienteComprobanteGuard.class),
+                new api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService("ORIGINAL"))
                 .emitirNotaCreditoTotal(77, TipoNotaFactura.CREDITO, codigo, razon, "admin");
 
         ArgumentCaptor<NotaFactura> captor = ArgumentCaptor.forClass(NotaFactura.class);

@@ -41,6 +41,9 @@
         par(dl, 'Razón', d.razon);
         par(dl, 'Fecha de emisión', NC.formatearFecha(d.fechaEmision, true));
         par(dl, 'Fecha de aplicación', NC.formatearFecha(d.fechaAplicacion, true));
+        // T-046 (ADR-050): la fecha del asiento y el mes al que se atribuye el IVA van por separado
+        par(dl, 'Fecha contable', NC.formatearDia(d.fechaContable));
+        par(dl, 'Período fiscal (IVA)', d.periodoFiscalAtribucion);
         par(dl, 'Moneda', d.moneda);
         if (d.moneda && d.moneda !== 'CRC') par(dl, 'Tipo de cambio', d.tipoCambio);
         par(dl, 'Cliente', d.clienteNombre);
@@ -148,6 +151,8 @@
         vaciar(cont);
         cont.appendChild(NC.enlace(document, d.numeroAsientoReversion || ('Asiento ' + d.idAsientoReversion),
             '/contabilidad/asientos/' + encodeURIComponent(d.idAsientoReversion), 'text-decoration-none'));
+        cont.appendChild(NC.el(document, 'span', ' · Fecha del asiento: ' + NC.formatearDia(d.fechaAsientoReversion),
+            'text-muted'));
         card.style.display = '';
     }
 

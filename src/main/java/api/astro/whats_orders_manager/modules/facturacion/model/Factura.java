@@ -105,6 +105,16 @@ public class Factura {
     @JsonIgnore
     private String codigoSustitucion;
 
+    /** Fecha del asiento de venta de la sustituta (ADR-050 §1); obligatoria cuando es sustituta, null en el resto. */
+    @Column(name = "fecha_contable")
+    @JsonIgnore
+    private LocalDate fechaContable;
+
+    /** Mes (AAAA-MM) al que se atribuye el IVA de la sustituta (ADR-050 §2); obligatorio cuando es sustituta. */
+    @Column(name = "periodo_fiscal_atribucion", length = 7, columnDefinition = "CHAR(7)")
+    @JsonIgnore
+    private String periodoFiscalAtribucion;
+
     /** Razón de la InformacionReferencia 07/15 de la sustituta (3 a 180 caracteres). */
     @Column(name = "razon_sustitucion", length = 180)
     @JsonIgnore

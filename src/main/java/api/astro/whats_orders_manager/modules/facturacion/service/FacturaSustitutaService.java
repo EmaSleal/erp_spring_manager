@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.dto.FacturaDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.SustitucionRefDTO;
+import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
@@ -13,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -35,6 +37,7 @@ public class FacturaSustitutaService {
     private final FacturaService facturaService;
     private final LineaFacturaService lineaFacturaService;
     private final SustitucionElegibilidad elegibilidad;
+    private final AtribucionFiscalService atribucionFiscal;
 
     /**
      * @param idOriginal factura anulada que se sustituye
@@ -77,6 +80,15 @@ public class FacturaSustitutaService {
             throw new NotaFacturaConflictoException(
                 SustitucionElegibilidad.MENSAJE_YA_TIENE_SUSTITUTA + numeroDeLaExistente(idOriginal));
         }
+        // ADR-050: fecha del asiento y mes del IVA, fijos desde la creación. La fecha de emisión de la sustituta es su
+        // createDate (auditoría); se deriva de ella tras guardar para que fecha contable y emisión no puedan divergir.
+        CodigoReferenciaNota codigo = CodigoReferenciaNota.deCodigo(evaluacion.codigoSustitucion()).orElseThrow();
+        LocalDate emision = guardada.getFechaEmision();
+        guardada.setFechaContable(atribucionFiscal.fechaContable(emision));
+        guardada.setPeriodoFiscalAtribucion(atribucionFiscal.periodoTexto(codigo, emision,
+            evaluacion.comprobanteOriginal().getFechaEmision()));
+        AtribucionFiscalService.exigirAtribucion(guardada);
+        facturaRepository.save(guardada);
         // Las líneas entran por el mismo camino que la pantalla (primera carga de una factura sin líneas): se calculan
         // los totales y se crea el asiento de venta una sola vez. Cargarlas con la cabecera registraría de nuevo las
         // salidas de inventario de una venta que la original ya registró (la devolución es de v1.1).
@@ -127,6 +139,8 @@ public class FacturaSustitutaService {
         });
         Factura original = factura.getFacturaSustituida();
         if (original != null) {
+            detalle.setFechaContable(factura.getFechaContable());
+            detalle.setPeriodoFiscalAtribucion(factura.getPeriodoFiscalAtribucion());
             SustitucionElegibilidad.Evaluacion e = elegibilidad.evaluarSinSustituta(original);
             detalle.setSustituye(new SustitucionRefDTO(original.getIdFactura(), original.getNumeroFactura(),
                 e.elegible() ? e.numeroNota() : null));
