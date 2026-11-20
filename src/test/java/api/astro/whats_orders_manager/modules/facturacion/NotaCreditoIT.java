@@ -1050,7 +1050,9 @@ class NotaCreditoIT {
     @DisplayName("T-047 (criterio 13): el PDF de la nota parcial se genera")
     void pdfDeLaNotaParcial() throws Exception {
         int idFactura = facturaAceptada();
-        Nota nota = emitirParcialOk(idFactura, "02", "Para el PDF", acreditar(lineasDeFactura(idFactura).get(0), "113.00"));
+        List<Integer> lineasFactura = lineasDeFactura(idFactura);
+        Nota nota = emitirParcialOk(idFactura, "02", "Para el PDF", acreditar(lineasFactura.get(0), "113.00"),
+                acreditar(lineasFactura.get(1), "250.00"));
         empresaService.getEmpresaPrincipal();
 
         MvcResult pdf = mockMvc.perform(get("/facturas/notas-credito/" + nota.id() + "/pdf")
@@ -1062,7 +1064,11 @@ class NotaCreditoIT {
         String texto = textoDelPdf(pdf.getResponse().getContentAsByteArray());
         assertThat(texto).contains("Nota de crédito parcial");
         assertThat(texto).contains("Producto A gravado 13 %");
-        assertThat(texto.replace(",", "")).contains("113.00");
+        String plano = texto.replace(",", "");
+        // cada fila muestra descripción, precio (base / cantidad) y total de la línea de la nota; el total lleva el IVA
+        assertThat(plano).contains("Producto A gravado 13 % 1.00 Unid 100.00 13.00 100.00");
+        assertThat(plano).contains("Producto B exento 1.00 Unid 250.00 0.00 250.00");
+        assertThat(plano).contains("Total ¢363.00");
     }
 
     private static String textoDelPdf(byte[] bytes) throws Exception {

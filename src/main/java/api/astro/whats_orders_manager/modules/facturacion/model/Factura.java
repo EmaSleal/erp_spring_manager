@@ -263,7 +263,8 @@ public class Factura {
      */
     @Transient
     public BigDecimal calcularSaldoPendiente() {
-        if (estaAcreditadaTotalmente()) {
+        // una factura anulada o acreditada totalmente no tiene saldo (T-047)
+        if (estaAnulada() || estaAcreditadaTotalmente()) {
             return BigDecimal.ZERO;
         }
         BigDecimal totalPagado = calcularTotalPagado();
@@ -288,9 +289,6 @@ public class Factura {
      */
     @Transient
     public BigDecimal getSaldoPendienteEnCRC() {
-        if (estaAnulada()) {
-            return BigDecimal.ZERO;
-        }
         BigDecimal saldo = calcularSaldoPendiente();
         if (monedaFE == null || monedaFE == api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE.CRC) {
             return saldo;
@@ -305,7 +303,7 @@ public class Factura {
      */
     @Transient
     public boolean admiteRecordatorioDePago() {
-        return !estaAnulada() && !estaAcreditadaTotalmente() && calcularSaldoPendiente().signum() > 0;
+        return calcularSaldoPendiente().signum() > 0;
     }
 
     // Returns the invoice total converted to CRC for consolidated report aggregation.

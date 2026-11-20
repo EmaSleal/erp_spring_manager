@@ -727,7 +727,9 @@ public class PagoServiceImpl implements PagoService {
 
         List<PagoDTO> pagos = pagoMapper.toDTOList(findByClienteId(idCliente));
 
+        // T-047: una factura anulada no suma al facturado ni al saldo (coherente con calcularSaldoPendiente)
         BigDecimal totalFacturado = facturaEntities.stream()
+            .filter(f -> !f.estaAnulada())
             .map(f -> f.getTotal() != null ? f.getTotal() : BigDecimal.ZERO)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -748,7 +750,7 @@ public class PagoServiceImpl implements PagoService {
         BigDecimal saldoPendiente = totalFacturado.subtract(totalAcreditado).subtract(totalPagado);
 
         int facturasPendientes = (int) facturaEntities.stream()
-            .filter(f -> !f.estaAcreditadaTotalmente())
+            .filter(f -> !f.estaAnulada() && !f.estaAcreditadaTotalmente())
             .filter(f -> f.getEstadoPago() != null && f.getEstadoPago().tieneSaldoPendiente())
             .count();
 
