@@ -73,7 +73,10 @@ public class RecordatorioPagoScheduler {
         
         try {
             // Buscar facturas con pago vencido
-            List<Factura> facturasVencidas = facturaRepository.findFacturasConPagoVencido();
+            // T-047: sin anuladas, acreditadas totalmente ni facturas sin saldo (el filtro de la consulta se repite aquí)
+            List<Factura> facturasVencidas = facturaRepository.findFacturasConPagoVencido().stream()
+                .filter(Factura::admiteRecordatorioDePago)
+                .toList();
             
             // Buscar facturas próximas a vencer (3 días o menos)
             List<Factura> facturasPorVencer = buscarFacturasPorVencer();
@@ -130,6 +133,7 @@ public class RecordatorioPagoScheduler {
             .filter(f -> f.getFechaPago() != null)
             .filter(f -> f.getEntregado() != null && f.getEntregado())
             .filter(f -> "PENDIENTE".equals(f.getTipoFactura()))
+            .filter(Factura::admiteRecordatorioDePago)
             .filter(f -> {
                 LocalDate fechaPago = f.getFechaPago().toLocalDate();
                 return fechaPago.isAfter(hoy) && !fechaPago.isAfter(fechaLimite);
@@ -155,10 +159,10 @@ public class RecordatorioPagoScheduler {
 
             String titulo = "Factura Vencida";
             String mensaje = String.format(
-                "La factura %s está vencida desde hace %d día(s). Total: %s",
+                "La factura %s está vencida desde hace %d día(s). Saldo pendiente: %s",
                 factura.getNumeroFactura(),
                 diasVencida,
-                factura.getTotal()
+                factura.calcularSaldoPendiente().toPlainString()
             );
             notificacionService.enviarNotificacionExterna(
                     telefono,
@@ -196,10 +200,10 @@ public class RecordatorioPagoScheduler {
 
             String titulo = "Factura Próxima a Vencer";
             String mensaje = String.format(
-                "La factura %s vence en %d día(s). Total: %s",
+                "La factura %s vence en %d día(s). Saldo pendiente: %s",
                 factura.getNumeroFactura(),
                 diasRestantes,
-                factura.getTotal()
+                factura.calcularSaldoPendiente().toPlainString()
             );
             notificacionService.enviarNotificacionExterna(
                     telefono,

@@ -180,7 +180,7 @@ public interface AsientoContableRepository extends JpaRepository<AsientoContable
      */
     @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END " +
            "FROM AsientoContable a WHERE a.factura.idFactura = :facturaId AND a.tipo = 'AUTOMATICO_VENTA' " +
-           "AND a.asientoRevertido IS NULL AND a.notaFactura IS NULL " +
+           "AND a.asientoRevertido IS NULL " +
            "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
     boolean existeAsientoVentaParaFactura(@Param("facturaId") Long facturaId);
     
@@ -202,7 +202,7 @@ public interface AsientoContableRepository extends JpaRepository<AsientoContable
      * @return Lista de asientos vigentes (normalmente uno)
      */
     @Query("SELECT a FROM AsientoContable a WHERE a.factura.idFactura = :facturaId AND a.tipo = 'AUTOMATICO_VENTA' " +
-           "AND a.estado = 'CONTABILIZADO' AND a.asientoRevertido IS NULL AND a.notaFactura IS NULL " +
+           "AND a.estado = 'CONTABILIZADO' AND a.asientoRevertido IS NULL " +
            "AND NOT EXISTS (SELECT r FROM AsientoContable r WHERE r.asientoRevertido = a)")
     List<AsientoContable> findAsientosVentaVigentes(@Param("facturaId") Long facturaId);
 

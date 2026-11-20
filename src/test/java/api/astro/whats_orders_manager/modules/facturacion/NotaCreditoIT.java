@@ -1058,6 +1058,86 @@ class NotaCreditoIT {
 
         assertThat(pdf.getResponse().getStatus()).as(pdf.getResponse().getContentAsString()).isEqualTo(200);
         assertThat(new String(pdf.getResponse().getContentAsByteArray(), 0, 5)).isEqualTo("%PDF-");
+        // T-047 criterio 34: el texto extraído trae la modalidad, la descripción y el monto de la línea de la nota
+        String texto = textoDelPdf(pdf.getResponse().getContentAsByteArray());
+        assertThat(texto).contains("Nota de crédito parcial");
+        assertThat(texto).contains("Producto A gravado 13 %");
+        assertThat(texto.replace(",", "")).contains("113.00");
+    }
+
+    private static String textoDelPdf(byte[] bytes) throws Exception {
+        try (com.itextpdf.kernel.pdf.PdfDocument doc = new com.itextpdf.kernel.pdf.PdfDocument(
+                new com.itextpdf.kernel.pdf.PdfReader(new java.io.ByteArrayInputStream(bytes)))) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 1; i <= doc.getNumberOfPages(); i++) {
+                sb.append(com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor.getTextFromPage(doc.getPage(i)))
+                        .append('\n');
+            }
+            return sb.toString();
+        }
+    }
+
+    @Test
+    @DisplayName("T-047 (criterio 33): el asiento de una nota parcial usa AUTOMATICO_NOTA_CREDITO y no cuenta como venta")
+    void asientoDeLaNota_tipoPropio() throws Exception {
+        int idFactura = facturaAceptada();
+        Long idVenta = asientoVentaVigente(idFactura);
+        Nota nota = emitirParcialOk(idFactura, "02", "Tipo propio", acreditar(lineasDeFactura(idFactura).get(0), "113.00"));
+        aceptar(nota);
+
+        assertThat(jdbc.queryForObject("SELECT tipo FROM asientos_contables WHERE nota_factura_id = ?", String.class,
+                nota.id())).isEqualTo("AUTOMATICO_NOTA_CREDITO");
+        assertThat(asientoVentaVigente(idFactura)).as("el asiento de venta sigue siendo el único vigente").isEqualTo(idVenta);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM asientos_contables WHERE factura_id = ? AND tipo = "
+                + "'AUTOMATICO_VENTA'", Integer.class, idFactura)).isEqualTo(1);
+    }
+
+    /** Factura con dos notas parciales por el 100 %, aceptadas: acreditada totalmente. */
+    private int facturaAcreditadaTotalmente() throws Exception {
+        int idFactura = facturaAceptada();
+        List<Integer> lineas = lineasDeFactura(idFactura);
+        aceptar(emitirParcialOk(idFactura, "02", "Línea A", acreditar(lineas.get(0), "1130.00")));
+        aceptar(emitirParcialOk(idFactura, "02", "Línea B", acreditar(lineas.get(1), "500.00")));
+        return idFactura;
+    }
+
+    private List<Integer> pendientesDelListado(Boolean pagada) {
+        return facturaRepository.buscarConFiltros(null, null, null, pagada, null, null, null, null,
+                org.springframework.data.domain.PageRequest.of(0, 200)).map(Factura::getIdFactura).getContent();
+    }
+
+    @Test
+    @DisplayName("T-047 (criterio 31): una factura acreditada totalmente no aparece con pagada=false ni con pagada=true; "
+            + "la parcial sí aparece como pendiente")
+    void acreditadaTotalmente_noEsPendienteDePago() throws Exception {
+        int acreditada = facturaAcreditadaTotalmente();
+        int parcial = facturaAceptada();
+        aceptar(emitirParcialOk(parcial, "02", "Parcial", acreditar(lineasDeFactura(parcial).get(0), "113.00")));
+
+        assertThat(pendientesDelListado(false)).contains(parcial).doesNotContain(acreditada);
+        assertThat(pendientesDelListado(true)).doesNotContain(acreditada, parcial);
+        assertThat(pendientesDelListado(null)).contains(acreditada, parcial);
+    }
+
+    @Test
+    @DisplayName("T-047 (criterio 32): findFacturasConPagoVencido excluye anuladas y acreditadas totalmente; la parcial se queda")
+    void recordatorios_consulta() throws Exception {
+        int acreditada = facturaAcreditadaTotalmente();
+        int anulada = facturaAceptada();
+        int parcial = facturaAceptada();
+        aceptar(emitirParcialOk(parcial, "02", "Parcial", acreditar(lineasDeFactura(parcial).get(0), "113.00")));
+        jdbc.update("UPDATE factura SET anulada = b'1' WHERE id_factura = ?", anulada);
+        for (int id : List.of(acreditada, anulada, parcial)) {
+            jdbc.update("UPDATE factura SET fecha_pago = ?, entregado = b'1' WHERE id_factura = ?",
+                    LocalDate.now().minusDays(3), id);
+            jdbc.update("UPDATE cliente SET email = 'cliente@example.invalid' WHERE id_cliente = "
+                    + "(SELECT id_cliente FROM factura WHERE id_factura = ?)", id);
+        }
+
+        List<Integer> ids = tx.execute(s -> facturaRepository.findFacturasConPagoVencido().stream()
+                .map(Factura::getIdFactura).toList());
+
+        assertThat(ids).contains(parcial).doesNotContain(acreditada, anulada);
     }
 
     private static Map<String, Object> acreditar(int idLineaFactura, String monto) {

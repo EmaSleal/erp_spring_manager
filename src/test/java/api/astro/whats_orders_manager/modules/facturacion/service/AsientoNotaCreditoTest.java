@@ -133,6 +133,9 @@ class AsientoNotaCreditoTest {
         assertThat(haberDe(a, "1.1.02.001")).isEqualByComparingTo("1130.00");
         assertThat(a.estaCuadrado()).isTrue();
         assertThat(a.getEstado()).isEqualTo(EstadoAsiento.CONTABILIZADO);
+        // T-047 criterio 33: tipo propio, distinto del asiento de venta
+        assertThat(a.getTipo().name()).isEqualTo("AUTOMATICO_NOTA_CREDITO");
+        assertThat(a.getTipo().esAutomatico()).isTrue();
         assertThat(a.getFecha()).isEqualTo(FECHA);
         assertThat(a.getNotaFactura().getId()).isEqualTo(5L);
         assertThat(a.getAsientoRevertido()).isNull();

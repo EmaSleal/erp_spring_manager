@@ -127,7 +127,9 @@ public class ReporteServiceImpl implements ReporteService {
         long facturasPagadas = facturas.stream()
             .filter(f -> f.getFechaPago() != null)
             .count();
-        long facturasPendientes = facturas.size() - facturasPagadas;
+        // T-047: una acreditada totalmente no está pendiente de pago ni cuenta como pagada
+        long facturasPendientes = facturas.size() - facturasPagadas - facturas.stream()
+            .filter(f -> f.getFechaPago() == null && f.estaAcreditadaTotalmente()).count();
         estadisticas.put("facturasPagadas", facturasPagadas);
         estadisticas.put("facturasPendientes", facturasPendientes);
         
@@ -136,7 +138,11 @@ public class ReporteServiceImpl implements ReporteService {
             .filter(f -> f.getFechaPago() != null)
             .map(Factura::getTotalEnCRC)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalPendiente = totalVentas.subtract(totalPagado);
+        // T-047 (ADR-051): el pendiente es la suma de los saldos de las facturas (Factura.calcularSaldoPendiente): resta lo
+        // acreditado por notas de crédito y excluye anuladas y acreditadas totalmente, igual que el listado y el modal.
+        BigDecimal totalPendiente = facturas.stream()
+            .map(Factura::getSaldoPendienteEnCRC)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
         estadisticas.put("totalPagado", totalPagado);
         estadisticas.put("totalPendiente", totalPendiente);
         

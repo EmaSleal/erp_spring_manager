@@ -475,8 +475,8 @@ public class AsientoContableService {
      *   CR VENTA_CXC_CLIENTES                                                             — total de la nota
      * El residuo de redondeo (como máximo un céntimo) se lleva a la línea de la base.
      *
-     * El asiento queda enlazado a la nota y a la factura; su tipo es AUTOMATICO_VENTA y se distingue del asiento de venta
-     * por su nota (las consultas de venta vigente excluyen los asientos con nota).
+     * El asiento queda enlazado a la nota y a la factura; su tipo es AUTOMATICO_NOTA_CREDITO (V47), por lo que las consultas
+     * de venta vigente (tipo AUTOMATICO_VENTA) no lo cuentan.
      *
      * @param ventaOriginal asiento de venta vigente de la factura (de él sale la cuenta de ventas para 13 y 14)
      * @param fecha         fecha contable de la nota (ADR-050)
@@ -511,7 +511,7 @@ public class AsientoContableService {
         asiento.setFecha(fecha);
         asiento.setConcepto(truncar("Nota de crédito " + nota.getId() + " (código " + nota.getCodigoReferencia()
             + ") sobre factura " + factura.getNumeroFactura() + nombreCliente, 500));
-        asiento.setTipo(TipoAsiento.AUTOMATICO_VENTA);
+        asiento.setTipo(TipoAsiento.AUTOMATICO_NOTA_CREDITO);
         asiento.setEstado(EstadoAsiento.BORRADOR);
         asiento.setFactura(factura);
         asiento.setNotaFactura(nota);

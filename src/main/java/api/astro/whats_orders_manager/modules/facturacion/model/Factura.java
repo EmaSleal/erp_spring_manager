@@ -281,6 +281,33 @@ public class Factura {
         return Boolean.TRUE.equals(acreditadaTotalmente);
     }
 
+    /**
+     * T-047: saldo pendiente convertido a CRC con el tipo de cambio de la factura (mismo criterio que
+     * {@link #getTotalEnCRC()}). Una factura anulada no tiene saldo; una acreditada totalmente tampoco
+     * ({@link #calcularSaldoPendiente()}). Es el cálculo que usan los reportes.
+     */
+    @Transient
+    public BigDecimal getSaldoPendienteEnCRC() {
+        if (estaAnulada()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal saldo = calcularSaldoPendiente();
+        if (monedaFE == null || monedaFE == api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE.CRC) {
+            return saldo;
+        }
+        BigDecimal tc = (tipoCambio != null && tipoCambio.compareTo(BigDecimal.ZERO) > 0) ? tipoCambio : BigDecimal.ONE;
+        return saldo.multiply(tc).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * T-047: la factura admite recordatorio de cobro: no está anulada ni acreditada totalmente y su saldo pendiente
+     * (total - acreditado - pagado) es mayor que cero.
+     */
+    @Transient
+    public boolean admiteRecordatorioDePago() {
+        return !estaAnulada() && !estaAcreditadaTotalmente() && calcularSaldoPendiente().signum() > 0;
+    }
+
     // Returns the invoice total converted to CRC for consolidated report aggregation.
     // Uses tipoCambio stored at invoice creation time; falls back to 1 if absent.
     @Transient
