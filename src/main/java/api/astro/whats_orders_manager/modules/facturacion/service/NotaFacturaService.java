@@ -198,11 +198,8 @@ public class NotaFacturaService {
             throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura()
                 + " ya tiene una nota de crédito en trámite o aplicada");
         }
-        if (!pagoService.findPagosValidosByFacturaId(idFactura).isEmpty()) {
-            throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura() + " tiene pagos "
-                + "aplicados: la nota de crédito sobre una factura con pagos se habilitará con el saldo a favor "
-                + "del cliente");
-        }
+        // T-048 (ADR-053, ADR-057): una factura con pagos admite la nota; al aplicarse, el excedente sobre el saldo
+        // pendiente se acredita a un saldo a favor del cliente (NotaFacturaEfectos)
 
         LocalDateTime emision = HoraFiscal.ahora(clock);
         NotaFactura nota = NotaFactura.builder()

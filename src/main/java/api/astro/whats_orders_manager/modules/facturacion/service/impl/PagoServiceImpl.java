@@ -13,6 +13,7 @@ import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.FacturaMapp
 import api.astro.whats_orders_manager.modules.facturacion.dto.mapper.PagoMapper;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago;
+import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
 import api.astro.whats_orders_manager.modules.facturacion.enums.MetodoPago;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
@@ -170,6 +171,8 @@ public class PagoServiceImpl implements PagoService {
             pago.getMonto(), 
             pago.getMetodoPago());
         
+        exigirNoEsDeSaldoFavor(pago);
+
         // Validar que el cliente exista
         if (pago.getCliente() == null || pago.getCliente().getIdCliente() == null) {
             throw new IllegalArgumentException("El cliente es obligatorio para registrar un pago");
@@ -342,6 +345,8 @@ public class PagoServiceImpl implements PagoService {
         Pago pago = pagoRepository.findById(idPago)
             .orElseThrow(() -> new IllegalArgumentException("Pago no encontrado con ID: " + idPago));
         
+        exigirNoEsDeSaldoFavor(pago);
+
         if (pago.getEstado() == EstadoPago.CONCILIADO) {
             log.warn("El pago {} ya está conciliado", idPago);
             return pago;
@@ -382,6 +387,8 @@ public class PagoServiceImpl implements PagoService {
         Pago pago = pagoRepository.findById(idPago)
             .orElseThrow(() -> new IllegalArgumentException("Pago no encontrado con ID: " + idPago));
         
+        exigirNoEsDeSaldoFavor(pago);
+
         if (pago.getEstado() == EstadoPago.CONCILIADO) {
             throw new IllegalStateException("No se puede rechazar un pago ya conciliado");
         }
@@ -407,6 +414,16 @@ public class PagoServiceImpl implements PagoService {
     @Override
     @Transactional
     public Pago anularPago(Long idPago, String motivo, Integer usuarioId) {
+        return anular(idPago, motivo, usuarioId, false);
+    }
+
+    @Override
+    @Transactional
+    public Pago anularPagoDeSaldoFavor(Long idPago, String motivo, Integer usuarioId) {
+        return anular(idPago, motivo, usuarioId, true);
+    }
+
+    private Pago anular(Long idPago, String motivo, Integer usuarioId, boolean desdeSaldoFavor) {
         log.info("Anulando pago con ID: {} - Motivo: {} - Usuario: {}", idPago, motivo, usuarioId);
         
         if (motivo == null || motivo.trim().isEmpty()) {
@@ -420,6 +437,10 @@ public class PagoServiceImpl implements PagoService {
         Pago pago = pagoRepository.findById(idPago)
             .orElseThrow(() -> new EntityNotFoundException("Pago no encontrado con ID: " + idPago));
         
+        if (!desdeSaldoFavor) {
+            exigirNoEsDeSaldoFavor(pago);
+        }
+
         if (pago.getEstado() == EstadoPago.ANULADO) {
             log.warn("El pago {} ya está anulado", idPago);
             return pago;
@@ -508,6 +529,20 @@ public class PagoServiceImpl implements PagoService {
 
     private static MonedaFE monedaFactura(Factura factura) {
         return ConversionMoneda.oCrc(factura.getMonedaFE());
+    }
+
+    /** Mensaje cuando se intenta tratar como cobro un pago por saldo a favor (T-048). */
+    static final String MENSAJE_PAGO_SALDO_FAVOR = "Un pago por saldo a favor no se registra, concilia, rechaza ni anula "
+        + "desde los pagos: se aplica y se reversa desde el saldo a favor del cliente";
+
+    /**
+     * Un pago NOTA_CREDITO nace y muere con la aplicación de un saldo a favor (SaldoFavorService): no es dinero y su
+     * asiento, el saldo vivo y la reversión van juntos. Cambiarlo por aquí dejaría el pasivo y el saldo descuadrados.
+     */
+    private static void exigirNoEsDeSaldoFavor(Pago pago) {
+        if (pago.getTipoPago() == TipoPago.NOTA_CREDITO) {
+            throw new IllegalStateException(MENSAJE_PAGO_SALDO_FAVOR);
+        }
     }
 
     /**
@@ -747,7 +782,18 @@ public class PagoServiceImpl implements PagoService {
             .map(Factura::calcularTotalAcreditado)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal saldoPendiente = totalFacturado.subtract(totalAcreditado).subtract(totalPagado);
+        // T-048: el saldo suma el de cada factura (nunca negativo: una nota que excede lo que queda por cobrar pasa el
+        // excedente a un saldo a favor, que se muestra aparte) menos los adelantos sin factura
+        BigDecimal pagadoSinFactura = pagos.stream()
+            .filter(PagoDTO::esValido)
+            .filter(p -> p.getIdFactura() == null)
+            .map(p -> p.getMontoAplicado() != null ? p.getMontoAplicado()
+                : (p.getMonto() != null ? p.getMonto() : BigDecimal.ZERO))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal saldoPendiente = facturaEntities.stream()
+            .map(Factura::calcularSaldoPendiente)
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .subtract(pagadoSinFactura);
 
         int facturasPendientes = (int) facturaEntities.stream()
             .filter(f -> !f.estaAnulada() && !f.estaAcreditadaTotalmente())

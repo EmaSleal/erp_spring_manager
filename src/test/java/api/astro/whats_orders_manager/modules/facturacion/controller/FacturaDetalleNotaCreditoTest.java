@@ -45,7 +45,8 @@ class FacturaDetalleNotaCreditoTest {
             mock(PagoService.class), mock(EmailService.class), mock(MonedaService.class), facturaMapper,
             mock(FacturaPdfService.class), mock(PagoMapper.class), mock(PoliticaMutabilidadFactura.class),
             mock(FacturaSustitutaService.class), elegibilidad,
-            mock(api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard.class));
+            mock(api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard.class),
+            mock(api.astro.whats_orders_manager.modules.facturacion.service.SaldoFavorService.class));
         mvc = MockMvcBuilders.standaloneSetup(controller).build();
         when(facturaService.findById(7)).thenReturn(Optional.of(factura));
         when(facturaMapper.toDetalleDTO(factura)).thenReturn(FacturaDetalleDTO.builder().build());
@@ -72,17 +73,6 @@ class FacturaDetalleNotaCreditoTest {
         when(elegibilidad.periodoFacturaOriginal(factura)).thenReturn(java.util.Optional.of("2026-09"));
         mvc.perform(get("/facturas/detalle/7").principal(usuario()))
             .andExpect(jsonPath("$.periodoFacturaOriginal").value("2026-09"));
-    }
-
-    @Test
-    @DisplayName("con pagos → deshabilitada con el motivo fijo")
-    void conPagos() throws Exception {
-        when(elegibilidad.evaluar(factura, "gerente")).thenReturn(
-            new NotaCreditoElegibilidad.Resultado(false, NotaCreditoElegibilidad.MOTIVO_CON_PAGOS));
-        mvc.perform(get("/facturas/detalle/7").principal(usuario()))
-            .andExpect(jsonPath("$.puedeEmitirNotaCredito").value(false))
-            .andExpect(jsonPath("$.motivoNotaCreditoNoDisponible")
-                .value("La nota de crédito sobre facturas con pagos llega en una próxima versión"));
     }
 
     @Test

@@ -7,7 +7,6 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.event.Comp
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
-import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaEfectosException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
@@ -28,6 +27,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -47,12 +47,13 @@ class NotaFacturaEfectosTest {
     private final NotaFacturaRepository notaRepository = mock(NotaFacturaRepository.class);
     private final AsientoContableService asientoService = mock(AsientoContableService.class);
     private final FacturaService facturaService = mock(FacturaService.class);
-    private final PagoService pagoService = mock(PagoService.class);
+    private final SaldoFavorService saldoFavorService = mock(SaldoFavorService.class);
+    private final jakarta.persistence.EntityManager entityManager = mock(jakarta.persistence.EntityManager.class);
     private final api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository facturaRepository =
             mock(api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository.class);
     private final NotaFacturaEfectos efectos = new NotaFacturaEfectos(notaRepository, asientoService, facturaService,
-            pagoService, Clock.fixed(AHORA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()),
-            facturaRepository);
+            Clock.fixed(AHORA.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()),
+            facturaRepository, saldoFavorService, entityManager);
 
     private Factura factura;
     private AsientoContable venta;
@@ -62,6 +63,7 @@ class NotaFacturaEfectosTest {
         factura = new Factura();
         factura.setIdFactura(9);
         factura.setNumeroFactura("F-9");
+        factura.setTotal(new BigDecimal("300.00"));
         factura.setAnulada(false);
         venta = new AsientoContable();
         venta.setIdAsiento(100L);
@@ -76,7 +78,7 @@ class NotaFacturaEfectosTest {
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()));
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()), any(), any());
         verify(asientoService, never()).generarAsientoReversion(any(), anyString(), any(), any());
         verify(facturaService).anularPorNotaCredito(eq(factura), any());
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
@@ -90,7 +92,7 @@ class NotaFacturaEfectosTest {
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()));
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()), any(), any());
         assertThat(NotaFacturaEfectos.fechaDelAsiento(nota)).isEqualTo(EMISION_NOTA.toLocalDate())
                 .isNotEqualTo(FECHA_VENTA);
         assertThat(NotaFacturaEfectos.fechaDelAsiento(nota("01"))).isEqualTo(EMISION_NOTA.toLocalDate());
@@ -126,7 +128,7 @@ class NotaFacturaEfectosTest {
         efectos.alResolverseComprobante(evento);
         efectos.alResolverseComprobante(evento);
 
-        verify(asientoService, times(1)).generarAsientoNotaCredito(any(), any(), any());
+        verify(asientoService, times(1)).generarAsientoNotaCredito(any(), any(), any(), any(), any());
         verify(facturaService, times(1)).anularPorNotaCredito(any(), any());
     }
 
@@ -138,25 +140,91 @@ class NotaFacturaEfectosTest {
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any(), any(), any());
         verify(facturaService).anularPorNotaCredito(eq(factura), any());
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
     }
 
     @Test
-    @DisplayName("defensa: factura con pagos aplicados → error controlado, sin asiento ni anulación, nota EN_TRAMITE")
-    void conPagosAplicados_noAplica() {
-        when(pagoService.findPagosValidosByFacturaId(9)).thenReturn(List.of(new Pago()));
+    @DisplayName("T-048: la factura se bloquea FOR UPDATE (refresh) antes de calcular el reparto")
+    void bloqueaLaFactura() {
+        efectos.alResolverseComprobante(evento(nota("01"), EstadoComprobante.ACEPTADO));
+
+        verify(entityManager).refresh(factura, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Test
+    @DisplayName("T-048: sin pagos todo el total va a CxC y no se crea saldo a favor")
+    void reparto_sinPagos() {
+        NotaFactura nota = nota("01");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
+
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()),
+                argThat(m -> m.compareTo(new BigDecimal("300.00")) == 0), argThat(m -> m.signum() == 0));
+        verify(saldoFavorService, never()).crearDesdeNota(any(), any(), any());
+        assertThat(nota.getMontoCreditoCxc()).isEqualByComparingTo("300.00");
+        assertThat(nota.getMontoSaldoFavor()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("T-048: nota total sobre factura con pago: CxC = saldo pendiente, excedente = lo pagado a saldo a favor; la factura se anula y los pagos no se tocan")
+    void reparto_notaTotalConPagos() {
+        Pago pago = pagoValido("120.00");
+        factura.getPagos().add(pago);
+        NotaFactura nota = nota("01");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
+
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()),
+                argThat(m -> m.compareTo(new BigDecimal("180.00")) == 0),
+                argThat(m -> m.compareTo(new BigDecimal("120.00")) == 0));
+        verify(saldoFavorService).crearDesdeNota(eq(nota), argThat(m -> m.compareTo(new BigDecimal("120.00")) == 0),
+                eq("CLAVE-NC"));
+        verify(facturaService).anularPorNotaCredito(eq(factura), any());
+        assertThat(pago.getEstado()).isEqualTo(api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago.CONFIRMADO);
+        assertThat(nota.getMontoCreditoCxc()).isEqualByComparingTo("180.00");
+        assertThat(nota.getMontoSaldoFavor()).isEqualByComparingTo("120.00");
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
+    }
+
+    @Test
+    @DisplayName("T-048: parcial sobre factura pagada por completo: saldo pendiente 0, todo el total de la nota va a saldo a favor")
+    void reparto_parcialSobrePagadaPorCompleto() {
+        factura.getPagos().add(pagoValido("300.00"));
+        NotaFactura nota = notaParcial("02", "100.00", "300.00");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
+
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()),
+                argThat(m -> m.signum() == 0), argThat(m -> m.compareTo(new BigDecimal("100.00")) == 0));
+        verify(saldoFavorService).crearDesdeNota(eq(nota), argThat(m -> m.compareTo(new BigDecimal("100.00")) == 0),
+                eq("CLAVE-NC"));
+        assertThat(factura.calcularSaldoPendiente()).as("nunca negativo").isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("T-048: si falta el parámetro del saldo a favor el asiento falla, nada se aplica y no se crea saldo")
+    void reparto_parametroDeSaldoFavorAusente() {
+        factura.getPagos().add(pagoValido("120.00"));
+        when(asientoService.generarAsientoNotaCredito(any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("Parámetro contable no configurado: SALDO_FAVOR_CLIENTES_CRC"));
         NotaFactura nota = nota("01");
 
         assertThatThrownBy(() -> efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO)))
-                .isInstanceOf(NotaFacturaEfectosException.class)
-                .hasMessageContaining("pagos aplicados").hasMessageContaining("nota de crédito 5");
+                .hasMessageContaining("SALDO_FAVOR_CLIENTES_CRC");
 
-        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
+        verify(saldoFavorService, never()).crearDesdeNota(any(), any(), any());
         verify(facturaService, never()).anularPorNotaCredito(any(), any());
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.EN_TRAMITE);
-        assertThat(nota.getFechaAplicacion()).isNull();
+    }
+
+    private static Pago pagoValido(String montoAplicado) {
+        Pago pago = new Pago();
+        pago.setEstado(api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPago.CONFIRMADO);
+        pago.setMonto(new BigDecimal(montoAplicado));
+        pago.setMontoAplicado(new BigDecimal(montoAplicado));
+        return pago;
     }
 
     @Test
@@ -167,7 +235,7 @@ class NotaFacturaEfectosTest {
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.RECHAZADO));
 
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.RECHAZADA);
-        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any(), any(), any());
         verify(facturaService, never()).anularPorNotaCredito(any(), any());
     }
 
@@ -205,7 +273,7 @@ class NotaFacturaEfectosTest {
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()));
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()), any(), any());
         verify(facturaService, never()).anularPorNotaCredito(any(), any());
         assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("100.00");
         assertThat(factura.estaAcreditadaTotalmente()).isFalse();
@@ -232,7 +300,7 @@ class NotaFacturaEfectosTest {
     @Test
     @DisplayName("T-047 criterio 22/26: si el asiento falla (p. ej. falta el parámetro contable) nada se aplica y la nota sigue EN_TRAMITE")
     void parametroAusente_notaSigueEnTramite() {
-        when(asientoService.generarAsientoNotaCredito(any(), any(), any()))
+        when(asientoService.generarAsientoNotaCredito(any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("Parámetro contable no configurado: NOTA_CREDITO_ANULACIONES_DESCUENTOS"));
         factura.setTotal(new BigDecimal("300.00"));
         NotaFactura nota = notaParcial("02", "100.00", "300.00");
@@ -254,7 +322,7 @@ class NotaFacturaEfectosTest {
 
         assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.RECHAZADA);
         assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("0");
-        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any());
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any(), any(), any());
     }
 
     private NotaFactura notaParcial(String codigo, String total, String totalComprobante) {
@@ -268,7 +336,7 @@ class NotaFacturaEfectosTest {
 
     private NotaFactura nota(String codigo) {
         return NotaFactura.builder().id(5L).factura(factura).tipo(TipoNotaFactura.CREDITO).codigoReferencia(codigo)
-                .razon("Anulación total").estado(EstadoNotaFactura.EN_TRAMITE).fechaEmision(EMISION_NOTA)
+                .razon("Anulación total").total(new BigDecimal("300.00")).estado(EstadoNotaFactura.EN_TRAMITE).fechaEmision(EMISION_NOTA)
                 .fechaContable(EMISION_NOTA.toLocalDate())
                 .periodoFiscalAtribucion("13".equals(codigo) ? "2026-10" : "2026-11").build();
     }

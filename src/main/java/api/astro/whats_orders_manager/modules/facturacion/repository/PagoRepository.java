@@ -84,7 +84,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * Encuentra pagos pendientes de conciliación.
      * @return Lista de pagos confirmados pero no conciliados
      */
-    @Query("SELECT p FROM Pago p WHERE p.estado = 'CONFIRMADO' AND p.conciliado = false ORDER BY p.fechaPago")
+    // T-048: un pago NOTA_CREDITO no se concilia con el banco
+    @Query("SELECT p FROM Pago p WHERE p.estado = 'CONFIRMADO' AND p.conciliado = false "
+        + "AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago")
     List<Pago> findPagosPendientesConciliacion();
     
     /**
@@ -124,8 +126,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param hasta Fin del rango (exclusive)
      * @return Pagos válidos del rango
      */
+    // T-048: un pago NOTA_CREDITO (aplicación de un saldo a favor) no es dinero: no entra en caja ni en ingresos
     @Query("SELECT p FROM Pago p WHERE p.fechaPago >= :desde AND p.fechaPago < :hasta " +
-           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO') ORDER BY p.fechaPago")
+           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO') AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago")
     List<Pago> findValidosByFechaPagoRango(
         @Param("desde") LocalDateTime desde,
         @Param("hasta") LocalDateTime hasta

@@ -142,13 +142,12 @@ class NotaCreditoElegibilidadTest {
     }
 
     @Test
-    @DisplayName("con pagos aplicados → botón deshabilitado con el motivo fijo")
+    @DisplayName("T-048: con pagos aplicados la nota se ofrece (el excedente irá a saldo a favor)")
     void conPagos() {
         when(pagos.findPagosValidosByFacturaId(7)).thenReturn(List.of(new Pago()));
         NotaCreditoElegibilidad.Resultado r = elegibilidad.evaluar(factura(false), "gerente");
-        assertThat(r.puedeEmitir()).isFalse();
-        assertThat(r.motivoNoDisponible())
-            .isEqualTo("La nota de crédito sobre facturas con pagos llega en una próxima versión");
+        assertThat(r.puedeEmitir()).isTrue();
+        assertThat(r.motivoNoDisponible()).isNull();
     }
 
     @Test

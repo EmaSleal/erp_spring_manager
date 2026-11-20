@@ -231,11 +231,14 @@ class NotaFacturaParcialTest {
     }
 
     @Test
-    @DisplayName("una factura con pagos sigue rechazando la nota (409 de T-032), también la parcial")
+    @DisplayName("T-048: una factura con pagos admite la nota, también la parcial (se levanta el 409 de T-032)")
     void conPagos() {
         when(pagos.findPagosValidosByFacturaId(77)).thenReturn(List.of(new api.astro.whats_orders_manager.modules.facturacion.model.Pago()));
-        assertThatThrownBy(() -> emitir("02", acreditar(1, "10.00")))
-                .isInstanceOf(NotaFacturaConflictoException.class).hasMessageContaining("tiene pagos");
+
+        NotaFactura nota = emitir("02", acreditar(1, "10.00"));
+
+        assertThat(nota.getEstado()).isEqualTo(api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura.EN_TRAMITE);
+        verify(notas).saveAndFlush(any());
     }
 
     @Test
