@@ -51,6 +51,20 @@ class NotaCreditoElegibilidadTest {
     }
 
     @Test
+    @DisplayName("T-046: mes de la factura original = mes de emisión de su comprobante ACEPTADO vigente")
+    void periodoFacturaOriginal() {
+        when(comprobantes.findFirstByFactura_IdFacturaAndVigenteTrue(7)).thenReturn(Optional.of(
+            ComprobanteElectronico.builder().id(1L).estado(EstadoComprobante.ACEPTADO).vigente(true)
+                .fechaEmision(java.time.LocalDateTime.of(2026, 9, 29, 23, 40)).build()));
+        assertThat(elegibilidad.periodoFacturaOriginal(factura(false))).contains("2026-09");
+
+        when(comprobantes.findFirstByFactura_IdFacturaAndVigenteTrue(7)).thenReturn(Optional.of(
+            ComprobanteElectronico.builder().id(1L).estado(EstadoComprobante.RECHAZADO).vigente(true)
+                .fechaEmision(java.time.LocalDateTime.of(2026, 9, 29, 23, 40)).build()));
+        assertThat(elegibilidad.periodoFacturaOriginal(factura(false))).isEmpty();
+    }
+
+    @Test
     @DisplayName("comprobante ACEPTADO, sin nota, sin pagos, con permiso → se puede emitir")
     void aceptada() {
         assertThat(elegibilidad.evaluar(factura(false), "gerente"))

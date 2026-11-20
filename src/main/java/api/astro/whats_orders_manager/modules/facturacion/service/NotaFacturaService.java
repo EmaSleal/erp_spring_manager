@@ -60,6 +60,7 @@ public class NotaFacturaService {
     private final CalculadoraImpuestoService calculadoraImpuestoService;
     private final Clock clock;
     private final AmbienteComprobanteGuard ambienteGuard;
+    private final AtribucionFiscalService atribucionFiscal;
 
     /**
      * Valida el pedido de una nota (400 si falla): tipo CREDITO, código de la nota 9 válido en nota de crédito y
@@ -132,13 +133,18 @@ public class NotaFacturaService {
                 + "saldo a favor");
         }
 
+        LocalDateTime emision = HoraFiscal.ahora(clock);
         NotaFactura nota = NotaFactura.builder()
             .factura(factura)
             .tipo(TipoNotaFactura.CREDITO)
             .codigoReferencia(codigo.getCodigo())
             .razon(razon.trim())
             .estado(EstadoNotaFactura.EN_TRAMITE)
-            .fechaEmision(HoraFiscal.ahora(clock))
+            .fechaEmision(emision)
+            // ADR-050: fecha del asiento y mes del IVA se fijan al emitir y no cambian
+            .fechaContable(atribucionFiscal.fechaContable(emision.toLocalDate()))
+            .periodoFiscalAtribucion(atribucionFiscal.periodoTexto(codigo, emision.toLocalDate(),
+                aceptado.getFechaEmision()))
             .comprobanteReferencia(aceptado)
             .claveReferencia(aceptado.getClaveNumerica())
             .fechaEmisionReferencia(aceptado.getFechaEmision())

@@ -6,7 +6,6 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.event.ComprobanteNotaResueltoEvent;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
-import api.astro.whats_orders_manager.modules.facturacion.enums.PeriodoEfectoNota;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaEfectosException;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
@@ -93,7 +92,7 @@ public class NotaFacturaEfectos {
                 factura.getNumeroFactura(), nota.getId());
         }
         for (AsientoContable venta : ventas) {
-            asientoContableService.generarAsientoReversion(venta, motivo, fechaDelAsiento(nota, venta), nota);
+            asientoContableService.generarAsientoReversion(venta, motivo, fechaDelAsiento(nota), nota);
         }
 
         facturaService.anularPorNotaCredito(factura, motivo);
@@ -106,19 +105,14 @@ public class NotaFacturaEfectos {
     }
 
     /**
-     * Fecha del asiento de la nota según el periodo del efecto de su código (nota 9, ADR-037 §4): periodo de la nota
-     * (01) → fecha de emisión de la nota; periodo del documento original (13) → fecha del asiento de venta original,
-     * que es la fecha económica de la factura (ADR-014).
+     * Fecha del asiento de reversión de la nota (ADR-050 §1): su fecha contable, guardada al emitirla, que es la fecha
+     * de emisión de la nota para todos los códigos (13 incluido). El período del IVA va aparte
+     * ({@code periodoFiscalAtribucion}).
      */
-    public static LocalDate fechaDelAsiento(NotaFactura nota, AsientoContable asientoVenta) {
-        PeriodoEfectoNota periodo = nota.codigo().getPeriodoEfecto();
-        if (periodo == PeriodoEfectoNota.DOCUMENTO_ORIGINAL) {
-            return asientoVenta.getFecha();
+    public static LocalDate fechaDelAsiento(NotaFactura nota) {
+        if (nota.getFechaContable() == null) {
+            throw new IllegalStateException("La nota " + nota.getId() + " no tiene fecha contable");
         }
-        if (periodo == PeriodoEfectoNota.NOTA) {
-            return nota.getFechaEmision().toLocalDate();
-        }
-        throw new IllegalStateException("El código de referencia " + nota.getCodigoReferencia()
-            + " no define el periodo de su efecto contable");
+        return nota.getFechaContable();
     }
 }

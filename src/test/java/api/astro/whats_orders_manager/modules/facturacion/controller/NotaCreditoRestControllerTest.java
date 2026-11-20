@@ -295,7 +295,8 @@ class NotaCreditoRestControllerTest {
         NotaCreditoDetalleDTO dto = new NotaCreditoDetalleDTO(5L, "NC-5", "APLICADA", "CREDITO", "01",
                 "Anula documento de referencia", "Anulación total", null, null, "CRC", BigDecimal.ONE, BigDecimal.TEN,
                 BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.TEN, "gerente", 7, "FA01-00007", "Cliente", "506ORIGINAL",
-                null, List.of(), null, List.of(), 90L, "ASI-2026-0001", true, null);
+                null, List.of(), null, List.of(), 90L, "ASI-2026-0001", true, null,
+                java.time.LocalDate.of(2026, 11, 12), "2026-11", java.time.LocalDate.of(2026, 11, 12));
         when(consultaService.detalle(5L)).thenReturn(Optional.of(dto));
         when(consultaService.detalle(6L)).thenReturn(Optional.empty());
 

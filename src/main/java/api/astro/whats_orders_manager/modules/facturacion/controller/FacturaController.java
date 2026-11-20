@@ -207,6 +207,9 @@ public class FacturaController {
                 authentication.getName());
             detalle.setPuedeEmitirNotaCredito(notaCredito.puedeEmitir());
             detalle.setMotivoNotaCreditoNoDisponible(notaCredito.motivoNoDisponible());
+            if (notaCredito.puedeEmitir()) {
+                notaCreditoElegibilidad.periodoFacturaOriginal(factura).ifPresent(detalle::setPeriodoFacturaOriginal);
+            }
             return ResponseEntity.ok(detalle);
                     
         } catch (Exception e) {

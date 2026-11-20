@@ -100,7 +100,7 @@ class AmbienteElegibilidadTest {
         when(facturas.findByIdParaActualizar(7)).thenReturn(Optional.of(f));
         NotaFacturaService servicio = new NotaFacturaService(facturas, notasRepo, comprobantes, comprobanteService, pagos,
             new api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService(null),
-            java.time.Clock.systemUTC(), guard);
+            java.time.Clock.systemUTC(), guard, new AtribucionFiscalService("ORIGINAL"));
 
         assertThatThrownBy(() -> servicio.emitirNotaCreditoTotal(7,
             api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura.CREDITO, "01", "Anulación", "gerente"))

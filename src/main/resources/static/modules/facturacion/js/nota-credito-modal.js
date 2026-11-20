@@ -34,7 +34,14 @@
     }
 
     function actualizarCodigo() {
-        $('nc-efecto').textContent = NotaCredito.textoEfecto($('nc-codigo').value);
+        const codigo = $('nc-codigo').value;
+        const periodo = facturaActual ? facturaActual.periodoFacturaOriginal : null;
+        $('nc-efecto').textContent = NotaCredito.textoEfecto(codigo, periodo);
+        // No bloquea la emisión (ADR-050 §4)
+        const aviso = $('nc-advertencia');
+        const texto = NotaCredito.advertenciaMismoMes(codigo, periodo, new Date());
+        aviso.textContent = texto;
+        aviso.style.display = texto ? '' : 'none';
     }
 
     function bloquear(bloqueado) {

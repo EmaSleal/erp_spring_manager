@@ -18,7 +18,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -43,7 +46,14 @@ class FacturaSustitutaServiceTest {
     private Producto producto;
 
     private static SustitucionElegibilidad.Evaluacion ok() {
-        return new SustitucionElegibilidad.Evaluacion(true, null, null, "00100001030000000003", "15", null);
+        return ok("15");
+    }
+
+    private static SustitucionElegibilidad.Evaluacion ok(String codigo) {
+        // comprobante ACEPTADO de la original: emitido el 2026-09-29
+        ComprobanteElectronico aceptado = ComprobanteElectronico.builder().id(1L)
+                .fechaEmision(LocalDateTime.of(2026, 9, 29, 23, 40)).build();
+        return new SustitucionElegibilidad.Evaluacion(true, null, null, "00100001030000000003", codigo, aceptado);
     }
 
     @BeforeEach
@@ -52,7 +62,8 @@ class FacturaSustitutaServiceTest {
         facturaService = mock(FacturaService.class);
         lineas = mock(LineaFacturaService.class);
         elegibilidad = mock(SustitucionElegibilidad.class);
-        servicio = new FacturaSustitutaService(facturas, facturaService, lineas, elegibilidad);
+        servicio = new FacturaSustitutaService(facturas, facturaService, lineas, elegibilidad,
+                new AtribucionFiscalService("ORIGINAL"));
 
         Cliente cliente = new Cliente();
         cliente.setIdCliente(3);
@@ -82,6 +93,7 @@ class FacturaSustitutaServiceTest {
             Factura f = inv.getArgument(0);
             f.setIdFactura(6);
             f.setNumeroFactura("FA01-00006");
+            f.setCreateDate(LocalDateTime.of(2026, 11, 19, 8, 30)); // la auditoría fija la emisión al guardar
             return f;
         });
     }
@@ -121,6 +133,39 @@ class FacturaSustitutaServiceTest {
         // La original no se toca
         assertThat(original.getLineas()).hasSize(1);
         assertThat(original.getLineas().get(0).getFactura()).isSameAs(original);
+    }
+
+    @Test
+    @DisplayName("T-046: sustituta 15 guarda fecha contable = emisión y período = mes de la original (ORIGINAL)")
+    void atribucion_codigo15_original() {
+        Factura nueva = servicio.crear(5, null);
+
+        assertThat(nueva.getFechaContable()).isEqualTo(LocalDate.of(2026, 11, 19)).isEqualTo(nueva.getFechaEmision());
+        assertThat(nueva.getPeriodoFiscalAtribucion()).isEqualTo("2026-09");
+        verify(facturas).save(nueva);
+    }
+
+    @Test
+    @DisplayName("T-046: con el parámetro del 15 en EMISION el período es el mes de emisión; 07 siempre el de emisión")
+    void atribucion_codigo15_emision_y_07() {
+        FacturaSustitutaService conEmision = new FacturaSustitutaService(facturas, facturaService, lineas,
+                elegibilidad, new AtribucionFiscalService("EMISION"));
+        assertThat(conEmision.crear(5, null).getPeriodoFiscalAtribucion()).isEqualTo("2026-11");
+
+        when(elegibilidad.evaluar(original)).thenReturn(ok("07"));
+        assertThat(servicio.crear(5, null).getPeriodoFiscalAtribucion()).isEqualTo("2026-11");
+    }
+
+    @Test
+    @DisplayName("T-046: una sustituta sin fecha contable o sin período se rechaza y no se contabiliza")
+    void sinAtribucion_seRechaza() {
+        AtribucionFiscalService sinValores = org.mockito.Mockito.mock(AtribucionFiscalService.class);
+        FacturaSustitutaService defectuoso = new FacturaSustitutaService(facturas, facturaService, lineas,
+                elegibilidad, sinValores);
+
+        assertThatThrownBy(() -> defectuoso.crear(5, null)).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fecha contable");
+        verify(lineas, never()).updateLineas(any());
     }
 
     @Test
