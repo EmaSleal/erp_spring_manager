@@ -3,14 +3,17 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.PeriodoAtribucion;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Regla única de la fecha contable y del período fiscal de atribución de una nota de crédito o débito o de una factura
@@ -19,8 +22,8 @@ import java.util.Locale;
  * <ul>
  *   <li>Fecha contable: la fecha del documento para todos los códigos ({@link #fechaContable}).</li>
  *   <li>Período fiscal de atribución (mes del IVA): por defecto el de {@link CodigoReferenciaNota#getPeriodoAtribucion()}
- *       (01, 02, 06, 12 y 07 → emisión; 13 y 14 → factura original). El del código 15 es configuración:
- *       {@code facturacion.notas.atribucion.codigo-15} = ORIGINAL | EMISION (por defecto ORIGINAL).</li>
+ *       (01, 02, 06, 12 y 07 → emisión; 13, 14 y 15 → factura original). Cada código con regla es configurable con
+ *       {@code facturacion.notas.atribucion.codigo-NN} = ORIGINAL | EMISION.</li>
  * </ul>
  *
  * El período se calcula al crear el documento y se guarda: cambiar la propiedad no toca los documentos ya creados.
@@ -28,21 +31,37 @@ import java.util.Locale;
 @Service
 public class AtribucionFiscalService {
 
-    public static final String PROPIEDAD_CODIGO_15 = "facturacion.notas.atribucion.codigo-15";
+    public static final String PREFIJO_PROPIEDAD = "facturacion.notas.atribucion.codigo-";
+    public static final String PROPIEDAD_CODIGO_15 = PREFIJO_PROPIEDAD + "15";
     private static final DateTimeFormatter PERIODO = DateTimeFormatter.ofPattern("yyyy-MM");
 
-    private final PeriodoAtribucion atribucionCodigo15;
+    /** Atribución configurada por código; los códigos sin propiedad usan el valor por defecto del código. */
+    private final Map<CodigoReferenciaNota, PeriodoAtribucion> configuradas = new EnumMap<>(CodigoReferenciaNota.class);
 
-    public AtribucionFiscalService(
-            @Value("${" + PROPIEDAD_CODIGO_15 + ":ORIGINAL}") String atribucionCodigo15) {
-        this.atribucionCodigo15 = parsear(atribucionCodigo15);
+    /** Lee {@code facturacion.notas.atribucion.codigo-NN} de cada código con regla; si falta, rige el valor por defecto. */
+    @Autowired
+    public AtribucionFiscalService(Environment env) {
+        for (CodigoReferenciaNota c : CodigoReferenciaNota.values()) {
+            if (c.getPeriodoAtribucion() != null) {
+                String valor = env.getProperty(PREFIJO_PROPIEDAD + c.getCodigo());
+                if (valor != null) {
+                    configuradas.put(c, parsear(PREFIJO_PROPIEDAD + c.getCodigo(), valor));
+                }
+            }
+        }
     }
 
-    private static PeriodoAtribucion parsear(String valor) {
+    /** Solo el código 15 configurado (atajo para pruebas). */
+    public AtribucionFiscalService(String atribucionCodigo15) {
+        configuradas.put(CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_ERROR_MATERIAL,
+            parsear(PROPIEDAD_CODIGO_15, atribucionCodigo15));
+    }
+
+    private static PeriodoAtribucion parsear(String propiedad, String valor) {
         try {
             return PeriodoAtribucion.valueOf(valor == null ? "" : valor.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("Valor inválido «" + valor + "» en " + PROPIEDAD_CODIGO_15
+            throw new IllegalStateException("Valor inválido «" + valor + "» en " + propiedad
                 + ": se esperaba ORIGINAL o EMISION");
         }
     }
@@ -58,10 +77,11 @@ public class AtribucionFiscalService {
         return fechaDocumento;
     }
 
-    /** Atribución que rige para un código: el valor por defecto del código, salvo el 15 (configurable). */
+    /** Atribución que rige para un código: la configurada o, si no hay propiedad, el valor por defecto del código. */
     public PeriodoAtribucion atribucionDe(CodigoReferenciaNota codigo) {
-        if (codigo == CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_ERROR_MATERIAL) {
-            return atribucionCodigo15;
+        PeriodoAtribucion configurada = configuradas.get(codigo);
+        if (configurada != null) {
+            return configurada;
         }
         PeriodoAtribucion atribucion = codigo.getPeriodoAtribucion();
         if (atribucion == null) {

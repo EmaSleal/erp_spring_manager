@@ -126,12 +126,19 @@ app:
 # CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA
 # ========================================
 facturacion:
-  # T-046 (ADR-050 §2-§3): mes al que se atribuye el IVA de las notas y de las sustitutas. Los demás códigos usan el
-  # valor por defecto de CodigoReferenciaNota (01, 02, 06, 12 y 07 → mes de emisión; 13 y 14 → mes de la factura
-  # original). El del 15 es configuración: ORIGINAL (mes de la factura original) | EMISION (mes de la sustituta).
+  # T-046 (ADR-050 §2-§3): mes al que se atribuye el IVA de las notas y de las sustitutas, por código de referencia:
+  # EMISION (mes de emisión del documento) | ORIGINAL (mes de la factura original). Si una propiedad falta rige el
+  # valor por defecto de CodigoReferenciaNota (los mismos de abajo); un valor inválido detiene el arranque.
   # Solo afecta a los documentos nuevos: cada documento conserva el período con que se creó.
   notas:
     atribucion:
+      codigo-01: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_01:EMISION}
+      codigo-02: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_02:EMISION}
+      codigo-06: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_06:EMISION}
+      codigo-07: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_07:EMISION}
+      codigo-12: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_12:EMISION}
+      codigo-13: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_13:ORIGINAL}
+      codigo-14: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_14:ORIGINAL}
       codigo-15: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_15:ORIGINAL}
   comprobantes:
     directorio-base: ${FACTURACION_DIRECTORIO_BASE:./comprobantes}

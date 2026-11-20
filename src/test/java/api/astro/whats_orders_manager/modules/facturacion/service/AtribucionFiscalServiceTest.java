@@ -74,12 +74,43 @@ class AtribucionFiscalServiceTest {
     }
 
     @Test
+    @DisplayName("cada código con regla es configurable; sin propiedad rige el valor por defecto del código")
+    void propiedadesPorCodigo() {
+        var env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("facturacion.notas.atribucion.codigo-01", "ORIGINAL")
+                .withProperty("facturacion.notas.atribucion.codigo-13", "emision");
+        AtribucionFiscalService servicio = new AtribucionFiscalService(env);
+
+        assertThat(servicio.periodo(CodigoReferenciaNota.ANULA_DOCUMENTO, EMISION, ORIGINAL)).isEqualTo(MES_ORIGINAL);
+        assertThat(servicio.periodo(CodigoReferenciaNota.ANULA_DOCUMENTO_ERROR_MATERIAL, EMISION, ORIGINAL))
+                .isEqualTo(MES_EMISION);
+        // sin propiedad: 02 → EMISION, 14 → ORIGINAL, 15 → ORIGINAL
+        assertThat(servicio.periodo(CodigoReferenciaNota.CORRIGE_MONTO, EMISION, ORIGINAL)).isEqualTo(MES_EMISION);
+        assertThat(servicio.periodo(CodigoReferenciaNota.CORRIGE_MONTO_ERROR_MATERIAL, EMISION, ORIGINAL))
+                .isEqualTo(MES_ORIGINAL);
+        assertThat(servicio.periodo(CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_ERROR_MATERIAL, EMISION, ORIGINAL))
+                .isEqualTo(MES_ORIGINAL);
+        assertThat(new AtribucionFiscalService(new org.springframework.mock.env.MockEnvironment()
+                .withProperty("facturacion.notas.atribucion.codigo-15", "EMISION")).periodo(
+                CodigoReferenciaNota.SUSTITUYE_COMPROBANTE_ERROR_MATERIAL, EMISION, ORIGINAL)).isEqualTo(MES_EMISION);
+    }
+
+    @Test
+    @DisplayName("un valor inválido en la propiedad de cualquier código falla al arrancar")
+    void propiedadInvalida() {
+        var env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("facturacion.notas.atribucion.codigo-06", "AYER");
+        assertThatThrownBy(() -> new AtribucionFiscalService(env)).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("facturacion.notas.atribucion.codigo-06").hasMessageContaining("AYER");
+    }
+
+    @Test
     @DisplayName("un valor desconocido del parámetro del 15 falla al arrancar con un mensaje claro")
     void valorInvalido() {
         assertThatThrownBy(() -> new AtribucionFiscalService("MES_ANTERIOR"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("facturacion.notas.atribucion.codigo-15").hasMessageContaining("MES_ANTERIOR");
-        assertThatThrownBy(() -> new AtribucionFiscalService(null)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new AtribucionFiscalService((String) null)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
