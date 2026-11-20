@@ -126,6 +126,13 @@ app:
 # CONFIGURACIÓN DE FACTURACIÓN ELECTRÓNICA
 # ========================================
 facturacion:
+  # T-046 (ADR-050 §2-§3): mes al que se atribuye el IVA de las notas y de las sustitutas. Los demás códigos usan el
+  # valor por defecto de CodigoReferenciaNota (01, 02, 06, 12 y 07 → mes de emisión; 13 y 14 → mes de la factura
+  # original). El del 15 es configuración: ORIGINAL (mes de la factura original) | EMISION (mes de la sustituta).
+  # Solo afecta a los documentos nuevos: cada documento conserva el período con que se creó.
+  notas:
+    atribucion:
+      codigo-15: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_15:ORIGINAL}
   comprobantes:
     directorio-base: ${FACTURACION_DIRECTORIO_BASE:./comprobantes}
   # T-037 (ADR-043): cliente HTTP de la API de Hacienda (token, recepción y consulta) y sondeo tras el envío.

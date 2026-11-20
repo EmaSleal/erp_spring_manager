@@ -35,17 +35,18 @@ class CodigoReferenciaNotaTest {
     }
 
     @Test
-    @DisplayName("periodo del efecto: 01, 02, 06 y 12 → NOTA; 13 y 14 → DOCUMENTO_ORIGINAL; el resto sin regla")
-    void periodoDelEfecto() {
-        Map<String, PeriodoEfectoNota> conRegla = Arrays.stream(CodigoReferenciaNota.values())
-                .filter(c -> c.getPeriodoEfecto() != null)
-                .collect(Collectors.toMap(CodigoReferenciaNota::getCodigo, CodigoReferenciaNota::getPeriodoEfecto));
+    @DisplayName("atribución por defecto (ADR-050 §2): 01, 02, 06, 12 y 07 → EMISION; 13, 14 y 15 → ORIGINAL; el resto sin regla")
+    void periodoDeAtribucion() {
+        Map<String, PeriodoAtribucion> conRegla = Arrays.stream(CodigoReferenciaNota.values())
+                .filter(c -> c.getPeriodoAtribucion() != null)
+                .collect(Collectors.toMap(CodigoReferenciaNota::getCodigo, CodigoReferenciaNota::getPeriodoAtribucion));
 
         assertThat(conRegla).containsOnly(
-                Map.entry("01", PeriodoEfectoNota.NOTA), Map.entry("02", PeriodoEfectoNota.NOTA),
-                Map.entry("06", PeriodoEfectoNota.NOTA), Map.entry("12", PeriodoEfectoNota.NOTA),
-                Map.entry("13", PeriodoEfectoNota.DOCUMENTO_ORIGINAL),
-                Map.entry("14", PeriodoEfectoNota.DOCUMENTO_ORIGINAL));
+                Map.entry("01", PeriodoAtribucion.EMISION), Map.entry("02", PeriodoAtribucion.EMISION),
+                Map.entry("06", PeriodoAtribucion.EMISION), Map.entry("12", PeriodoAtribucion.EMISION),
+                Map.entry("07", PeriodoAtribucion.EMISION),
+                Map.entry("13", PeriodoAtribucion.ORIGINAL), Map.entry("14", PeriodoAtribucion.ORIGINAL),
+                Map.entry("15", PeriodoAtribucion.ORIGINAL));
     }
 
     @Test

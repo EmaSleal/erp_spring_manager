@@ -61,3 +61,9 @@ test('las pantallas que cargan facturas.js cargan antes sustitucion-factura.js',
         assert.ok(a > 0 && a < b, f);
     }
 });
+
+test('T-046 fecha contable de la sustituta: dd/mm/aaaa sin desfase de zona; «-» si falta', () => {
+    const s = cargar();
+    assert.equal(s.textoFechaContable('2026-11-19'), '19/11/2026');
+    assert.equal(s.textoFechaContable(null), '-');
+});

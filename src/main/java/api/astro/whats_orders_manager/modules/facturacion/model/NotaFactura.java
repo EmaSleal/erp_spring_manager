@@ -10,6 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +63,14 @@ public class NotaFactura {
 
     @Column(name = "fecha_emision", nullable = false)
     private LocalDateTime fechaEmision;
+
+    /** Fecha del asiento de la nota (ADR-050 §1): la fecha de emisión; con P-018, el primer período abierto. */
+    @Column(name = "fecha_contable", nullable = false)
+    private LocalDate fechaContable;
+
+    /** Mes (AAAA-MM) al que se atribuye el IVA de la nota (ADR-050 §2); se fija al crearla y no cambia. */
+    @Column(name = "periodo_fiscal_atribucion", nullable = false, length = 7, columnDefinition = "CHAR(7)")
+    private String periodoFiscalAtribucion;
 
     @Column(name = "fecha_aplicacion")
     private LocalDateTime fechaAplicacion;

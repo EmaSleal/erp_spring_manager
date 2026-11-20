@@ -69,4 +69,17 @@ public class NotaCreditoElegibilidad {
         }
         return new Resultado(true, null);
     }
+
+    /**
+     * Mes (AAAA-MM) de la factura original para el texto del modal del código 13 (ADR-050 §2): el de la fecha de
+     * emisión de su comprobante vigente ACEPTADO, el mismo dato que usa {@link AtribucionFiscalService} al emitir.
+     */
+    public Optional<String> periodoFacturaOriginal(Factura factura) {
+        if (factura == null || factura.getIdFactura() == null) {
+            return Optional.empty();
+        }
+        return comprobanteRepository.findFirstByFactura_IdFacturaAndVigenteTrue(factura.getIdFactura())
+            .filter(c -> c.getEstado() == EstadoComprobante.ACEPTADO && c.getFechaEmision() != null)
+            .map(c -> AtribucionFiscalService.formatear(java.time.YearMonth.from(c.getFechaEmision())));
+    }
 }

@@ -282,6 +282,16 @@ function openModal(button) {
                 data.sustituye && data.sustituye.idFactura);
             const avisoSustituta = document.getElementById('modal-sustituta-inventario');
             if (avisoSustituta) avisoSustituta.style.display = data.sustituye && data.sustituye.idFactura ? '' : 'none';
+            // T-046 (ADR-050): «Fecha contable» y «Período fiscal (IVA)» de la sustituta
+            const atribucion = document.getElementById('modal-sustituta-atribucion');
+            if (atribucion) {
+                const esSustituta = !!(data.sustituye && data.sustituye.idFactura);
+                atribucion.style.display = esSustituta ? '' : 'none';
+                const fc = typeof SustitucionFactura !== 'undefined'
+                    ? SustitucionFactura.textoFechaContable(data.fechaContable) : '-';
+                document.getElementById('modal-fecha-contable').textContent = fc;
+                document.getElementById('modal-periodo-fiscal').textContent = data.periodoFiscalAtribucion || '-';
+            }
             mostrarVinculoSustitucion('modal-sustituida-por-row', 'modal-sustituida-por-link',
                 typeof SustitucionFactura !== 'undefined' ? SustitucionFactura.textoSustituidaPor(data.sustituidaPor) : '',
                 data.sustituidaPor && data.sustituidaPor.idFactura);

@@ -96,11 +96,17 @@ public class FacturaDetalleDTO {
     private SustitucionRefDTO sustituye;
     /** Sustituta no anulada de esta factura; null si no tiene. */
     private SustitucionRefDTO sustituidaPor;
+    /** T-046 (ADR-050): fecha del asiento de venta de la sustituta; null si la factura no es sustituta. */
+    private LocalDate fechaContable;
+    /** T-046 (ADR-050): mes (AAAA-MM) al que se atribuye el IVA de la sustituta; null si no es sustituta. */
+    private String periodoFiscalAtribucion;
 
     // Nota de crédito (ADR-047 §2, T-042): la regla la decide el servidor. puedeEmitirNotaCredito habilita el botón;
     // motivoNotaCreditoNoDisponible lo deja deshabilitado con ese texto; con ambos vacíos no hay botón.
     private Boolean puedeEmitirNotaCredito;
     private String motivoNotaCreditoNoDisponible;
+    /** T-046: mes (AAAA-MM) del comprobante ACEPTADO vigente, al que la nota 13 atribuye el IVA; null si no lo hay. */
+    private String periodoFacturaOriginal;
 
     // Auditoría
     private Integer createBy;

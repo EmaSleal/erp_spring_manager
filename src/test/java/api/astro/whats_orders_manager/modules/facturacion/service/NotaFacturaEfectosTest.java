@@ -79,15 +79,27 @@ class NotaFacturaEfectosTest {
     }
 
     @Test
-    @DisplayName("ACEPTADO (13): reversión con la fecha del asiento de venta original")
+    @DisplayName("ACEPTADO (13): reversión con la fecha de la nota (ADR-050), no la del asiento de venta original")
     void aceptado_codigo13() {
         NotaFactura nota = nota("13");
 
         efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
 
-        verify(asientoService).generarAsientoReversion(eq(venta), anyString(), eq(FECHA_VENTA), eq(nota));
-        assertThat(NotaFacturaEfectos.fechaDelAsiento(nota, venta)).isEqualTo(FECHA_VENTA);
-        assertThat(NotaFacturaEfectos.fechaDelAsiento(nota("01"), venta)).isEqualTo(EMISION_NOTA.toLocalDate());
+        verify(asientoService).generarAsientoReversion(eq(venta), anyString(), eq(EMISION_NOTA.toLocalDate()),
+                eq(nota));
+        assertThat(NotaFacturaEfectos.fechaDelAsiento(nota)).isEqualTo(EMISION_NOTA.toLocalDate())
+                .isNotEqualTo(FECHA_VENTA);
+        assertThat(NotaFacturaEfectos.fechaDelAsiento(nota("01"))).isEqualTo(EMISION_NOTA.toLocalDate());
+    }
+
+    @Test
+    @DisplayName("una nota sin fecha contable no se aplica")
+    void sinFechaContable() {
+        NotaFactura nota = nota("01");
+        nota.setFechaContable(null);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> NotaFacturaEfectos.fechaDelAsiento(nota))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -182,7 +194,9 @@ class NotaFacturaEfectosTest {
 
     private NotaFactura nota(String codigo) {
         return NotaFactura.builder().id(5L).factura(factura).tipo(TipoNotaFactura.CREDITO).codigoReferencia(codigo)
-                .razon("Anulación total").estado(EstadoNotaFactura.EN_TRAMITE).fechaEmision(EMISION_NOTA).build();
+                .razon("Anulación total").estado(EstadoNotaFactura.EN_TRAMITE).fechaEmision(EMISION_NOTA)
+                .fechaContable(EMISION_NOTA.toLocalDate())
+                .periodoFiscalAtribucion("13".equals(codigo) ? "2026-10" : "2026-11").build();
     }
 
     private static ComprobanteNotaResueltoEvent evento(NotaFactura nota, EstadoComprobante estado) {

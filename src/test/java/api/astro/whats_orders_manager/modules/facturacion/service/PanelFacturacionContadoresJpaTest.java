@@ -100,6 +100,7 @@ class PanelFacturacionContadoresJpaTest {
                              String codigo) {
         NotaFactura n = NotaFactura.builder().factura(f).tipo(tipo).codigoReferencia(codigo).razon("razón de prueba")
             .estado(estado).fechaEmision(LocalDateTime.now()).comprobanteReferencia(ref).claveReferencia(ref.getClaveNumerica())
+            .fechaContable(java.time.LocalDate.now()).periodoFiscalAtribucion(java.time.YearMonth.now().toString())
             .fechaEmisionReferencia(LocalDateTime.now()).moneda("CRC").tipoCambio(BigDecimal.ONE)
             .subtotal(BigDecimal.ONE).descuento(BigDecimal.ZERO).impuesto(BigDecimal.ZERO).total(BigDecimal.ONE)
             .usuarioCreador("t043").createDate(LocalDateTime.now()).build();

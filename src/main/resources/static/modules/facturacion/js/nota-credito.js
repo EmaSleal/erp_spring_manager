@@ -11,11 +11,15 @@
     const ERROR_RAZON = 'La razón es obligatoria y debe tener entre ' + RAZON_MIN + ' y ' + RAZON_MAX + ' caracteres';
     const MENSAJE_EMITIDA = 'Nota de crédito emitida.';
 
+    // T-046 (ADR-050): el asiento lleva siempre la fecha de la nota; el código solo decide el mes del IVA.
+    const ADVERTENCIA_MISMO_MES = 'La factura es de este mismo mes: el código 01 tiene el mismo efecto';
+    const ZONA_FISCAL = 'America/Costa_Rica';
+
     const CODIGOS = [
         { codigo: '01', nombre: 'Anula documento de referencia',
-          efecto: 'El asiento de reversión se registra en el periodo de la fecha de la nota.' },
+          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la nota.' },
         { codigo: '13', nombre: 'Anula documento de referencia por error material',
-          efecto: 'El asiento de reversión va al periodo de la factura original.' }
+          efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original' }
     ];
 
     // ---- Botón «Emitir nota de crédito» (solo banderas del servidor; sin roles) ----
@@ -46,9 +50,32 @@
         return r.length >= RAZON_MIN && r.length <= RAZON_MAX ? null : ERROR_RAZON;
     }
 
-    function textoEfecto(codigo) {
+    /** Mes (AAAA-MM) de una fecha en la hora de Costa Rica. */
+    function mesActual(ahora) {
+        const partes = new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_FISCAL, year: 'numeric', month: '2-digit' })
+            .formatToParts(ahora && typeof ahora.getTime === 'function' ? ahora : new Date());
+        const y = partes.find((p) => p.type === 'year').value;
+        const m = partes.find((p) => p.type === 'month').value;
+        return y + '-' + m;
+    }
+
+    /**
+     * Texto del efecto contable del código. Para el 13, con el mes (AAAA-MM) de la factura original que da el servidor
+     * (periodoFacturaOriginal): «... al mes de la factura original (AAAA-MM)».
+     */
+    function textoEfecto(codigo, periodoOriginal) {
         const c = CODIGOS.find((x) => x.codigo === codigo);
-        return c ? c.efecto : '';
+        if (!c) return '';
+        if (codigo === '13' && typeof periodoOriginal === 'string' && /^\d{4}-\d{2}$/.test(periodoOriginal)) {
+            return c.efecto + ' (' + periodoOriginal + ')';
+        }
+        return c.efecto;
+    }
+
+    /** Advertencia fija, no bloqueante: la nota 13 sobre una factura del mes en curso equivale a la 01 (ADR-050 §4). */
+    function advertenciaMismoMes(codigo, periodoOriginal, ahora) {
+        return codigo === '13' && typeof periodoOriginal === 'string' && periodoOriginal === mesActual(ahora)
+            ? ADVERTENCIA_MISMO_MES : '';
     }
 
     function nombreCodigo(codigo) {
@@ -196,6 +223,12 @@
         return conHora ? dia + ' ' + dos(d.getHours()) + ':' + dos(d.getMinutes()) : dia;
     }
 
+    /** Fecha sin hora (AAAA-MM-DD, p. ej. la fecha contable) como dd/mm/aaaa, sin desfase de zona horaria. */
+    function formatearDia(valor) {
+        const m = typeof valor === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(valor) : null;
+        return m ? m[3] + '/' + m[2] + '/' + m[1] : '-';
+    }
+
     // ---- Pintado seguro (solo createElement + textContent) ----
 
     function el(doc, tag, texto, clase) {
@@ -302,9 +335,9 @@
 
     global.NotaCredito = {
         RAZON_MIN, RAZON_MAX, MOTIVO_PAGOS, AVISO_RESUMEN, ERROR_RAZON, CODIGOS,
-        estadoBoton, contadorRazon, validarRazon, textoEfecto, nombreCodigo, cuerpoPedido,
+        estadoBoton, contadorRazon, validarRazon, textoEfecto, advertenciaMismoMes, mesActual, ADVERTENCIA_MISMO_MES, nombreCodigo, cuerpoPedido,
         mensajeResultado, mensajeDeError, formatearMonto, resumen,
-        badgeNota, badgeComprobante, queryListado, textoPagina, resultadoReenvio, resultadoConsulta, formatearFecha,
+        badgeNota, badgeComprobante, queryListado, textoPagina, resultadoReenvio, resultadoConsulta, formatearFecha, formatearDia,
         el, badge, enlace, boton, botonAccionComprobante, ambienteDe, celda, filaNota
     };
 })(typeof window !== 'undefined' ? window : globalThis);

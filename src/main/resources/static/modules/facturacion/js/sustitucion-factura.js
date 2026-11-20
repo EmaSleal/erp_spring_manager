@@ -15,6 +15,12 @@
         return 'Sustituye a ' + ref.numeroFactura + nota;
     }
 
+    /** Fecha contable (AAAA-MM-DD) como dd/mm/aaaa, sin desfase de zona horaria; «-» si falta (T-046). */
+    function textoFechaContable(valor) {
+        const m = typeof valor === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(valor) : null;
+        return m ? m[3] + '/' + m[2] + '/' + m[1] : '-';
+    }
+
     /** «Sustituida por FA…». */
     function textoSustituidaPor(ref) {
         if (!ref || !ref.numeroFactura) return '';
@@ -33,5 +39,5 @@
         return m || 'No se pudo crear la factura sustituta';
     }
 
-    global.SustitucionFactura = { puedeEmitir, textoSustituye, textoSustituidaPor, cuerpoPedido, mensajeDeError };
+    global.SustitucionFactura = { puedeEmitir, textoFechaContable, textoSustituye, textoSustituidaPor, cuerpoPedido, mensajeDeError };
 })(typeof window !== 'undefined' ? window : globalThis);
