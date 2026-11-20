@@ -29,8 +29,9 @@ test('botón habilitado solo con puedeEmitirNotaCredito === true', () => {
 
 test('botón deshabilitado con el motivo cuando el servidor lo informa', () => {
     const n = cargar();
-    const motivo = 'La nota de crédito sobre facturas con pagos llega en una próxima versión';
-    assert.equal(n.MOTIVO_PAGOS, motivo);
+    const motivo = 'La factura ya fue anulada';
+    // T-048: la nota de crédito sobre facturas con pagos ya no se bloquea; la constante obsoleta no existe
+    assert.equal(n.MOTIVO_PAGOS, undefined);
     assert.deepEqual({ ...n.estadoBoton({ puedeEmitirNotaCredito: false, motivoNotaCreditoNoDisponible: motivo }) },
         { visible: true, habilitado: false, motivo });
 });

@@ -1,7 +1,12 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <th:block th:fragment="facturaModal">
+<!-- T-048: marca de permiso (solo se renderiza con PAGO_ANULAR); la acción «Reversar» de un saldo a favor la exige igual
+     que anular un pago. El servidor vuelve a validar el permiso. -->
+<span id="perm-pago-anular" hidden
+      sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ANULAR')"></span>
 <div class="modal fade" id="facturaModal" tabindex="-1" aria-labelledby="facturaModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
@@ -253,5 +258,6 @@
     <script th:src="@{/modules/facturacion/js/sustitucion-factura.js}"></script>
     <script th:src="@{/modules/facturacion/js/nota-credito.js}"></script>
     <script th:src="@{/modules/facturacion/js/nota-credito-modal.js}"></script>
+    <script th:src="@{/modules/facturacion/js/saldo-favor.js}"></script>
     <script th:src="@{/modules/facturacion/js/facturas.js}"></script>
 </html>
