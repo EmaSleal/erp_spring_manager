@@ -20,7 +20,7 @@ import java.util.Map;
 
 /**
  * Reporte de antigüedad de los saldos a favor vivos (T-049, ADR-058 §6): por cliente y moneda, en los tramos fijos 0-7,
- * 8-30, 31-90, 91-180 y más de 180 días contados desde {@code fechaOrigen} hasta la fecha de corte (hoy por defecto), con
+ * 8-30, 31-90, 91-180 y más de 180 días contados desde {@code fechaOrigen} hasta la fecha de corte (hoy por defecto, nunca futura), con
  * totales por tramo y moneda y la columna de reservado. Solo lectura: no existe ninguna acción contable asociada (ADR-053 §5).
  */
 @Service
@@ -30,9 +30,27 @@ public class AntiguedadSaldosFavorService {
     private final SaldoFavorClienteRepository saldoRepository;
     private final Clock clock;
 
+    /** Mensaje fijo de la validación de la fecha de corte (la página, el JSON y las exportaciones responden 400 con él). */
+    public static final String MENSAJE_CORTE_FUTURO = "La fecha de corte no puede ser futura";
+
+    /** Rótulo obligatorio (T-049 review 1, c20): el reporte mezcla saldo vivo de hoy con la antigüedad a la fecha de corte. */
+    public static final String ROTULO_SALDO_VIVO = "Importes al saldo vivo de hoy; la fecha de corte solo define la antigüedad";
+
+    /** Excepción de validación: el controlador la traduce a HTTP 400 con el mensaje fijo. */
+    public static class FechaCorteInvalidaException extends RuntimeException {
+        public FechaCorteInvalidaException() {
+            super(MENSAJE_CORTE_FUTURO);
+        }
+    }
+
     @Transactional(readOnly = true)
     public AntiguedadSaldosFavorDTO generar(LocalDate fechaCorte) {
-        LocalDate corte = fechaCorte != null ? fechaCorte : LocalDate.now(clock);
+        LocalDate hoy = LocalDate.now(clock);
+        if (fechaCorte != null && fechaCorte.isAfter(hoy)) {
+            throw new FechaCorteInvalidaException();
+        }
+        LocalDate corte = fechaCorte != null ? fechaCorte : hoy;
+        // findVivosHasta excluye los saldos con fecha_origen posterior al corte: ninguna edad es negativa
         Map<String, Acumulado> porClienteYMoneda = new LinkedHashMap<>();
         Map<String, Acumulado> porMoneda = new LinkedHashMap<>();
         for (SaldoFavorCliente s : saldoRepository.findVivosHasta(EstadoSaldoFavor.VIGENTE, corte)) {

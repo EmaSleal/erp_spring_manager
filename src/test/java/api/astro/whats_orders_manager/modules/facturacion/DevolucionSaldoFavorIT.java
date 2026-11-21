@@ -1046,8 +1046,6 @@ class DevolucionSaldoFavorIT {
         Saldo crc = saldoCrc(null);
         Saldo usd = saldoUsd("500");
         solicitarOk(crc.id(), "100.00");
-        jdbc.update("UPDATE saldos_favor_cliente SET fecha_origen = ? WHERE id IN (?, ?)", LocalDate.now().toString(),
-                crc.id(), usd.id());
         // saldos de otras pruebas no deben mezclarse: se aísla por cliente
         record Limite(int dias, int columna) {
         }
@@ -1056,7 +1054,10 @@ class DevolucionSaldoFavorIT {
                 new Limite(400, 4));
         String[] nombres = {"tramo0a7", "tramo8a30", "tramo31a90", "tramo91a180", "tramoMas180"};
         for (Limite l : limites) {
-            LocalDate corte = LocalDate.now().plusDays(l.dias());
+            // el corte nunca es futuro (T-049 review 1, c20): la edad se logra moviendo el origen al pasado
+            jdbc.update("UPDATE saldos_favor_cliente SET fecha_origen = ? WHERE id IN (?, ?)",
+                    LocalDate.now().minusDays(l.dias()).toString(), crc.id(), usd.id());
+            LocalDate corte = LocalDate.now();
             JsonNode datos = getData("/reportes/api/saldos-favor-antiguedad?fechaCorte=" + corte);
             JsonNode filaCrc = filaDe(datos, crc.idCliente(), "CRC");
             JsonNode filaUsd = filaDe(datos, usd.idCliente(), "USD");
@@ -1078,9 +1079,17 @@ class DevolucionSaldoFavorIT {
             assertThat(totUsd.get(nombres[l.columna()]).decimalValue()).isGreaterThanOrEqualTo(new BigDecimal("500.00"));
             assertThat(totCrc.get("reservado").decimalValue()).isGreaterThanOrEqualTo(new BigDecimal("100.00"));
         }
-        // un saldo posterior a la fecha de corte no existía todavía: no aparece
+        // un saldo posterior a la fecha de corte no existía todavía: no aparece (y ninguna edad es negativa)
+        jdbc.update("UPDATE saldos_favor_cliente SET fecha_origen = ? WHERE id IN (?, ?)", LocalDate.now().toString(),
+                crc.id(), usd.id());
         JsonNode ayer = getData("/reportes/api/saldos-favor-antiguedad?fechaCorte=" + LocalDate.now().minusDays(1));
         assertThat(filaOpcional(ayer, crc.idCliente(), "CRC")).isNull();
+        assertThat(filaOpcional(ayer, usd.idCliente(), "USD")).isNull();
+        for (JsonNode f : ayer.get("filas")) {
+            for (String t : nombres) {
+                assertThat(f.get(t).decimalValue()).as("ningún importe en tramo negativo").isGreaterThanOrEqualTo(BigDecimal.ZERO);
+            }
+        }
         // por defecto, el corte es hoy
         JsonNode hoy = getData("/reportes/api/saldos-favor-antiguedad");
         assertThat(hoy.get("fechaCorte").asText()).isEqualTo(LocalDate.now().toString());
@@ -1088,6 +1097,83 @@ class DevolucionSaldoFavorIT {
         // un saldo agotado no es vivo: no aparece
         jdbc.update("UPDATE saldos_favor_cliente SET saldo_vivo = 0, estado = 'AGOTADO' WHERE id = ?", usd.id());
         assertThat(filaOpcional(getData("/reportes/api/saldos-favor-antiguedad"), usd.idCliente(), "USD")).isNull();
+    }
+
+    static final String MENSAJE_CORTE_FUTURO = "La fecha de corte no puede ser futura";
+    static final String ROTULO_SALDO_VIVO = "Importes al saldo vivo de hoy; la fecha de corte solo define la antigüedad";
+
+    @Test
+    @DisplayName("T-049 review 1 c20: una fecha de corte futura responde 400 con mensaje fijo en la página, el JSON y las tres exportaciones")
+    void antiguedadCorteFuturo400() throws Exception {
+        saldoCrc(null);
+        String manana = LocalDate.now().plusDays(1).toString();
+        MvcResult api = mockMvc.perform(get("/reportes/api/saldos-favor-antiguedad?fechaCorte=" + manana)
+                .with(user(USUARIO).roles("ADMIN"))).andReturn();
+        assertThat(api.getResponse().getStatus()).isEqualTo(400);
+        assertThat(api.getResponse().getContentAsString()).contains(MENSAJE_CORTE_FUTURO);
+        MvcResult page = mockMvc.perform(get("/reportes/saldos-favor-antiguedad?fechaCorte=" + manana)
+                .with(user(USUARIO).roles("ADMIN"))).andReturn();
+        assertThat(page.getResponse().getStatus()).isEqualTo(400);
+        assertThat(page.getResponse().getContentAsString()).contains(MENSAJE_CORTE_FUTURO);
+        for (String formato : new String[]{"excel", "csv", "pdf"}) {
+            MvcResult r = mockMvc.perform(get("/reportes/saldos-favor-antiguedad/exportar/" + formato + "?fechaCorte="
+                    + manana).with(user(USUARIO).roles("ADMIN"))).andReturn();
+            assertThat(r.getResponse().getStatus()).as(formato).isEqualTo(400);
+            assertThat(r.getResponse().getContentAsString()).as(formato).contains(MENSAJE_CORTE_FUTURO);
+        }
+        // hoy sigue siendo válido
+        assertThat(mockMvc.perform(get("/reportes/api/saldos-favor-antiguedad?fechaCorte=" + LocalDate.now())
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("T-049 review 1 c20: la página y las exportaciones rotulan que los importes son al saldo vivo de hoy")
+    void antiguedadRotuloSaldoVivoDeHoy() throws Exception {
+        saldoCrc(null);
+        String corte = "?fechaCorte=" + LocalDate.now().minusDays(3);
+        String html = mockMvc.perform(get("/reportes/saldos-favor-antiguedad" + corte)
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains(ROTULO_SALDO_VIVO);
+        String csv = new String(mockMvc.perform(get("/reportes/saldos-favor-antiguedad/exportar/csv" + corte)
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getContentAsByteArray(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(csv).contains(ROTULO_SALDO_VIVO);
+        byte[] excel = mockMvc.perform(get("/reportes/saldos-favor-antiguedad/exportar/excel" + corte)
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getContentAsByteArray();
+        try (org.apache.poi.ss.usermodel.Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
+                new java.io.ByteArrayInputStream(excel))) {
+            StringBuilder texto = new StringBuilder();
+            wb.getSheetAt(0).forEach(row -> row.forEach(c -> texto.append(c.toString()).append('\n')));
+            assertThat(texto.toString()).contains(ROTULO_SALDO_VIVO);
+        }
+        byte[] pdf = mockMvc.perform(get("/reportes/saldos-favor-antiguedad/exportar/pdf" + corte)
+                .with(user(USUARIO).roles("ADMIN"))).andReturn().getResponse().getContentAsByteArray();
+        try (com.itextpdf.kernel.pdf.PdfDocument doc = new com.itextpdf.kernel.pdf.PdfDocument(
+                new com.itextpdf.kernel.pdf.PdfReader(new java.io.ByteArrayInputStream(pdf)))) {
+            StringBuilder texto = new StringBuilder();
+            for (int i = 1; i <= doc.getNumberOfPages(); i++) {
+                texto.append(com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor.getTextFromPage(doc.getPage(i)));
+            }
+            assertThat(texto.toString().replace("\n", " ")).contains(ROTULO_SALDO_VIVO);
+        }
+    }
+
+    @Test
+    @DisplayName("T-049 review 1 c19: el asiento de una devolución pagada tiene el tipo propio AUTOMATICO_DEVOLUCION_SALDO_FAVOR, es automático y no cuenta como cobro")
+    void asientoDeLaDevolucionTieneTipoPropio() throws Exception {
+        Saldo s = saldoCrc(null);
+        long id = solicitarOk(s.id(), "200.00");
+        aprobarOk(id);
+        pagarOk(id, bancoCrc());
+        long asiento = jdbc.queryForObject("SELECT asiento_id FROM devoluciones_saldo_favor WHERE id = ?", Long.class, id);
+        assertThat(jdbc.queryForObject("SELECT tipo FROM asientos_contables WHERE id = ?", String.class, asiento))
+                .isEqualTo("AUTOMATICO_DEVOLUCION_SALDO_FAVOR");
+        assertThat(jdbc.queryForObject("SELECT pago_id FROM asientos_contables WHERE id = ?", Long.class, asiento))
+                .isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM asientos_contables WHERE id = ? AND tipo = "
+                + "'AUTOMATICO_PAGO'", Integer.class, asiento)).isZero();
+        assertThat(api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento
+                .valueOf("AUTOMATICO_DEVOLUCION_SALDO_FAVOR").esAutomatico()).isTrue();
     }
 
     @Test

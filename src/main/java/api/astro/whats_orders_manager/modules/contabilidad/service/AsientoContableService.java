@@ -821,8 +821,8 @@ public class AsientoContableService {
      *   CR DIFERENCIAL_CAMBIARIO_INGRESO    — si el débito excede al crédito (ganancia realizada)
      *   DR DIFERENCIAL_CAMBIARIO_GASTO      — si el crédito excede al débito (pérdida realizada)
      *
-     * Tipo AUTOMATICO_PAGO, sin pago ni otro documento enlazado: la devolución guarda el asiento (devoluciones_saldo_favor.
-     * asiento_id) y no es un cobro, así que no entra en caja ni en los pagos del día. Es el único asiento de la devolución;
+     * Tipo AUTOMATICO_DEVOLUCION_SALDO_FAVOR (V50), sin pago ni otro documento enlazado: la devolución guarda el asiento
+     * (devoluciones_saldo_favor.asiento_id) y no es un cobro (ninguna consulta por AUTOMATICO_PAGO lo cuenta), así que no entra en caja ni en los pagos del día. Es el único asiento de la devolución;
      * una devolución PAGADA no se reversa en B2 (se corrige con un asiento manual documentado).
      *
      * @throws IllegalStateException falta un parámetro contable (el mensaje lo nombra), la hoja de la cuenta bancaria no
@@ -844,7 +844,7 @@ public class AsientoContableService {
         asiento.setFecha(fecha);
         asiento.setConcepto(truncar("Devolución en dinero de saldo a favor (nota " + saldo.getNota().getId()
             + ") " + nombreCliente(saldo.getCliente()) + " — comprobante " + devolucion.getNumeroComprobante(), 500));
-        asiento.setTipo(TipoAsiento.AUTOMATICO_PAGO);
+        asiento.setTipo(TipoAsiento.AUTOMATICO_DEVOLUCION_SALDO_FAVOR);
         asiento.setEstado(EstadoAsiento.BORRADOR);
 
         List<DetalleAsiento> detalles = new ArrayList<>();

@@ -7,6 +7,7 @@ import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
 import api.astro.whats_orders_manager.modules.reportes.dto.AntiguedadSaldosFavorDTO;
+import api.astro.whats_orders_manager.modules.reportes.service.AntiguedadSaldosFavorService;
 import api.astro.whats_orders_manager.modules.reportes.service.ExportService;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
@@ -787,6 +788,7 @@ public class ExportServiceImpl implements ExportService {
     public ByteArrayOutputStream exportarAntiguedadSaldosFavorCSV(AntiguedadSaldosFavorDTO reporte) {
         StringBuilder csv = new StringBuilder();
         csv.append("Antigüedad de saldos a favor al ").append(reporte.fechaCorte()).append("\n");
+        csv.append(AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO).append("\n");
         csv.append(String.join(",", COLUMNAS_ANTIGUEDAD)).append("\n");
         for (AntiguedadSaldosFavorDTO.Fila f : reporte.filas()) {
             csv.append(escapeCSV(f.cliente())).append(",").append(f.moneda());
@@ -818,6 +820,7 @@ public class ExportServiceImpl implements ExportService {
             tituloCell.setCellValue("ANTIGÜEDAD DE SALDOS A FAVOR AL " + reporte.fechaCorte());
             tituloCell.setCellStyle(crearEstiloTitulo(workbook));
             sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, COLUMNAS_ANTIGUEDAD.length - 1));
+            sheet.createRow(rowNum++).createCell(0).setCellValue(AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO);
             rowNum++;
             CellStyle header = crearEstiloHeader(workbook);
             Row encabezado = sheet.createRow(rowNum++);
@@ -866,6 +869,7 @@ public class ExportServiceImpl implements ExportService {
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
             agregarEncabezadoPDF(document, "Antigüedad de saldos a favor al " + reporte.fechaCorte());
+            document.add(new Paragraph(AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO).setFontSize(9).setItalic());
             Table tabla = new Table(UnitValue.createPercentArray(new float[]{22, 6, 9, 9, 9, 9, 9, 10, 9, 10}))
                 .useAllAvailableWidth();
             DeviceRgb color = new DeviceRgb(52, 58, 64);

@@ -895,9 +895,17 @@ public class ReporteController {
     @GetMapping("/saldos-favor-antiguedad")
     public String antiguedadSaldosFavor(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaCorte,
-            Model model, Authentication authentication) {
+            Model model, Authentication authentication, jakarta.servlet.http.HttpServletResponse response) {
         cargarDatosUsuario(model, authentication);
-        AntiguedadSaldosFavorDTO reporte = antiguedadSaldosFavorService.generar(fechaCorte);
+        AntiguedadSaldosFavorDTO reporte;
+        try {
+            reporte = antiguedadSaldosFavorService.generar(fechaCorte);
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_BAD_REQUEST);
+            model.addAttribute("errorFechaCorte", e.getMessage());
+            reporte = new AntiguedadSaldosFavorDTO(java.time.LocalDate.now(), java.util.List.of(), java.util.List.of());
+        }
+        model.addAttribute("rotuloSaldoVivo", AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO);
         model.addAttribute("reporte", reporte);
         model.addAttribute("fechaCorte", reporte.fechaCorte());
         return "modules/reportes/saldos-favor-antiguedad";
@@ -908,7 +916,11 @@ public class ReporteController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> antiguedadSaldosFavorApi(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaCorte) {
-        return ResponseUtil.successData(antiguedadSaldosFavorService.generar(fechaCorte));
+        try {
+            return ResponseUtil.successData(antiguedadSaldosFavorService.generar(fechaCorte));
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return ResponseUtil.error(e.getMessage());
+        }
     }
 
     @GetMapping("/saldos-favor-antiguedad/exportar/pdf")
@@ -918,6 +930,8 @@ public class ReporteController {
             AntiguedadSaldosFavorDTO reporte = antiguedadSaldosFavorService.generar(fechaCorte);
             return ResponseUtil.pdf(exportService.exportarAntiguedadSaldosFavorPDF(reporte).toByteArray(),
                 "antiguedad-saldos-favor.pdf");
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return fechaCorteInvalida(e);
         } catch (Exception e) {
             log.error("Error al exportar la antigüedad de saldos a favor a PDF: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
@@ -931,6 +945,8 @@ public class ReporteController {
             AntiguedadSaldosFavorDTO reporte = antiguedadSaldosFavorService.generar(fechaCorte);
             return ResponseUtil.excel(exportService.exportarAntiguedadSaldosFavorExcel(reporte).toByteArray(),
                 "antiguedad-saldos-favor.xlsx");
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return fechaCorteInvalida(e);
         } catch (Exception e) {
             log.error("Error al exportar la antigüedad de saldos a favor a Excel: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
@@ -944,10 +960,17 @@ public class ReporteController {
             AntiguedadSaldosFavorDTO reporte = antiguedadSaldosFavorService.generar(fechaCorte);
             return ResponseUtil.csv(exportService.exportarAntiguedadSaldosFavorCSV(reporte).toByteArray(),
                 "antiguedad-saldos-favor.csv");
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return fechaCorteInvalida(e);
         } catch (Exception e) {
             log.error("Error al exportar la antigüedad de saldos a favor a CSV: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private static ResponseEntity<byte[]> fechaCorteInvalida(AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+        return ResponseEntity.badRequest().contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+            .body(e.getMessage().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     /**
