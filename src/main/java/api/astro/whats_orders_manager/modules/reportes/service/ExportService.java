@@ -4,6 +4,8 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 
+import api.astro.whats_orders_manager.modules.reportes.dto.AntiguedadSaldosFavorDTO;
+
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Map;
@@ -81,4 +83,13 @@ public interface ExportService {
      * @return ByteArrayOutputStream con el CSV
      */
     ByteArrayOutputStream exportarProductosCSV(List<Producto> productos);
+
+    /** Reporte de antigüedad de saldos a favor (T-049) a PDF. */
+    ByteArrayOutputStream exportarAntiguedadSaldosFavorPDF(AntiguedadSaldosFavorDTO reporte);
+
+    /** Reporte de antigüedad de saldos a favor (T-049) a Excel. */
+    ByteArrayOutputStream exportarAntiguedadSaldosFavorExcel(AntiguedadSaldosFavorDTO reporte);
+
+    /** Reporte de antigüedad de saldos a favor (T-049) a CSV. */
+    ByteArrayOutputStream exportarAntiguedadSaldosFavorCSV(AntiguedadSaldosFavorDTO reporte);
 }

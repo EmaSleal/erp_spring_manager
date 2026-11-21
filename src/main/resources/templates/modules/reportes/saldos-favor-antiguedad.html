@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Antigüedad de saldos a favor</title>
+</head>
+<body>
+    <link rel="stylesheet" th:href="@{/modules/reportes/css/reportes.css}">
+
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content module-reportes-scope">
+        <div class="container-fluid py-4">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/reportes}"><i class="fas fa-chart-bar"></i> Reportes</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Antigüedad de saldos a favor</li>
+                </ol>
+            </nav>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-hourglass-half text-module-reportes"></i> Antigüedad de saldos a favor</h2>
+                    <p class="text-muted mb-0">
+                        Saldos a favor vivos por cliente y moneda, contados desde su fecha de origen hasta la fecha de corte.
+                        Solo informativo: no genera movimientos contables.
+                    </p>
+                </div>
+                <div class="export-buttons">
+                    <a class="btn btn-outline-secondary" th:href="@{/reportes/saldos-favor-antiguedad/exportar/excel(fechaCorte=${fechaCorte})}">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </a>
+                    <a class="btn btn-outline-secondary" th:href="@{/reportes/saldos-favor-antiguedad/exportar/csv(fechaCorte=${fechaCorte})}">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </a>
+                    <a class="btn btn-outline-secondary" th:href="@{/reportes/saldos-favor-antiguedad/exportar/pdf(fechaCorte=${fechaCorte})}">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </a>
+                </div>
+            </div>
+
+            <div class="alert alert-danger" role="alert" th:if="${errorFechaCorte != null}" th:text="${errorFechaCorte}">Error</div>
+            <div class="alert alert-info py-2" role="note" th:text="${rotuloSaldoVivo}">Rótulo</div>
+
+            <div class="filter-section">
+                <form th:action="@{/reportes/saldos-favor-antiguedad}" method="get">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="fechaCorte" class="form-label"><i class="fas fa-calendar-day"></i> Fecha de corte</label>
+                            <input type="date" class="form-control" id="fechaCorte" name="fechaCorte" th:value="${fechaCorte}">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="filter-buttons">
+                                <button type="submit" class="btn btn-module-reportes"><i class="fas fa-filter"></i> Consultar</button>
+                                <a th:href="@{/reportes/saldos-favor-antiguedad}" class="btn btn-outline-secondary"><i class="fas fa-redo"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-body table-responsive">
+                    <table class="table table-hover align-middle" id="tablaAntiguedad">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Moneda</th>
+                                <th class="text-end">0-7 días</th>
+                                <th class="text-end">8-30 días</th>
+                                <th class="text-end">31-90 días</th>
+                                <th class="text-end">91-180 días</th>
+                                <th class="text-end">Más de 180 días</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Reservado</th>
+                                <th class="text-end">Disponible</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="f : ${reporte.filas}">
+                                <td th:text="${f.cliente}">Cliente</td>
+                                <td th:text="${f.moneda}">CRC</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(f.tramo0a7, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(f.tramo8a30, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(f.tramo31a90, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(f.tramo91a180, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(f.tramoMas180, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(f.total, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(f.reservado, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(f.disponible, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(reporte.filas)}">
+                                <td colspan="10" class="text-center text-muted py-4">No hay saldos a favor vivos a la fecha de corte.</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light fw-bold" th:each="t : ${reporte.totales}">
+                                <td>Total</td>
+                                <td th:text="${t.moneda}">CRC</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.tramo0a7, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.tramo8a30, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.tramo31a90, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.tramo91a180, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.tramoMas180, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.total, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.reservado, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(t.disponible, 1, 'DEFAULT', 2, 'DEFAULT')}">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

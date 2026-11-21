@@ -6,8 +6,11 @@ import api.astro.whats_orders_manager.modules.facturacion.exception.SaldoFavorCo
 import api.astro.whats_orders_manager.modules.facturacion.exception.SaldoFavorPedidoInvalidoException;
 import api.astro.whats_orders_manager.modules.facturacion.model.AplicacionSaldoFavor;
 import api.astro.whats_orders_manager.modules.facturacion.service.SaldoFavorService;
+import api.astro.whats_orders_manager.modules.facturacion.dto.DevolucionSaldoFavorDTO;
+import api.astro.whats_orders_manager.modules.facturacion.enums.MedioSolicitudDevolucion;
+import api.astro.whats_orders_manager.modules.facturacion.service.DevolucionSaldoFavorService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
-import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
+import api.astro.whats_orders_manager.modules.seguridad.repository.UsuarioRepository;
 import api.astro.whats_orders_manager.shared.dto.ResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.NoSuchElementException;
 
 /**
@@ -45,8 +49,12 @@ public class SaldoFavorRestController {
         "@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER') "
             + "or @permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')";
 
+    /** Permiso de aprobar, rechazar y pagar devoluciones (ADR-058 §1). */
+    static final String APROBAR = "@permisoService.tienePermisoPorCodigo(#authentication.name, 'SALDO_FAVOR_DEVOLUCION_APROBAR')";
+
     private final SaldoFavorService service;
-    private final UsuarioService usuarioService;
+    private final DevolucionSaldoFavorService devolucionService;
+    private final UsuarioRepository usuarioRepository;
 
     /** Cuerpo de la aplicación: factura destino y monto (en la moneda del saldo, dos decimales). */
     public record AplicarSaldoRequest(Integer idFactura, BigDecimal monto) {
@@ -54,6 +62,25 @@ public class SaldoFavorRestController {
 
     /** Cuerpo de la reversión: razón de 3 a 180 caracteres. */
     public record ReversarSaldoRequest(String razon) {
+    }
+
+    /** Cuerpo de la solicitud de devolución (ADR-058 §4 y §5). El IBAN se acepta con o sin espacios. */
+    public record SolicitarDevolucionRequest(BigDecimal monto, String iban, String nombreTitular,
+                                             String identificacionTitular, MedioSolicitudDevolucion medioSolicitud,
+                                             LocalDate fechaSolicitud) {
+    }
+
+    /** Cuerpo de la aprobación: la declaración «Verifiqué que la cuenta pertenece al cliente». */
+    public record AprobarDevolucionRequest(Boolean verificoCuenta) {
+    }
+
+    /** Cuerpo del rechazo y de la anulación: razón de 3 a 180 caracteres. */
+    public record RazonDevolucionRequest(String razon) {
+    }
+
+    /** Cuerpo del pago: cuenta bancaria de la empresa y comprobante bancario (número y fecha). */
+    public record PagarDevolucionRequest(Integer idCuentaBancaria, String numeroComprobante,
+                                         LocalDate fechaComprobante) {
     }
 
     /** Saldos VIGENTES del cliente en la moneda (CRC, USD). */
@@ -101,8 +128,78 @@ public class SaldoFavorRestController {
         return ResponseEntity.ok(ResponseDTO.success("Aplicación reversada", service.resumen(aplicacion.getId())));
     }
 
+    // ── Devoluciones en dinero (T-049, ADR-058) ──────────────────────────────
+
+    /** Devoluciones de un saldo con su historial. */
+    @GetMapping("/{idSaldo}/devoluciones")
+    @PreAuthorize(PUEDE_VER)
+    public ResponseEntity<ResponseDTO> devoluciones(@PathVariable Long idSaldo, Authentication authentication) {
+        return ResponseEntity.ok(ResponseDTO.success("OK", devolucionService.porSaldo(idSaldo)));
+    }
+
+    /** Solicita la devolución y reserva el monto. Permiso: crear pagos o aprobar devoluciones. */
+    @PostMapping("/{idSaldo}/devoluciones")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR') or " + APROBAR)
+    public ResponseEntity<ResponseDTO> solicitarDevolucion(@PathVariable Long idSaldo,
+                                                           @RequestBody SolicitarDevolucionRequest pedido,
+                                                           Authentication authentication) {
+        if (pedido == null) {
+            throw new SaldoFavorPedidoInvalidoException("El pedido es obligatorio");
+        }
+        var d = devolucionService.solicitar(idSaldo, new DevolucionSaldoFavorService.Solicitud(pedido.monto(),
+            pedido.iban(), pedido.nombreTitular(), pedido.identificacionTitular(), pedido.medioSolicitud(),
+            pedido.fechaSolicitud()), idUsuario(authentication));
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ResponseDTO.success("Devolución solicitada", devolucionService.resumen(d.getId())));
+    }
+
+    @PostMapping("/devoluciones/{id}/aprobar")
+    @PreAuthorize(APROBAR)
+    public ResponseEntity<ResponseDTO> aprobarDevolucion(@PathVariable Long id,
+                                                         @RequestBody(required = false) AprobarDevolucionRequest pedido,
+                                                         Authentication authentication) {
+        boolean verifico = pedido != null && Boolean.TRUE.equals(pedido.verificoCuenta());
+        devolucionService.aprobar(id, verifico, idUsuario(authentication));
+        return ResponseEntity.ok(ResponseDTO.success("Devolución aprobada", devolucionService.resumen(id)));
+    }
+
+    @PostMapping("/devoluciones/{id}/rechazar")
+    @PreAuthorize(APROBAR)
+    public ResponseEntity<ResponseDTO> rechazarDevolucion(@PathVariable Long id,
+                                                          @RequestBody(required = false) RazonDevolucionRequest pedido,
+                                                          Authentication authentication) {
+        devolucionService.rechazar(id, pedido != null ? pedido.razon() : null, idUsuario(authentication));
+        return ResponseEntity.ok(ResponseDTO.success("Devolución rechazada", devolucionService.resumen(id)));
+    }
+
+    /** Anula antes de pagar. Permiso: anular pagos o aprobar devoluciones. */
+    @PostMapping("/devoluciones/{id}/anular")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_ANULAR') or " + APROBAR)
+    public ResponseEntity<ResponseDTO> anularDevolucion(@PathVariable Long id,
+                                                        @RequestBody(required = false) RazonDevolucionRequest pedido,
+                                                        Authentication authentication) {
+        devolucionService.anular(id, pedido != null ? pedido.razon() : null, idUsuario(authentication));
+        return ResponseEntity.ok(ResponseDTO.success("Devolución anulada", devolucionService.resumen(id)));
+    }
+
+    @PostMapping("/devoluciones/{id}/pagar")
+    @PreAuthorize(APROBAR)
+    public ResponseEntity<ResponseDTO> pagarDevolucion(@PathVariable Long id,
+                                                       @RequestBody(required = false) PagarDevolucionRequest pedido,
+                                                       Authentication authentication) {
+        DevolucionSaldoFavorDTO resumen;
+        devolucionService.pagar(id, pedido != null ? pedido.idCuentaBancaria() : null,
+            pedido != null ? pedido.numeroComprobante() : null, pedido != null ? pedido.fechaComprobante() : null,
+            idUsuario(authentication));
+        resumen = devolucionService.resumen(id);
+        return ResponseEntity.ok(ResponseDTO.success("Devolución pagada", resumen));
+    }
+
+    /** Id del usuario autenticado: por nombre y luego por correo, igual que {@code tienePermisoPorCodigo}. */
     private Integer idUsuario(Authentication authentication) {
-        return usuarioService.findByEmail(authentication.getName()).map(Usuario::getIdUsuario).orElse(null);
+        String nombre = authentication.getName();
+        return usuarioRepository.findByNombre(nombre).or(() -> usuarioRepository.findByEmail(nombre))
+            .map(Usuario::getIdUsuario).orElse(null);
     }
 
     @ExceptionHandler({SaldoFavorConflictoException.class, NotaFacturaConflictoException.class})

@@ -38,7 +38,8 @@ public class CuentaBancariaRestController {
      */
     @GetMapping("/activas")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')"
-        + " or @permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_REGISTRAR_PAGO')")
+        + " or @permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_REGISTRAR_PAGO')"
+        + " or @permisoService.tienePermisoPorCodigo(#authentication.name, 'SALDO_FAVOR_DEVOLUCION_APROBAR')")
     public ResponseEntity<ResponseDTO> activas(@RequestParam(required = false) String moneda,
                                                Authentication authentication) {
         try {

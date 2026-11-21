@@ -6,6 +6,8 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
+import api.astro.whats_orders_manager.modules.reportes.dto.AntiguedadSaldosFavorDTO;
+import api.astro.whats_orders_manager.modules.reportes.service.AntiguedadSaldosFavorService;
 import api.astro.whats_orders_manager.modules.reportes.service.ExportService;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.facturacion.repository.FacturaRepository;
@@ -73,6 +75,7 @@ public class ReporteController {
     private final UsuarioService usuarioService;
     private final ReporteService reporteService;
     private final ExportService exportService;
+    private final AntiguedadSaldosFavorService antiguedadSaldosFavorService;
     private final MonedaService monedaService;
     private final FacturaRepository facturaRepository;
     private final ClienteRepository clienteRepository;
@@ -879,6 +882,97 @@ public class ReporteController {
     // MÉTODOS AUXILIARES
     // ============================================================================
     
+    // ========================================================================
+    // ANTIGÜEDAD DE SALDOS A FAVOR (T-049, ADR-058 §6)
+    // ========================================================================
+    // Solo lectura (GET): el reporte no ofrece revertir saldos a ingresos ni ninguna otra acción contable (ADR-053 §5).
+
+    /**
+     * Saldos a favor vivos por cliente y moneda en los tramos 0-7, 8-30, 31-90, 91-180 y más de 180 días.
+     *
+     * @param fechaCorte fecha hasta la que se cuenta la antigüedad (hoy por defecto)
+     */
+    @GetMapping("/saldos-favor-antiguedad")
+    public String antiguedadSaldosFavor(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaCorte,
+            Model model, Authentication authentication, jakarta.servlet.http.HttpServletResponse response) {
+        cargarDatosUsuario(model, authentication);
+        AntiguedadSaldosFavorDTO reporte;
+        try {
+            reporte = antiguedadSaldosFavorService.generar(fechaCorte);
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_BAD_REQUEST);
+            model.addAttribute("errorFechaCorte", e.getMessage());
+            reporte = new AntiguedadSaldosFavorDTO(java.time.LocalDate.now(), java.util.List.of(), java.util.List.of());
+        }
+        model.addAttribute("rotuloSaldoVivo", AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO);
+        model.addAttribute("reporte", reporte);
+        model.addAttribute("fechaCorte", reporte.fechaCorte());
+        return "modules/reportes/saldos-favor-antiguedad";
+    }
+
+    /** GET /reportes/api/saldos-favor-antiguedad?fechaCorte=yyyy-MM-dd: los mismos datos en JSON. */
+    @GetMapping("/api/saldos-favor-antiguedad")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> antiguedadSaldosFavorApi(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaCorte) {
+        try {
+            return ResponseUtil.successData(antiguedadSaldosFavorService.generar(fechaCorte));
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/saldos-favor-antiguedad/exportar/pdf")
+    public ResponseEntity<byte[]> exportarAntiguedadSaldosFavorPDF(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaCorte) {
+        try {
+            AntiguedadSaldosFavorDTO reporte = antiguedadSaldosFavorService.generar(fechaCorte);
+            return ResponseUtil.pdf(exportService.exportarAntiguedadSaldosFavorPDF(reporte).toByteArray(),
+                "antiguedad-saldos-favor.pdf");
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return fechaCorteInvalida(e);
+        } catch (Exception e) {
+            log.error("Error al exportar la antigüedad de saldos a favor a PDF: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/saldos-favor-antiguedad/exportar/excel")
+    public ResponseEntity<byte[]> exportarAntiguedadSaldosFavorExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaCorte) {
+        try {
+            AntiguedadSaldosFavorDTO reporte = antiguedadSaldosFavorService.generar(fechaCorte);
+            return ResponseUtil.excel(exportService.exportarAntiguedadSaldosFavorExcel(reporte).toByteArray(),
+                "antiguedad-saldos-favor.xlsx");
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return fechaCorteInvalida(e);
+        } catch (Exception e) {
+            log.error("Error al exportar la antigüedad de saldos a favor a Excel: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/saldos-favor-antiguedad/exportar/csv")
+    public ResponseEntity<byte[]> exportarAntiguedadSaldosFavorCSV(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaCorte) {
+        try {
+            AntiguedadSaldosFavorDTO reporte = antiguedadSaldosFavorService.generar(fechaCorte);
+            return ResponseUtil.csv(exportService.exportarAntiguedadSaldosFavorCSV(reporte).toByteArray(),
+                "antiguedad-saldos-favor.csv");
+        } catch (AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+            return fechaCorteInvalida(e);
+        } catch (Exception e) {
+            log.error("Error al exportar la antigüedad de saldos a favor a CSV: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private static ResponseEntity<byte[]> fechaCorteInvalida(AntiguedadSaldosFavorService.FechaCorteInvalidaException e) {
+        return ResponseEntity.badRequest().contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+            .body(e.getMessage().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     /**
      * Carga los datos del usuario actual en el modelo.
      * 
