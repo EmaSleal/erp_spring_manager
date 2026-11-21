@@ -177,6 +177,26 @@ async function cargarFacturasCliente() {
 }
 
 /**
+ * T-048 (ADR-053): opción «Aplicar saldo a favor» de la factura elegida (saldos VIGENTES del mismo cliente y
+ * moneda); sin factura el panel queda oculto. Tras aplicar se vuelve al listado de pagos.
+ */
+function iniciarSaldoFavor(idFactura) {
+    if (typeof SaldoFavor === 'undefined') return;
+    if (!idFactura) {
+        const panel = document.getElementById('sf-panel');
+        if (panel) panel.style.display = 'none';
+        return;
+    }
+    SaldoFavor.iniciarPanelAplicar(document, (url, init) => fetch(url, init), {
+        idFactura,
+        onAplicado: () => {
+            showToast('success', 'Saldo a favor aplicado correctamente');
+            window.location.href = '/pagos';
+        }
+    });
+}
+
+/**
  * Mostrar información de la factura seleccionada
  */
 function mostrarInfoFactura() {
@@ -191,6 +211,7 @@ function mostrarInfoFactura() {
     }
     actualizarTipoCambioPago();
     actualizarCuentaBancariaDestino();
+    iniciarSaldoFavor(selectedOption.value);
 
     // Si no hay factura seleccionada, limpiar
     if (!selectedOption.value) {

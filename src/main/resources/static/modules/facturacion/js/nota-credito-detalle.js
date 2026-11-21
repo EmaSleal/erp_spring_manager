@@ -92,6 +92,13 @@
         par(t, 'Descuento', NC.formatearMonto(d.descuento, d.moneda));
         par(t, 'Impuesto', NC.formatearMonto(d.impuesto, d.moneda));
         par(t, 'Total', NC.formatearMonto(d.total, d.moneda) + ' ' + (d.moneda || ''));
+        // T-048: reparto de la nota aplicada entre cuentas por cobrar y saldo a favor
+        const reparto = $('nd-reparto');
+        if (reparto) {
+            const texto = typeof SaldoFavor !== 'undefined' ? SaldoFavor.textoReparto(d) : '';
+            reparto.textContent = texto ? 'Reparto: ' + texto : '';
+            reparto.style.display = texto ? '' : 'none';
+        }
     }
 
     function pintarComprobante(d) {

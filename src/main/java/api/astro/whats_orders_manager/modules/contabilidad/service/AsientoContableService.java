@@ -19,6 +19,8 @@ import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferencia
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
+import api.astro.whats_orders_manager.modules.facturacion.model.SaldoFavorCliente;
+import api.astro.whats_orders_manager.modules.facturacion.util.CalculoAplicacionSaldoFavor;
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.nomina.model.DetalleNomina;
 import api.astro.whats_orders_manager.modules.nomina.model.Nomina;
@@ -406,6 +408,12 @@ public class AsientoContableService {
      * y 02 (ADR-054, 4.1.02.002).
      */
     public static final String CLAVE_NOTA_CREDITO_ANULACIONES_DESCUENTOS = "NOTA_CREDITO_ANULACIONES_DESCUENTOS";
+    /** Prefijo de las claves de «Saldos a favor de clientes» por moneda (ADR-054): SALDO_FAVOR_CLIENTES_&lt;CRC|USD&gt;. */
+    public static final String PREFIJO_SALDO_FAVOR_CLIENTES = "SALDO_FAVOR_CLIENTES_";
+    /** Clave de «Saldos a favor de clientes – CRC» (2.1.05.001). */
+    public static final String CLAVE_SALDO_FAVOR_CLIENTES_CRC = PREFIJO_SALDO_FAVOR_CLIENTES + "CRC";
+    /** Clave de «Saldos a favor de clientes – USD» (2.1.05.002). */
+    public static final String CLAVE_SALDO_FAVOR_CLIENTES_USD = PREFIJO_SALDO_FAVOR_CLIENTES + "USD";
     /** Clave de la cuenta de anticipos de clientes (CR en cobro sin factura). */
     public static final String CLAVE_COBRO_ANTICIPOS_CLIENTES = "COBRO_ANTICIPOS_CLIENTES";
     /** Prefijo de las claves de caja/banco por método de pago: COBRO_CAJA_&lt;MetodoPago&gt;. */
@@ -485,6 +493,23 @@ public class AsientoContableService {
      */
     @Transactional
     public AsientoContable generarAsientoNotaCredito(NotaFactura nota, AsientoContable ventaOriginal, LocalDate fecha) {
+        return generarAsientoNotaCredito(nota, ventaOriginal, fecha, nota != null ? nota.getTotal() : null,
+            BigDecimal.ZERO);
+    }
+
+    /**
+     * Igual que {@link #generarAsientoNotaCredito(NotaFactura, AsientoContable, LocalDate)} con el reparto del total de
+     * la nota (T-048, ADR-053): el crédito a cuentas por cobrar es {@code creditoCxc} y el {@code excedente} se acredita
+     * a «Saldos a favor de clientes» de la moneda de la factura (parámetro SALDO_FAVOR_CLIENTES_&lt;moneda&gt;). Ambos en la
+     * moneda de la factura y convertidos con su tipo de cambio; el excedente en CRC es el total en CRC menos el crédito a
+     * CxC en CRC, así el asiento cuadra al céntimo.
+     *
+     * @param creditoCxc monto acreditado a cuentas por cobrar ({@code min(total, saldo pendiente)})
+     * @param excedente  total de la nota menos {@code creditoCxc}; si es mayor que 0 se exige el parámetro de saldos a favor
+     */
+    @Transactional
+    public AsientoContable generarAsientoNotaCredito(NotaFactura nota, AsientoContable ventaOriginal, LocalDate fecha,
+                                                     BigDecimal creditoCxc, BigDecimal excedente) {
         if (nota == null || nota.getFactura() == null) {
             throw new IllegalArgumentException("La nota y su factura son obligatorias para generar el asiento");
         }
@@ -533,12 +558,28 @@ public class AsientoContableService {
             debitoIva.setAsiento(asiento);
             detalles.add(debitoIva);
         }
-        DetalleAsiento creditoCxC = new DetalleAsiento();
-        creditoCxC.setCuenta(cuentaCxC);
-        creditoCxC.setHaber(totalCrc);
-        creditoCxC.setDescripcion("Cuentas por cobrar" + nombreCliente);
-        creditoCxC.setAsiento(asiento);
-        detalles.add(creditoCxC);
+        BigDecimal creditoCxcCrc = convertirACrc(creditoCxc, tipoCambio);
+        BigDecimal excedenteCrc = totalCrc.subtract(creditoCxcCrc);
+        if (valorONulo(excedente).signum() <= 0) {
+            creditoCxcCrc = totalCrc;
+            excedenteCrc = BigDecimal.ZERO;
+        }
+        if (creditoCxcCrc.signum() > 0) {
+            DetalleAsiento creditoCxC = new DetalleAsiento();
+            creditoCxC.setCuenta(cuentaCxC);
+            creditoCxC.setHaber(creditoCxcCrc);
+            creditoCxC.setDescripcion("Cuentas por cobrar" + nombreCliente);
+            creditoCxC.setAsiento(asiento);
+            detalles.add(creditoCxC);
+        }
+        if (excedenteCrc.signum() > 0) {
+            DetalleAsiento creditoSaldoFavor = new DetalleAsiento();
+            creditoSaldoFavor.setCuenta(resolverCuenta(claveSaldoFavor(factura)));
+            creditoSaldoFavor.setHaber(excedenteCrc);
+            creditoSaldoFavor.setDescripcion(truncar("Saldo a favor del cliente" + nombreCliente, 500));
+            creditoSaldoFavor.setAsiento(asiento);
+            detalles.add(creditoSaldoFavor);
+        }
         asiento.setDetalles(detalles);
 
         validarCuadre(asiento, "nota de crédito");
@@ -706,6 +747,66 @@ public class AsientoContableService {
         guardado = asientoRepository.save(guardado);
 
         log.info("Asiento de pago generado y contabilizado: {}", guardado.getNumero());
+        return guardado;
+    }
+
+    /** Clave del parámetro de «Saldos a favor de clientes» de la moneda de la factura (sin valor por defecto, ADR-024). */
+    public static String claveSaldoFavor(Factura factura) {
+        return claveSaldoFavor(factura.getMonedaFE() != null ? factura.getMonedaFE().getCodigo() : "CRC");
+    }
+
+    public static String claveSaldoFavor(String codigoMoneda) {
+        return PREFIJO_SALDO_FAVOR_CLIENTES + codigoMoneda;
+    }
+
+    /**
+     * Genera y contabiliza el asiento de la aplicación de un saldo a favor a una factura (T-048, ADR-055, ADR-057).
+     *
+     * Estructura (montos en CRC, ver {@link CalculoAplicacionSaldoFavor}):
+     *   DR SALDO_FAVOR_CLIENTES_&lt;moneda&gt;   — monto × TC de origen del saldo
+     *   CR VENTA_CXC_CLIENTES               — monto × TC de la factura destino
+     *   CR DIFERENCIAL_CAMBIARIO_INGRESO    — si el débito excede al crédito
+     *   DR DIFERENCIAL_CAMBIARIO_GASTO      — si el crédito excede al débito
+     *
+     * El asiento es de tipo AUTOMATICO_PAGO y queda enlazado al pago NOTA_CREDITO de la aplicación: al anular ese pago,
+     * {@link #revertirAsientoPago} lo revierte (una sola vez, ADR-023). Fecha: la de la aplicación.
+     *
+     * @throws IllegalStateException falta un parámetro contable (el mensaje lo nombra) o el asiento no cuadra
+     */
+    @Transactional
+    public AsientoContable generarAsientoAplicacionSaldoFavor(SaldoFavorCliente saldo, Factura destino, Pago pago,
+                                                              CalculoAplicacionSaldoFavor calculo, LocalDate fecha) {
+        if (saldo == null || destino == null || pago == null || calculo == null || fecha == null) {
+            throw new IllegalArgumentException("Saldo, factura, pago, cálculo y fecha son obligatorios");
+        }
+        CuentaContable cuentaSaldo = resolverCuenta(claveSaldoFavor(saldo.getMoneda()));
+        CuentaContable cuentaCxc = resolverCuenta(CLAVE_VENTA_CXC_CLIENTES);
+        String nombreCliente = nombreCliente(destino.getCliente());
+
+        AsientoContable asiento = new AsientoContable();
+        asiento.setNumero(generarNumeroAsiento());
+        asiento.setFecha(fecha);
+        asiento.setConcepto(truncar("Aplicación de saldo a favor (nota " + saldo.getNota().getId() + ") a factura "
+            + destino.getNumeroFactura() + nombreCliente, 500));
+        asiento.setTipo(TipoAsiento.AUTOMATICO_PAGO);
+        asiento.setEstado(EstadoAsiento.BORRADOR);
+        asiento.setPago(pago);
+
+        List<DetalleAsiento> detalles = new ArrayList<>();
+        detalles.add(linea(asiento, cuentaSaldo, calculo.debeSaldoCrc(), null,
+            "Saldo a favor aplicado a " + destino.getNumeroFactura()));
+        detalles.add(linea(asiento, cuentaCxc, null, calculo.haberCxcCrc(),
+            "Aplicado a factura " + destino.getNumeroFactura()));
+        agregarDiferencialCambiario(asiento, detalles, calculo.debeSaldoCrc().subtract(calculo.haberCxcCrc()),
+            "Saldo a favor " + saldo.getId());
+        asiento.setDetalles(detalles);
+
+        validarCuadre(asiento, "aplicación de saldo a favor");
+        AsientoContable guardado = asientoRepository.save(asiento);
+        guardado.contabilizar();
+        guardado = asientoRepository.save(guardado);
+        log.info("Asiento {} de la aplicación del saldo a favor {} a la factura {} generado y contabilizado",
+            guardado.getNumero(), saldo.getId(), destino.getNumeroFactura());
         return guardado;
     }
 

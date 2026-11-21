@@ -22,6 +22,9 @@ import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
+import api.astro.whats_orders_manager.modules.facturacion.service.SaldoFavorService;
+import api.astro.whats_orders_manager.modules.facturacion.dto.SaldoFavorDTO;
+import api.astro.whats_orders_manager.modules.facturacion.enums.TipoPago;
 import api.astro.whats_orders_manager.shared.util.ResponseUtil;
 import api.astro.whats_orders_manager.shared.util.PaginacionUtil;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +72,7 @@ public class FacturaController {
     private final FacturaSustitutaService sustitutaService;
     private final NotaCreditoElegibilidad notaCreditoElegibilidad;
     private final AmbienteComprobanteGuard ambienteGuard;
+    private final SaldoFavorService saldoFavorService;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -203,6 +207,7 @@ public class FacturaController {
                 detalle.setRevisarEnAtv(false);
             }
             sustitutaService.completarDetalle(factura, detalle);
+            completarPagosPorSaldoFavor(detalle);
             NotaCreditoElegibilidad.Resultado notaCredito = notaCreditoElegibilidad.evaluar(factura,
                 authentication.getName());
             detalle.setPuedeEmitirNotaCredito(notaCredito.puedeEmitir());
@@ -542,4 +547,29 @@ public class FacturaController {
         }
     }
 
+
+    /**
+     * T-048: a cada pago NOTA_CREDITO del detalle le agrega la aplicación del saldo a favor de la que nace y su nota de
+     * origen (el detalle de la factura destino muestra «Nota de origen»).
+     */
+    private void completarPagosPorSaldoFavor(FacturaDetalleDTO detalle) {
+        if (detalle.getPagos() == null) {
+            return;
+        }
+        List<Long> ids = detalle.getPagos().stream().filter(p -> p.getTipoPago() == TipoPago.NOTA_CREDITO)
+            .map(PagoDTO::getIdPago).toList();
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<Long, SaldoFavorDTO.Aplicacion> aplicaciones = saldoFavorService.aplicacionesPorPago(ids);
+        for (PagoDTO pago : detalle.getPagos()) {
+            SaldoFavorDTO.Aplicacion a = aplicaciones.get(pago.getIdPago());
+            if (a != null) {
+                pago.setIdAplicacionSaldoFavor(a.id());
+                pago.setIdNotaOrigen(a.idNota());
+                pago.setClaveNotaOrigen(a.claveNota());
+                pago.setNumeroNotaOrigen(a.numeroNota());
+            }
+        }
+    }
 }

@@ -6,7 +6,6 @@
 
     const RAZON_MIN = 3;
     const RAZON_MAX = 180;
-    const MOTIVO_PAGOS = 'La nota de crédito sobre facturas con pagos llega en una próxima versión';
     const AVISO_RESUMEN = 'La factura quedará anulada cuando Hacienda acepte la nota; después podrá emitir la factura sustituta';
     const ERROR_RAZON = 'La razón es obligatoria y debe tener entre ' + RAZON_MIN + ' y ' + RAZON_MAX + ' caracteres';
     const MENSAJE_EMITIDA = 'Nota de crédito emitida.';
@@ -457,7 +456,7 @@
     }
 
     global.NotaCredito = {
-        RAZON_MIN, RAZON_MAX, MOTIVO_PAGOS, AVISO_RESUMEN, ERROR_RAZON, CODIGOS,
+        RAZON_MIN, RAZON_MAX, AVISO_RESUMEN, ERROR_RAZON, CODIGOS,
         codigosDe, aCentimos, deCentimos, validarMontoLinea, calcularParcial, textoModalidad, pintarLineasParcial,
         ERROR_SIN_LINEAS, ERROR_LINEA_TOPE, ERROR_FACTURA_TOPE,
         estadoBoton, contadorRazon, validarRazon, textoEfecto, advertenciaMismoMes, mesActual, ADVERTENCIA_MISMO_MES, nombreCodigo, cuerpoPedido,
