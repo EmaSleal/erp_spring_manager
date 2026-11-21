@@ -21,6 +21,8 @@ import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.model.SaldoFavorCliente;
 import api.astro.whats_orders_manager.modules.facturacion.util.CalculoAplicacionSaldoFavor;
+import api.astro.whats_orders_manager.modules.facturacion.util.CalculoDevolucionSaldoFavor;
+import api.astro.whats_orders_manager.modules.facturacion.model.DevolucionSaldoFavor;
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.nomina.model.DetalleNomina;
 import api.astro.whats_orders_manager.modules.nomina.model.Nomina;
@@ -807,6 +809,59 @@ public class AsientoContableService {
         guardado = asientoRepository.save(guardado);
         log.info("Asiento {} de la aplicación del saldo a favor {} a la factura {} generado y contabilizado",
             guardado.getNumero(), saldo.getId(), destino.getNumeroFactura());
+        return guardado;
+    }
+
+    /**
+     * Genera y contabiliza el asiento del pago de una devolución en dinero de un saldo a favor (T-049, ADR-058 §3).
+     *
+     * Estructura (montos en CRC, ver {@link CalculoDevolucionSaldoFavor}):
+     *   DR SALDO_FAVOR_CLIENTES_&lt;moneda&gt;   — monto × TC de origen del saldo
+     *   CR hoja de la cuenta bancaria de la empresa (ADR-018) — monto × TC del día del pago
+     *   CR DIFERENCIAL_CAMBIARIO_INGRESO    — si el débito excede al crédito (ganancia realizada)
+     *   DR DIFERENCIAL_CAMBIARIO_GASTO      — si el crédito excede al débito (pérdida realizada)
+     *
+     * Tipo AUTOMATICO_PAGO, sin pago ni otro documento enlazado: la devolución guarda el asiento (devoluciones_saldo_favor.
+     * asiento_id) y no es un cobro, así que no entra en caja ni en los pagos del día. Es el único asiento de la devolución;
+     * una devolución PAGADA no se reversa en B2 (se corrige con un asiento manual documentado).
+     *
+     * @throws IllegalStateException falta un parámetro contable (el mensaje lo nombra), la hoja de la cuenta bancaria no
+     *                               es utilizable o el asiento no cuadra
+     */
+    @Transactional
+    public AsientoContable generarAsientoDevolucionSaldoFavor(DevolucionSaldoFavor devolucion, SaldoFavorCliente saldo,
+                                                              CuentaBancaria cuentaBancaria,
+                                                              CalculoDevolucionSaldoFavor calculo, LocalDate fecha) {
+        if (devolucion == null || saldo == null || cuentaBancaria == null || calculo == null || fecha == null) {
+            throw new IllegalArgumentException("Devolución, saldo, cuenta bancaria, cálculo y fecha son obligatorios");
+        }
+        CuentaContable cuentaSaldo = resolverCuenta(claveSaldoFavor(saldo.getMoneda()));
+        String documento = "la devolución " + devolucion.getId() + " del saldo a favor " + saldo.getId();
+        CuentaContable cuentaBanco = cuentaContableDeCuentaBancaria(cuentaBancaria, documento);
+
+        AsientoContable asiento = new AsientoContable();
+        asiento.setNumero(generarNumeroAsiento());
+        asiento.setFecha(fecha);
+        asiento.setConcepto(truncar("Devolución en dinero de saldo a favor (nota " + saldo.getNota().getId()
+            + ") " + nombreCliente(saldo.getCliente()) + " — comprobante " + devolucion.getNumeroComprobante(), 500));
+        asiento.setTipo(TipoAsiento.AUTOMATICO_PAGO);
+        asiento.setEstado(EstadoAsiento.BORRADOR);
+
+        List<DetalleAsiento> detalles = new ArrayList<>();
+        detalles.add(linea(asiento, cuentaSaldo, calculo.debeSaldoCrc(), null,
+            "Devolución del saldo a favor " + saldo.getId()));
+        detalles.add(linea(asiento, cuentaBanco, null, calculo.haberBancoCrc(),
+            truncar("Devolución " + devolucion.getId() + " — " + cuentaBancaria.getEntidad() + " — comprobante "
+                + devolucion.getNumeroComprobante(), 500)));
+        agregarDiferencialCambiario(asiento, detalles, calculo.diferencialNeto(), "Saldo a favor " + saldo.getId());
+        asiento.setDetalles(detalles);
+
+        validarCuadre(asiento, "devolución de saldo a favor");
+        AsientoContable guardado = asientoRepository.save(asiento);
+        guardado.contabilizar();
+        guardado = asientoRepository.save(guardado);
+        log.info("Asiento {} de la devolución {} del saldo a favor {} generado y contabilizado", guardado.getNumero(),
+            devolucion.getId(), saldo.getId());
         return guardado;
     }
 

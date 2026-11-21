@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoSaldoFavor
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Check;
+import org.hibernate.annotations.Checks;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -24,7 +25,10 @@ import java.time.LocalDateTime;
 @Table(name = "saldos_favor_cliente", indexes = {
     @Index(name = "idx_saldo_favor_cliente_moneda_estado", columnList = "cliente_id, moneda, estado")
 }, uniqueConstraints = @UniqueConstraint(name = "uk_saldo_favor_nota", columnNames = "nota_factura_id"))
-@Check(name = "ck_saldo_favor_saldo_vivo", constraints = "saldo_vivo >= 0")
+@Checks({
+    @Check(name = "ck_saldo_favor_saldo_vivo", constraints = "saldo_vivo >= 0"),
+    @Check(name = "ck_saldo_favor_reservado", constraints = "monto_reservado >= 0 AND saldo_vivo - monto_reservado >= 0")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -59,6 +63,13 @@ public class SaldoFavorCliente {
     @Column(name = "saldo_vivo", nullable = false, precision = 12, scale = 2)
     @ToString.Include
     private BigDecimal saldoVivo;
+
+    /**
+     * Monto reservado por devoluciones en dinero SOLICITADAS o APROBADAS (T-049, ADR-058 §2). Disponible = saldo vivo −
+     * reservado: la aplicación de B1 y las solicitudes nuevas solo pueden usar el disponible.
+     */
+    @Column(name = "monto_reservado", nullable = false, precision = 12, scale = 2)
+    private BigDecimal montoReservado = BigDecimal.ZERO;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "nota_factura_id", nullable = false)
@@ -120,5 +131,43 @@ public class SaldoFavorCliente {
         }
         saldoVivo = nuevo;
         estado = saldoVivo.signum() > 0 ? EstadoSaldoFavor.VIGENTE : EstadoSaldoFavor.AGOTADO;
+    }
+
+    /** Saldo vivo menos lo reservado por devoluciones en trámite. */
+    public BigDecimal getDisponible() {
+        return saldoVivo.subtract(montoReservado);
+    }
+
+    /**
+     * Reserva {@code monto} para una devolución solicitada.
+     *
+     * @throws IllegalStateException si el monto no es positivo o excede el disponible
+     */
+    public void reservar(BigDecimal monto) {
+        if (monto == null || monto.signum() <= 0) {
+            throw new IllegalStateException("El monto a reservar debe ser mayor a 0");
+        }
+        if (monto.compareTo(getDisponible()) > 0) {
+            throw new IllegalStateException("El monto excede el saldo disponible del saldo a favor");
+        }
+        montoReservado = montoReservado.add(monto);
+    }
+
+    /**
+     * Libera {@code monto} de la reserva (devolución rechazada o anulada).
+     *
+     * @throws IllegalStateException si se libera más de lo reservado
+     */
+    public void liberarReserva(BigDecimal monto) {
+        if (monto == null || monto.signum() <= 0 || monto.compareTo(montoReservado) > 0) {
+            throw new IllegalStateException("La reserva a liberar no es válida");
+        }
+        montoReservado = montoReservado.subtract(monto);
+    }
+
+    /** Paga una devolución reservada: libera la reserva y baja el saldo vivo en el monto (AGOTADO al llegar a 0). */
+    public void pagarDevolucion(BigDecimal monto) {
+        liberarReserva(monto);
+        consumir(monto);
     }
 }

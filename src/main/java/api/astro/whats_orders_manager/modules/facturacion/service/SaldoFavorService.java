@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.facturacion.dto.DevolucionSaldoFavorDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.SaldoFavorDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
@@ -69,6 +70,9 @@ public class SaldoFavorService {
     public static final String MSG_MONEDA = "El saldo a favor solo se aplica a facturas en la misma moneda";
     public static final String MSG_MONTO = "El monto debe ser mayor a 0 y tener a lo sumo dos decimales";
     public static final String MSG_EXCEDE_SALDO = "El monto excede el saldo vivo del saldo a favor";
+    /** T-049: hay devoluciones en trámite que reservan parte del saldo vivo (ADR-058 §2). */
+    public static final String MSG_EXCEDE_DISPONIBLE = "El monto excede el saldo disponible del saldo a favor "
+        + "(saldo vivo menos lo reservado por devoluciones en trámite)";
     public static final String MSG_EXCEDE_FACTURA = "El monto excede el saldo pendiente de la factura destino";
     public static final String MSG_ANULADA = "La factura destino está anulada";
     public static final String MSG_ACREDITADA = "La factura destino está acreditada totalmente";
@@ -89,6 +93,7 @@ public class SaldoFavorService {
     private final TipoCambioService tipoCambioService;
     private final NotaFacturaPrecondiciones notaPrecondiciones;
     private final ComprobanteElectronicoRepository comprobanteRepository;
+    private final DevolucionSaldoFavorService devolucionService;
     private final Clock clock;
 
     // ── Generación al aceptarse la nota (criterio 6) ─────────────────────────
@@ -235,6 +240,10 @@ public class SaldoFavorService {
         if (monto.compareTo(saldo.getSaldoVivo()) > 0) {
             throw new SaldoFavorConflictoException(MSG_EXCEDE_SALDO);
         }
+        // T-049: lo reservado por una devolución en trámite no se puede aplicar a una factura
+        if (monto.compareTo(saldo.getDisponible()) > 0) {
+            throw new SaldoFavorConflictoException(MSG_EXCEDE_DISPONIBLE);
+        }
         if (monto.compareTo(destino.calcularSaldoPendiente()) > 0) {
             throw new SaldoFavorConflictoException(MSG_EXCEDE_FACTURA);
         }
@@ -359,8 +368,11 @@ public class SaldoFavorService {
             .collect(Collectors.groupingBy(a -> a.getSaldo().getId()));
         Map<Long, SaldoFavorDTO.Saldo> dtos = aSaldoDTOs(saldos).stream()
             .collect(Collectors.toMap(SaldoFavorDTO.Saldo::id, Function.identity()));
+        Map<Long, List<DevolucionSaldoFavorDTO>> devoluciones = devolucionService.porSaldos(
+            saldos.stream().map(SaldoFavorCliente::getId).toList());
         return saldos.stream().map(s -> new SaldoFavorDTO.ConAplicaciones(dtos.get(s.getId()),
-            aplicaciones.getOrDefault(s.getId(), List.of()).stream().map(this::aAplicacionDTO).toList())).toList();
+            aplicaciones.getOrDefault(s.getId(), List.of()).stream().map(this::aAplicacionDTO).toList(),
+            devoluciones.getOrDefault(s.getId(), List.of()))).toList();
     }
 
     /** Aplicaciones por pago NOTA_CREDITO (para mostrar «Nota de origen» en el detalle de la factura destino). */
@@ -398,7 +410,8 @@ public class SaldoFavorService {
         return new SaldoFavorDTO.Saldo(s.getId(), s.getCliente().getIdCliente(), s.getMoneda(), s.getMontoOriginal(),
             s.getSaldoVivo(), s.getFechaOrigen(), s.getTipoCambioOrigen(), s.getEstado().name(), nota.getId(),
             SustitucionElegibilidad.numeroDeNota(nota, comprobante), s.getClaveNota(),
-            s.getFacturaOrigen().getIdFactura(), s.getFacturaOrigen().getNumeroFactura());
+            s.getFacturaOrigen().getIdFactura(), s.getFacturaOrigen().getNumeroFactura(), s.getMontoReservado(),
+            s.getDisponible());
     }
 
     private SaldoFavorDTO.Aplicacion aAplicacionDTO(AplicacionSaldoFavor a) {
