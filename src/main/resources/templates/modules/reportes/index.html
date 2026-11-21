@@ -120,6 +120,30 @@
                 </div>
             </div>
 
+            <!-- Antigüedad de saldos a favor (T-049) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card report-card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="report-icon bg-info mb-3">
+                            <i class="fas fa-hourglass-half fa-3x text-white"></i>
+                        </div>
+                        <h5 class="card-title">Antigüedad de saldos a favor</h5>
+                        <p class="card-text text-muted">
+                            Saldos a favor vivos de los clientes por moneda y antigüedad, con lo reservado por
+                            devoluciones en trámite.
+                        </p>
+                        <ul class="list-unstyled mb-3">
+                            <li><i class="fas fa-check text-success"></i> Tramos 0-7, 8-30, 31-90, 91-180 y más de 180 días</li>
+                            <li><i class="fas fa-check text-success"></i> Fecha de corte a elección</li>
+                            <li><i class="fas fa-check text-success"></i> Exportación a Excel, CSV y PDF</li>
+                        </ul>
+                        <a th:href="@{/reportes/saldos-favor-antiguedad}" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-hourglass-half"></i> Ver Reporte
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Reporte de Productos -->
             <div class="col-md-6 col-lg-4">
                 <div class="card report-card h-100 shadow-sm">

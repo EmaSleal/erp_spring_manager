@@ -150,3 +150,4 @@ INSERT IGNORE INTO `rol_permiso` (`id_rol`, `id_permiso`) VALUES (1,73);
 INSERT IGNORE INTO `rol_permiso` (`id_rol`, `id_permiso`) VALUES (2,73);
 INSERT IGNORE INTO `rol_permiso` (`id_rol`, `id_permiso`) VALUES (3,73);
 INSERT IGNORE INTO `rol_permiso` (`id_rol`, `id_permiso`) VALUES (5,73);
+INSERT IGNORE INTO `rol_permiso` (`id_rol`, `id_permiso`) SELECT r.`id_rol`, p.`id_permiso` FROM `rol` r JOIN `permiso` p ON p.`codigo` = 'SALDO_FAVOR_DEVOLUCION_APROBAR' WHERE r.`codigo` = 'ADMIN';

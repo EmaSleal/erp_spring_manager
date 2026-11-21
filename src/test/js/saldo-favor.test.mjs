@@ -59,7 +59,7 @@ test('validarMonto: mayor a 0, a lo sumo dos decimales, tope por saldo vivo y po
     assert.equal(v('abc').mensaje, base);
     assert.equal(v('10.123').mensaje, base);
     assert.equal(v('400.01').mensaje, 'El monto excede el saldo pendiente de la factura destino');
-    assert.equal(s.validarMonto('700', 600, 900).mensaje, 'El monto excede el saldo vivo del saldo a favor');
+    assert.equal(s.validarMonto('700', 600, 900).mensaje, 'El monto excede el saldo disponible del saldo a favor');
     assert.deepEqual({ ...v('400') }, { valido: true, mensaje: '' });
     assert.equal(v('0.01').valido, true);
     assert.equal(v('399.99').valido, true);
@@ -73,9 +73,9 @@ test('montoMaximo es el menor entre el saldo vivo y el saldo pendiente', () => {
 
 test('opción del saldo: nota de origen, fecha y saldo vivo; pintada con textContent', () => {
     const s = cargar();
-    assert.equal(s.textoOpcion(SALDO()), 'NC-00007 · 05/11/2026 · saldo vivo ₡600.00');
-    assert.equal(s.textoOpcion(SALDO({ numeroNota: null, claveNota: 'ABC' })), 'ABC · 05/11/2026 · saldo vivo ₡600.00');
-    assert.equal(s.textoOpcion(SALDO({ moneda: 'USD' })), 'NC-00007 · 05/11/2026 · saldo vivo $600.00');
+    assert.equal(s.textoOpcion(SALDO()), 'NC-00007 · 05/11/2026 · disponible ₡600.00');
+    assert.equal(s.textoOpcion(SALDO({ numeroNota: null, claveNota: 'ABC' })), 'ABC · 05/11/2026 · disponible ₡600.00');
+    assert.equal(s.textoOpcion(SALDO({ moneda: 'USD' })), 'NC-00007 · 05/11/2026 · disponible $600.00');
     const doc = documento();
     const select = crear('select');
     s.pintarOpciones(doc, select, [SALDO({ numeroNota: MAL })]);

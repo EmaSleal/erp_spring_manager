@@ -9,7 +9,7 @@
     const NC = global.NotaCredito;
     const ERROR_GENERICO = 'No se pudo completar la operación';
     const ERROR_MONTO = 'El monto debe ser mayor a 0 y tener a lo sumo dos decimales';
-    const ERROR_TOPE_SALDO = 'El monto excede el saldo vivo del saldo a favor';
+    const ERROR_TOPE_SALDO = 'El monto excede el saldo disponible del saldo a favor';
     const ERROR_TOPE_FACTURA = 'El monto excede el saldo pendiente de la factura destino';
     const ERROR_RAZON = 'La razón es obligatoria y debe tener entre 3 y 180 caracteres';
     const RAZON_MIN = 3;
@@ -20,17 +20,17 @@
 
     // ---- validación ----
 
-    /** Monto de la aplicación: > 0, a lo sumo dos decimales, ≤ saldo vivo y ≤ saldo pendiente de la factura. */
-    function validarMonto(texto, saldoVivo, saldoPendiente) {
+    /** Monto de la aplicación: > 0, a lo sumo dos decimales, ≤ disponible (saldo vivo − reservado) y ≤ saldo pendiente de la factura. */
+    function validarMonto(texto, disponible, saldoPendiente) {
         const t = typeof texto === 'string' ? texto.trim() : String(texto == null ? '' : texto);
         if (!/^\d+(\.\d{1,2})?$/.test(t) || centimos(t) <= 0) return { valido: false, mensaje: ERROR_MONTO };
-        if (centimos(t) > centimos(saldoVivo)) return { valido: false, mensaje: ERROR_TOPE_SALDO };
+        if (centimos(t) > centimos(disponible)) return { valido: false, mensaje: ERROR_TOPE_SALDO };
         if (centimos(t) > centimos(saldoPendiente)) return { valido: false, mensaje: ERROR_TOPE_FACTURA };
         return { valido: true, mensaje: '' };
     }
 
-    function montoMaximo(saldoVivo, saldoPendiente) {
-        return (Math.min(centimos(saldoVivo), centimos(saldoPendiente)) / 100).toFixed(2);
+    function montoMaximo(disponible, saldoPendiente) {
+        return (Math.min(centimos(disponible), centimos(saldoPendiente)) / 100).toFixed(2);
     }
 
     function validarRazon(razon) {
@@ -97,8 +97,8 @@
     }
 
     function textoOpcion(saldo) {
-        return origenNota(saldo) + ' · ' + NC.formatearDia(saldo.fechaOrigen) + ' · saldo vivo '
-            + money(saldo.saldoVivo, saldo.moneda);
+        return origenNota(saldo) + ' · ' + NC.formatearDia(saldo.fechaOrigen) + ' · disponible '
+            + money(disponibleDe(saldo), saldo.moneda);
     }
 
     function textoReparto(d) {
@@ -183,7 +183,7 @@
                 boton.disabled = true;
                 return false;
             }
-            const v = validarMonto(monto.value, s.saldoVivo, datos.saldoPendiente);
+            const v = validarMonto(monto.value, disponibleDe(s), datos.saldoPendiente);
             ponerError(error, v.mensaje);
             boton.disabled = !v.valido;
             return v.valido;
@@ -191,8 +191,8 @@
         const cambio = () => {
             const s = elegido();
             ponerError(error, '');
-            if (ayuda) ayuda.textContent = s ? 'Máximo: ' + money(montoMaximo(s.saldoVivo, datos.saldoPendiente), datos.moneda) : '';
-            monto.value = s ? montoMaximo(s.saldoVivo, datos.saldoPendiente) : '';
+            if (ayuda) ayuda.textContent = s ? 'Máximo: ' + money(montoMaximo(disponibleDe(s), datos.saldoPendiente), datos.moneda) : '';
+            monto.value = s ? montoMaximo(disponibleDe(s), datos.saldoPendiente) : '';
             validar();
         };
         const clic = async () => {
@@ -308,6 +308,330 @@
         cont.appendChild(envoltura);
     }
 
+    // ---- devolución en dinero (T-049, B2, ADR-053/058) ----
+
+    const ERROR_IBAN = 'El IBAN debe ser costarricense: CR seguido de 20 dígitos';
+    const ERROR_IBAN_CONTROL = 'El dígito de control del IBAN no es válido';
+    const ERROR_TOPE_DISPONIBLE = 'El monto excede el saldo disponible del saldo a favor';
+    const MEDIOS = [['CORREO', 'Correo electrónico'], ['CARTA', 'Carta'], ['WHATSAPP', 'WhatsApp'], ['OTRO', 'Otro']];
+    const ESTADOS_DEV = { SOLICITADA: ['Solicitada', 'bg-warning text-dark'], APROBADA: ['Aprobada', 'bg-primary'],
+        PAGADA: ['Pagada', 'bg-success'], RECHAZADA: ['Rechazada', 'bg-danger'], ANULADA: ['Anulada', 'bg-dark'] };
+
+    function disponibleDe(s) {
+        if (s && s.disponible != null) return Number(s.disponible);
+        return (centimos(s ? s.saldoVivo : 0) - centimos(s && s.reservado != null ? s.reservado : 0)) / 100;
+    }
+
+    /** IBAN costarricense: sin espacios y en mayúsculas, CR + 20 dígitos y dígito de control ISO 13616 (mod 97). */
+    function validarIban(texto) {
+        const n = String(texto == null ? '' : texto).replace(/\s+/g, '').toUpperCase();
+        if (!/^CR\d{20}$/.test(n)) return { valido: false, mensaje: ERROR_IBAN, normalizado: n };
+        const reordenado = n.slice(4) + n.slice(0, 4);
+        let resto = 0;
+        for (const c of reordenado) {
+            const digitos = c >= 'A' && c <= 'Z' ? String(c.charCodeAt(0) - 55) : c;
+            for (const d of digitos) resto = (resto * 10 + Number(d)) % 97;
+        }
+        return resto === 1 ? { valido: true, mensaje: '', normalizado: n }
+            : { valido: false, mensaje: ERROR_IBAN_CONTROL, normalizado: n };
+    }
+
+    function validarMontoDevolucion(texto, disponible) {
+        const t = typeof texto === 'string' ? texto.trim() : String(texto == null ? '' : texto);
+        if (!/^\d+(\.\d{1,2})?$/.test(t) || centimos(t) <= 0) return { valido: false, mensaje: ERROR_MONTO };
+        if (centimos(t) > centimos(disponible)) return { valido: false, mensaje: ERROR_TOPE_DISPONIBLE };
+        return { valido: true, mensaje: '' };
+    }
+
+    function hoyLocal() {
+        const d = new Date();
+        const p = (n) => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+
+    /** Fecha yyyy-MM-dd obligatoria y no futura; devuelve el mensaje de error o ''. */
+    function errorFecha(texto, hoy, nombre) {
+        const t = String(texto == null ? '' : texto).trim();
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+        if (!m || Number(m[2]) < 1 || Number(m[2]) > 12 || Number(m[3]) < 1 || Number(m[3]) > 31) return 'La ' + nombre + ' es obligatoria';
+        return t > hoy ? 'La ' + nombre + ' no puede ser futura' : '';
+    }
+
+    function validarSolicitud(v, disponible, hoy) {
+        const e = {};
+        const monto = validarMontoDevolucion(v.monto, disponible);
+        if (!monto.valido) e.monto = monto.mensaje;
+        const iban = validarIban(v.iban);
+        if (!iban.valido) e.iban = iban.mensaje;
+        const nombre = String(v.nombreTitular == null ? '' : v.nombreTitular).trim();
+        if (nombre.length < 3 || nombre.length > 100) e.nombreTitular = 'El nombre del titular debe tener entre 3 y 100 caracteres';
+        if (!String(v.identificacionTitular == null ? '' : v.identificacionTitular).trim()) e.identificacionTitular = 'La identificación del titular es obligatoria';
+        if (!MEDIOS.some((m) => m[0] === v.medioSolicitud)) e.medioSolicitud = 'Seleccione el medio por el que se solicitó';
+        const f = errorFecha(v.fechaSolicitud, hoy, 'fecha de la solicitud');
+        if (f) e.fechaSolicitud = f;
+        return e;
+    }
+
+    function validarPago(v, hoy) {
+        const e = {};
+        if (!String(v.idCuentaBancaria == null ? '' : v.idCuentaBancaria).trim()) e.idCuentaBancaria = 'Seleccione la cuenta bancaria de la empresa';
+        if (!String(v.numeroComprobante == null ? '' : v.numeroComprobante).trim()) e.numeroComprobante = 'El número de comprobante es obligatorio';
+        const f = errorFecha(v.fechaComprobante, hoy, 'fecha del comprobante');
+        if (f) e.fechaComprobante = f;
+        return e;
+    }
+
+    function puedeSolicitar(p) {
+        return !!(p && (p.pagoCrear || p.devolucionAprobar));
+    }
+
+    /** Acciones disponibles de una devolución según su estado y los permisos del usuario. */
+    function accionesDevolucion(estado, p) {
+        const a = [];
+        const aprueba = !!(p && p.devolucionAprobar);
+        const anula = !!(p && (p.pagoAnular || p.devolucionAprobar));
+        if (estado === 'SOLICITADA') {
+            if (aprueba) a.push('aprobar', 'rechazar');
+            if (anula) a.push('anular');
+        } else if (estado === 'APROBADA') {
+            if (aprueba) a.push('pagar');
+            if (anula) a.push('anular');
+        }
+        return a;
+    }
+
+    function urlDevolucion(id, accion) {
+        return API + '/devoluciones/' + encodeURIComponent(id) + '/' + accion;
+    }
+
+    /** Historial legible de una devolución: una línea por hito (solicitud, aprobación, rechazo, anulación, pago). */
+    function historialDevolucion(d) {
+        const l = [];
+        const dia = (f) => NC.formatearDia(f);
+        l.push('Solicitada por ' + (d.solicitadoPorNombre || '-') + ' el ' + dia(d.fechaCreacion) + ' · medio ' + (d.medioSolicitud || '-')
+            + ' · fecha de la solicitud ' + dia(d.fechaSolicitud));
+        if (d.aprobadoPorNombre || d.fechaAprobacion) {
+            l.push('Aprobada por ' + (d.aprobadoPorNombre || '-') + ' el ' + dia(d.fechaAprobacion)
+                + (d.verificoCuenta ? ' · verificó que la cuenta pertenece al cliente (' + dia(d.fechaVerificacion) + ')' : ''));
+        }
+        if (d.estado === 'RECHAZADA') {
+            l.push('Rechazada por ' + (d.rechazadoPorNombre || '-') + ' el ' + dia(d.fechaRechazo) + ' · Razón: ' + (d.razon || '-'));
+        }
+        if (d.estado === 'ANULADA') {
+            l.push('Anulada por ' + (d.anuladoPorNombre || '-') + ' el ' + dia(d.fechaAnulacion) + ' · Razón: ' + (d.razon || '-'));
+        }
+        if (d.estado === 'PAGADA') {
+            let t = 'Pagada por ' + (d.pagadoPorNombre || '-') + ' el ' + dia(d.fechaPago) + ' · cuenta ' + (d.cuentaBancaria || '-')
+                + ' · comprobante ' + (d.numeroComprobante || '-') + ' del ' + dia(d.fechaComprobante);
+            if (d.numeroAsiento) t += ' · asiento ' + d.numeroAsiento;
+            l.push(t);
+            const tc = textoTc(d);
+            if (tc) l.push(tc);
+        }
+        return l;
+    }
+
+    // ---- formularios en línea ----
+
+    /**
+     * Formulario en línea. `campos`: [{ nombre, etiqueta, tipo: text|date|select|checkbox, opciones, valor, maxlength }].
+     * `validar(valores)` devuelve { campo: mensaje }; los mensajes se pintan bajo el campo (data-error) cuando el campo se
+     * tocó o se intentó enviar, y el botón se deshabilita mientras haya errores. `enviar(valores)` devuelve
+     * { ok, mensaje }: si falla, el mensaje queda en el formulario (data-error-form) y este no se cierra.
+     */
+    function crearFormulario(doc, cfg) {
+        const form = NC.el(doc, 'div', null, 'border rounded p-2 mt-2 bg-light');
+        form.appendChild(NC.el(doc, 'div', cfg.titulo, 'fw-semibold mb-2'));
+        const ctl = {};
+        const errores = {};
+        const tocados = {};
+        cfg.campos.forEach((c) => {
+            const grupo = NC.el(doc, 'div', null, c.tipo === 'checkbox' ? 'form-check mb-2' : 'mb-2');
+            let control;
+            if (c.tipo === 'select') {
+                control = doc.createElement('select');
+                control.className = 'form-select form-select-sm';
+                (c.opciones || []).forEach((o) => {
+                    const op = doc.createElement('option');
+                    op.value = o[0];
+                    op.textContent = o[1];
+                    control.appendChild(op);
+                });
+            } else {
+                control = doc.createElement('input');
+                control.setAttribute('type', c.tipo === 'checkbox' ? 'checkbox' : (c.tipo || 'text'));
+                control.className = c.tipo === 'checkbox' ? 'form-check-input' : 'form-control form-control-sm';
+                if (c.maxlength) control.setAttribute('maxlength', String(c.maxlength));
+            }
+            control.setAttribute('data-campo', c.nombre);
+            if (c.valor != null && c.tipo !== 'checkbox') control.value = String(c.valor);
+            const etiqueta = NC.el(doc, 'label', c.etiqueta, c.tipo === 'checkbox' ? 'form-check-label' : 'form-label small mb-1');
+            const msg = NC.el(doc, 'div', '', 'small text-danger');
+            msg.setAttribute('data-error', c.nombre);
+            if (c.tipo === 'checkbox') { grupo.appendChild(control); grupo.appendChild(etiqueta); } else { grupo.appendChild(etiqueta); grupo.appendChild(control); }
+            grupo.appendChild(msg);
+            form.appendChild(grupo);
+            ctl[c.nombre] = control;
+            errores[c.nombre] = msg;
+        });
+        const errorForm = NC.el(doc, 'div', '', 'small text-danger mb-2');
+        errorForm.setAttribute('data-error-form', '1');
+        errorForm.style.display = 'none';
+        form.appendChild(errorForm);
+        const enviarBtn = NC.el(doc, 'button', cfg.textoBoton || 'Enviar', 'btn btn-sm btn-primary me-2');
+        enviarBtn.setAttribute('type', 'button');
+        enviarBtn.setAttribute('data-accion', 'enviar');
+        const cancelar = NC.el(doc, 'button', 'Cancelar', 'btn btn-sm btn-outline-secondary');
+        cancelar.setAttribute('type', 'button');
+        cancelar.setAttribute('data-accion', 'cancelar');
+        form.appendChild(enviarBtn);
+        form.appendChild(cancelar);
+
+        const valores = () => {
+            const v = {};
+            cfg.campos.forEach((c) => { v[c.nombre] = c.tipo === 'checkbox' ? !!ctl[c.nombre].checked : ctl[c.nombre].value; });
+            return v;
+        };
+        let enCurso = false;
+        const refrescar = (todos) => {
+            const e = cfg.validar(valores());
+            cfg.campos.forEach((c) => {
+                errores[c.nombre].textContent = (todos || tocados[c.nombre]) && e[c.nombre] ? e[c.nombre] : '';
+            });
+            enviarBtn.disabled = enCurso || Object.keys(e).length > 0 || !!form.bloqueado;
+            return e;
+        };
+        cfg.campos.forEach((c) => {
+            const alCambiar = () => { tocados[c.nombre] = true; ponerError(errorForm, ''); refrescar(false); };
+            ctl[c.nombre].addEventListener('input', alCambiar);
+            ctl[c.nombre].addEventListener('change', alCambiar);
+        });
+        enviarBtn.addEventListener('click', async () => {
+            if (Object.keys(refrescar(true)).length > 0) return;
+            enCurso = true;
+            enviarBtn.disabled = true;
+            ponerError(errorForm, '');
+            let r;
+            try {
+                r = await cfg.enviar(valores());
+            } catch (e) {
+                r = { ok: false, mensaje: ERROR_GENERICO };
+            }
+            enCurso = false;
+            if (!r.ok) {
+                ponerError(errorForm, r.mensaje || ERROR_GENERICO);
+                refrescar(false);
+                return;
+            }
+            if (typeof cfg.alExito === 'function') cfg.alExito(r.data);
+        });
+        cancelar.addEventListener('click', () => { if (typeof cfg.alCancelar === 'function') cfg.alCancelar(); });
+        refrescar(false);
+        return { form, ctl, enviarBtn, errorForm, refrescar };
+    }
+
+    const campoRazon = () => ({ nombre: 'razon', etiqueta: 'Razón (3 a 180 caracteres)', tipo: 'text', maxlength: RAZON_MAX });
+    const validarCampoRazon = (v) => {
+        const r = validarRazon(v.razon);
+        return r.valido ? {} : { razon: r.mensaje };
+    };
+
+    /** Abre en `panel` el formulario de la acción. `ctx`: { doc, fetchFn, hoy, onCambio, saldo, devolucion }. */
+    function abrirFormulario(panel, accion, ctx) {
+        const cerrar = () => { panel.textContent = ''; };
+        const alExito = () => { cerrar(); if (typeof ctx.onCambio === 'function') ctx.onCambio(); };
+        const peticion = (url, cuerpo) => enviar(ctx.fetchFn, url, JSON.stringify(cuerpo), ctx.doc);
+        const d = ctx.devolucion;
+        const s = ctx.saldo;
+        let f;
+        if (accion === 'solicitar') {
+            const disp = disponibleDe(s);
+            f = crearFormulario(ctx.doc, {
+                titulo: 'Solicitar devolución en dinero (' + s.moneda + ', disponible ' + money(disp, s.moneda) + ')',
+                textoBoton: 'Solicitar devolución', alExito, alCancelar: cerrar,
+                campos: [
+                    { nombre: 'monto', etiqueta: 'Monto a devolver', tipo: 'text', valor: disp.toFixed(2) },
+                    { nombre: 'iban', etiqueta: 'IBAN de la cuenta del cliente', tipo: 'text', maxlength: 40 },
+                    { nombre: 'nombreTitular', etiqueta: 'Nombre del titular', tipo: 'text', maxlength: 100 },
+                    { nombre: 'identificacionTitular', etiqueta: 'Identificación del titular', tipo: 'text', maxlength: 50 },
+                    { nombre: 'medioSolicitud', etiqueta: 'Medio por el que el cliente lo solicitó', tipo: 'select',
+                        opciones: [['', 'Seleccione...']].concat(MEDIOS) },
+                    { nombre: 'fechaSolicitud', etiqueta: 'Fecha de la solicitud', tipo: 'date' }],
+                validar: (v) => validarSolicitud(v, disp, ctx.hoy),
+                enviar: (v) => peticion(API + '/' + encodeURIComponent(s.id) + '/devoluciones', {
+                    monto: Number(String(v.monto).trim()), iban: validarIban(v.iban).normalizado, nombreTitular: String(v.nombreTitular).trim(),
+                    identificacionTitular: String(v.identificacionTitular).trim(), medioSolicitud: v.medioSolicitud,
+                    fechaSolicitud: String(v.fechaSolicitud).trim() })
+            });
+        } else if (accion === 'aprobar') {
+            f = crearFormulario(ctx.doc, {
+                titulo: 'Aprobar la devolución de ' + money(d.monto, d.moneda), textoBoton: 'Aprobar', alExito, alCancelar: cerrar,
+                campos: [{ nombre: 'verificoCuenta', etiqueta: 'Verifiqué que la cuenta pertenece al cliente', tipo: 'checkbox' }],
+                validar: (v) => (v.verificoCuenta ? {} : { verificoCuenta: 'Debe confirmar que verificó la cuenta' }),
+                enviar: () => peticion(urlDevolucion(d.id, 'aprobar'), { verificoCuenta: true })
+            });
+        } else if (accion === 'rechazar' || accion === 'anular') {
+            f = crearFormulario(ctx.doc, {
+                titulo: (accion === 'rechazar' ? 'Rechazar' : 'Anular') + ' la devolución de ' + money(d.monto, d.moneda),
+                textoBoton: accion === 'rechazar' ? 'Rechazar' : 'Anular', alExito, alCancelar: cerrar,
+                campos: [campoRazon()], validar: validarCampoRazon,
+                enviar: (v) => peticion(urlDevolucion(d.id, accion), { razon: String(v.razon).trim() })
+            });
+        } else if (accion === 'pagar') {
+            f = crearFormulario(ctx.doc, {
+                titulo: 'Registrar el pago de ' + money(d.monto, d.moneda), textoBoton: 'Registrar pago', alExito, alCancelar: cerrar,
+                campos: [
+                    { nombre: 'idCuentaBancaria', etiqueta: 'Cuenta bancaria de la empresa (' + d.moneda + ')', tipo: 'select',
+                        opciones: [['', 'Cargando cuentas...']] },
+                    { nombre: 'numeroComprobante', etiqueta: 'Número de comprobante', tipo: 'text', maxlength: 50 },
+                    { nombre: 'fechaComprobante', etiqueta: 'Fecha del comprobante', tipo: 'date' }],
+                validar: (v) => validarPago(v, ctx.hoy),
+                enviar: (v) => peticion(urlDevolucion(d.id, 'pagar'), { idCuentaBancaria: Number(v.idCuentaBancaria),
+                    numeroComprobante: String(v.numeroComprobante).trim(), fechaComprobante: String(v.fechaComprobante).trim() })
+            });
+            f.form.bloqueado = true;
+            f.refrescar(false);
+            cargarCuentas(ctx, d.moneda, f);
+        }
+        panel.textContent = '';
+        if (f) panel.appendChild(f.form);
+    }
+
+    function textoCuenta(c) {
+        return (c.entidad || 'Cuenta') + ' · ' + (c.cuentaBanco || '-') + (c.cuentaIban ? ' · ' + c.cuentaIban : '');
+    }
+
+    async function cargarCuentas(ctx, moneda, f) {
+        const select = f.ctl.idCuentaBancaria;
+        let cuentas = null;
+        try {
+            const r = await ctx.fetchFn('/api/cuentas-bancarias/activas?moneda=' + encodeURIComponent(moneda),
+                { headers: { Accept: 'application/json' } });
+            const json = await leer(r);
+            cuentas = r.ok && json && Array.isArray(json.data) ? json.data : null;
+        } catch (e) {
+            cuentas = null;
+        }
+        select.textContent = '';
+        const vacia = ctx.doc.createElement('option');
+        vacia.value = '';
+        vacia.textContent = 'Seleccione...';
+        select.appendChild(vacia);
+        (cuentas || []).filter((c) => !c.moneda || c.moneda === moneda).forEach((c) => {
+            const o = ctx.doc.createElement('option');
+            o.value = String(c.idCuentaBancaria);
+            o.textContent = textoCuenta(c);
+            select.appendChild(o);
+        });
+        if (!cuentas || select.hijos.length < 2) {
+            ponerError(f.errorForm, cuentas ? 'No hay una cuenta bancaria activa de la empresa en ' + moneda
+                : 'No se pudieron cargar las cuentas bancarias de la empresa');
+            return;
+        }
+        f.form.bloqueado = false;
+        f.refrescar(false);
+    }
+
     // ---- estado de cuenta ----
 
     function totalesVivos(items) {
@@ -358,8 +682,55 @@
         return envoltura;
     }
 
-    /** Sección «Saldos a favor» del estado de cuenta: vivos por moneda y, por saldo, sus aplicaciones. */
-    function pintarEstadoCuenta(doc, cont, items) {
+    function pintarDevoluciones(doc, saldo, devoluciones, panel, ctx) {
+        const envoltura = NC.el(doc, 'div', null, 'table-responsive mt-2');
+        const tabla = NC.el(doc, 'table', null, 'table table-sm align-middle mb-0');
+        const cabecera = doc.createElement('thead');
+        const trc = doc.createElement('tr');
+        ['Estado', 'Monto', 'Titular / IBAN', 'Historial', ''].forEach((t) => trc.appendChild(NC.el(doc, 'th', t)));
+        cabecera.appendChild(trc);
+        tabla.appendChild(cabecera);
+        const cuerpo = doc.createElement('tbody');
+        devoluciones.forEach((d) => {
+            const tr = doc.createElement('tr');
+            const est = ESTADOS_DEV[d.estado] || [d.estado, 'bg-secondary'];
+            const tdEstado = doc.createElement('td');
+            tdEstado.appendChild(NC.el(doc, 'span', est[0], 'badge ' + est[1]));
+            tr.appendChild(tdEstado);
+            tr.appendChild(NC.celda(doc, money(d.monto, d.moneda || saldo.moneda), 'text-end'));
+            const tdTitular = doc.createElement('td');
+            tdTitular.appendChild(NC.el(doc, 'div', (d.nombreTitular || '-') + ' · ' + (d.identificacionTitular || '-')));
+            tdTitular.appendChild(NC.el(doc, 'div', d.iban || '-', 'small text-muted'));
+            tr.appendChild(tdTitular);
+            const tdHist = doc.createElement('td');
+            historialDevolucion(d).forEach((linea) => tdHist.appendChild(NC.el(doc, 'div', linea, 'small')));
+            tr.appendChild(tdHist);
+            const tdAcc = NC.el(doc, 'td', null, 'text-nowrap');
+            const rotulos = { aprobar: 'Aprobar', rechazar: 'Rechazar', anular: 'Anular', pagar: 'Pagar' };
+            const estilos = { aprobar: 'btn-outline-success', rechazar: 'btn-outline-danger', anular: 'btn-outline-secondary', pagar: 'btn-outline-primary' };
+            accionesDevolucion(d.estado, ctx.permisos).forEach((a) => {
+                const b = NC.el(doc, 'button', rotulos[a], 'btn btn-sm me-1 ' + estilos[a]);
+                b.setAttribute('type', 'button');
+                b.setAttribute('data-accion', a);
+                b.setAttribute('data-id-devolucion', d.id);
+                b.addEventListener('click', () => abrirFormulario(panel, a, { ...ctx, saldo, devolucion: d }));
+                tdAcc.appendChild(b);
+            });
+            tr.appendChild(tdAcc);
+            cuerpo.appendChild(tr);
+        });
+        tabla.appendChild(cuerpo);
+        envoltura.appendChild(tabla);
+        return envoltura;
+    }
+
+    /**
+     * Sección «Saldos a favor» del estado de cuenta: vivos por moneda y, por saldo, disponible, reservado, aplicaciones y
+     * devoluciones. `opciones`: { permisos: {pagoCrear, pagoAnular, devolucionAprobar}, fetchFn, hoy, onCambio }; sin permisos
+     * no se ofrece ninguna acción.
+     */
+    function pintarEstadoCuenta(doc, cont, items, opciones) {
+        const opts = opciones || {};
         cont.textContent = '';
         if (!items || items.length === 0) {
             cont.textContent = 'El cliente no tiene saldos a favor';
@@ -380,6 +751,8 @@
             titulo.appendChild(NC.el(doc, 'span', NC.formatearDia(s.fechaOrigen), 'text-muted'));
             titulo.appendChild(NC.el(doc, 'span', 'Original ' + money(s.montoOriginal, s.moneda) + ' · vivo '
                 + money(s.saldoVivo, s.moneda)));
+            titulo.appendChild(NC.el(doc, 'span', 'Reservado ' + money(s.reservado == null ? 0 : s.reservado, s.moneda)
+                + ' · Disponible ' + money(disponibleDe(s), s.moneda), 'text-muted'));
             titulo.appendChild(NC.el(doc, 'span', s.estado === 'AGOTADO' ? 'Agotado' : 'Vigente',
                 'badge ' + (s.estado === 'AGOTADO' ? 'bg-secondary' : 'bg-success')));
             bloque.appendChild(titulo);
@@ -388,6 +761,22 @@
             } else {
                 bloque.appendChild(NC.el(doc, 'small', 'Sin aplicaciones', 'text-muted'));
             }
+            const panel = NC.el(doc, 'div');
+            const ctx = { doc, fetchFn: opts.fetchFn, hoy: opts.hoy || hoyLocal(), onCambio: opts.onCambio, permisos: opts.permisos || {} };
+            bloque.appendChild(NC.el(doc, 'div', 'Devoluciones', 'fw-semibold mt-3'));
+            if (i.devoluciones && i.devoluciones.length) {
+                bloque.appendChild(pintarDevoluciones(doc, s, i.devoluciones, panel, ctx));
+            } else {
+                bloque.appendChild(NC.el(doc, 'small', 'Sin devoluciones', 'text-muted'));
+            }
+            if (s.estado === 'VIGENTE' && disponibleDe(s) > 0 && puedeSolicitar(ctx.permisos)) {
+                const b = NC.el(doc, 'button', 'Solicitar devolución', 'btn btn-sm btn-outline-primary mt-2');
+                b.setAttribute('type', 'button');
+                b.setAttribute('data-accion', 'solicitar');
+                b.addEventListener('click', () => abrirFormulario(panel, 'solicitar', { ...ctx, saldo: s }));
+                bloque.appendChild(b);
+            }
+            bloque.appendChild(panel);
             cont.appendChild(bloque);
         });
     }
@@ -395,6 +784,7 @@
     global.SaldoFavor = {
         API, validarMonto, montoMaximo, validarRazon, cuerpoReversion, cuerpoAplicacion, aplicar, reversar,
         textoOpcion, textoReparto, pintarOpciones, iniciarPanelAplicar, pintarPagos, accionReversar,
-        totalesVivos, pintarEstadoCuenta
+        totalesVivos, pintarEstadoCuenta, disponibleDe, validarIban, validarMontoDevolucion, validarSolicitud, validarPago,
+        puedeSolicitar, accionesDevolucion, historialDevolucion, crearFormulario
     };
 })(typeof window !== 'undefined' ? window : globalThis);

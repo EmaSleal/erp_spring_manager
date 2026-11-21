@@ -6,6 +6,8 @@ import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.configuracion.service.EmpresaService;
+import api.astro.whats_orders_manager.modules.reportes.dto.AntiguedadSaldosFavorDTO;
+import api.astro.whats_orders_manager.modules.reportes.service.AntiguedadSaldosFavorService;
 import api.astro.whats_orders_manager.modules.reportes.service.ExportService;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
@@ -768,6 +770,133 @@ public class ExportServiceImpl implements ExportService {
         }
         
         return baos;
+    }
+
+    // =========================================================================
+    // Antigüedad de saldos a favor (T-049)
+    // =========================================================================
+
+    private static final String[] COLUMNAS_ANTIGUEDAD = {"Cliente", "Moneda", "0-7", "8-30", "31-90", "91-180", ">180",
+        "Total", "Reservado", "Disponible"};
+
+    private static BigDecimal[] montosDeFila(AntiguedadSaldosFavorDTO.Fila f) {
+        return new BigDecimal[]{f.tramo0a7(), f.tramo8a30(), f.tramo31a90(), f.tramo91a180(), f.tramoMas180(), f.total(),
+            f.reservado(), f.disponible()};
+    }
+
+    @Override
+    public ByteArrayOutputStream exportarAntiguedadSaldosFavorCSV(AntiguedadSaldosFavorDTO reporte) {
+        StringBuilder csv = new StringBuilder();
+        csv.append("Antigüedad de saldos a favor al ").append(reporte.fechaCorte()).append("\n");
+        csv.append(AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO).append("\n");
+        csv.append(String.join(",", COLUMNAS_ANTIGUEDAD)).append("\n");
+        for (AntiguedadSaldosFavorDTO.Fila f : reporte.filas()) {
+            csv.append(escapeCSV(f.cliente())).append(",").append(f.moneda());
+            for (BigDecimal m : montosDeFila(f)) {
+                csv.append(",").append(m.toPlainString());
+            }
+            csv.append("\n");
+        }
+        for (AntiguedadSaldosFavorDTO.Fila f : reporte.totales()) {
+            csv.append("Total ").append(f.moneda()).append(",").append(f.moneda());
+            for (BigDecimal m : montosDeFila(f)) {
+                csv.append(",").append(m.toPlainString());
+            }
+            csv.append("\n");
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.writeBytes(csv.toString().getBytes(StandardCharsets.UTF_8));
+        return baos;
+    }
+
+    @Override
+    public ByteArrayOutputStream exportarAntiguedadSaldosFavorExcel(AntiguedadSaldosFavorDTO reporte) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Antigüedad saldos a favor");
+            int rowNum = 0;
+            Row titulo = sheet.createRow(rowNum++);
+            Cell tituloCell = titulo.createCell(0);
+            tituloCell.setCellValue("ANTIGÜEDAD DE SALDOS A FAVOR AL " + reporte.fechaCorte());
+            tituloCell.setCellStyle(crearEstiloTitulo(workbook));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, COLUMNAS_ANTIGUEDAD.length - 1));
+            sheet.createRow(rowNum++).createCell(0).setCellValue(AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO);
+            rowNum++;
+            CellStyle header = crearEstiloHeader(workbook);
+            Row encabezado = sheet.createRow(rowNum++);
+            for (int i = 0; i < COLUMNAS_ANTIGUEDAD.length; i++) {
+                Cell c = encabezado.createCell(i);
+                c.setCellValue(COLUMNAS_ANTIGUEDAD[i]);
+                c.setCellStyle(header);
+            }
+            CellStyle monto = workbook.createCellStyle();
+            monto.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00"));
+            for (AntiguedadSaldosFavorDTO.Fila f : reporte.filas()) {
+                rowNum = filaExcel(sheet, rowNum, f.cliente(), f, monto);
+            }
+            for (AntiguedadSaldosFavorDTO.Fila f : reporte.totales()) {
+                rowNum = filaExcel(sheet, rowNum, "Total " + f.moneda(), f, monto);
+            }
+            for (int i = 0; i < COLUMNAS_ANTIGUEDAD.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            workbook.write(baos);
+        } catch (IOException e) {
+            log.error("Error al generar Excel de antigüedad de saldos a favor: {}", e.getMessage(), e);
+            throw new RuntimeException("Error al generar Excel: " + e.getMessage());
+        }
+        return baos;
+    }
+
+    private int filaExcel(Sheet sheet, int rowNum, String nombre, AntiguedadSaldosFavorDTO.Fila f, CellStyle monto) {
+        Row row = sheet.createRow(rowNum);
+        row.createCell(0).setCellValue(nombre);
+        row.createCell(1).setCellValue(f.moneda());
+        BigDecimal[] montos = montosDeFila(f);
+        for (int i = 0; i < montos.length; i++) {
+            Cell c = row.createCell(2 + i);
+            c.setCellValue(montos[i].doubleValue());
+            c.setCellStyle(monto);
+        }
+        return rowNum + 1;
+    }
+
+    @Override
+    public ByteArrayOutputStream exportarAntiguedadSaldosFavorPDF(AntiguedadSaldosFavorDTO reporte) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+            agregarEncabezadoPDF(document, "Antigüedad de saldos a favor al " + reporte.fechaCorte());
+            document.add(new Paragraph(AntiguedadSaldosFavorService.ROTULO_SALDO_VIVO).setFontSize(9).setItalic());
+            Table tabla = new Table(UnitValue.createPercentArray(new float[]{22, 6, 9, 9, 9, 9, 9, 10, 9, 10}))
+                .useAllAvailableWidth();
+            DeviceRgb color = new DeviceRgb(52, 58, 64);
+            for (String c : COLUMNAS_ANTIGUEDAD) {
+                tabla.addHeaderCell(crearCeldaHeader(c, color));
+            }
+            for (AntiguedadSaldosFavorDTO.Fila f : reporte.filas()) {
+                filaPdf(tabla, f.cliente(), f);
+            }
+            for (AntiguedadSaldosFavorDTO.Fila f : reporte.totales()) {
+                filaPdf(tabla, "Total " + f.moneda(), f);
+            }
+            document.add(tabla);
+            document.close();
+        } catch (Exception e) {
+            log.error("Error al generar PDF de antigüedad de saldos a favor: {}", e.getMessage(), e);
+            throw new RuntimeException("Error al generar PDF: " + e.getMessage());
+        }
+        return baos;
+    }
+
+    private void filaPdf(Table tabla, String nombre, AntiguedadSaldosFavorDTO.Fila f) {
+        tabla.addCell(new Paragraph(nombre != null ? nombre : "").setFontSize(8));
+        tabla.addCell(new Paragraph(f.moneda()).setFontSize(8));
+        for (BigDecimal m : montosDeFila(f)) {
+            tabla.addCell(new Paragraph(String.format("%,.2f", m)).setFontSize(8).setTextAlignment(TextAlignment.RIGHT));
+        }
     }
 
     private String escapeCSV(String value) {

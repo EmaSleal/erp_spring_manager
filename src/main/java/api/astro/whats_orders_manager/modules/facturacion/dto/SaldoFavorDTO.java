@@ -14,7 +14,8 @@ public final class SaldoFavorDTO {
     /** Un saldo a favor con su nota de origen. {@code numeroNota} es el consecutivo del comprobante de la nota. */
     public record Saldo(Long id, Integer idCliente, String moneda, BigDecimal montoOriginal, BigDecimal saldoVivo,
                         LocalDate fechaOrigen, BigDecimal tipoCambioOrigen, String estado, Long idNota,
-                        String numeroNota, String claveNota, Integer idFacturaOrigen, String numeroFacturaOrigen) {
+                        String numeroNota, String claveNota, Integer idFacturaOrigen, String numeroFacturaOrigen,
+                        BigDecimal reservado, BigDecimal disponible) {
     }
 
     /**
@@ -36,7 +37,11 @@ public final class SaldoFavorDTO {
                               boolean admiteAplicacion, List<Saldo> saldos, List<Aplicacion> aplicaciones) {
     }
 
-    /** Un saldo con sus aplicaciones (estado de cuenta del cliente). */
-    public record ConAplicaciones(Saldo saldo, List<Aplicacion> aplicaciones) {
+    /**
+     * Un saldo con sus aplicaciones y sus devoluciones en dinero con su historial (estado de cuenta del cliente).
+     * {@code saldo.reservado} es lo reservado por devoluciones SOLICITADAS o APROBADAS y {@code saldo.disponible} es
+     * saldo vivo − reservado.
+     */
+    public record ConAplicaciones(Saldo saldo, List<Aplicacion> aplicaciones, List<DevolucionSaldoFavorDTO> devoluciones) {
     }
 }

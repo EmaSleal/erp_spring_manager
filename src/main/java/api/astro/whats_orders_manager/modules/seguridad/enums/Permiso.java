@@ -88,6 +88,8 @@ public enum Permiso {
     PAGO_ANULAR("Anular pagos", "Anular pagos confirmados (operación crítica)"),
     PAGO_CONCILIAR("Conciliar pagos", "Marcar pagos como conciliados"),
     PAGO_ESTADO_CUENTA("Estado de cuenta", "Ver estado de cuenta de clientes"),
+    SALDO_FAVOR_DEVOLUCION_APROBAR("Aprobar devoluciones de saldo a favor",
+        "Aprobar, rechazar y pagar devoluciones en dinero de saldos a favor de clientes (operación crítica)"),
     
     // ==================== CONTABILIDAD ====================
     
@@ -192,6 +194,7 @@ public enum Permiso {
         if (name.startsWith("REPORTE_")) return "Reportes";
         if (name.startsWith("CONFIG_")) return "Configuración";
         if (name.startsWith("NOTIFICACION_")) return "Notificaciones";
+        if (name.startsWith("SALDO_FAVOR_")) return "Pagos";
         if (name.startsWith("USUARIO_")) return "Usuarios";
         if (name.startsWith("AUDITORIA_")) return "Auditoría";
         if (name.startsWith("SISTEMA_")) return "Sistema";
@@ -211,6 +214,7 @@ public enum Permiso {
                this == FACTURA_ELIMINAR ||
                this == FACTURA_ANULAR ||
                this == PAGO_ANULAR ||
+               this == SALDO_FAVOR_DEVOLUCION_APROBAR ||
                this == CONTABILIDAD_ELIMINAR ||
                this == CONTABILIDAD_ANULAR ||
                this == NOMINA_CONTABILIZAR ||
