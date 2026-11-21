@@ -20,6 +20,10 @@ public interface DevolucionSaldoFavorRepository extends JpaRepository<Devolucion
     @Query("SELECT d FROM DevolucionSaldoFavor d WHERE d.id = :id")
     Optional<DevolucionSaldoFavor> findByIdParaActualizar(@Param("id") Long id);
 
+    /** Id del saldo de la devolución sin cargar entidades (para bloquear el saldo antes de leer la devolución). */
+    @Query("SELECT d.saldo.id FROM DevolucionSaldoFavor d WHERE d.id = :id")
+    Optional<Long> findIdSaldo(@Param("id") Long id);
+
     @Query("SELECT d FROM DevolucionSaldoFavor d WHERE d.saldo.id = :idSaldo ORDER BY d.id")
     List<DevolucionSaldoFavor> findPorSaldo(@Param("idSaldo") Long idSaldo);
 

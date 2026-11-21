@@ -345,10 +345,14 @@ public class DevolucionSaldoFavorService {
     private record Bloqueadas(SaldoFavorCliente saldo, DevolucionSaldoFavor devolucion) {
     }
 
-    /** Bloquea el saldo y luego la devolución (siempre en ese orden); la devolución se relee ya bloqueada. */
+    /**
+     * Bloquea el saldo y luego la devolución (siempre en ese orden). El id del saldo se lee con una consulta escalar: si se
+     * cargara la entidad antes, las consultas FOR UPDATE devolverían la instancia ya gestionada (lectura vieja) y el estado
+     * no se releería tras esperar el bloqueo. Así ambas entidades se leen después de obtener su bloqueo.
+     */
     private Bloqueadas cargarBloqueada(Long idDevolucion) {
-        Long idSaldo = devolucionRepository.findById(idDevolucion)
-            .orElseThrow(() -> new NoSuchElementException("La devolución no existe")).getSaldo().getId();
+        Long idSaldo = devolucionRepository.findIdSaldo(idDevolucion)
+            .orElseThrow(() -> new NoSuchElementException("La devolución no existe"));
         SaldoFavorCliente saldo = saldoRepository.findByIdParaActualizar(idSaldo)
             .orElseThrow(() -> new NoSuchElementException("El saldo a favor no existe"));
         DevolucionSaldoFavor d = devolucionRepository.findByIdParaActualizar(idDevolucion)

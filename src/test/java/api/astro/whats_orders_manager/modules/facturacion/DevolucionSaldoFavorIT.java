@@ -617,6 +617,85 @@ class DevolucionSaldoFavorIT {
         assertThat(devolucionesDe(s.id())).isEqualTo(1);
     }
 
+    /** Lanza dos tareas a la vez y devuelve sus estados HTTP. */
+    private List<Integer> enParalelo(Callable<Integer> a, Callable<Integer> b) throws Exception {
+        CountDownLatch salida = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<Integer> fa = pool.submit(() -> {
+                salida.await();
+                return a.call();
+            });
+            Future<Integer> fb = pool.submit(() -> {
+                salida.await();
+                return b.call();
+            });
+            salida.countDown();
+            return List.of(fa.get(60, TimeUnit.SECONDS), fb.get(60, TimeUnit.SECONDS));
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("T-049 rework: dos pagos simultáneos de la misma devolución: uno 200 y otro 409 (transición), un solo asiento, saldo y reserva correctos")
+    void pagoContraPagoConcurrente() throws Exception {
+        Saldo s = saldoCrc(null);
+        long id = solicitarOk(s.id(), "200.00");
+        aprobarOk(id);
+        int banco = bancoCrc();
+        int asientosAntes = asientos();
+        String hoy = LocalDate.now().toString();
+        Callable<Integer> pagar = () -> pagar(PAG, id, banco, "C-77", hoy).getResponse().getStatus();
+        List<Integer> estados = enParalelo(pagar, pagar);
+        assertThat(estados).containsExactlyInAnyOrder(200, 409);
+        assertThat(asientos()).isEqualTo(asientosAntes + 1);
+        assertThat(estadoDev(id)).isEqualTo("PAGADA");
+        assertThat(saldoVivo(s.id())).isEqualByComparingTo("300.00");
+        assertThat(reservado(s.id())).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("T-049 rework: anular y pagar simultáneos sobre una APROBADA: gana uno, el otro 409; saldo, reserva y asiento coherentes")
+    void anularContraPagoConcurrente() throws Exception {
+        Saldo s = saldoCrc(null);
+        long id = solicitarOk(s.id(), "200.00");
+        aprobarOk(id);
+        int banco = bancoCrc();
+        int asientosAntes = asientos();
+        String hoy = LocalDate.now().toString();
+        List<Integer> estados = enParalelo(
+                () -> pagar(PAG, id, banco, "C-78", hoy).getResponse().getStatus(),
+                () -> anular(APR, id, "Se anula en paralelo").getResponse().getStatus());
+        assertThat(estados).containsExactlyInAnyOrder(200, 409);
+        assertThat(reservado(s.id())).isEqualByComparingTo("0");
+        if ("PAGADA".equals(estadoDev(id))) {
+            assertThat(saldoVivo(s.id())).isEqualByComparingTo("300.00");
+            assertThat(asientos()).isEqualTo(asientosAntes + 1);
+        } else {
+            assertThat(estadoDev(id)).isEqualTo("ANULADA");
+            assertThat(saldoVivo(s.id())).isEqualByComparingTo("500.00");
+            assertThat(asientos()).isEqualTo(asientosAntes);
+        }
+    }
+
+    @Test
+    @DisplayName("T-049 rework: rechazar y aprobar simultáneos sobre una SOLICITADA: gana uno, el otro 409; la reserva queda coherente")
+    void rechazarContraAprobarConcurrente() throws Exception {
+        Saldo s = saldoCrc(null);
+        long id = solicitarOk(s.id(), "200.00");
+        List<Integer> estados = enParalelo(
+                () -> aprobar(APR, id, true).getResponse().getStatus(),
+                () -> rechazar(PAG, id, "Rechazo en paralelo").getResponse().getStatus());
+        assertThat(estados).containsExactlyInAnyOrder(200, 409);
+        if ("RECHAZADA".equals(estadoDev(id))) {
+            assertThat(reservado(s.id())).isEqualByComparingTo("0");
+        } else {
+            assertThat(estadoDev(id)).isEqualTo("APROBADA");
+            assertThat(reservado(s.id())).isEqualByComparingTo("200.00");
+        }
+    }
+
     // ── Criterio 5: aprobación ───────────────────────────────────────────────
 
     @Test
