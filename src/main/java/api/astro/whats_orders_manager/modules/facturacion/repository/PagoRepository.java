@@ -84,7 +84,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * Encuentra pagos pendientes de conciliación.
      * @return Lista de pagos confirmados pero no conciliados
      */
-    @Query("SELECT p FROM Pago p WHERE p.estado = 'CONFIRMADO' AND p.conciliado = false ORDER BY p.fechaPago")
+    // T-048: un pago NOTA_CREDITO no se concilia con el banco
+    @Query("SELECT p FROM Pago p WHERE p.estado = 'CONFIRMADO' AND p.conciliado = false "
+        + "AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago")
     List<Pago> findPagosPendientesConciliacion();
     
     /**
@@ -93,7 +95,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param fechaFin Fecha final del rango
      * @return Lista de pagos en el rango
      */
-    @Query("SELECT p FROM Pago p WHERE p.fechaPago BETWEEN :fechaInicio AND :fechaFin ORDER BY p.fechaPago DESC")
+    // T-048 (revisión 1): un pago NOTA_CREDITO no es dinero recibido; el detalle de caja debe sumar igual que su total
+    @Query("SELECT p FROM Pago p WHERE p.fechaPago BETWEEN :fechaInicio AND :fechaFin "
+        + "AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago DESC")
     List<Pago> findByFechaPagoBetween(
         @Param("fechaInicio") LocalDateTime fechaInicio,
         @Param("fechaFin") LocalDateTime fechaFin
@@ -107,9 +111,10 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param fechaFin Fecha final
      * @return Cantidad de pagos
      */
+    // T-048 (revisión 1): sin pagos NOTA_CREDITO (no son dinero), igual que los totales por método
     @Query("SELECT COUNT(p) FROM Pago p WHERE p.metodoPago = :metodoPago " +
            "AND p.fechaPago BETWEEN :fechaInicio AND :fechaFin " +
-           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO')")
+           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO') AND p.tipoPago <> 'NOTA_CREDITO'")
     long countByMetodoPagoAndFecha(
         @Param("metodoPago") MetodoPago metodoPago,
         @Param("fechaInicio") LocalDateTime fechaInicio,
@@ -124,8 +129,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @param hasta Fin del rango (exclusive)
      * @return Pagos válidos del rango
      */
+    // T-048: un pago NOTA_CREDITO (aplicación de un saldo a favor) no es dinero: no entra en caja ni en ingresos
     @Query("SELECT p FROM Pago p WHERE p.fechaPago >= :desde AND p.fechaPago < :hasta " +
-           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO') ORDER BY p.fechaPago")
+           "AND p.estado IN ('CONFIRMADO', 'CONCILIADO') AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago")
     List<Pago> findValidosByFechaPagoRango(
         @Param("desde") LocalDateTime desde,
         @Param("hasta") LocalDateTime hasta
@@ -152,14 +158,18 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * Obtiene pagos creados hoy para reporte de caja diaria.
      * @return Lista de pagos del día
      */
-    @Query("SELECT p FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE ORDER BY p.fechaPago")
+    // T-048 (revisión 1): sin pagos NOTA_CREDITO (una aplicación de saldo a favor no es un ingreso del día)
+    @Query("SELECT p FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE "
+        + "AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago")
     List<Pago> findPagosDelDia();
     
     /**
      * Cuenta pagos creados hoy.
      * @return Cantidad de pagos del día
      */
-    @Query("SELECT COUNT(p) FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE")
+    // T-048 (revisión 1): misma regla que findPagosDelDia
+    @Query("SELECT COUNT(p) FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE "
+        + "AND p.tipoPago <> 'NOTA_CREDITO'")
     long countPagosDelDia();
     
     /**

@@ -19,20 +19,18 @@ import java.util.Set;
 /**
  * Regla única de «¿se ofrece "Emitir nota de crédito" en el modal de esta factura?» (ADR-047 §2, T-042). El servidor
  * decide; el JavaScript solo pinta la bandera. Es la misma regla de {@link NotaFacturaService#emitirNotaCreditoTotal}
- * (comprobante vigente ACEPTADO, factura no anulada, sin nota en trámite ni aplicada, sin pagos aplicados) más el
+ * (comprobante vigente ACEPTADO, factura no anulada, sin nota en trámite ni aplicada; con pagos sí, T-048) más el
  * permiso FACTURA_ANULAR del usuario. La emisión sigue validando todo con su 409.
  *
  * <p>T-044: la factura se referencia solo si su comprobante ACEPTADO es del ambiente de la configuración activa; si no,
  * la bandera es false con «La factura se emitió en el ambiente X; la configuración activa es Y». Orden de las
- * comprobaciones: permiso/anulada, ACEPTADO y notas, ambiente, pagos.
+ * comprobaciones: permiso/anulada, ACEPTADO y notas, ambiente.
  */
 @Component
 @RequiredArgsConstructor
 public class NotaCreditoElegibilidad {
 
     public static final String PERMISO_EMITIR = "FACTURA_ANULAR";
-    public static final String MOTIVO_CON_PAGOS =
-        "La nota de crédito sobre facturas con pagos llega en una próxima versión";
 
     /** 02 y 14: las notas parciales. */
     private static final Set<String> CODIGOS_PARCIALES = Set.of(CodigoReferenciaNota.CORRIGE_MONTO.getCodigo(),
@@ -40,7 +38,6 @@ public class NotaCreditoElegibilidad {
 
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final NotaFacturaRepository notaRepository;
-    private final PagoService pagoService;
     private final PermisoService permisoService;
     private final AmbienteComprobanteGuard ambienteGuard;
     private final NotaCreditoTopes topes;
@@ -84,9 +81,8 @@ public class NotaCreditoElegibilidad {
         if (motivoAmbiente.isPresent()) {
             return new Resultado(false, motivoAmbiente.get());
         }
-        if (!pagoService.findPagosValidosByFacturaId(id).isEmpty()) {
-            return new Resultado(false, MOTIVO_CON_PAGOS);
-        }
+        // T-048 (ADR-053, ADR-057): una factura con pagos admite la nota; el excedente sobre su saldo pendiente se
+        // acredita a un saldo a favor del cliente al aplicarse
         boolean hayParciales = notaRepository.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(id,
             NotaCreditoTopes.CUENTAN, CODIGOS_PARCIALES);
         if (hayParciales) {

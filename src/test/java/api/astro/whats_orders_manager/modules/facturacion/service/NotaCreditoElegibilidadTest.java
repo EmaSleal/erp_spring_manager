@@ -31,7 +31,7 @@ class NotaCreditoElegibilidadTest {
     private final PagoService pagos = mock(PagoService.class);
     private final PermisoService permisos = mock(PermisoService.class);
     private final NotaCreditoElegibilidad elegibilidad =
-        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, mock(AmbienteComprobanteGuard.class),
+        new NotaCreditoElegibilidad(comprobantes, notas, permisos, mock(AmbienteComprobanteGuard.class),
             mock(NotaCreditoTopes.class));
 
     @BeforeEach
@@ -142,13 +142,12 @@ class NotaCreditoElegibilidadTest {
     }
 
     @Test
-    @DisplayName("con pagos aplicados → botón deshabilitado con el motivo fijo")
+    @DisplayName("T-048: con pagos aplicados la nota se ofrece (el excedente irá a saldo a favor)")
     void conPagos() {
         when(pagos.findPagosValidosByFacturaId(7)).thenReturn(List.of(new Pago()));
         NotaCreditoElegibilidad.Resultado r = elegibilidad.evaluar(factura(false), "gerente");
-        assertThat(r.puedeEmitir()).isFalse();
-        assertThat(r.motivoNoDisponible())
-            .isEqualTo("La nota de crédito sobre facturas con pagos llega en una próxima versión");
+        assertThat(r.puedeEmitir()).isTrue();
+        assertThat(r.motivoNoDisponible()).isNull();
     }
 
     @Test

@@ -348,6 +348,28 @@
                                     </button>
                                 </div>
                             </form>
+
+                            <!-- T-048 (ADR-053): aplicar un saldo a favor del cliente (nota de crédito) a esta factura -->
+                            <div id="sf-panel" class="border rounded p-3 mt-4" style="display: none;"
+                                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_CREAR')">
+                                <h6 class="mb-2"><i class="fas fa-piggy-bank text-secondary me-2"></i>Aplicar saldo a favor</h6>
+                                <p class="small text-muted mb-2" id="sf-info"></p>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-7">
+                                        <label for="sf-select" class="form-label">Saldo a favor (nota de origen, fecha y saldo vivo)</label>
+                                        <select class="form-select" id="sf-select"></select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="sf-monto" class="form-label">Monto a aplicar</label>
+                                        <input type="text" inputmode="decimal" class="form-control" id="sf-monto" autocomplete="off">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-primary w-100" id="sf-boton" disabled>Aplicar</button>
+                                    </div>
+                                </div>
+                                <div class="form-text" id="sf-ayuda"></div>
+                                <div class="text-danger small mt-1" id="sf-error" role="alert" style="display: none;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -359,6 +381,8 @@
     <th:block th:replace="~{shared/layout :: scripts}"></th:block>
     
     <!-- JavaScript específico -->
+    <script th:src="@{/modules/facturacion/js/nota-credito.js}"></script>
+    <script th:src="@{/modules/facturacion/js/saldo-favor.js}"></script>
     <script th:src="@{/modules/facturacion/js/pagos.js}"></script>
 </body>
 </html>

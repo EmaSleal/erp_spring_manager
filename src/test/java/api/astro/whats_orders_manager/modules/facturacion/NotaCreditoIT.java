@@ -435,17 +435,16 @@ class NotaCreditoIT {
     }
 
     @Test
-    @DisplayName("d) factura con pagos aplicados → 409 «se habilitará con el saldo a favor del cliente»")
-    void facturaConPagos_409() throws Exception {
+    @DisplayName("d) T-048: factura con pagos aplicados → 201 (se levanta el 409 de T-032; el excedente irá a saldo a favor)")
+    void facturaConPagos_ahoraSeEmite() throws Exception {
         int idFactura = facturaAceptada();
-        doReturn(List.of(new Pago())).when(pagoService).findPagosValidosByFacturaId(idFactura);
+        Long pendiente = idPago(registrarPago(idFactura));
+        jdbc.update("UPDATE pagos SET estado = 'CONFIRMADO' WHERE id_pago = ?", pendiente);
 
         MvcResult result = emitir(idFactura, "01", "Anulación total");
 
-        assertThat(result.getResponse().getStatus()).isEqualTo(409);
-        assertThat(result.getResponse().getContentAsString())
-                .contains("se habilitará con el saldo a favor del cliente");
-        assertThat(notas(idFactura)).isZero();
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString()).isEqualTo(201);
+        assertThat(notas(idFactura)).isEqualTo(1);
     }
 
     @Test
@@ -765,8 +764,10 @@ class NotaCreditoIT {
         Long otroComprobante = comprobanteRepository.findFirstByFactura_IdFacturaAndVigenteTrue(otraFactura)
                 .orElseThrow().getId();
         when(haciendaApi.consultarComprobante(anyString(), anyLong())).thenReturn(consulta("aceptado"));
-        // Causa del fallo: la factura de la nota tiene un pago aplicado (defensa del criterio 31)
-        doReturn(List.of(new Pago())).when(pagoService).findPagosValidosByFacturaId(facturaDeLaNota);
+        // Causa del fallo (T-048: ya no son los pagos): falta el parámetro contable de la base de la nota 01
+        Long idCuentaBase = jdbc.queryForObject("SELECT cuenta_contable_id FROM parametros_contables WHERE clave = "
+                + "'NOTA_CREDITO_ANULACIONES_DESCUENTOS'", Long.class);
+        jdbc.update("DELETE FROM parametros_contables WHERE clave = 'NOTA_CREDITO_ANULACIONES_DESCUENTOS'");
 
         reintentosJob.consultarEstadosPendientes();
 
@@ -778,7 +779,8 @@ class NotaCreditoIT {
                 facturaDeLaNota)).isFalse();
         assertThat(salida.getAll()).contains("Efectos de la nota " + nota.id());
 
-        doCallRealMethod().when(pagoService).findPagosValidosByFacturaId(facturaDeLaNota);
+        jdbc.update("INSERT INTO parametros_contables (clave, cuenta_contable_id) VALUES (?, ?)",
+                "NOTA_CREDITO_ANULACIONES_DESCUENTOS", idCuentaBase);
         reintentosJob.consultarEstadosPendientes();
         reintentosJob.consultarEstadosPendientes();
 
@@ -1479,12 +1481,12 @@ class NotaCreditoIT {
         assertThat(despues.get("puedeEmitirNotaCredito").asBoolean()).isFalse();
         assertThat(despues.get("motivoNotaCreditoNoDisponible").isNull()).isTrue();
 
+        // T-048: con pagos la nota se ofrece
         int conPagos = facturaAceptada();
         doReturn(List.of(new Pago())).when(pagoService).findPagosValidosByFacturaId(conPagos);
         JsonNode pagos = detalleFactura(conPagos);
-        assertThat(pagos.get("puedeEmitirNotaCredito").asBoolean()).isFalse();
-        assertThat(pagos.get("motivoNotaCreditoNoDisponible").asText())
-                .isEqualTo("La nota de crédito sobre facturas con pagos llega en una próxima versión");
+        assertThat(pagos.get("puedeEmitirNotaCredito").asBoolean()).isTrue();
+        assertThat(pagos.get("motivoNotaCreditoNoDisponible").isNull()).isTrue();
 
         int sinComprobante = facturaConLineasAyB();
         assertThat(detalleFactura(sinComprobante).get("puedeEmitirNotaCredito").asBoolean()).isFalse();

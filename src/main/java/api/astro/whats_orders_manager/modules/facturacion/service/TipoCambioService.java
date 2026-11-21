@@ -56,6 +56,18 @@ public class TipoCambioService {
     }
 
     /**
+     * Tipo de cambio activo de la fecha exacta (T-048, ADR-056 §3): sin fallback a la tasa de un día anterior. Lo usa la
+     * aplicación de un saldo a favor, que guarda fecha, valor, tipo, fuente y origen de la fila. No cambia la semántica de
+     * {@link #obtenerTasaVenta}.
+     *
+     * @return la fila activa de {@code fecha} para la moneda, o vacío si no hay una registrada ese día
+     */
+    @Transactional(readOnly = true)
+    public Optional<TipoCambio> obtenerTipoCambioDeLaFecha(MonedaFE moneda, LocalDate fecha) {
+        return repo.findByFechaAndMonedaDestinoAndActivoTrue(fecha, moneda);
+    }
+
+    /**
      * Tipo de cambio de una operación (pago) entre la moneda del pago y la del documento (ADR-011).
      * Si ambas son CRC devuelve 1. Si el usuario indicó un tipo de cambio se respeta (debe ser &gt; 0);
      * si no, se toma la tasa de venta de la moneda extranjera involucrada en la fecha dada.

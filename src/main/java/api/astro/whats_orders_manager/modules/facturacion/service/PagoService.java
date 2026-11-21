@@ -131,6 +131,13 @@ public interface PagoService {
      * @return Pago anulado
      */
     Pago anularPago(Long idPago, String motivo, Integer usuarioId);
+
+    /**
+     * Anula el pago NOTA_CREDITO de la aplicación de un saldo a favor (T-048): mismo mecanismo de anulación (estado
+     * ANULADO con quién, cuándo y por qué; reversión espejo del asiento; estado de pago de la factura). Solo lo llama
+     * {@code SaldoFavorService.reversar}, que restituye el saldo; {@link #anularPago} rechaza estos pagos.
+     */
+    Pago anularPagoDeSaldoFavor(Long idPago, String motivo, Integer usuarioId);
     
     /**
      * Concilia múltiples pagos en lote.

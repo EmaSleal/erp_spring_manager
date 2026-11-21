@@ -107,6 +107,17 @@ public class NotaFactura {
     @Column(name = "total", nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
 
+    /**
+     * Reparto del total de la nota al aplicarse (T-048, ADR-053): lo que se acreditó a cuentas por cobrar
+     * ({@code min(total, saldo pendiente de la factura)}). Null hasta que la nota pasa a APLICADA.
+     */
+    @Column(name = "monto_credito_cxc", precision = 12, scale = 2)
+    private BigDecimal montoCreditoCxc;
+
+    /** Excedente de la nota sobre el saldo pendiente, acreditado a saldos a favor; null hasta APLICADA. */
+    @Column(name = "monto_saldo_favor", precision = 12, scale = 2)
+    private BigDecimal montoSaldoFavor;
+
     /** Usuario que emitió la nota. */
     @Column(name = "usuario_creador", nullable = false, length = 100)
     private String usuarioCreador;

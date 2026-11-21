@@ -39,7 +39,7 @@ class AmbienteElegibilidadTest {
     private final PermisoService permisos = mock(PermisoService.class);
     private final AmbienteComprobanteGuard guard = mock(AmbienteComprobanteGuard.class);
     private final NotaCreditoElegibilidad notaCredito =
-        new NotaCreditoElegibilidad(comprobantes, notas, pagos, permisos, guard, mock(NotaCreditoTopes.class));
+        new NotaCreditoElegibilidad(comprobantes, notas, permisos, guard, mock(NotaCreditoTopes.class));
     private final ComprobanteElectronico aceptado = ComprobanteElectronico.builder().id(1L)
         .estado(EstadoComprobante.ACEPTADO).vigente(true).ambiente(AmbienteHacienda.SANDBOX).build();
 
@@ -98,7 +98,7 @@ class AmbienteElegibilidadTest {
         Factura f = factura();
         f.setNumeroFactura("FA-1");
         when(facturas.findByIdParaActualizar(7)).thenReturn(Optional.of(f));
-        NotaFacturaService servicio = new NotaFacturaService(facturas, notasRepo, comprobantes, comprobanteService, pagos,
+        NotaFacturaService servicio = new NotaFacturaService(facturas, notasRepo, comprobantes, comprobanteService, mock(api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService.class),
             new api.astro.whats_orders_manager.modules.facturacion.service.CalculadoraImpuestoService(null),
             java.time.Clock.systemUTC(), guard, new AtribucionFiscalService("ORIGINAL"), mock(NotaCreditoTopes.class));
 

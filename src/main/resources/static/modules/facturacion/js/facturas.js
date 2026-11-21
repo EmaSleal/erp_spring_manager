@@ -206,50 +206,11 @@ function openModal(button) {
             if (data.pagos && data.pagos.length > 0) {
                 if (pagosSection) pagosSection.style.display = 'block';
                 if (modalPagosInfo) {
-                    let pagosHTML = `
-                        <div class="mb-2">
-                            <strong>Total Pagado:</strong> <span>${monedaSimbolo}${parseFloat(data.totalPagado || 0).toFixed(2)}</span>
-                        </div>
-                        <div class="mb-2">
-                            <strong>Saldo Pendiente:</strong> <span class="${data.saldoPendiente > 0 ? 'text-danger' : 'text-success'}">${monedaSimbolo}${parseFloat(data.saldoPendiente || 0).toFixed(2)}</span>
-                        </div>
-                        <div class="table-responsive mt-3">
-                            <table class="table table-sm table-bordered">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Número Pago</th>
-                                        <th>Fecha</th>
-                                        <th>Método</th>
-                                        <th class="text-end">Monto</th>
-                                        <th>Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
-                    
-                    data.pagos.forEach(pago => {
-                        const estadoClass = pago.estado === 'CONCILIADO' ? 'bg-primary' : 
-                                          pago.estado === 'CONFIRMADO' ? 'bg-success' : 
-                                          pago.estado === 'PENDIENTE' ? 'bg-warning' : 'bg-secondary';
-                        
-                        pagosHTML += `
-                            <tr>
-                                <td>${pago.numeroPago}</td>
-                                <td>${new Date(pago.fechaPago).toLocaleDateString('es-MX')}</td>
-                                <td>${pago.metodoPagoDescripcion}</td>
-                                <td class="text-end">₡${parseFloat(pago.monto).toFixed(2)}</td>
-                                <td><span class="badge ${estadoClass}">${pago.estadoDescripcion}</span></td>
-                            </tr>
-                        `;
+                    // T-048: pagos con textContent; los NOTA_CREDITO se rotulan «Saldo a favor» y se reversan con PAGO_ANULAR
+                    SaldoFavor.pintarPagos(document, modalPagosInfo, data, {
+                        puedeReversar: !!document.getElementById('perm-pago-anular'),
+                        onReversar: (idAplicacion, razon, ui) => reversarAplicacionSaldoFavor(idAplicacion, razon, ui, facturaId)
                     });
-                    
-                    pagosHTML += `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                    
-                    modalPagosInfo.innerHTML = pagosHTML;
                 }
             } else {
                 if (pagosSection) pagosSection.style.display = 'none';
@@ -387,6 +348,22 @@ function openModal(button) {
  * Envía una factura a Hacienda de Costa Rica.
  * @param {number} facturaId - ID de la factura a enviar
  */
+/** T-048: reversa la aplicación de un saldo a favor; el error del servidor queda en el modal y, si sale bien, se recarga. */
+async function reversarAplicacionSaldoFavor(idAplicacion, razon, ui, facturaId) {
+    ui.confirmar.disabled = true;
+    const r = await SaldoFavor.reversar((url, init) => fetch(url, init), idAplicacion, razon, document);
+    ui.confirmar.disabled = false;
+    if (!r.ok) {
+        ui.aviso.textContent = r.mensaje;
+        ui.aviso.style.display = '';
+        return;
+    }
+    showToast('success', 'Aplicación reversada');
+    const boton = document.createElement('button');
+    boton.setAttribute('data-id', facturaId);
+    openModal(boton);
+}
+
 async function enviarAHacienda(button) {
     // Obtener token CSRF
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');

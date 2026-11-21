@@ -106,6 +106,17 @@
                 </div>
             </div>
 
+            <!-- T-048 (ADR-053): saldos a favor del cliente (notas de crédito sobre facturas ya pagadas) -->
+            <div class="card shadow-sm border-0 mb-4" id="sf-estado-card"
+                 sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PAGO_VER')">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-piggy-bank me-2"></i>Saldos a favor</h5>
+                </div>
+                <div class="card-body" id="sf-estado" th:attr="data-id-cliente=${estadoCuenta.idCliente}">
+                    <span class="text-muted">Cargando...</span>
+                </div>
+            </div>
+
             <!-- Invoices Table -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-light">
@@ -243,5 +254,27 @@
 
     <!-- Scripts base -->
     <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <script th:src="@{/modules/facturacion/js/nota-credito.js}"></script>
+    <script th:src="@{/modules/facturacion/js/saldo-favor.js}"></script>
+    <script>
+        // T-048: saldos a favor vivos por moneda y sus aplicaciones (GET /api/facturas/saldos-favor/cliente/{id})
+        (async function () {
+            const cont = document.getElementById('sf-estado');
+            if (!cont || typeof SaldoFavor === 'undefined') return;
+            try {
+                const r = await fetch('/api/facturas/saldos-favor/cliente/' + encodeURIComponent(cont.dataset.idCliente),
+                    { headers: { Accept: 'application/json' } });
+                const json = await r.json().catch(() => null);
+                if (!r.ok) {
+                    cont.textContent = (json && json.message) || 'No se pudieron cargar los saldos a favor';
+                    return;
+                }
+                SaldoFavor.pintarEstadoCuenta(document, cont, json.data || []);
+            } catch (e) {
+                cont.textContent = 'No se pudieron cargar los saldos a favor';
+            }
+        })();
+    </script>
 </body>
 </html>

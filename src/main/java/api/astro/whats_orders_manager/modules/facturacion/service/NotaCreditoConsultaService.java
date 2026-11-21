@@ -23,6 +23,8 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
+import api.astro.whats_orders_manager.modules.facturacion.model.SaldoFavorCliente;
+import api.astro.whats_orders_manager.modules.facturacion.repository.SaldoFavorClienteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -56,6 +58,7 @@ public class NotaCreditoConsultaService {
     private final AsientoContableRepository asientoRepository;
     private final SustitucionElegibilidad sustitucionElegibilidad;
     private final AmbienteComprobanteGuard ambienteGuard;
+    private final SaldoFavorClienteRepository saldoFavorRepository;
 
     /**
      * @param desde fecha de emisión mínima, inclusive
@@ -120,7 +123,9 @@ public class NotaCreditoConsultaService {
             asiento.map(AsientoContable::getIdAsiento).orElse(null),
             asiento.map(AsientoContable::getNumero).orElse(null), sustituta, motivoSustituta,
             nota.getFechaContable(), nota.getPeriodoFiscalAtribucion(),
-            asiento.map(AsientoContable::getFecha).orElse(null), nota.esParcial());
+            asiento.map(AsientoContable::getFecha).orElse(null), nota.esParcial(), nota.getMontoCreditoCxc(),
+            nota.getMontoSaldoFavor(), saldoFavorRepository.findByNota_Id(nota.getId()).map(SaldoFavorCliente::getId)
+                .orElse(null));
     }
 
     private NotaCreditoListaDTO fila(NotaFactura n, ComprobanteElectronico c, Optional<AmbienteHacienda> activo) {

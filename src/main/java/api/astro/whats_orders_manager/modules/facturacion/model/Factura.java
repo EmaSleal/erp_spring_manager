@@ -259,7 +259,7 @@ public class Factura {
     /**
      * Calcula el saldo pendiente de pago.
      * 
-     * @return Saldo pendiente (total - pagos válidos)
+     * @return Saldo pendiente (total - acreditado - pagos válidos), nunca negativo
      */
     @Transient
     public BigDecimal calcularSaldoPendiente() {
@@ -268,7 +268,10 @@ public class Factura {
             return BigDecimal.ZERO;
         }
         BigDecimal totalPagado = calcularTotalPagado();
-        return total != null ? total.subtract(calcularTotalAcreditado()).subtract(totalPagado) : BigDecimal.ZERO;
+        // T-048: lo acreditado por una nota que excede lo que queda por cobrar va a un saldo a favor del cliente, no
+        // hace negativo el saldo de la factura
+        return total != null ? total.subtract(calcularTotalAcreditado()).subtract(totalPagado).max(BigDecimal.ZERO)
+            : BigDecimal.ZERO;
     }
 
     /** Total acreditado por notas parciales APLICADAS (0 si no hay). */
@@ -332,7 +335,8 @@ public class Factura {
         }
         
         BigDecimal totalPagado = calcularTotalPagado();
-        BigDecimal saldoPendiente = total.subtract(calcularTotalAcreditado()).subtract(totalPagado);
+        BigDecimal saldoPendiente = total.subtract(calcularTotalAcreditado()).subtract(totalPagado)
+            .max(BigDecimal.ZERO); // T-048: el excedente de una nota va a saldo a favor, no hace negativo el saldo
         
         // Verificar si está vencida
         if (fechaVencimiento != null) {
