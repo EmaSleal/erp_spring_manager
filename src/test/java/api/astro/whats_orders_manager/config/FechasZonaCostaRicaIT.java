@@ -19,15 +19,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -61,13 +58,7 @@ class FechasZonaCostaRicaIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.32")
-            .withDatabaseName("t033")
-            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
-            .withCreateContainerCmdModifier(cmd -> cmd.withName("t033-it-mysql"))
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath(Path.of("database/routines/stored_procedures.sql")),
-                    "/docker-entrypoint-initdb.d/01-routines.sql");
+    static final MySQLContainer<?> MYSQL = MysqlZonaCostaRica.contenedorConRutinas("t033", "t033-it-mysql");
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {

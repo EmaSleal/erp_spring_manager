@@ -57,15 +57,15 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
     
     /**
      * Busca facturas con pago vencido para enviar recordatorios
-     * Criterios: fechaPago < hoy, entregado = true, no anulada ni acreditada totalmente (T-047), cliente con email
+     * Criterios: fechaPago < hoy (la fecha de hoy la calcula la aplicación con su Clock, T-050), entregado = true, no anulada ni acreditada totalmente (T-047), cliente con email
      * @return Lista de facturas con pago vencido
      */
     @Query("SELECT f FROM Factura f " +
-           "WHERE f.fechaPago < CURRENT_DATE " +
+           "WHERE f.fechaPago < :hoy " +
            "AND f.entregado = true " +
            "AND f.anulada = false AND f.acreditadaTotalmente = false " +
            "AND f.cliente.email IS NOT NULL")
-    List<Factura> findFacturasConPagoVencido();
+    List<Factura> findFacturasConPagoVencido(@Param("hoy") java.sql.Date hoy);
     
     /**
      * Llama al SP para obtener ventas por mes

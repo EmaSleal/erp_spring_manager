@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.config.MysqlZonaCostaRica;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
@@ -50,10 +51,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -108,13 +107,7 @@ class EstadoFeYConsultaHaciendaIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.32")
-            .withDatabaseName("t026")
-            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
-            .withCreateContainerCmdModifier(cmd -> cmd.withName("t026-it-mysql"))
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath(Path.of("database/routines/stored_procedures.sql")),
-                    "/docker-entrypoint-initdb.d/01-routines.sql");
+    static final MySQLContainer<?> MYSQL = MysqlZonaCostaRica.contenedorConRutinas("t026", "t026-it-mysql");
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {

@@ -37,6 +37,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -83,6 +84,10 @@ public class PagoServiceImpl implements PagoService {
 
     @Autowired
     private NotaFacturaPrecondiciones notaFacturaPrecondiciones;
+
+    /** Reloj de la aplicación en America/Costa_Rica: de él salen «hoy» y la fecha de los pagos (T-050, ADR-060). */
+    @Autowired
+    private Clock clock;
 
     // ==================== OPERACIONES CRUD ====================
     
@@ -207,7 +212,7 @@ public class PagoServiceImpl implements PagoService {
 
         // Establecer fecha de pago si no está definida (el tipo de cambio depende de ella)
         if (pago.getFechaPago() == null) {
-            pago.setFechaPago(LocalDateTime.now());
+            pago.setFechaPago(LocalDateTime.now(clock));
         }
 
         // ADR-011: moneda, tipo de cambio y monto aplicado en la moneda de la factura
@@ -651,7 +656,7 @@ public class PagoServiceImpl implements PagoService {
     @Transactional(readOnly = true)
     public BigDecimal sumIngresosDiaActual() {
         log.debug("Calculando ingresos del día actual");
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(clock);
         return sumarEnCrc(pagoRepository.findValidosByFechaPagoRango(
             hoy.atStartOfDay(), hoy.plusDays(1).atStartOfDay()));
     }
@@ -660,14 +665,16 @@ public class PagoServiceImpl implements PagoService {
     @Transactional(readOnly = true)
     public List<Pago> findPagosDelDia() {
         log.debug("Obteniendo pagos del día actual");
-        return pagoRepository.findPagosDelDia();
+        LocalDate hoy = LocalDate.now(clock);
+        return pagoRepository.findPagosDelDia(hoy.atStartOfDay(), hoy.plusDays(1).atStartOfDay());
     }
     
     @Override
     @Transactional(readOnly = true)
     public long countPagosDelDia() {
         log.debug("Contando pagos del día actual");
-        return pagoRepository.countPagosDelDia();
+        LocalDate hoy = LocalDate.now(clock);
+        return pagoRepository.countPagosDelDia(hoy.atStartOfDay(), hoy.plusDays(1).atStartOfDay());
     }
     
     @Override

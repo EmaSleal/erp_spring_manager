@@ -13,7 +13,10 @@ services:
     networks:
       - app-network
     # NO exponemos puerto al host (solo accesible internamente)
-    command: --authentication_policy=mysql_native_password
+    # T-050 (ADR-060): MySQL en la hora de Costa Rica (sin horario de verano). Las columnas TIMESTAMP que escribe la
+    # aplicación las corrige una sola vez la migración V51, que aborta si esta opción no está. Si en algún entorno el
+    # servidor no tiene las tablas de zonas con nombre, usar '-06:00' (equivalente). Ver docs/despliegue/ZONA_HORARIA_MYSQL.md
+    command: --authentication_policy=mysql_native_password --default-time-zone=America/Costa_Rica
     # Sin credenciales (T-022): mysqladmin ping sale con 0 si el servidor responde, aun con "Access denied".
     # 127.0.0.1 (TCP) y no el socket: el servidor temporal de la inicialización no escucha en TCP.
     healthcheck:
@@ -36,7 +39,7 @@ services:
       # T-033: hora de Costa Rica (defensa; la hora fiscal no depende de la zona de la JVM)
       TZ: America/Costa_Rica
       # Configuración de Base de Datos (apunta al contenedor MySQL)
-      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:?DB_NAME is required}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:?DB_NAME is required}?useSSL=false&serverTimezone=America/Costa_Rica&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
       DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
 

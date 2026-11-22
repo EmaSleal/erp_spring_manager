@@ -82,6 +82,7 @@ class SaldoFacturaAnuladaTest {
         when(pagoMapper.toDTOList(any())).thenReturn(List.of());
         PagoServiceImpl servicio = new PagoServiceImpl();
         ReflectionTestUtils.setField(servicio, "facturaRepository", facturas);
+        ReflectionTestUtils.setField(servicio, "clock", java.time.Clock.system(java.time.ZoneId.of("America/Costa_Rica")));
         ReflectionTestUtils.setField(servicio, "clienteRepository", clientes);
         ReflectionTestUtils.setField(servicio, "pagoRepository", pagos);
         ReflectionTestUtils.setField(servicio, "facturaMapper", facturaMapper);

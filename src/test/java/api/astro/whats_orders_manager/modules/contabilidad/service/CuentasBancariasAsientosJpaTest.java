@@ -90,7 +90,8 @@ import static org.mockito.Mockito.when;
 })
 @Import({AsientoContableService.class, TipoCambioService.class, CuentaBancariaService.class,
         PagoServiceImpl.class, NumeroPagoGeneratorService.class, PagoMapper.class, FacturaMapper.class,
-        PagoProveedorServiceImpl.class, CuentaPorPagarServiceImpl.class, NotaFacturaPrecondiciones.class})
+        PagoProveedorServiceImpl.class, CuentaPorPagarServiceImpl.class, NotaFacturaPrecondiciones.class,
+        api.astro.whats_orders_manager.config.ClockConfig.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("T-015 — cobros y pagos a proveedor contra la hoja de su cuenta bancaria (H2)")
 class CuentasBancariasAsientosJpaTest {

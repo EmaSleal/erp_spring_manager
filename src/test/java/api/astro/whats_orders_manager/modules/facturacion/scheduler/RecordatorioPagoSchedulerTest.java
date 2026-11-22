@@ -53,12 +53,13 @@ class RecordatorioPagoSchedulerTest {
         Factura parcial = vencida("F-PARC", "11500.00", "1334.56");
 
         FacturaRepository repo = mock(FacturaRepository.class);
-        when(repo.findFacturasConPagoVencido()).thenReturn(List.of(acreditada, anulada, parcial));
+        when(repo.findFacturasConPagoVencido(any())).thenReturn(List.of(acreditada, anulada, parcial));
         when(repo.findAll()).thenReturn(List.of());
         NotificacionService notificaciones = mock(NotificacionService.class);
         RecordatorioPagoScheduler scheduler = new RecordatorioPagoScheduler();
         ReflectionTestUtils.setField(scheduler, "facturaRepository", repo);
         ReflectionTestUtils.setField(scheduler, "notificacionService", notificaciones);
+        ReflectionTestUtils.setField(scheduler, "clock", java.time.Clock.systemDefaultZone());
 
         scheduler.enviarRecordatoriosPago();
 
