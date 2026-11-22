@@ -199,11 +199,12 @@ class NotaFacturaParcialTest {
     }
 
     @Test
-    @DisplayName("nota total (01 o 13) con notas parciales aplicadas o en trámite → 409 con el mensaje fijo")
+    @DisplayName("nota total (01, 06 sin líneas o 13) con notas parciales aplicadas o en trámite → 409 con el mensaje fijo")
     void totalTrasParcial() {
-        when(notas.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(anyInt(), anyCollection(), anyCollection()))
+        when(notas.existsByFactura_IdFacturaAndEstadoInAndModalidad(anyInt(), anyCollection(),
+                org.mockito.ArgumentMatchers.eq(api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota.PARCIAL)))
                 .thenReturn(true);
-        for (String codigo : new String[] {"01", "13"}) {
+        for (String codigo : new String[] {"01", "06", "13"}) {
             assertThatThrownBy(() -> servicio.emitirNotaCredito(77, TipoNotaFactura.CREDITO, codigo, "Anulación",
                     null, "admin"))
                     .isInstanceOf(NotaFacturaConflictoException.class)

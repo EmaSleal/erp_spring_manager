@@ -16,8 +16,11 @@ import java.util.Optional;
  *       01, 02, 06, 12 y la sustituta 07 → mes de emisión; 13, 14 y la sustituta 15 → mes de la factura original. No
  *       decide la fecha del asiento, que es siempre la fecha del documento. El 15 puede cambiarse por configuración
  *       ({@code AtribucionFiscalService}). El resto no tiene regla (null).</li>
- *   <li>{@code habilitadoEnT032}: se emiten la nota total (01 y 13, T-032) y la parcial (02 y 14, T-047, ADR-051);
- *       el resto llega en fases posteriores.</li>
+ *   <li>{@code habilitadoEnT032}: se emiten la nota total (01 y 13, T-032), la parcial (02 y 14, T-047, ADR-051) y la
+ *       devolución de mercancía 06 (T-051, ADR-061 §3), total o parcial; el resto llega en fases posteriores.</li>
+ *   <li>Modalidad: 01 y 13 son siempre totales y 02 y 14 siempre parciales; el 06 no tiene modalidad fija: sin líneas es
+ *       total y con líneas es parcial ({@link #modalidadPara(boolean)}). La modalidad se persiste en la nota
+ *       ({@link ModalidadNota}); nada más decide el comportamiento por el código.</li>
  * </ul>
  */
 @Getter
@@ -27,7 +30,7 @@ public enum CodigoReferenciaNota {
     CORRIGE_MONTO("02", "Corrige monto", true, PeriodoAtribucion.EMISION, true),
     REFERENCIA_OTRO_DOCUMENTO("04", "Referencia a otro documento", true, null, false),
     SUSTITUYE_PROVISIONAL_CONTINGENCIA("05", "Sustituye comprobante provisional por contingencia", true, null, false),
-    DEVOLUCION_MERCANCIA("06", "Devolución de mercancía", true, PeriodoAtribucion.EMISION, false),
+    DEVOLUCION_MERCANCIA("06", "Devolución de mercancía", true, PeriodoAtribucion.EMISION, true),
     SUSTITUYE_COMPROBANTE("07", "Sustituye comprobante electrónico", false, PeriodoAtribucion.EMISION, false),
     FACTURA_ENDOSADA("08", "Factura endosada", true, null, false),
     NOTA_CREDITO_FINANCIERA("09", "Nota de crédito financiera", true, null, false),
@@ -60,14 +63,31 @@ public enum CodigoReferenciaNota {
         this.habilitadoEnT032 = habilitadoEnT032;
     }
 
-    /** Nota total: 01 y 13 (acreditan toda la factura y la anulan). */
+    /** Nota siempre total: 01 y 13 (acreditan toda la factura y la anulan). El 06 no tiene modalidad fija. */
     public boolean esTotal() {
         return this == ANULA_DOCUMENTO || this == ANULA_DOCUMENTO_ERROR_MATERIAL;
     }
 
-    /** Nota parcial: 02 y 14 (acreditan un monto por línea con IVA incluido; la factura no se anula). */
+    /**
+     * Nota siempre parcial: 02 y 14 (acreditan un monto por línea con IVA incluido; la factura no se anula). El 06 no
+     * tiene modalidad fija.
+     */
     public boolean esParcial() {
         return this == CORRIGE_MONTO || this == CORRIGE_MONTO_ERROR_MATERIAL;
+    }
+
+    /**
+     * Modalidad con la que se emite la nota: la fija del código (01 y 13 TOTAL; 02 y 14 PARCIAL) o, en el 06, PARCIAL si
+     * el pedido trae líneas y TOTAL si no.
+     */
+    public ModalidadNota modalidadPara(boolean conLineas) {
+        if (esTotal()) {
+            return ModalidadNota.TOTAL;
+        }
+        if (esParcial()) {
+            return ModalidadNota.PARCIAL;
+        }
+        return conLineas ? ModalidadNota.PARCIAL : ModalidadNota.TOTAL;
     }
 
     /** Código de la nota 9, o vacío si no existe (p. ej. "03"). */

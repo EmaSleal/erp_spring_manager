@@ -110,7 +110,7 @@ public class FacturaDetalleDTO {
     private Boolean puedeEmitirNotaCredito;
     private String motivoNotaCreditoNoDisponible;
     /**
-     * T-047 (ADR-051): modalidades que admite el modal. puedeEmitirNotaTotal: 01 o 13; puedeEmitirNotaParcial: 02 o 14.
+     * T-047 (ADR-051): modalidades que admite el modal. puedeEmitirNotaTotal: 01, 06 total o 13; puedeEmitirNotaParcial: 02, 06 parcial o 14.
      * motivoNotaTotalNoDisponible explica por qué no procede la total cuando la parcial sí (notas parciales previas).
      */
     private Boolean puedeEmitirNotaTotal;

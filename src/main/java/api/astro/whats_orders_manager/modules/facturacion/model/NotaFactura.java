@@ -3,6 +3,7 @@ package api.astro.whats_orders_manager.modules.facturacion.model;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import jakarta.persistence.*;
 import lombok.*;
@@ -60,6 +61,14 @@ public class NotaFactura {
     @Column(name = "estado", nullable = false)
     @Builder.Default
     private EstadoNotaFactura estado = EstadoNotaFactura.EN_TRAMITE;
+
+    /**
+     * Modalidad de la nota (T-051): TOTAL acredita todo el comprobante y anula la factura; PARCIAL acredita un monto por
+     * línea. Se fija al emitirla (el 06 la toma de las líneas del pedido) y es lo que lee toda la lógica, no el código.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "modalidad", nullable = false)
+    private ModalidadNota modalidad;
 
     @Column(name = "fecha_emision", nullable = false)
     private LocalDateTime fechaEmision;
@@ -140,9 +149,23 @@ public class NotaFactura {
             .orElseThrow(() -> new IllegalStateException("Código de referencia desconocido: " + codigoReferencia));
     }
 
-    /** Nota parcial (códigos 02 y 14, ADR-051): acredita un monto por línea; la factura no se anula. */
+    /**
+     * Nota parcial (ADR-051, T-051): acredita un monto por línea; la factura no se anula. Lee la modalidad persistida;
+     * solo una nota todavía sin modalidad (armada sin pasar por la emisión) la deduce de su código.
+     */
     public boolean esParcial() {
+        if (modalidad != null) {
+            return modalidad == ModalidadNota.PARCIAL;
+        }
         return CodigoReferenciaNota.deCodigo(codigoReferencia).map(CodigoReferenciaNota::esParcial).orElse(false);
+    }
+
+    /** Red de seguridad: una nota nunca se guarda sin modalidad (la emisión la fija; aquí, solo desde el código). */
+    @PrePersist
+    void asegurarModalidad() {
+        if (modalidad == null) {
+            modalidad = esParcial() ? ModalidadNota.PARCIAL : ModalidadNota.TOTAL;
+        }
     }
 
     public void agregarLinea(LineaNotaFactura linea) {

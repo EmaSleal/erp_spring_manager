@@ -335,6 +335,51 @@ class SaldoFavorIT {
     }
 
     @Test
+    @DisplayName("T-051: 06 parcial sobre factura con pago parcial: DR 4.1.02.001, CxC = saldo pendiente y excedente a 2.1.05.001 con su saldo a favor")
+    void reparto_devolucionParcialConPago() throws Exception {
+        int f = facturaAceptada(null, MonedaFE.CRC, "1");
+        pagar(f, "1000.00", MonedaFE.CRC, null);
+        Nota n = emitirParcialOk(f, "06", "Devolución con pago parcial", acreditar(lineas(f).get(0), "1130.00"));
+        aceptar(n);
+
+        assertThat(estadoNota(n.id())).isEqualTo("APLICADA");
+        long asiento = asientoDeNota(n.id());
+        assertThat(debeEn(asiento, "9.4.02.001")).as("06: base a Devoluciones sobre ventas").isEqualByComparingTo("1000.00");
+        assertThat(debeEn(asiento, "9.4.02.002")).isZero();
+        assertThat(debeEn(asiento, "9.2.01.002")).isEqualByComparingTo("130.00");
+        assertThat(haberEn(asiento, "9.1.02.001")).isEqualByComparingTo("630.00");
+        assertThat(haberEn(asiento, "9.2.05.001")).isEqualByComparingTo("500.00");
+        assertCuadra(asiento);
+        assertThat(jdbc.queryForObject("SELECT monto_original FROM saldos_favor_cliente WHERE nota_factura_id = ?",
+                BigDecimal.class, n.id())).isEqualByComparingTo("500.00");
+        assertThat(jdbc.queryForObject("SELECT anulada FROM factura WHERE id_factura = ?", Boolean.class, f)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT modalidad FROM nota_factura WHERE id = ?", String.class, n.id()))
+                .isEqualTo("PARCIAL");
+    }
+
+    @Test
+    @DisplayName("T-051: 06 total sobre factura pagada en parte: se anula como el 01, todo lo pagado pasa a saldo a favor y DR 4.1.02.001")
+    void reparto_devolucionTotalConPago() throws Exception {
+        int f = facturaAceptada(null, MonedaFE.CRC, "1");
+        pagar(f, "1000.00", MonedaFE.CRC, null);
+
+        Nota n = emitirOk(f, "06", "Devolución total con pagos");
+        aceptar(n);
+
+        assertThat(estadoNota(n.id())).isEqualTo("APLICADA");
+        assertThat(jdbc.queryForObject("SELECT anulada FROM factura WHERE id_factura = ?", Boolean.class, f)).isTrue();
+        long asiento = asientoDeNota(n.id());
+        assertThat(debeEn(asiento, "9.4.02.001")).isEqualByComparingTo("1500.00");
+        assertThat(haberEn(asiento, "9.1.02.001")).isEqualByComparingTo("630.00");
+        assertThat(haberEn(asiento, "9.2.05.001")).isEqualByComparingTo("1000.00");
+        assertCuadra(asiento);
+        assertThat(jdbc.queryForObject("SELECT monto_original FROM saldos_favor_cliente WHERE nota_factura_id = ?",
+                BigDecimal.class, n.id())).isEqualByComparingTo("1000.00");
+        assertThat(jdbc.queryForObject("SELECT modalidad FROM nota_factura WHERE id = ?", String.class, n.id()))
+                .isEqualTo("TOTAL");
+    }
+
+    @Test
     @DisplayName("nota RECHAZADA: sin saldo a favor ni asiento")
     void notaRechazada_sinSaldoNiAsiento() throws Exception {
         int f = facturaAceptada(null, MonedaFE.CRC, "1");

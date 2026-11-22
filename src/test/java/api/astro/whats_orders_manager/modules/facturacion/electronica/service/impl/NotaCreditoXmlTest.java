@@ -194,6 +194,54 @@ class NotaCreditoXmlTest {
     }
 
     @Test
+    @DisplayName("T-051 (criterio 4): la nota 06 total (sin líneas) valida contra el XSD con CodigoReferencia 06 y referencia a la factura")
+    void devolucionMercanciaTotal_validaContraXsd() throws Exception {
+        NotaFactura nota = nota("06", "Devolución de la mercancía del pedido");
+        assertThat(nota.getModalidad()).isEqualTo(
+                api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota.TOTAL);
+        String xml = firma.firmarXml(generador.generarXmlNotaCredito(comprobanteDeLaNota(nota)), p12.toString(), PIN);
+
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
+        Element raiz = raiz(xml);
+        Element info = hijo(raiz, "InformacionReferencia");
+        assertThat(texto(info, "TipoDocIR")).isEqualTo("01");
+        assertThat(texto(info, "Numero")).isEqualTo(CLAVE_FACTURA);
+        assertThat(texto(info, "FechaEmisionIR"))
+                .isEqualTo(FECHA_FACTURA.atOffset(ZoneOffset.of("-06:00")).toString());
+        assertThat(texto(info, "Codigo")).isEqualTo("06");
+        assertThat(texto(hijo(raiz, "ResumenFactura"), "TotalComprobante")).isEqualTo("2760.00000");
+    }
+
+    @Test
+    @DisplayName("T-051 (criterio 4): la nota 06 parcial (con líneas) valida contra el XSD con CodigoReferencia 06 y resumen = suma de líneas")
+    void devolucionMercanciaParcial_validaContraXsd() throws Exception {
+        NotaFactura nota = nota("06", "Devolución parcial de mercancía",
+                List.of(acreditar(1, "1130.00"), acreditar(2, "250.00")));
+        assertThat(nota.getModalidad()).isEqualTo(
+                api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota.PARCIAL);
+        String xml = firma.firmarXml(generador.generarXmlNotaCredito(comprobanteDeLaNota(nota)), p12.toString(), PIN);
+
+        assertThat(XmlValidator.erroresContraXsd(xml, TipoComprobanteElectronico.NOTA_CREDITO)).isEmpty();
+        Element raiz = raiz(xml);
+        Element info = hijo(raiz, "InformacionReferencia");
+        assertThat(texto(info, "TipoDocIR")).isEqualTo("01");
+        assertThat(texto(info, "Numero")).isEqualTo(CLAVE_FACTURA);
+        assertThat(texto(info, "Codigo")).isEqualTo("06");
+        assertThat(texto(hijo(raiz, "ResumenFactura"), "TotalComprobante")).isEqualTo("1380.00000");
+    }
+
+    @Test
+    @DisplayName("T-051: la modalidad de la nota se fija al emitir: 01 y 13 TOTAL, 02 y 14 PARCIAL")
+    void modalidadSeFijaAlEmitir() {
+        var total = api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota.TOTAL;
+        var parcial = api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota.PARCIAL;
+        assertThat(nota("01", "Anulación total").getModalidad()).isEqualTo(total);
+        assertThat(nota("13", "Error material").getModalidad()).isEqualTo(total);
+        assertThat(nota("02", "Corrección", List.of(acreditar(1, "100.00"))).getModalidad()).isEqualTo(parcial);
+        assertThat(nota("14", "Corrección", List.of(acreditar(1, "100.00"))).getModalidad()).isEqualTo(parcial);
+    }
+
+    @Test
     @DisplayName("regresión (criterio 32): la factura firmada del flujo real valida contra FacturaElectronica_V4.4.xsd")
     void factura_validaContraXsd() {
         assertThat(XmlValidator.erroresContraXsd(aceptado.getXmlComprobante(),

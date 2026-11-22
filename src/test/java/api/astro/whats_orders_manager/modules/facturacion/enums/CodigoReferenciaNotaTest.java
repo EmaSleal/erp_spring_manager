@@ -57,11 +57,11 @@ class CodigoReferenciaNotaTest {
     }
 
     @Test
-    @DisplayName("T-047: se emiten 01 y 13 (nota total) y 02 y 14 (nota parcial); 06 y el resto no")
+    @DisplayName("T-051: se emiten 01 y 13 (total), 02 y 14 (parcial) y 06 (total o parcial); el resto no")
     void habilitadosEnT032() {
         assertThat(Arrays.stream(CodigoReferenciaNota.values()).filter(CodigoReferenciaNota::isHabilitadoEnT032)
-                .map(CodigoReferenciaNota::getCodigo)).containsExactly("01", "02", "13", "14");
-        assertThat(CodigoReferenciaNota.deCodigo("06").orElseThrow().isHabilitadoEnT032()).isFalse();
+                .map(CodigoReferenciaNota::getCodigo)).containsExactly("01", "02", "06", "13", "14");
+        assertThat(CodigoReferenciaNota.deCodigo("12").orElseThrow().isHabilitadoEnT032()).isFalse();
     }
 
     @Test
@@ -71,5 +71,19 @@ class CodigoReferenciaNotaTest {
                 .map(CodigoReferenciaNota::getCodigo)).containsExactly("01", "13");
         assertThat(Arrays.stream(CodigoReferenciaNota.values()).filter(CodigoReferenciaNota::esParcial)
                 .map(CodigoReferenciaNota::getCodigo)).containsExactly("02", "14");
+    }
+
+    @Test
+    @DisplayName("T-051: el 06 no tiene modalidad fija; su modalidad sale de las líneas")
+    void devolucionMercanciaModalidadVariable() {
+        CodigoReferenciaNota c06 = CodigoReferenciaNota.DEVOLUCION_MERCANCIA;
+        assertThat(c06.esTotal()).isFalse();
+        assertThat(c06.esParcial()).isFalse();
+        assertThat(c06.modalidadPara(false)).isEqualTo(ModalidadNota.TOTAL);
+        assertThat(c06.modalidadPara(true)).isEqualTo(ModalidadNota.PARCIAL);
+        assertThat(CodigoReferenciaNota.ANULA_DOCUMENTO.modalidadPara(false)).isEqualTo(ModalidadNota.TOTAL);
+        assertThat(CodigoReferenciaNota.ANULA_DOCUMENTO_ERROR_MATERIAL.modalidadPara(false)).isEqualTo(ModalidadNota.TOTAL);
+        assertThat(CodigoReferenciaNota.CORRIGE_MONTO.modalidadPara(true)).isEqualTo(ModalidadNota.PARCIAL);
+        assertThat(CodigoReferenciaNota.CORRIGE_MONTO_ERROR_MATERIAL.modalidadPara(true)).isEqualTo(ModalidadNota.PARCIAL);
     }
 }

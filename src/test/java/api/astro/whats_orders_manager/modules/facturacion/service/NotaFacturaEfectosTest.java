@@ -6,6 +6,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.event.ComprobanteNotaResueltoEvent;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
@@ -353,8 +354,60 @@ class NotaFacturaEfectosTest {
         verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any(), any(), any());
     }
 
+    @Test
+    @DisplayName("T-051 ACEPTADO (06 total): como el 01, asiento de la nota, factura anulada y nota APLICADA")
+    void aceptado_codigo06Total() {
+        NotaFactura nota = nota("06", ModalidadNota.TOTAL);
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
+
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()), any(), any());
+        verify(facturaService).anularPorNotaCredito(eq(factura),
+                org.mockito.ArgumentMatchers.argThat(m -> m.contains("código 06")));
+        verify(facturaRepository, never()).save(any());
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
+    }
+
+    @Test
+    @DisplayName("T-051 ACEPTADO (06 parcial): como el 02, lo acreditado sube y la factura no se anula")
+    void aceptado_codigo06Parcial() {
+        NotaFactura nota = notaParcial("06", "100.00", "300.00");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.ACEPTADO));
+
+        verify(asientoService).generarAsientoNotaCredito(eq(nota), eq(venta), eq(EMISION_NOTA.toLocalDate()), any(), any());
+        verify(facturaService, never()).anularPorNotaCredito(any(), any());
+        assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("100.00");
+        assertThat(factura.estaAcreditadaTotalmente()).isFalse();
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.APLICADA);
+    }
+
+    @Test
+    @DisplayName("T-051 criterio 8: una 06 total RECHAZADA no deja efectos")
+    void codigo06TotalRechazada() {
+        NotaFactura nota = nota("06", ModalidadNota.TOTAL);
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.RECHAZADO));
+
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.RECHAZADA);
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any(), any(), any());
+        verify(facturaService, never()).anularPorNotaCredito(any(), any());
+    }
+
+    @Test
+    @DisplayName("T-051 criterio 8: una 06 parcial RECHAZADA no deja efectos")
+    void codigo06ParcialRechazada() {
+        NotaFactura nota = notaParcial("06", "100.00", "300.00");
+
+        efectos.alResolverseComprobante(evento(nota, EstadoComprobante.RECHAZADO));
+
+        assertThat(nota.getEstado()).isEqualTo(EstadoNotaFactura.RECHAZADA);
+        assertThat(factura.getMontoAcreditado()).isEqualByComparingTo("0");
+        verify(asientoService, never()).generarAsientoNotaCredito(any(), any(), any(), any(), any());
+    }
+
     private NotaFactura notaParcial(String codigo, String total, String totalComprobante) {
-        NotaFactura nota = nota(codigo);
+        NotaFactura nota = nota(codigo, ModalidadNota.PARCIAL);
         nota.setTotal(new BigDecimal(total));
         nota.setComprobanteReferencia(ComprobanteElectronico.builder().id(1L).claveNumerica("CLAVE-F")
                 .xmlComprobante("<FacturaElectronica><ResumenFactura><TotalComprobante>" + totalComprobante
@@ -363,7 +416,11 @@ class NotaFacturaEfectosTest {
     }
 
     private NotaFactura nota(String codigo) {
-        return NotaFactura.builder().id(5L).factura(factura).tipo(TipoNotaFactura.CREDITO).codigoReferencia(codigo)
+        return nota(codigo, "02".equals(codigo) || "14".equals(codigo) ? ModalidadNota.PARCIAL : ModalidadNota.TOTAL);
+    }
+
+    private NotaFactura nota(String codigo, ModalidadNota modalidad) {
+        return NotaFactura.builder().id(5L).modalidad(modalidad).factura(factura).tipo(TipoNotaFactura.CREDITO).codigoReferencia(codigo)
                 .razon("Anulación total").total(new BigDecimal("300.00")).estado(EstadoNotaFactura.EN_TRAMITE).fechaEmision(EMISION_NOTA)
                 .fechaContable(EMISION_NOTA.toLocalDate())
                 .periodoFiscalAtribucion("13".equals(codigo) ? "2026-10" : "2026-11").build();

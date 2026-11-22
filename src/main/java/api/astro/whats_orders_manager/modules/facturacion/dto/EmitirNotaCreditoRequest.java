@@ -10,10 +10,11 @@ import java.util.List;
  *
  * @param idFactura        factura a la que se emite la nota
  * @param tipo             CREDITO (por defecto si se omite); DEBITO responde 400
- * @param codigoReferencia código de la nota 9: 01 o 13 (nota total) o 02 o 14 (nota parcial)
+ * @param codigoReferencia código de la nota 9: 01 o 13 (nota total), 02 o 14 (nota parcial) o 06 (devolución de mercancía: total sin
+ *                         líneas, parcial con líneas; T-051)
  * @param razon            razón de la referencia, de 3 a 180 caracteres
- * @param lineas           solo en la nota parcial (02 y 14): líneas de la factura y monto a acreditar de cada una; en
- *                         la nota total (01 y 13) se omite
+ * @param lineas           solo en la nota parcial (02, 14 y 06 parcial): líneas de la factura y monto a acreditar de cada una; en
+ *                         la nota total (01, 13 y 06 total) se omite
  */
 public record EmitirNotaCreditoRequest(Integer idFactura, TipoNotaFactura tipo, String codigoReferencia,
                                        String razon, List<LineaAcreditar> lineas) {

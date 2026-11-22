@@ -4,7 +4,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
-import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
+import api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.EnumSet;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * Regla única de «¿se ofrece "Emitir nota de crédito" en el modal de esta factura?» (ADR-047 §2, T-042). El servidor
@@ -32,10 +31,6 @@ public class NotaCreditoElegibilidad {
 
     public static final String PERMISO_EMITIR = "FACTURA_ANULAR";
 
-    /** 02 y 14: las notas parciales. */
-    private static final Set<String> CODIGOS_PARCIALES = Set.of(CodigoReferenciaNota.CORRIGE_MONTO.getCodigo(),
-        CodigoReferenciaNota.CORRIGE_MONTO_ERROR_MATERIAL.getCodigo());
-
     private final ComprobanteElectronicoRepository comprobanteRepository;
     private final NotaFacturaRepository notaRepository;
     private final PermisoService permisoService;
@@ -45,9 +40,9 @@ public class NotaCreditoElegibilidad {
     /**
      * @param puedeEmitir        habilita el botón: se puede emitir al menos una modalidad (total o parcial)
      * @param motivoNoDisponible texto del botón deshabilitado cuando solo lo impiden los pagos o el ambiente; si no, null
-     * @param puedeTotal         la nota total (01 o 13) procede; con notas parciales aplicadas o en trámite, no
+     * @param puedeTotal         la nota total (01, 06 sin líneas o 13) procede; con notas parciales aplicadas o en trámite, no
      * @param motivoTotal        por qué no procede la total cuando la parcial sí; si no, null
-     * @param puedeParcial       la nota parcial (02 o 14) procede
+     * @param puedeParcial       la nota parcial (02, 06 con líneas o 14) procede
      */
     public record Resultado(boolean puedeEmitir, String motivoNoDisponible, boolean puedeTotal, String motivoTotal,
                             boolean puedeParcial) {
@@ -67,12 +62,12 @@ public class NotaCreditoElegibilidad {
         Integer id = factura.getIdFactura();
         ComprobanteElectronico aceptado = comprobanteRepository.findFirstByFactura_IdFacturaAndVigenteTrue(id)
             .filter(c -> c.getEstado() == EstadoComprobante.ACEPTADO).orElse(null);
-        // Una sola nota en trámite; una nota aplicada que no es parcial (total) anula la factura. Las parciales
-        // aplicadas dejan emitir otra parcial (T-047, ADR-051)
+        // Una sola nota en trámite; una nota aplicada de modalidad TOTAL (01, 06 total, 13) anula la factura. Las
+        // parciales aplicadas (02, 06 parcial, 14) dejan emitir otra parcial (T-047, T-051, ADR-051)
         if (aceptado == null
             || notaRepository.existsByFactura_IdFacturaAndEstadoIn(id, EnumSet.of(EstadoNotaFactura.EN_TRAMITE))
-            || notaRepository.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaNotIn(id,
-                EnumSet.of(EstadoNotaFactura.APLICADA), CODIGOS_PARCIALES)) {
+            || notaRepository.existsByFactura_IdFacturaAndEstadoInAndModalidad(id,
+                EnumSet.of(EstadoNotaFactura.APLICADA), ModalidadNota.TOTAL)) {
             return Resultado.NO;
         }
         // T-044 (P-099): después de permiso, anulada, ACEPTADO y notas (así el motivo es el que el usuario puede
@@ -83,8 +78,8 @@ public class NotaCreditoElegibilidad {
         }
         // T-048 (ADR-053, ADR-057): una factura con pagos admite la nota; el excedente sobre su saldo pendiente se
         // acredita a un saldo a favor del cliente al aplicarse
-        boolean hayParciales = notaRepository.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(id,
-            NotaCreditoTopes.CUENTAN, CODIGOS_PARCIALES);
+        boolean hayParciales = notaRepository.existsByFactura_IdFacturaAndEstadoInAndModalidad(id,
+            NotaCreditoTopes.CUENTAN, ModalidadNota.PARCIAL);
         if (hayParciales) {
             return new Resultado(true, null, false, NotaFacturaService.MENSAJE_TOTAL_CON_PARCIALES, true);
         }

@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
+import api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
 import org.junit.jupiter.api.DisplayName;
@@ -67,6 +68,45 @@ class NotaFacturaPedidoTest {
     }
 
     @Test
+    @DisplayName("T-051: 06 se acepta; sin líneas es total, con líneas es parcial (la modalidad sale de las líneas)")
+    void devolucionMercancia() {
+        assertThat(NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "06", RAZON).getCodigo()).isEqualTo("06");
+        assertThat(NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "06", RAZON, null).getCodigo())
+                .isEqualTo("06");
+        assertThat(NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "06", RAZON, UNA_LINEA).getCodigo())
+                .isEqualTo("06");
+        assertThat(NotaFacturaService.modalidadDe(CodigoReferenciaNota.DEVOLUCION_MERCANCIA, null))
+                .isEqualTo(ModalidadNota.TOTAL);
+        assertThat(NotaFacturaService.modalidadDe(CodigoReferenciaNota.DEVOLUCION_MERCANCIA, java.util.List.of()))
+                .isEqualTo(ModalidadNota.TOTAL);
+        assertThat(NotaFacturaService.modalidadDe(CodigoReferenciaNota.DEVOLUCION_MERCANCIA, UNA_LINEA))
+                .isEqualTo(ModalidadNota.PARCIAL);
+        assertThat(NotaFacturaService.modalidadDe(CodigoReferenciaNota.ANULA_DOCUMENTO, null))
+                .isEqualTo(ModalidadNota.TOTAL);
+        assertThat(NotaFacturaService.modalidadDe(CodigoReferenciaNota.CORRIGE_MONTO_ERROR_MATERIAL, UNA_LINEA))
+                .isEqualTo(ModalidadNota.PARCIAL);
+    }
+
+    @Test
+    @DisplayName("T-051: 06 con líneas se valida como parcial (monto, repetida); los 400 de 01, 02, 13 y 14 no cambian")
+    void devolucionMercanciaParcialValidaLineas() {
+        for (String monto : new String[] {"0", "-1.00", "10.005"}) {
+            var lineas = java.util.List.of(new EmitirNotaCreditoRequest.LineaAcreditar(1, new java.math.BigDecimal(monto)));
+            assertThatThrownBy(() -> NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "06", RAZON, lineas))
+                    .as(monto).isInstanceOf(NotaFacturaPedidoInvalidoException.class)
+                    .hasMessage(NotaFacturaService.MENSAJE_LINEA_INVALIDA);
+        }
+        assertThatThrownBy(() -> NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "06", RAZON,
+                java.util.List.of(new EmitirNotaCreditoRequest.LineaAcreditar(3, BigDecimal.ONE),
+                        new EmitirNotaCreditoRequest.LineaAcreditar(3, BigDecimal.TEN))))
+                .hasMessage(NotaFacturaService.MENSAJE_LINEA_REPETIDA);
+        assertThatThrownBy(() -> NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "01", RAZON, UNA_LINEA))
+                .hasMessage(NotaFacturaService.MENSAJE_TOTAL_CON_LINEAS);
+        assertThatThrownBy(() -> NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, "02", RAZON, null))
+                .hasMessage(NotaFacturaService.MENSAJE_PARCIAL_SIN_LINEAS);
+    }
+
+    @Test
     @DisplayName("T-047: monto nulo, cero, negativo o con más de dos decimales, línea sin id o repetida → 400")
     void lineasInvalidas() {
         for (String monto : new String[] {"0", "0.00", "-1.00", "10.005", "1.001"}) {
@@ -92,7 +132,7 @@ class NotaFacturaPedidoTest {
     }
 
     @ParameterizedTest(name = "código {0}")
-    @ValueSource(strings = {"04", "05", "06", "08", "09", "10", "11", "12", "99"})
+    @ValueSource(strings = {"04", "05", "08", "09", "10", "11", "12", "99"})
     @DisplayName("otro código válido de la nota 9 → «disponible en una fase posterior»")
     void codigosDeFasePosterior(String codigo) {
         assertThatThrownBy(() -> NotaFacturaService.validarPedido(TipoNotaFactura.CREDITO, codigo, RAZON))

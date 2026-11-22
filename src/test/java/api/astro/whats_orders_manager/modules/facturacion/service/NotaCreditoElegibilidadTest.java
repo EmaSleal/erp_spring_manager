@@ -5,6 +5,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository;
@@ -107,8 +108,8 @@ class NotaCreditoElegibilidadTest {
     @Test
     @DisplayName("T-047: con una nota total aplicada (no parcial) → no")
     void conNotaTotalAplicada() {
-        when(notas.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaNotIn(7,
-            java.util.EnumSet.of(EstadoNotaFactura.APLICADA), java.util.Set.of("02", "14"))).thenReturn(true);
+        when(notas.existsByFactura_IdFacturaAndEstadoInAndModalidad(7,
+            java.util.EnumSet.of(EstadoNotaFactura.APLICADA), ModalidadNota.TOTAL)).thenReturn(true);
         assertThat(elegibilidad.evaluar(factura(false), "gerente"))
             .isEqualTo(new NotaCreditoElegibilidad.Resultado(false, null));
     }
@@ -116,8 +117,8 @@ class NotaCreditoElegibilidadTest {
     @Test
     @DisplayName("T-047: con notas parciales aplicadas o en trámite solo procede otra parcial (la total, con motivo)")
     void conNotasParciales() {
-        when(notas.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(7, NotaCreditoTopes.CUENTAN,
-            java.util.Set.of("02", "14"))).thenReturn(true);
+        when(notas.existsByFactura_IdFacturaAndEstadoInAndModalidad(7, NotaCreditoTopes.CUENTAN,
+            ModalidadNota.PARCIAL)).thenReturn(true);
         NotaCreditoElegibilidad.Resultado r = elegibilidad.evaluar(factura(false), "gerente");
         assertThat(r.puedeEmitir()).isTrue();
         assertThat(r.puedeParcial()).isTrue();
@@ -157,5 +158,21 @@ class NotaCreditoElegibilidadTest {
         assertThat(elegibilidad.evaluar(factura(true), "gerente").motivoNoDisponible()).isNull();
         when(comprobantes.findFirstByFactura_IdFacturaAndVigenteTrue(7)).thenReturn(Optional.empty());
         assertThat(elegibilidad.evaluar(factura(false), "gerente").motivoNoDisponible()).isNull();
+    }
+
+    @Test
+    @DisplayName("T-051: una 06 parcial aplicada se comporta como una 02 (admite otra parcial, bloquea la total); una 06 total aplicada bloquea todo")
+    void devolucionMercanciaSegunModalidad() {
+        // 06 parcial: la consulta de totales aplicadas no la ve y la de parciales sí
+        when(notas.existsByFactura_IdFacturaAndEstadoInAndModalidad(7, NotaCreditoTopes.CUENTAN,
+            ModalidadNota.PARCIAL)).thenReturn(true);
+        NotaCreditoElegibilidad.Resultado parcial = elegibilidad.evaluar(factura(false), "gerente");
+        assertThat(parcial.puedeParcial()).isTrue();
+        assertThat(parcial.puedeTotal()).isFalse();
+
+        // 06 total aplicada: la consulta de totales aplicadas la ve
+        when(notas.existsByFactura_IdFacturaAndEstadoInAndModalidad(7,
+            java.util.EnumSet.of(EstadoNotaFactura.APLICADA), ModalidadNota.TOTAL)).thenReturn(true);
+        assertThat(elegibilidad.evaluar(factura(false), "gerente").puedeEmitir()).isFalse();
     }
 }

@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.repository;
 
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota;
 import api.astro.whats_orders_manager.modules.facturacion.model.NotaFactura;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -14,17 +15,15 @@ import java.util.Optional;
 @Repository
 public interface NotaFacturaRepository extends JpaRepository<NotaFactura, Long>, JpaSpecificationExecutor<NotaFactura> {
 
+    /**
+     * T-051: ¿la factura tiene notas en esos estados con esa modalidad? Reemplaza las consultas por lista de códigos: la
+     * modalidad sale de la nota (el 06 puede ser total o parcial). Parciales aplicadas o en trámite cuentan en los
+     * topes; una total aplicada anula la factura.
+     */
+    boolean existsByFactura_IdFacturaAndEstadoInAndModalidad(Integer idFactura, Collection<EstadoNotaFactura> estados,
+                                                             ModalidadNota modalidad);
+
     boolean existsByFactura_IdFacturaAndEstadoIn(Integer idFactura, Collection<EstadoNotaFactura> estados);
-
-    /** T-047: ¿la factura tiene notas en esos estados con alguno de esos códigos de referencia? (parciales: 02 y 14). */
-    boolean existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(Integer idFactura,
-                                                                      Collection<EstadoNotaFactura> estados,
-                                                                      Collection<String> codigos);
-
-    /** T-047: ¿la factura tiene notas en esos estados con un código distinto de los dados? (no parciales: 01, 13...). */
-    boolean existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaNotIn(Integer idFactura,
-                                                                         Collection<EstadoNotaFactura> estados,
-                                                                         Collection<String> codigos);
 
     /**
      * T-047 (ADR-051): total acreditado por línea de factura por las notas en esos estados (APLICADA y EN_TRAMITE para
