@@ -255,15 +255,56 @@ const LINEAS = [
     { idLineaFactura: 12, numeroLinea: 2, descripcion: 'Frijol', total: 50.00, acreditado: 20.00, disponible: 30.00 }
 ];
 
-test('T-047 códigos por modalidad: total 01/13, parcial 02/14, con su texto de efecto (ADR-050)', () => {
+test('T-047/T-051 códigos por modalidad: total 01/06/13, parcial 02/06/14, con su texto de efecto (ADR-050)', () => {
     const n = cargar();
-    assert.equal(n.codigosDe('TOTAL').map((c) => c.codigo).join(), '01,13');
-    assert.equal(n.codigosDe('PARCIAL').map((c) => c.codigo).join(), '02,14');
+    assert.equal(n.codigosDe('TOTAL').map((c) => c.codigo).join(), '01,06,13');
+    assert.equal(n.codigosDe('PARCIAL').map((c) => c.codigo).join(), '02,06,14');
     assert.match(n.textoEfecto('02'), /fecha de la nota; el IVA se atribuye al mes de la nota/);
     assert.equal(n.textoEfecto('14', '2026-09'),
         'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original (2026-09)');
     assert.equal(n.nombreCodigo('02'), 'Corrige monto');
     assert.equal(n.nombreCodigo('14'), 'Corrige monto por error material');
+});
+
+const EFECTO_06 = 'Devolución de mercancía: afecta el período de la nota. El sistema no controla inventario, '
+    + 'así que no se reingresa stock (ADR-061)';
+
+test('T-051 el 06 se ofrece en Total y en Parcial con su texto de efecto (sin inventario)', () => {
+    const n = cargar();
+    for (const modalidad of ['TOTAL', 'PARCIAL']) {
+        const c06 = n.codigosDe(modalidad).filter((c) => c.codigo === '06');
+        assert.equal(c06.length, 1, modalidad);
+        assert.equal(c06[0].nombre, 'Devolución de mercancía');
+    }
+    assert.equal(n.textoEfecto('06'), EFECTO_06);
+    // el período original no cambia el texto: el 06 siempre atribuye al mes de la nota
+    assert.equal(n.textoEfecto('06', '2026-09'), EFECTO_06);
+    assert.equal(n.nombreCodigo('06'), 'Devolución de mercancía');
+    assert.equal(n.advertenciaMismoMes('06', '2026-11', new Date('2026-11-15T12:00:00Z')), '');
+    // 01, 02, 13 y 14 siguen en su modalidad
+    assert.equal(n.codigosDe('TOTAL').filter((c) => c.codigo !== '06').map((c) => c.codigo).join(), '01,13');
+    assert.equal(n.codigosDe('PARCIAL').filter((c) => c.codigo !== '06').map((c) => c.codigo).join(), '02,14');
+});
+
+test('T-051 el pedido del 06: sin líneas (total) no lleva `lineas`; con líneas (parcial) sí', () => {
+    const n = cargar();
+    assert.equal(n.cuerpoPedido(7, '06', ' Devolución ').lineas, undefined);
+    assert.equal(n.cuerpoPedido(7, '06', 'Devolución', []).lineas, undefined);
+    const cuerpo = n.cuerpoPedido(7, '06', 'Devolución', [{ idLineaFactura: 11, montoAcreditar: '10.00' }]);
+    assert.equal(cuerpo.codigoReferencia, '06');
+    assert.equal(cuerpo.lineas.length, 1);
+});
+
+test('T-051 el listado muestra «06 - Devolución de mercancía» con la modalidad persistida (Total o Parcial)', () => {
+    const n = cargar();
+    for (const parcial of [false, true]) {
+        const doc = documentoFalso();
+        const tr = n.filaNota(doc, { id: 5, numero: 'NC-5', idFactura: 9, codigoReferencia: '06',
+            codigoNombre: 'Devolución de mercancía', parcial, total: 10, moneda: 'CRC' }, {});
+        const tdCodigo = tr.hijos[3];
+        assert.equal(tdCodigo._texto, '06 - Devolución de mercancía');
+        assert.equal(tdCodigo.hijos[0]._texto, parcial ? 'Parcial' : 'Total');
+    }
 });
 
 test('T-047 advertencia del 14 sobre una factura del mismo mes; el 02 no la lleva', () => {

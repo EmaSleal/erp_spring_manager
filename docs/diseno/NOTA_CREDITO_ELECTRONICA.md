@@ -96,7 +96,7 @@ Factura con comprobante ACEPTADO
 | API REST para emitir y consultar | ✔ | | |
 | Nota parcial (02/03, 06, 14) | | ✔ | |
 | Factura con pagos: saldo a favor | | ✔ | |
-| Reingreso de inventario (06) | | ✔ | |
+| Reingreso de inventario (06) | | ✔ (no se hizo: ADR-061, §12) | |
 | Pantalla, listado y PDF de la nota | | | ✔ |
 
 Restricción temporal de T-032: una factura con pagos aplicados no admitía nota total (409 con mensaje claro). Levantada en T-048 (§10).
@@ -229,3 +229,25 @@ Se guarda un solo tramo, `diferencial_saldo = monto × (TC día − TC origen)`,
 **Estado de cuenta (API).** `GET /api/facturas/saldos-favor/cliente/{idCliente}` trae por saldo `reservado` y `disponible` y la lista `devoluciones` con su historial (estados, usuarios, fechas, razón, comprobante, TC, diferencial y asiento); `GET .../{idSaldo}/devoluciones` devuelve solo las devoluciones. `GET /api/cuentas-bancarias/activas?moneda=` admite también el permiso de aprobar devoluciones.
 
 **Permiso y migración.** `SALDO_FAVOR_DEVOLUCION_APROBAR` (categoría Pagos, crítico) está en el enum `Permiso`; V49 lo crea (`INSERT IGNORE`) y lo asigna al rol ADMIN. Los roles son ADMIN, GERENTE, VENDEDOR, USER, VISUALIZADOR y CLIENTE: no hay rol de contabilidad, así que no se asigna a otros; se puede conceder a otro rol o usuario con el mecanismo de permisos existente. Pruebas: `IbanCostaRicaTest`, `CalculoDevolucionSaldoFavorTest`, `TramoAntiguedadTest`, `DevolucionSaldoFavorIT`, `MigracionDevolucionSaldoFavorIT`.
+
+## 12. Nota de crédito 06, devolución de mercancía (T-051, ADR-061 §3)
+
+**Alcance.** Se habilita el código 06 en la nota de crédito, total o parcial, como documento fiscal y contable. No mueve inventario. Fuera de alcance: reingreso de inventario y control de stock (P-094, ADR-061 §2), nota 12 (P-105), nota de débito (P-075).
+
+**Modalidad: se persiste en la nota.** Hasta T-048 la modalidad salía del código (01 y 13 totales, 02 y 14 parciales). El 06 no tiene modalidad fija: sin `lineas` en el pedido es una nota total (acredita el total del comprobante aceptado y anula la factura, como el 01); con `lineas` es parcial (monto por línea con IVA incluido, topes por línea y por factura, la factura no se anula salvo que las parciales completen el total, como el 02). Por eso la modalidad se guarda al emitir en `nota_factura.modalidad` (`ENUM('TOTAL','PARCIAL') NOT NULL`, V52, enum `ModalidadNota`, relleno de las notas existentes: 02 y 14 → PARCIAL, el resto → TOTAL) y todo lo que antes miraba una lista de códigos lee la columna: la coherencia del pedido (`NotaFacturaService.modalidadDe`), las consultas de topes y elegibilidad (`NotaFacturaRepository.existsByFactura_IdFacturaAndEstadoInAndModalidad`, que reemplaza las consultas por lista de códigos), los efectos al aceptarse (`NotaFacturaEfectos`), el PDF, el listado y el detalle (`NotaFactura.esParcial()`). 01, 02, 13 y 14 se comportan igual que antes: 01 y 13 rechazan líneas (400 `MENSAJE_TOTAL_CON_LINEAS`) y 02 y 14 las exigen (400 `MENSAJE_PARCIAL_SIN_LINEAS`); el 06 admite ambas y, con líneas, se valida como parcial (línea propia, monto > 0 con dos decimales, sin repetir).
+
+**Reglas que se aplican al 06 (iguales a T-047/T-048).** Comprobante ACEPTADO y del ambiente activo, una sola nota en trámite, factura no anulada ni acreditada totalmente, 409 si la factura tiene pagos y no tiene asiento de venta vigente. Una 06 total no procede si la factura tiene notas parciales aplicadas o en trámite (409 «La factura tiene notas parciales; acredite el resto con una nota parcial»); una total aplicada bloquea cualquier otra nota; una 06 parcial aplicada se comporta como un 02 (admite otra parcial y bloquea la total). Una 06 RECHAZADA no deja efectos y no cuenta en los topes.
+
+**XML.** `InformacionReferencia` con `TipoDocIR` 01, la clave y la fecha del comprobante original y `Codigo` 06; valida contra el XSD real tanto la total como la parcial (`NotaCreditoXmlTest`).
+
+**Contabilidad.** Al ser ACEPTADA, el asiento `AUTOMATICO_NOTA_CREDITO` debita la base a `NOTA_CREDITO_DEVOLUCIONES` (4.1.02.001, «Devoluciones sobre ventas», `AsientoContableService.resolverCuentaBaseNota`, ADR-054), debita el IVA y acredita cuentas por cobrar; si hay excedente sobre el saldo pendiente, la parte sobrante va a 2.1.05.00x y se crea el saldo a favor (T-048, ADR-053). Con el parámetro ausente la nota queda EN_TRAMITE y el mensaje lo nombra.
+
+**Atribución fiscal.** El mes de la nota (ADR-050; como 01 y 02), con la propiedad explícita `facturacion.notas.atribucion.codigo-06` (por defecto `EMISION`, ya en `application.yml`). La fecha contable es la de la nota. `AtribucionFiscalService` lee la propiedad de todo código con regla; si falta, rige el valor por defecto del enum (`EMISION` para el 06), igual que con los demás códigos.
+
+**Sin inventario, y por qué (ADR-061).** La nota 06 no crea movimientos de inventario (`movimientos_inventario`) ni cambia `producto.stock`: Hacienda no exige el reingreso y el sistema no controla inventario (0 movimientos, stock casi siempre NULL; informe de P-094). Ninguna ruta de notas toca inventario; la prueba `NotaCreditoIT` cuenta los movimientos y compara el stock antes y después, en la total y en la parcial. Las 06 emitidas antes de activar el control de inventario no se reingresarán después (ADR-061 §4). La interfaz lo dice en el texto de efecto del código: «Devolución de mercancía: afecta el período de la nota. El sistema no controla inventario, así que no se reingresa stock (ADR-061)».
+
+**Sustitución.** La factura sustituta (07/15, T-039) sigue siendo solo para facturas anuladas por una nota total 01 o 13 (`SustitucionElegibilidad`, `FacturaRepository.PREDICADO_SUSTITUTA_PENDIENTE`): la 06 total anula la factura igual que el 01 pero no ofrece sustituta, porque ADR-061 no la contempla.
+
+**Interfaz.** El modal «Emitir nota de crédito» ofrece el 06 en Total (sin líneas) y en Parcial (con tabla de líneas); el listado, el detalle y el PDF muestran «06 Devolución de mercancía» y la modalidad persistida. Todo se pinta con `textContent`.
+
+**Pruebas.** `CodigoReferenciaNotaTest`, `NotaFacturaPedidoTest`, `NotaCreditoElegibilidadTest`, `NotaFacturaParcialTest`, `NotaFacturaEfectosTest`, `AsientoNotaCreditoTest`, `AtribucionFiscalServiceTest`, `NotaCreditoXmlTest`, `NotaCreditoIT`, `SaldoFavorIT`, `MigracionModalidadNotaIT` y `src/test/js/nota-credito.test.mjs`.

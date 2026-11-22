@@ -96,6 +96,20 @@ class AtribucionFiscalServiceTest {
     }
 
     @Test
+    @DisplayName("T-051 (criterio 5): el 06 se atribuye al mes de la nota, con o sin propiedad; application.yml la declara explícita")
+    void codigo06_mesDeLaNota() throws Exception {
+        CodigoReferenciaNota c06 = CodigoReferenciaNota.DEVOLUCION_MERCANCIA;
+        // sin propiedad rige el valor por defecto del código (igual que 01 y 02)
+        assertThat(new AtribucionFiscalService(new org.springframework.mock.env.MockEnvironment())
+                .periodoTexto(c06, EMISION, ORIGINAL)).isEqualTo("2026-11");
+        var env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("facturacion.notas.atribucion.codigo-06", "EMISION");
+        assertThat(new AtribucionFiscalService(env).periodoTexto(c06, EMISION, ORIGINAL)).isEqualTo("2026-11");
+        String yml = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/resources/application.yml"));
+        assertThat(yml).contains("codigo-06: ${FACTURACION_NOTAS_ATRIBUCION_CODIGO_06:EMISION}");
+    }
+
+    @Test
     @DisplayName("un valor inválido en la propiedad de cualquier código falla al arrancar")
     void propiedadInvalida() {
         var env = new org.springframework.mock.env.MockEnvironment()

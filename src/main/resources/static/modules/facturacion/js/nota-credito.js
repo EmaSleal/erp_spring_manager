@@ -21,26 +21,32 @@
     const ERROR_FACTURA_TOPE = 'La suma de los montos supera el disponible de la factura';
     const ERROR_SIN_LINEAS = 'Indique el monto a acreditar de al menos una línea';
 
+    // T-051 (ADR-061 §3): el 06 no tiene modalidad fija; se ofrece en Total (sin líneas) y en Parcial (con líneas).
+    // El efecto del 06 cita que no se mueve inventario: el sistema no lo controla (ADR-061).
     const CODIGOS = [
         { codigo: '01', nombre: 'Anula documento de referencia',
           efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la nota.',
-          parcial: false },
+          modalidades: ['TOTAL'] },
         { codigo: '13', nombre: 'Anula documento de referencia por error material',
           efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original',
-          parcial: false },
+          modalidades: ['TOTAL'] },
         // T-047 (ADR-051): nota parcial, con monto por línea
         { codigo: '02', nombre: 'Corrige monto',
           efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la nota.',
-          parcial: true },
+          modalidades: ['PARCIAL'] },
         { codigo: '14', nombre: 'Corrige monto por error material',
           efecto: 'El asiento se registra con la fecha de la nota; el IVA se atribuye al mes de la factura original',
-          parcial: true }
+          modalidades: ['PARCIAL'] },
+        { codigo: '06', nombre: 'Devolución de mercancía',
+          efecto: 'Devolución de mercancía: afecta el período de la nota. El sistema no controla inventario, así que '
+              + 'no se reingresa stock (ADR-061)',
+          modalidades: ['TOTAL', 'PARCIAL'] }
     ];
 
-    /** Códigos de la modalidad: 'TOTAL' (01, 13) o 'PARCIAL' (02, 14). */
+    /** Códigos de la modalidad, por código: 'TOTAL' (01, 06, 13) o 'PARCIAL' (02, 06, 14). */
     function codigosDe(modalidad) {
-        const parcial = modalidad === 'PARCIAL';
-        return CODIGOS.filter((c) => c.parcial === parcial);
+        const m = modalidad === 'PARCIAL' ? 'PARCIAL' : 'TOTAL';
+        return CODIGOS.filter((c) => c.modalidades.indexOf(m) >= 0).sort((x, y) => x.codigo.localeCompare(y.codigo));
     }
 
     // ---- Botón «Emitir nota de crédito» (solo banderas del servidor; sin roles) ----
@@ -107,7 +113,7 @@
         return c ? c.nombre : '';
     }
 
-    /** Pedido de la nota; `lineas` ([{idLineaFactura, montoAcreditar}]) solo en la nota parcial (02/14). */
+    /** Pedido de la nota; `lineas` ([{idLineaFactura, montoAcreditar}]) solo en la nota parcial (02, 14 y 06 parcial). */
     function cuerpoPedido(idFactura, codigo, razon, lineas) {
         const cuerpo = {
             idFactura: idFactura,

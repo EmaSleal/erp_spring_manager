@@ -13,6 +13,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraF
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.XmlValidator;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoNotaFactura;
+import api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.TipoNotaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaConflictoException;
 import api.astro.whats_orders_manager.modules.facturacion.exception.NotaFacturaPedidoInvalidoException;
@@ -70,9 +71,6 @@ public class NotaFacturaService {
     private final AtribucionFiscalService atribucionFiscal;
     private final NotaCreditoTopes topes;
 
-    private static final Set<String> CODIGOS_PARCIALES = Set.of(CodigoReferenciaNota.CORRIGE_MONTO.getCodigo(),
-        CodigoReferenciaNota.CORRIGE_MONTO_ERROR_MATERIAL.getCodigo());
-
     public static final String MENSAJE_PARCIAL_SIN_LINEAS = "La nota de crédito parcial (código 02 o 14) requiere "
         + "indicar las líneas de la factura y el monto a acreditar de cada una";
     public static final String MENSAJE_TOTAL_CON_LINEAS = "La nota de crédito total (código 01 o 13) no admite líneas; "
@@ -91,7 +89,7 @@ public class NotaFacturaService {
 
     /**
      * Valida el pedido de una nota (400 si falla): tipo CREDITO, código de la nota 9 válido en nota de crédito y
-     * habilitado en esta fase (01, 02, 13 o 14), razón de 3 a 180 caracteres.
+     * habilitado en esta fase (01, 02, 06, 13 o 14), razón de 3 a 180 caracteres.
      *
      * @throws NotaFacturaPedidoInvalidoException con el mensaje para el cliente
      */
@@ -119,15 +117,16 @@ public class NotaFacturaService {
     }
 
     /**
-     * {@link #validarPedido(TipoNotaFactura, String, String)} más la coherencia entre código y modalidad (ADR-051): 02 y
-     * 14 llevan líneas ({@code idLineaFactura} y {@code montoAcreditar} mayor que 0 con dos decimales, sin repetir
-     * línea); 01 y 13 no.
+     * {@link #validarPedido(TipoNotaFactura, String, String)} más la coherencia entre código y modalidad (ADR-051,
+     * T-051): 02 y 14 llevan líneas ({@code idLineaFactura} y {@code montoAcreditar} mayor que 0 con dos decimales, sin
+     * repetir línea); 01 y 13 no; el 06 admite ambas (sin líneas es total, con líneas es parcial y se valida como tal).
      */
     public static CodigoReferenciaNota validarPedido(TipoNotaFactura tipo, String codigoReferencia, String razon,
                                                      List<LineaAcreditar> lineas) {
         CodigoReferenciaNota codigo = validarPedido(tipo, codigoReferencia, razon);
         boolean conLineas = lineas != null && !lineas.isEmpty();
-        if (codigo.esParcial()) {
+        ModalidadNota modalidad = modalidadDe(codigo, lineas);
+        if (modalidad == ModalidadNota.PARCIAL) {
             if (!conLineas) {
                 throw new NotaFacturaPedidoInvalidoException(MENSAJE_PARCIAL_SIN_LINEAS);
             }
@@ -147,6 +146,15 @@ public class NotaFacturaService {
         return codigo;
     }
 
+    /**
+     * Modalidad con la que se emite la nota (T-051): la fija del código (01 y 13 TOTAL, 02 y 14 PARCIAL) o, en el 06,
+     * PARCIAL si el pedido trae líneas y TOTAL si no. Un 01 o 13 con líneas sigue siendo TOTAL y se rechaza con
+     * {@link #MENSAJE_TOTAL_CON_LINEAS}.
+     */
+    public static ModalidadNota modalidadDe(CodigoReferenciaNota codigo, List<LineaAcreditar> lineas) {
+        return codigo.modalidadPara(lineas != null && !lineas.isEmpty());
+    }
+
     /** Emite la nota de crédito total de la factura (01 o 13); ver {@link #emitirNotaCredito}. */
     @Transactional
     public NotaFactura emitirNotaCreditoTotal(Integer idFactura, TipoNotaFactura tipo, String codigoReferencia,
@@ -156,7 +164,8 @@ public class NotaFacturaService {
 
     /**
      * Emite la nota de crédito de la factura: total (01 o 13, sin líneas) o parcial (02 o 14, con el monto a
-     * acreditar por línea, IVA incluido).
+     * acreditar por línea, IVA incluido). El 06 es total sin líneas y parcial con líneas; la modalidad se persiste en la
+     * nota y es la que rige los topes, el anulado de la factura y la elegibilidad.
      *
      * @throws NotaFacturaPedidoInvalidoException pedido inválido (400)
      * @throws NoSuchElementException         la factura no existe (404)
@@ -166,6 +175,8 @@ public class NotaFacturaService {
     public NotaFactura emitirNotaCredito(Integer idFactura, TipoNotaFactura tipo, String codigoReferencia,
                                          String razon, List<LineaAcreditar> lineasPedidas, String usuario) {
         CodigoReferenciaNota codigo = validarPedido(tipo, codigoReferencia, razon, lineasPedidas);
+        ModalidadNota modalidad = modalidadDe(codigo, lineasPedidas);
+        boolean parcial = modalidad == ModalidadNota.PARCIAL;
 
         // FOR UPDATE: dos emisiones concurrentes sobre la misma factura se serializan aquí; la segunda ve la nota de
         // la primera. uk_nota_en_tramite_por_factura (V39) lo garantiza además en la BD.
@@ -189,11 +200,11 @@ public class NotaFacturaService {
         if (factura.estaAcreditadaTotalmente()) {
             throw new NotaFacturaConflictoException(MENSAJE_ACREDITADA_TOTALMENTE);
         }
-        if (codigo.esTotal() && notaRepository.existsByFactura_IdFacturaAndEstadoInAndCodigoReferenciaIn(idFactura,
-                NotaCreditoTopes.CUENTAN, CODIGOS_PARCIALES)) {
+        if (!parcial && notaRepository.existsByFactura_IdFacturaAndEstadoInAndModalidad(idFactura,
+                NotaCreditoTopes.CUENTAN, ModalidadNota.PARCIAL)) {
             throw new NotaFacturaConflictoException(MENSAJE_TOTAL_CON_PARCIALES);
         }
-        if (codigo.esParcial()) {
+        if (parcial) {
             if (notaRepository.existsByFactura_IdFacturaAndEstadoIn(idFactura, EnumSet.of(EstadoNotaFactura.EN_TRAMITE))) {
                 throw new NotaFacturaConflictoException("La factura " + factura.getNumeroFactura()
                     + " ya tiene una nota de crédito en trámite");
@@ -216,6 +227,7 @@ public class NotaFacturaService {
             .factura(factura)
             .tipo(TipoNotaFactura.CREDITO)
             .codigoReferencia(codigo.getCodigo())
+            .modalidad(modalidad)
             .razon(razon.trim())
             .estado(EstadoNotaFactura.EN_TRAMITE)
             .fechaEmision(emision)
@@ -230,7 +242,7 @@ public class NotaFacturaService {
             .tipoCambio(factura.getTipoCambio() != null ? factura.getTipoCambio() : BigDecimal.ONE)
             .usuarioCreador(usuario)
             .build();
-        if (codigo.esParcial()) {
+        if (parcial) {
             fotografiarLineasParciales(factura, nota, lineasPedidas);
             exigirTopes(factura, nota, aceptado);
         } else {
@@ -247,7 +259,7 @@ public class NotaFacturaService {
 
         ComprobanteElectronico comprobante = comprobanteService.generarYFirmarDesdeNota(nota);
         log.info("Nota de crédito {} ({}) emitida sobre la factura {} (código {}): comprobante {} en {}", nota.getId(),
-            codigo.esParcial() ? "parcial" : "total", factura.getNumeroFactura(), codigo.getCodigo(),
+            parcial ? "parcial" : "total", factura.getNumeroFactura(), codigo.getCodigo(),
             comprobante.getClaveNumerica(), comprobante.getEstado());
         return nota;
     }

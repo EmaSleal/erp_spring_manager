@@ -142,6 +142,47 @@ class AsientoNotaCreditoTest {
         assertThat(a.getDetalles()).noneMatch(d -> "4.1.01.001".equals(d.getCuenta().getCodigo()));
     }
 
+    @ParameterizedTest(name = "modalidad {0}")
+    @org.junit.jupiter.params.provider.EnumSource(api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota.class)
+    @DisplayName("T-051: 06 (total o parcial): DR 4.1.02.001 por la base, DR IVA por pagar, CR cuentas por cobrar; cuadra")
+    void devolucionMercancia(api.astro.whats_orders_manager.modules.facturacion.enums.ModalidadNota modalidad) {
+        NotaFactura nota = nota("06", "1000.00", "130.00");
+        nota.setModalidad(modalidad);
+        AsientoContable a = servicio.generarAsientoNotaCredito(nota, venta, FECHA);
+
+        assertThat(debeDe(a, "4.1.02.001")).isEqualByComparingTo("1000.00");
+        assertThat(debeDe(a, "2.1.02.001")).isEqualByComparingTo("130.00");
+        assertThat(haberDe(a, "1.1.02.001")).isEqualByComparingTo("1130.00");
+        assertThat(a.estaCuadrado()).isTrue();
+        assertThat(a.getTipo().name()).isEqualTo("AUTOMATICO_NOTA_CREDITO");
+        assertThat(a.getFecha()).isEqualTo(FECHA);
+        assertThat(a.getDetalles()).noneMatch(d -> "4.1.02.002".equals(d.getCuenta().getCodigo())
+                || "4.1.01.001".equals(d.getCuenta().getCodigo()));
+    }
+
+    @Test
+    @DisplayName("T-051: 06 con excedente: la parte sobrante va a 2.1.05.001 y el asiento cuadra")
+    void devolucionMercanciaConExcedente() {
+        conParametro("SALDO_FAVOR_CLIENTES_CRC", "2.1.05.001", 20L);
+        AsientoContable a = servicio.generarAsientoNotaCredito(nota("06", "1000.00", "130.00"), venta, FECHA,
+                new BigDecimal("630.00"), new BigDecimal("500.00"));
+
+        assertThat(debeDe(a, "4.1.02.001")).isEqualByComparingTo("1000.00");
+        assertThat(haberDe(a, "1.1.02.001")).isEqualByComparingTo("630.00");
+        assertThat(haberDe(a, "2.1.05.001")).isEqualByComparingTo("500.00");
+        assertThat(a.estaCuadrado()).isTrue();
+    }
+
+    @Test
+    @DisplayName("T-051: 06 sin el parámetro NOTA_CREDITO_DEVOLUCIONES: falla nombrándolo (la nota sigue EN_TRAMITE)")
+    void devolucionMercanciaSinParametro() {
+        when(parametros.findByClave("NOTA_CREDITO_DEVOLUCIONES")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> servicio.generarAsientoNotaCredito(nota("06", "1000.00", "130.00"), venta, FECHA))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NOTA_CREDITO_DEVOLUCIONES");
+    }
+
     @ParameterizedTest(name = "código {0}")
     @ValueSource(strings = {"13", "14"})
     @DisplayName("13 total y 14 parcial: el débito por la base va a la cuenta de ventas del asiento original")
