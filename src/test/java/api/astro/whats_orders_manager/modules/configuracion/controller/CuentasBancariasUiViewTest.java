@@ -114,7 +114,8 @@ class CuentasBancariasUiViewTest {
         @Bean
         PagoController pagoController(PagoService pagos, FacturaService facturas, ClienteService clientes,
                                       UsuarioService usuarios) {
-            return new PagoController(pagos, facturas, clientes, new PagoMapper(), usuarios);
+            return new PagoController(pagos, facturas, clientes, new PagoMapper(), usuarios,
+                    java.time.Clock.systemDefaultZone());
         }
 
         @Bean

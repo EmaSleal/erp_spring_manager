@@ -159,18 +159,19 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
      * @return Lista de pagos del día
      */
     // T-048 (revisión 1): sin pagos NOTA_CREDITO (una aplicación de saldo a favor no es un ingreso del día)
-    @Query("SELECT p FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE "
+    // T-050: el día [inicio, fin) lo calcula la aplicación con su Clock (America/Costa_Rica), no la base
+    @Query("SELECT p FROM Pago p WHERE p.fechaPago >= :inicio AND p.fechaPago < :fin "
         + "AND p.tipoPago <> 'NOTA_CREDITO' ORDER BY p.fechaPago")
-    List<Pago> findPagosDelDia();
+    List<Pago> findPagosDelDia(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
     
     /**
      * Cuenta pagos creados hoy.
      * @return Cantidad de pagos del día
      */
     // T-048 (revisión 1): misma regla que findPagosDelDia
-    @Query("SELECT COUNT(p) FROM Pago p WHERE CAST(p.fechaPago AS date) = CURRENT_DATE "
+    @Query("SELECT COUNT(p) FROM Pago p WHERE p.fechaPago >= :inicio AND p.fechaPago < :fin "
         + "AND p.tipoPago <> 'NOTA_CREDITO'")
-    long countPagosDelDia();
+    long countPagosDelDia(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
     
     /**
      * Finds all payments for a given client, ordered by payment date descending.

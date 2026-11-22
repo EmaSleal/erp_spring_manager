@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.config.MysqlZonaCostaRica;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.enums.PeriodoAtribucion;
 import api.astro.whats_orders_manager.modules.facturacion.service.AtribucionFiscalService;
@@ -75,10 +76,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -139,13 +138,7 @@ class NotaCreditoIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.32")
-            .withDatabaseName("t032")
-            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
-            .withCreateContainerCmdModifier(cmd -> cmd.withName("t032-it-mysql"))
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath(Path.of("database/routines/stored_procedures.sql")),
-                    "/docker-entrypoint-initdb.d/01-routines.sql");
+    static final MySQLContainer<?> MYSQL = MysqlZonaCostaRica.contenedorConRutinas("t032", "t032-it-mysql");
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
@@ -1142,7 +1135,7 @@ class NotaCreditoIT {
                     + "(SELECT id_cliente FROM factura WHERE id_factura = ?)", id);
         }
 
-        List<Integer> ids = tx.execute(s -> facturaRepository.findFacturasConPagoVencido().stream()
+        List<Integer> ids = tx.execute(s -> facturaRepository.findFacturasConPagoVencido(java.sql.Date.valueOf(LocalDate.now(reloj))).stream()
                 .map(Factura::getIdFactura).toList());
 
         assertThat(ids).contains(parcial).doesNotContain(acreditada, anulada);

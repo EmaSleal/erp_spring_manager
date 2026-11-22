@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.config.MysqlZonaCostaRica;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
@@ -52,6 +53,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
+import api.astro.whats_orders_manager.config.RelojCostaRicaFijable;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -64,10 +69,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -115,13 +118,7 @@ class SaldoFavorIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.32")
-            .withDatabaseName("t048")
-            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
-            .withCreateContainerCmdModifier(cmd -> cmd.withName("t048-it-mysql"))
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath(Path.of("database/routines/stored_procedures.sql")),
-                    "/docker-entrypoint-initdb.d/01-routines.sql");
+    static final MySQLContainer<?> MYSQL = MysqlZonaCostaRica.contenedorConRutinas("t048", "t048-it-mysql");
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
@@ -147,6 +144,17 @@ class SaldoFavorIT {
     @MockitoBean private HaciendaApiService haciendaApi;
     @MockitoBean private ConfiguracionHaciendaService configuracionHaciendaService;
 
+    /** T-050: reloj de la aplicación en America/Costa_Rica; una prueba lo fija a las 20:00 de CR (02:00 UTC del día siguiente). */
+    @TestConfiguration
+    static class RelojDePrueba {
+        @Bean
+        @Primary
+        RelojCostaRicaFijable relojCostaRica() {
+            return new RelojCostaRicaFijable();
+        }
+    }
+
+    @Autowired private RelojCostaRicaFijable reloj;
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbc;
@@ -840,6 +848,19 @@ class SaldoFavorIT {
     @Test
     @DisplayName("criterio 23: la aplicación de un saldo (NOTA_CREDITO) no entra en el detalle de caja ni en los pagos del día; el detalle suma igual que el total")
     void cajaYPagosDelDia_excluyenAplicacionesDeSaldo() throws Exception {
+        // T-050 (criterio 11): reloj fijo a las 20:00 de Costa Rica (02:00 UTC del día siguiente), el caso que antes
+        // fallaba después de las 18:00 porque la base contaba «hoy» con su propio reloj en UTC
+        reloj.fijar(java.time.ZonedDateTime.of(2026, 11, 20, 20, 0, 0, 0, RelojCostaRicaFijable.CR));
+        try {
+            cajaYPagosDelDiaConElRelojFijo();
+        } finally {
+            reloj.liberar();
+        }
+    }
+
+    private void cajaYPagosDelDiaConElRelojFijo() throws Exception {
+        LocalDate hoy = LocalDate.now(reloj);
+        assertThat(hoy).isEqualTo(LocalDate.of(2026, 11, 20));
         Saldo s = saldoCrc(null);
         int f2 = facturaAceptada(s.idCliente(), MonedaFE.CRC, "1");
         long idEfectivo = pagar(f2, "1000.00", MonedaFE.CRC, null);
@@ -848,7 +869,7 @@ class SaldoFavorIT {
         long idNc = jdbc.queryForObject("SELECT id_pago FROM pagos WHERE id_factura = ? AND tipo_pago = 'NOTA_CREDITO'",
                 Long.class, f2);
 
-        var reporte = pagoService.buildReporteCaja(LocalDate.now());
+        var reporte = pagoService.buildReporteCaja(hoy);
         List<Long> idsDetalle = reporte.getPagosDetalle().stream().map(p -> p.getIdPago()).toList();
         assertThat(idsDetalle).contains(idEfectivo).doesNotContain(idNc);
         // el detalle (válidos, en CRC como los totales; el día puede traer pagos de otras pruebas) suma igual que el total
@@ -863,10 +884,10 @@ class SaldoFavorIT {
         List<Long> delDia = pagoService.findPagosDelDia().stream().map(p -> p.getIdPago()).toList();
         assertThat(delDia).contains(idEfectivo).doesNotContain(idNc);
         assertThat(pagoService.countPagosDelDia()).isEqualTo(delDia.size());
-        assertThat(pagoService.findByFechaPagoBetween(LocalDate.now().atStartOfDay(),
-                LocalDate.now().atTime(23, 59, 59)).stream().map(p -> p.getIdPago()).toList()).doesNotContain(idNc);
-        assertThat(pagoService.countByMetodoPagoAndFecha(MetodoPago.OTROS, LocalDate.now().atStartOfDay(),
-                LocalDate.now().atTime(23, 59, 59))).as("OTROS solo lo usa la aplicación del saldo").isZero();
+        assertThat(pagoService.findByFechaPagoBetween(hoy.atStartOfDay(),
+                hoy.atTime(23, 59, 59)).stream().map(p -> p.getIdPago()).toList()).doesNotContain(idNc);
+        assertThat(pagoService.countByMetodoPagoAndFecha(MetodoPago.OTROS, hoy.atStartOfDay(),
+                hoy.atTime(23, 59, 59))).as("OTROS solo lo usa la aplicación del saldo").isZero();
     }
 
     private static final String MSG_SIN_ASIENTO = "La factura tiene pagos y no tiene asiento de venta vigente; "
@@ -1012,7 +1033,7 @@ class SaldoFavorIT {
                 p.setTipoCambio(new BigDecimal(tipoCambio));
             }
             p.setMetodoPago(MetodoPago.EFECTIVO);
-            p.setFechaPago(LocalDateTime.now().minusMinutes(1));
+            p.setFechaPago(LocalDateTime.now(reloj).minusMinutes(1));
             p.setEstado(EstadoPago.CONFIRMADO);
             return pagoService.registrarPago(p).getIdPago();
         });
@@ -1026,7 +1047,7 @@ class SaldoFavorIT {
         pago.put("tipoPago", "PARCIAL");
         pago.put("monto", 100);
         pago.put("metodoPago", "EFECTIVO");
-        pago.put("fechaPago", LocalDateTime.now().withNano(0).minusMinutes(1).toString());
+        pago.put("fechaPago", LocalDateTime.now(reloj).withNano(0).minusMinutes(1).toString());
         pago.put("estado", "CONFIRMADO");
         return mockMvc.perform(post("/pagos/registrar").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(pago))

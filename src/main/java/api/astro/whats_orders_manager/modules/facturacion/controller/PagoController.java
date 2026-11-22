@@ -36,6 +36,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -61,6 +62,8 @@ public class PagoController {
     private final ClienteService clienteService;
     private final PagoMapper pagoMapper;
     private final UsuarioService usuarioService;
+    /** Reloj de la aplicación en America/Costa_Rica (T-050): la fecha por defecto del reporte de caja. */
+    private final Clock clock;
     
     // ==================== VISTAS PRINCIPALES ====================
     
@@ -564,7 +567,7 @@ public class PagoController {
             Model model,
             Authentication authentication
     ) {
-        LocalDate fechaReporte = fecha != null ? fecha : LocalDate.now();
+        LocalDate fechaReporte = fecha != null ? fecha : LocalDate.now(clock);
         log.info("Generando reporte de caja para: {}", fechaReporte);
         
         try {

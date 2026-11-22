@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -49,6 +50,10 @@ public class RecordatorioPagoScheduler {
 
     @Autowired
     private NotificacionService notificacionService;
+
+    /** Reloj de la aplicación en America/Costa_Rica: «hoy» y «vencida» se calculan aquí, no en la base (T-050). */
+    @Autowired
+    private Clock clock;
     
     private static final int DIAS_AVISO_VENCIMIENTO = 3;
 
@@ -74,7 +79,8 @@ public class RecordatorioPagoScheduler {
         try {
             // Buscar facturas con pago vencido
             // T-047: sin anuladas, acreditadas totalmente ni facturas sin saldo (el filtro de la consulta se repite aquí)
-            List<Factura> facturasVencidas = facturaRepository.findFacturasConPagoVencido().stream()
+            List<Factura> facturasVencidas = facturaRepository
+                .findFacturasConPagoVencido(java.sql.Date.valueOf(LocalDate.now(clock))).stream()
                 .filter(Factura::admiteRecordatorioDePago)
                 .toList();
             
@@ -126,7 +132,7 @@ public class RecordatorioPagoScheduler {
      * Busca facturas próximas a vencer (3 días o menos)
      */
     private List<Factura> buscarFacturasPorVencer() {
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(clock);
         LocalDate fechaLimite = hoy.plusDays(DIAS_AVISO_VENCIMIENTO);
         
         return facturaRepository.findAll().stream()
@@ -154,7 +160,7 @@ public class RecordatorioPagoScheduler {
 
             long diasVencida = ChronoUnit.DAYS.between(
                 factura.getFechaPago().toLocalDate(),
-                LocalDate.now()
+                LocalDate.now(clock)
             );
 
             String titulo = "Factura Vencida";
@@ -194,7 +200,7 @@ public class RecordatorioPagoScheduler {
             }
 
             long diasRestantes = ChronoUnit.DAYS.between(
-                LocalDate.now(),
+                LocalDate.now(clock),
                 factura.getFechaPago().toLocalDate()
             );
 

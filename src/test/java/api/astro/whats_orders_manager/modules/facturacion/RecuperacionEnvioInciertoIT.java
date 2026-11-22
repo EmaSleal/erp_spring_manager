@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.config.MysqlZonaCostaRica;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.cliente.repository.ClienteRepository;
 import api.astro.whats_orders_manager.modules.configuracion.enums.TipoIdentificacion;
@@ -53,10 +54,8 @@ import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -117,13 +116,7 @@ class RecuperacionEnvioInciertoIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.32")
-            .withDatabaseName("t045")
-            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
-            .withCreateContainerCmdModifier(cmd -> cmd.withName("t045-it-mysql"))
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath(Path.of("database/routines/stored_procedures.sql")),
-                    "/docker-entrypoint-initdb.d/01-routines.sql");
+    static final MySQLContainer<?> MYSQL = MysqlZonaCostaRica.contenedorConRutinas("t045", "t045-it-mysql");
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
@@ -520,7 +513,7 @@ class RecuperacionEnvioInciertoIT {
         return withStatus(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    /** fecha_envio en la hora del reloj de la aplicación (la base usa otra zona horaria que NOW()). */
+    /** fecha_envio en la hora del reloj de la aplicación (T-050: la base corre en la misma zona, America/Costa_Rica; igual no se usa NOW()). */
     private void enviadoHace(Long id, Duration hace) {
         jdbc.update("UPDATE comprobante_electronico SET fecha_envio = ? WHERE id = ?",
                 java.time.LocalDateTime.now(reloj).minus(hace), id);
