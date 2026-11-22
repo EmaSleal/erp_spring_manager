@@ -1,5 +1,8 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service;
 
+import api.astro.whats_orders_manager.modules.proveedores.repository.PagoProveedorRepository;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorValidator;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
@@ -40,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -58,6 +62,8 @@ import static org.mockito.Mockito.when;
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AsientoContableService.generarAsientoCompra — multimoneda (ADR-011)")
 class AsientoCompraMultimonedaTest {
+
+    private static final java.time.Clock RELOJ_PRUEBA = java.time.Clock.system(java.time.ZoneId.of("America/Costa_Rica"));
 
     @Mock private AsientoContableRepository asientoRepository;
     @Mock private DetalleAsientoRepository detalleRepository;
@@ -203,7 +209,9 @@ class AsientoCompraMultimonedaTest {
         when(cuentaPorPagarRepository.save(any(CuentaPorPagar.class))).thenAnswer(inv -> inv.getArgument(0));
         when(cuentaPorPagarRepository.findUltimoConsecutivo(anyInt())).thenReturn(null);
         CuentaPorPagarServiceImpl cxpService = new CuentaPorPagarServiceImpl(cuentaPorPagarRepository,
-                proveedorRepository, ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository));
+                proveedorRepository, ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository),
+                new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(PagoProveedorRepository.class),
+                mock(UsuarioActividadService.class), RELOJ_PRUEBA);
 
         CuentaPorPagar cpp = cxpService.crearDesdeOrdenCompra(5L);
 

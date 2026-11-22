@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -26,7 +27,19 @@ public class CuentaPorPagarDTO {
     private MonedaFE moneda;
     /** Tipo de cambio (ADR-011). Null → tasa de venta registrada para la fecha de emisión. */
     private BigDecimal tipoCambio;
+    /**
+     * En una CxP manual la fecha de emisión es la del comprobante del proveedor (ADR-014, ADR-066): se toma de
+     * {@link #fechaComprobante} y este campo se ignora. En la creación desde una OC no se usa.
+     */
     private LocalDate fechaEmision;
+    /** Número o consecutivo del comprobante del proveedor (T-052). Obligatorio en la CxP manual. */
+    private String numeroComprobanteProveedor;
+    /** Clave numérica de 50 dígitos del comprobante del proveedor; opcional. */
+    private String claveComprobante;
+    /** Fecha de emisión del comprobante del proveedor; obligatoria en la CxP manual y no futura. */
+    private LocalDate fechaComprobante;
+    /** Desglose de IVA por tarifa del comprobante; al menos una fila en la CxP manual. */
+    private List<CuentaPorPagarIvaDTO> desglose;
     private LocalDate fechaVencimiento;
     private String notas;
 }

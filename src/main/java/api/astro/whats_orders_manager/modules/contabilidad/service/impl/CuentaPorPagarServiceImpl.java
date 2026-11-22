@@ -1,29 +1,45 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service.impl;
 
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarIvaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarVistaDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagarIva;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorDuplicadoException;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorValidator;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
+import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
+import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import api.astro.whats_orders_manager.modules.proveedores.repository.OrdenCompraRepository;
+import api.astro.whats_orders_manager.modules.proveedores.repository.PagoProveedorRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
+import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -37,6 +53,12 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     private final OrdenCompraRepository ordenCompraRepository;
     private final AsientoContableService asientoService;
     private final TipoCambioService tipoCambioService;
+    private final ComprobanteProveedorValidator comprobanteValidator;
+    private final PagoProveedorRepository pagoProveedorRepository;
+    private final UsuarioActividadService actividadService;
+    private final Clock clock;
+
+    private static final String NOMBRE_INDICE_COMPROBANTE = "uk_cpp_proveedor_comprobante";
 
     /**
      * Crea una CxP y genera su asiento de compra en la misma transacción (ADR-015).
@@ -57,7 +79,9 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         if (dto.getProveedorId() == null) {
             throw new IllegalArgumentException("El proveedor es obligatorio");
         }
-        Proveedor proveedor = proveedorRepository.findById(dto.getProveedorId())
+        // Bloqueo por proveedor: serializa altas y anulaciones del mismo proveedor, de modo que el chequeo de comprobante
+        // duplicado y el recálculo del saldo ven siempre lo confirmado (el índice único queda como respaldo)
+        Proveedor proveedor = proveedorRepository.findByIdForUpdate(dto.getProveedorId())
             .orElseThrow(() -> new NoSuchElementException("Proveedor no encontrado: " + dto.getProveedorId()));
 
         OrdenCompra oc = null;
@@ -66,6 +90,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         BigDecimal subtotal = null;
         BigDecimal impuesto = null;
         CuentaContable cuentaGasto = null;
+        String numeroComprobante = null;
+        String comprobanteNormalizado = null;
         String descripcion = dto.getDescripcion();
         if (dto.getOrdenCompraId() != null) {
             oc = ordenCompraRepository.findById(dto.getOrdenCompraId())
@@ -86,11 +112,15 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
                 descripcion = "Compra según OC " + oc.getNumero();
             }
         } else {
-            subtotal = dto.getSubtotal();
-            impuesto = dto.getImpuesto();
-            if (subtotal == null || impuesto == null) {
-                throw new IllegalArgumentException("La cuenta por pagar manual requiere subtotal e impuesto");
-            }
+            // T-052: comprobante del proveedor y desglose de IVA (ADR-066 §1-2); subtotal e impuesto salen del
+            // desglose si no vienen, y si vienen deben coincidir con sus sumas
+            comprobanteValidator.validar(dto);
+            BigDecimal sumaBases = dto.getDesglose().stream().map(CuentaPorPagarIvaDTO::getBase)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal sumaIva = dto.getDesglose().stream().map(CuentaPorPagarIvaDTO::getIva)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            subtotal = dto.getSubtotal() != null ? dto.getSubtotal() : sumaBases;
+            impuesto = dto.getImpuesto() != null ? dto.getImpuesto() : sumaIva;
             if (subtotal.signum() < 0 || impuesto.signum() < 0) {
                 throw new IllegalArgumentException("El subtotal y el impuesto no pueden ser negativos");
             }
@@ -107,10 +137,17 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
                 throw new IllegalArgumentException("La descripción es obligatoria");
             }
             cuentaGasto = asientoService.validarContrapartidaCxpManual(dto.getCuentaGastoId());
+            numeroComprobante = dto.getNumeroComprobanteProveedor().trim();
+            comprobanteNormalizado = normalizarComprobante(numeroComprobante);
+            if (cuentaRepository.existsByProveedorAndComprobanteNormalizado(proveedor, comprobanteNormalizado)) {
+                throw new ComprobanteProveedorDuplicadoException(numeroComprobante);
+            }
         }
 
         // ADR-011: tipo de cambio propio; con OC, moneda y tipo de cambio salen de la orden (ADR-015)
-        LocalDate fechaEmision = dto.getFechaEmision() != null ? dto.getFechaEmision() : LocalDate.now();
+        // ADR-014: en la CxP manual la fecha de emisión (y la del asiento) es la del comprobante del proveedor
+        LocalDate fechaEmision = dto.getOrdenCompraId() == null ? dto.getFechaComprobante()
+            : (dto.getFechaEmision() != null ? dto.getFechaEmision() : LocalDate.now());
         MonedaFE moneda;
         BigDecimal tipoCambio;
         if (monedaOc != null) {
@@ -137,13 +174,24 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .fechaEmision(fechaEmision)
             .fechaVencimiento(dto.getFechaVencimiento())
             .notas(dto.getNotas())
+            .numeroComprobanteProveedor(numeroComprobante)
+            .claveComprobante(dto.getClaveComprobante() != null && !dto.getClaveComprobante().isBlank()
+                ? dto.getClaveComprobante().trim() : null)
+            .fechaComprobante(oc == null ? dto.getFechaComprobante() : null)
+            .comprobanteNormalizado(comprobanteNormalizado)
             .build();
+        if (oc == null) {
+            for (CuentaPorPagarIvaDTO fila : dto.getDesglose()) {
+                cuenta.getDesglose().add(CuentaPorPagarIva.builder().cuentaPorPagar(cuenta)
+                    .codigoTarifa(fila.getCodigoTarifa()).base(fila.getBase()).iva(fila.getIva()).build());
+            }
+        }
 
-        CuentaPorPagar guardada = cuentaRepository.save(cuenta);
+        CuentaPorPagar guardada = guardarComprobando(cuenta, numeroComprobante);
         // ADR-015: el asiento va en la misma transacción; si falla, se revierte también la CxP.
-        // El saldo del proveedor se toca después, para no dejarlo modificado en memoria si el asiento falla.
+        // El saldo del proveedor se recalcula después, para no dejarlo modificado en memoria si el asiento falla.
         asientoService.generarAsientoCompra(guardada);
-        actualizarSaldoProveedor(proveedor, monto, true);
+        recalcularSaldoProveedor(proveedor);
         log.info("Cuenta por pagar {} creada para proveedor {}", guardada.getNumero(), proveedor.getNombre());
         return guardada;
     }
@@ -173,8 +221,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .build();
 
         CuentaPorPagar guardada = cuentaRepository.save(cuenta);
-        actualizarSaldoProveedor(oc.getProveedor(), oc.getTotal(), true);
         asientoService.generarAsientoCompra(guardada);
+        recalcularSaldoProveedor(oc.getProveedor());
         log.info("CPP {} generada desde OC {}", guardada.getNumero(), oc.getNumero());
         return guardada;
     }
@@ -253,7 +301,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             ? EstadoCuentaPorPagar.PAGADA
             : EstadoCuentaPorPagar.PARCIAL);
         cuentaRepository.save(cuenta);
-        actualizarSaldoProveedor(cuenta.getProveedor(), monto, false);
+        recalcularSaldoProveedor(cuenta.getProveedor());
     }
 
     @Override
@@ -264,16 +312,127 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             ? EstadoCuentaPorPagar.PENDIENTE
             : EstadoCuentaPorPagar.PARCIAL);
         cuentaRepository.save(cuenta);
-        actualizarSaldoProveedor(cuenta.getProveedor(), monto, true);
+        recalcularSaldoProveedor(cuenta.getProveedor());
+    }
+
+    @Override
+    @Transactional
+    public CuentaPorPagar bloquear(Long id) {
+        Long proveedorId = cuentaRepository.findProveedorId(id)
+            .orElseThrow(() -> new NoSuchElementException("Cuenta por pagar no encontrada: " + id));
+        proveedorRepository.findByIdForUpdate(proveedorId);
+        return cuentaRepository.findByIdForUpdate(id)
+            .orElseThrow(() -> new NoSuchElementException("Cuenta por pagar no encontrada: " + id));
+    }
+
+    @Override
+    @Transactional
+    public CuentaPorPagar anular(Long id, String motivo, Usuario usuario) {
+        String motivoLimpio = motivo == null ? "" : motivo.trim();
+        if (motivoLimpio.length() < 3 || motivoLimpio.length() > 180) {
+            throw new IllegalArgumentException(MSG_ANULAR_MOTIVO);
+        }
+        // Bloqueo proveedor → CxP; estado y pagos se revisan DESPUÉS, sobre el estado vigente
+        CuentaPorPagar cuenta = bloquear(id);
+        if (cuenta.getEstado() == EstadoCuentaPorPagar.ANULADA) {
+            throw new IllegalStateException(MSG_ANULAR_YA_ANULADA);
+        }
+        if (!pagoProveedorRepository.findByCuentaPorPagarAndEstadoForUpdate(cuenta, EstadoPagoProveedor.CONFIRMADO).isEmpty()) {
+            throw new IllegalStateException(MSG_ANULAR_CON_PAGOS);
+        }
+
+        // ADR-023: el asiento de compra no se edita ni se borra; se revierte desde su documento origen
+        var reversiones = asientoService.revertirAsientoCompra(cuenta,
+            "Anulación de cuenta por pagar " + cuenta.getNumero() + ": " + motivoLimpio);
+
+        cuenta.setEstado(EstadoCuentaPorPagar.ANULADA);
+        cuenta.setAnuladaPorId(usuario != null ? usuario.getIdUsuario() : null);
+        cuenta.setFechaAnulacion(HoraFiscal.ahora(clock));
+        cuenta.setMotivoAnulacion(motivoLimpio);
+        cuenta.setComprobanteNormalizado(null); // una CxP anulada no bloquea volver a registrar el comprobante
+        CuentaPorPagar anulada = cuentaRepository.save(cuenta);
+        recalcularSaldoProveedor(cuenta.getProveedor());
+
+        String descripcion = "Cuenta por pagar " + cuenta.getNumero() + " anulada: " + motivoLimpio
+            + (reversiones.isEmpty() ? " (sin asiento de compra que revertir)" : "");
+        if (usuario != null && usuario.getIdUsuario() != null) {
+            actividadService.registrarActividad(usuario.getIdUsuario(), "CXP_ANULADA", descripcion,
+                "CuentaPorPagar", id.intValue());
+        }
+        log.info(descripcion);
+        return anulada;
+    }
+
+    /**
+     * Saldo del proveedor en CRC = Σ (saldo de cada CxP no anulada × su tipo de cambio), cada una redondeada a 2
+     * decimales (HALF_UP). Único punto de escritura; los asientos y los pagos no lo tocan.
+     */
+    @Override
+    @Transactional
+    public void recalcularSaldoProveedor(Proveedor proveedor) {
+        BigDecimal total = cuentaRepository.findByProveedorAndEstadoNot(proveedor, EstadoCuentaPorPagar.ANULADA).stream()
+            .map(c -> ConversionMoneda.montoEnCrcReporte(c.getSaldoPendiente(), c.getMoneda(), c.getTipoCambio()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .setScale(2, RoundingMode.HALF_UP);
+        proveedor.setSaldoPendiente(total);
+        proveedorRepository.save(proveedor);
+    }
+
+    @Override
+    public List<String> advertencias(CuentaPorPagarDTO dto) {
+        return comprobanteValidator.advertencias(dto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CuentaPorPagarVistaDTO detalleVista(Long id) {
+        return CuentaPorPagarVistaDTO.de(findById(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CuentaPorPagarVistaDTO> listarVista(EstadoCuentaPorPagar estado) {
+        var cuentas = estado != null ? cuentaRepository.findByEstadoConRelaciones(estado)
+            : cuentaRepository.findAllConRelaciones();
+        return cuentas.stream().map(CuentaPorPagarVistaDTO::de).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CuentaPorPagarVistaDTO> vencidasVista() {
+        return cuentaRepository.findVencidasConRelaciones(LocalDate.now(clock)).stream()
+            .map(CuentaPorPagarVistaDTO::de).toList();
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private void actualizarSaldoProveedor(Proveedor proveedor, BigDecimal monto, boolean aumentar) {
-        BigDecimal actual = proveedor.getSaldoPendiente() != null
-            ? proveedor.getSaldoPendiente() : BigDecimal.ZERO;
-        proveedor.setSaldoPendiente(aumentar ? actual.add(monto) : actual.subtract(monto));
-        proveedorRepository.save(proveedor);
+    /** Número del comprobante sin espacios y en mayúsculas: la clave de comparación del bloqueo de duplicados. */
+    static String normalizarComprobante(String numero) {
+        return numero.replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
+    }
+
+    /**
+     * Guarda la CxP y fuerza el INSERT. Si el índice único (proveedor, comprobante) lo rechaza —otro alta idéntica ganó
+     * la carrera— se responde el mismo duplicado que el chequeo previo; cualquier otra violación se propaga.
+     */
+    private CuentaPorPagar guardarComprobando(CuentaPorPagar cuenta, String numeroComprobante) {
+        try {
+            return cuentaRepository.saveAndFlush(cuenta);
+        } catch (DataIntegrityViolationException e) {
+            if (numeroComprobante != null && causaMenciona(e, NOMBRE_INDICE_COMPROBANTE)) {
+                throw new ComprobanteProveedorDuplicadoException(numeroComprobante);
+            }
+            throw e;
+        }
+    }
+
+    private static boolean causaMenciona(Throwable error, String texto) {
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t.getMessage() != null && t.getMessage().toLowerCase(Locale.ROOT).contains(texto)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private synchronized String generarNumero() {

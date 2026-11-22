@@ -1693,6 +1693,25 @@ public class AsientoContableService {
     }
 
     /**
+     * Revierte el asiento de compra vigente de una cuenta por pagar anulada (ADR-023, T-052). La reversión se fecha el
+     * día de la anulación, como la de las facturas, hasta que se decida el período fiscal (P-018/P-068).
+     * @param cpp    CxP origen
+     * @param motivo Motivo de la reversión
+     * @return Asientos de reversión generados (vacío si la CxP no tenía asiento, p. ej. una CxP heredada)
+     */
+    @Transactional
+    public List<AsientoContable> revertirAsientoCompra(CuentaPorPagar cpp, String motivo) {
+        List<AsientoContable> reversiones = new ArrayList<>();
+        if (cpp.getId() == null) {
+            return reversiones;
+        }
+        for (AsientoContable vigente : asientoRepository.findAsientosCompraVigentes(cpp.getId())) {
+            reversiones.add(generarAsientoReversion(vigente, motivo));
+        }
+        return reversiones;
+    }
+
+    /**
      * Tipo de cambio de un documento (CxP/OC) a CRC: 1 si está en CRC; el indicado en otro caso.
      * @throws IllegalStateException si la moneda es extranjera y el tipo de cambio es nulo o &lt;= 0
      */
