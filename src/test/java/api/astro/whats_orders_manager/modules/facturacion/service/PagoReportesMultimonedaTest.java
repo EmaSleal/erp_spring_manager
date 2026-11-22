@@ -50,6 +50,7 @@ class PagoReportesMultimonedaTest {
     void setUp() {
         service = new PagoServiceImpl();
         ReflectionTestUtils.setField(service, "pagoRepository", pagoRepository);
+        ReflectionTestUtils.setField(service, "clock", java.time.Clock.system(java.time.ZoneId.of("America/Costa_Rica")));
         ReflectionTestUtils.setField(service, "pagoMapper", pagoMapper);
         when(pagoMapper.toDTOList(any())).thenReturn(List.of());
     }
@@ -57,7 +58,7 @@ class PagoReportesMultimonedaTest {
     @Test
     @DisplayName("criterio 17: un pago de 10 000 CRC y uno de 100 USD a TC 500 suman 60 000 CRC en los ingresos del día")
     void ingresosDelDia_sumaEnCrc() {
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(java.time.Clock.system(java.time.ZoneId.of("America/Costa_Rica")));
         when(pagoRepository.findValidosByFechaPagoRango(hoy.atStartOfDay(), hoy.plusDays(1).atStartOfDay()))
             .thenReturn(List.of(
                 pago("10000.00", MonedaFE.CRC, null, MetodoPago.EFECTIVO),

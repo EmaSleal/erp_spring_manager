@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.config.MysqlZonaCostaRica;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,10 +28,7 @@ class MigracionNotaParcialIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.32")
-            .withDatabaseName("t047")
-            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
-            .withCreateContainerCmdModifier(cmd -> cmd.withName("t047-it-mysql-migraciones"));
+    static final MySQLContainer<?> MYSQL = MysqlZonaCostaRica.contenedor("t047", "t047-it-mysql-migraciones");
 
     static JdbcTemplate jdbc;
 

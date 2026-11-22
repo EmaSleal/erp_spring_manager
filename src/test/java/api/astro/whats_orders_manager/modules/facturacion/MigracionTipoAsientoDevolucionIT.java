@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion;
 
+import api.astro.whats_orders_manager.config.MysqlZonaCostaRica;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,10 +32,7 @@ class MigracionTipoAsientoDevolucionIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.32")
-            .withDatabaseName("t049tipo")
-            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
-            .withCreateContainerCmdModifier(cmd -> cmd.withName("t049-it-mysql-tipo-devolucion"));
+    static final MySQLContainer<?> MYSQL = MysqlZonaCostaRica.contenedor("t049tipo", "t049-it-mysql-tipo-devolucion");
 
     static JdbcTemplate jdbc;
 

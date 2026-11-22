@@ -35,8 +35,9 @@ Aplica a cualquier arranque de la aplicación para verificar un cambio (T-036; c
 1. **Copia sin secretos.** Trabajar en una copia sin `.env`/`.env.local` (`git worktree add --detach` o `git archive`),
    nunca en la raíz del repositorio.
 2. **Base de datos propia.** MySQL en un contenedor con nombre de la tarea y `tmpfs` (por ejemplo
-   `docker run --name tNNN-mysql --tmpfs /var/lib/mysql ...`). Nunca `SELECT *` sobre `configuracion_hacienda` ni
-   `configuracion_email`. Al terminar, `docker rm -f tNNN-mysql`: el estado de Docker queda igual al inicial.
+   `docker run --name tNNN-mysql --tmpfs /var/lib/mysql ... --default-time-zone=America/Costa_Rica`, la misma zona
+   que producción y las pruebas, T-050/ADR-060; si la imagen no tuviera tablas de zonas con nombre, `--default-time-zone=-06:00`
+   es equivalente). Nunca `SELECT *` sobre `configuracion_hacienda` ni `configuracion_email`. Al terminar, `docker rm -f tNNN-mysql`: el estado de Docker queda igual al inicial.
 3. **Jobs apagados.** Arrancar con `app.scheduling.enabled=false` (variable `APP_SCHEDULING_ENABLED=false`): ningún método
    `@Scheduled` se ejecuta (reintentos de comprobantes, recordatorios, tipo de cambio, alertas de inventario, caché).
    Ya no se usan ventanas de tiempo para evitar los jobs.
@@ -51,6 +52,13 @@ Aplica a cualquier arranque de la aplicación para verificar un cambio (T-036; c
    ni las URL de recepción e IdP de Hacienda fijas en el enum `AmbienteHacienda`, que apuntar las URL configurables a
    127.0.0.1 no bloquearía.
 
+5. **Zona horaria.** El MySQL del smoke corre en America/Costa_Rica y la app arranca con `TZ=America/Costa_Rica`, como
+   en producción. La migración V51 corrige una sola vez los TIMESTAMP escritos por la app y aborta si `@@global.time_zone`
+   no es `America/Costa_Rica` ni `-06:00`. Si el volcado se carga primero en un MySQL en UTC (ensayo del despliegue, ver
+   `docs/despliegue/ZONA_HORARIA_MYSQL.md`), el contenedor se recrea con la zona nueva sobre el mismo volumen con nombre
+   antes de arrancar la app. Para ver el pago del día después de las 18:00 de Costa Rica con el reloj de pared de día, la
+   app se arranca con la hora adelantada; el reloj lo da el `Clock` de la aplicación, no la base.
+
 Comando completo (desde la copia, con el jar ya construido). Las variables obligatorias son `DB_URL`, `DB_USERNAME`,
 `DB_PASSWORD`, `META_WEBHOOK_VERIFY_TOKEN`, `APP_BASE_URL` y `CORS_ALLOWED_ORIGINS` (sin ellas la app falla con
 «Faltan variables de entorno obligatorias»); `HACIENDA_CRYPTO_KEY` debe ser base64 de 32 bytes. Los directorios por
@@ -61,7 +69,8 @@ directorio temporal. Sustituir solo lo que va entre `<>`; el resto son valores d
 S="$(mktemp -d)"; mkdir -p "$S"/{certificados,sellos,uploads,comprobantes}
 printf '127.0.0.1 localhost\n::1 localhost\n' > "$S/hosts-solo-localhost"
 env -i PATH="$PATH" HOME="$HOME" \
-  DB_URL='jdbc:mysql://127.0.0.1:<puerto-mysql>/<base>' DB_USERNAME=<usuario> DB_PASSWORD=<clave> \
+  TZ=America/Costa_Rica \
+  DB_URL='jdbc:mysql://127.0.0.1:<puerto-mysql>/<base>?serverTimezone=America/Costa_Rica' DB_USERNAME=<usuario> DB_PASSWORD=<clave> \
   META_WEBHOOK_VERIFY_TOKEN=smoke-test-token \
   APP_BASE_URL=http://127.0.0.1:<puerto-app> CORS_ALLOWED_ORIGINS=http://127.0.0.1:<puerto-app> \
   SERVER_PORT=<puerto-app> \

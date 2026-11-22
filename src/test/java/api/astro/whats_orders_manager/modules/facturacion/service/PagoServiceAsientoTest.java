@@ -101,6 +101,7 @@ class PagoServiceAsientoTest {
                 asientoRepository, detalleRepository, cuentaRepository, parametroContableRepository);
         service = new PagoServiceImpl();
         ReflectionTestUtils.setField(service, "pagoRepository", pagoRepository);
+        ReflectionTestUtils.setField(service, "clock", java.time.Clock.system(java.time.ZoneId.of("America/Costa_Rica")));
         ReflectionTestUtils.setField(service, "facturaRepository", facturaRepository);
         ReflectionTestUtils.setField(service, "clienteRepository", clienteRepository);
         ReflectionTestUtils.setField(service, "numeroPagoGenerator", numeroPagoGenerator);
