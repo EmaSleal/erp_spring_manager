@@ -76,7 +76,8 @@ class OrdenCompraRecepcionInventarioTest {
 
     private OrdenCompraServiceImpl servicio(boolean control) {
         return new OrdenCompraServiceImpl(ocRepository, mock(ProveedorRepository.class), mock(ProductoRepository.class),
-                movimientos, lotes, mock(TipoCambioService.class), RELOJ, control);
+                movimientos, lotes, mock(TipoCambioService.class),
+                mock(api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository.class), RELOJ, control);
     }
 
     private RecepcionDTO recepcion(int cantProducto, int cantSinProducto, String lote) {

@@ -131,6 +131,22 @@
         return m ? parseInt(m[1], 10) : null;
     }
 
+    var MSG_VENCIMIENTO = 'La fecha de vencimiento no puede ser anterior a la fecha del comprobante';
+
+    /**
+     * Fecha de vencimiento propuesta (T-053, criterio 15): fecha del comprobante (AAAA-MM-DD) + días de crédito del
+     * proveedor; sin días (0, nulo, vacío o negativo) es de contado y vence el día del comprobante. Cadena vacía si la
+     * fecha del comprobante no es válida. Mismo cálculo que el servidor.
+     */
+    function calcularVencimiento(fechaComprobante, diasCredito) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(esVacio(fechaComprobante) ? '' : String(fechaComprobante));
+        if (!m) return '';
+        var dias = parseInt(diasCredito, 10);
+        if (isNaN(dias) || dias < 0) dias = 0;
+        var f = new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10) + dias));
+        return f.getUTCFullYear() + '-' + String(f.getUTCMonth() + 1).padStart(2, '0') + '-' + String(f.getUTCDate()).padStart(2, '0');
+    }
+
     /**
      * Aplica el cambio de un campo a una línea y devuelve la línea nueva: base o tarifa recalculan el IVA (que luego se
      * puede corregir a mano) y un tratamiento distinto de LIMITADO limpia la tarifa límite.
@@ -179,6 +195,10 @@
 
         if (!esVacio(datos.clave) && !/^\d{50}$/.test(String(datos.clave).trim())) {
             errores.push('La clave del comprobante debe tener 50 dígitos');
+        }
+
+        if (!esVacio(datos.vencimiento) && !esVacio(datos.fecha) && String(datos.vencimiento) < String(datos.fecha)) {
+            errores.push(MSG_VENCIMIENTO);
         }
 
         var lineas = datos.lineas || [];
@@ -240,6 +260,7 @@
         cuerpo.claveComprobante = esVacio(datos.clave) ? null : String(datos.clave).trim();
         cuerpo.fechaComprobante = datos.fecha;
         cuerpo.fechaEmision = datos.fecha;
+        cuerpo.fechaVencimiento = esVacio(datos.vencimiento) ? null : datos.vencimiento;
         cuerpo.lineas = (datos.lineas || []).map(function (l) {
             return {
                 descripcion: esVacio(l.descripcion) ? null : String(l.descripcion).trim(),
@@ -590,6 +611,7 @@
 
     global.CxpLineas = {
         renderHistorial: renderHistorial,
+        calcularVencimiento: calcularVencimiento,
         TARIFAS: TARIFAS,
         TRATAMIENTOS: TRATAMIENTOS,
         porcentajeDe: porcentajeDe,

@@ -61,7 +61,7 @@ public class OrdenCompraFacturacionService {
             .toList();
         MonedaFE moneda = oc.getMoneda() != null ? oc.getMoneda() : MonedaFE.CRC;
         return new OrdenCompraFacturacionDTO(oc.getId(), oc.getNumero(), oc.getProveedor().getId(),
-            oc.getProveedor().getNombre(), oc.getEstado().name(), oc.getEstado().admiteFacturar(), moneda.getCodigo(),
+            oc.getProveedor().getNombre(), oc.getProveedor().getDiasCredito(), oc.getEstado().name(), oc.getEstado().admiteFacturar(), moneda.getCodigo(),
             total, facturado, pendiente, exceso,
             propuesta.map(CuentaContable::getIdCuenta).orElse(null),
             propuesta.map(CuentaContable::getCodigo).orElse(null),

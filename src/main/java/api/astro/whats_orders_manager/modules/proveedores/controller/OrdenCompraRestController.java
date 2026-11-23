@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.RecepcionDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
+import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraConFacturasException;
 import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraFacturacionService;
 import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
@@ -35,17 +36,14 @@ public class OrdenCompraRestController {
             @RequestParam(required = false) EstadoOrdenCompra estado,
             Authentication authentication
     ) {
-        var lista = estado != null
-            ? ordenCompraService.findByEstado(estado)
-            : ordenCompraService.findAll();
-        return ResponseEntity.ok(ResponseDTO.success("OK", lista));
+        return ResponseEntity.ok(ResponseDTO.success("OK", ordenCompraService.vistas(estado)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_VER')")
     public ResponseEntity<ResponseDTO> findById(@PathVariable Long id, Authentication authentication) {
         try {
-            return ResponseEntity.ok(ResponseDTO.success("OK", ordenCompraService.findById(id)));
+            return ResponseEntity.ok(ResponseDTO.success("OK", ordenCompraService.vistaById(id)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }
@@ -85,6 +83,8 @@ public class OrdenCompraRestController {
             Usuario usuario = resolverUsuario(authentication);
             OrdenCompra oc = ordenCompraService.cancelar(id, usuario);
             return ResponseEntity.ok(ResponseDTO.success("OC " + oc.getNumero() + " cancelada", null));
+        } catch (OrdenCompraConFacturasException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }

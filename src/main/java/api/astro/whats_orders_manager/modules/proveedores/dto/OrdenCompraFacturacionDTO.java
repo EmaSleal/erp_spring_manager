@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Vista de una orden de compra para facturar (T-053, ADR-066 §4): total, facturado (CxP no anuladas), pendiente de facturar,
- * exceso (lo facturado por encima del total), sus CxP, sus detalles y la cuenta propuesta para las líneas de mercadería
+ * días de crédito del proveedor (para proponer el vencimiento), exceso (lo facturado por encima del total), sus CxP, sus detalles y la cuenta propuesta para las líneas de mercadería
  * (parámetro COMPRAS_MERCADERIA; nula si no está configurado). Todo en la moneda de la orden.
  */
 public record OrdenCompraFacturacionDTO(
@@ -14,6 +14,7 @@ public record OrdenCompraFacturacionDTO(
         String numero,
         Long proveedorId,
         String proveedorNombre,
+        Integer diasCredito,
         String estado,
         boolean admiteFacturar,
         String moneda,

@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
@@ -9,6 +11,7 @@ import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInven
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.proveedores.dto.DetalleOrdenCompraDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraDTO;
+import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraVistaDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.RecepcionDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.DetalleOrdenCompra;
@@ -16,6 +19,7 @@ import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import api.astro.whats_orders_manager.modules.proveedores.repository.OrdenCompraRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
+import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraConFacturasException;
 import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import lombok.extern.slf4j.Slf4j;
@@ -40,12 +44,14 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
     private final MovimientoInventarioService movimientoService;
     private final LoteProductoService loteService;
     private final TipoCambioService tipoCambioService;
+    private final CuentaPorPagarRepository cuentaPorPagarRepository;
     private final Clock clock;
     private final boolean controlInventarioHabilitado;
 
     public OrdenCompraServiceImpl(OrdenCompraRepository ordenCompraRepository, ProveedorRepository proveedorRepository,
                                   ProductoRepository productoRepository, MovimientoInventarioService movimientoService,
-                                  LoteProductoService loteService, TipoCambioService tipoCambioService, Clock clock,
+                                  LoteProductoService loteService, TipoCambioService tipoCambioService,
+                                  CuentaPorPagarRepository cuentaPorPagarRepository, Clock clock,
                                   @Value("${inventario.control.habilitado}") boolean controlInventarioHabilitado) {
         this.ordenCompraRepository = ordenCompraRepository;
         this.proveedorRepository = proveedorRepository;
@@ -53,6 +59,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         this.movimientoService = movimientoService;
         this.loteService = loteService;
         this.tipoCambioService = tipoCambioService;
+        this.cuentaPorPagarRepository = cuentaPorPagarRepository;
         this.clock = clock;
         this.controlInventarioHabilitado = controlInventarioHabilitado;
     }
@@ -126,9 +133,19 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
     @Override
     @Transactional
     public OrdenCompra cancelar(Long id, Usuario usuario) {
-        OrdenCompra oc = findById(id);
+        // mismo orden de bloqueo que el alta de una CxP (proveedor → orden → CxP): una factura que se registra a la vez
+        // o la ve esta cancelación o la rechaza el estado de la orden
+        Long proveedorId = ordenCompraRepository.findProveedorId(id)
+            .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + id));
+        proveedorRepository.findByIdForUpdate(proveedorId)
+            .orElseThrow(() -> new NoSuchElementException("Proveedor no encontrado: " + proveedorId));
+        OrdenCompra oc = ordenCompraRepository.findByIdForUpdate(id)
+            .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + id));
         if (oc.getEstado() == EstadoOrdenCompra.RECIBIDA || oc.getEstado() == EstadoOrdenCompra.CANCELADA) {
             throw new IllegalStateException("No se puede cancelar una OC en estado " + oc.getEstado());
+        }
+        if (!cuentaPorPagarRepository.findByOrdenCompraAndEstadoNotForUpdate(oc, EstadoCuentaPorPagar.ANULADA).isEmpty()) {
+            throw new OrdenCompraConFacturasException();
         }
         oc.setEstado(EstadoOrdenCompra.CANCELADA);
         log.info("OC {} cancelada por {}", oc.getNumero(), usuario.getNombre());
@@ -222,6 +239,20 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
     public OrdenCompra findById(Long id) {
         return ordenCompraRepository.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrdenCompraVistaDTO vistaById(Long id) {
+        return OrdenCompraVistaDTO.de(findById(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrdenCompraVistaDTO> vistas(EstadoOrdenCompra estado) {
+        List<OrdenCompra> lista = estado != null ? ordenCompraRepository.findByEstadoOrderByFechaDesc(estado)
+            : ordenCompraRepository.findAll();
+        return lista.stream().map(OrdenCompraVistaDTO::de).toList();
     }
 
     @Override

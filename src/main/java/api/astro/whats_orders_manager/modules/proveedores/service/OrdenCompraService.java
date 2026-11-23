@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.service;
 
 import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraDTO;
+import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraVistaDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.RecepcionDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
@@ -21,6 +22,12 @@ public interface OrdenCompraService {
     List<OrdenCompra> findAll();
 
     OrdenCompra findById(Long id);
+
+    /** La orden como DTO, armado en una transacción de lectura (T-053, revisión 1); NoSuchElementException si no existe. */
+    OrdenCompraVistaDTO vistaById(Long id);
+
+    /** Todas las órdenes (o las del estado) como DTO, armados en una transacción de lectura. */
+    List<OrdenCompraVistaDTO> vistas(EstadoOrdenCompra estado);
 
     List<OrdenCompra> findByEstado(EstadoOrdenCompra estado);
 

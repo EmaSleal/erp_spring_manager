@@ -342,6 +342,7 @@
                             <div class="col-md-4">
                                 <label for="facFechaVencimiento" class="form-label">Fecha de vencimiento</label>
                                 <input type="date" id="facFechaVencimiento" class="form-control" />
+                                <div class="form-text">Por defecto: fecha del comprobante + días de crédito del proveedor (editable).</div>
                             </div>
                         </div>
 
@@ -757,11 +758,20 @@
         revalidarFac();
     }
 
+    // T-053: vencimiento propuesto = fecha del comprobante + días de crédito del proveedor de la orden; editable
+    let vencimientoFacEditado = false;
+    function proponerVencimientoFac() {
+        if (vencimientoFacEditado || !ocFacturacion) return;
+        document.getElementById('facFechaVencimiento').value =
+            CxpLineas.calcularVencimiento(document.getElementById('facFechaComprobante').value, ocFacturacion.diasCredito);
+    }
+
     function datosFormularioFac() {
         return {
             numero: document.getElementById('facNumeroComprobante').value,
             clave: document.getElementById('facClaveComprobante').value,
             fecha: document.getElementById('facFechaComprobante').value,
+            vencimiento: document.getElementById('facFechaVencimiento').value,
             hoy: hoyIso(),
             lineas: lineasFac,
             prorrata: prorrataFac.porcentaje,
@@ -819,6 +829,8 @@
         document.getElementById('facMoneda').value = ocFacturacion.moneda;
         document.getElementById('facDescripcion').value = 'Factura de la OC ' + ocFacturacion.numero;
         document.getElementById('facFechaComprobante').value = hoyIso();
+        vencimientoFacEditado = false;
+        proponerVencimientoFac();
         prorrataFac = { anio: null, porcentaje: null };
         // sin cuenta propuesta (parámetro COMPRAS_MERCADERIA sin configurar) no se propone ninguna y se puede registrar igual
         document.getElementById('facCuentaAyuda').textContent = ocFacturacion.cuentaPropuestaId
@@ -838,7 +850,8 @@
             if (detalle) detalle.hide();
             await abrirFacturaOc();
         });
-        document.getElementById('facFechaComprobante').addEventListener('change', () => { consultarProrrataFac(); revalidarFac(); });
+        document.getElementById('facFechaVencimiento').addEventListener('input', () => { vencimientoFacEditado = true; revalidarFac(); });
+        document.getElementById('facFechaComprobante').addEventListener('change', () => { proponerVencimientoFac(); consultarProrrataFac(); revalidarFac(); });
         ['facNumeroComprobante', 'facClaveComprobante', 'facFechaComprobante', 'facTotalComprobante']
             .forEach(id => document.getElementById(id).addEventListener('input', revalidarFac));
         document.getElementById('btnAgregarLineaFac').addEventListener('click', () => {
@@ -871,8 +884,7 @@
                 body: JSON.stringify(CxpLineas.armarPeticion(Object.assign(datosFormularioFac(), {
                     extra: {
                         ordenCompraId:    ocFacturacion.ordenCompraId,
-                        descripcion:      descripcion,
-                        fechaVencimiento: document.getElementById('facFechaVencimiento').value || null
+                        descripcion:      descripcion
                     }
                 })))
             });

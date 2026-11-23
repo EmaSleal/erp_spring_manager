@@ -498,3 +498,46 @@ test('la plantilla no arma el historial de pagos con innerHTML', () => {
     const f = html.slice(html.indexOf('async function abrirModalHistorial'), html.indexOf('// ── Toast helper'));
     assert.doesNotMatch(f, /innerHTML|insertAdjacentHTML/);
 });
+
+// ── T-053 revisión 1 (criterio 15): fecha de vencimiento propuesta ───────────────────────────────────────────────────
+
+test('calcularVencimiento: fecha del comprobante + días de crédito; sin días (0, nulo, vacío) es de contado', () => {
+    const d = cargar();
+    assert.equal(d.calcularVencimiento('2026-09-01', 30), '2026-10-01');
+    assert.equal(d.calcularVencimiento('2026-09-01', '30'), '2026-10-01');
+    assert.equal(d.calcularVencimiento('2026-12-15', 30), '2027-01-14');   // cruza de año
+    assert.equal(d.calcularVencimiento('2028-02-01', 29), '2028-03-01');   // bisiesto
+    assert.equal(d.calcularVencimiento('2026-09-01', 0), '2026-09-01');
+    assert.equal(d.calcularVencimiento('2026-09-01', null), '2026-09-01');
+    assert.equal(d.calcularVencimiento('2026-09-01', ''), '2026-09-01');
+    assert.equal(d.calcularVencimiento('2026-09-01', -5), '2026-09-01');
+});
+
+test('calcularVencimiento: sin fecha de comprobante válida no propone nada', () => {
+    const d = cargar();
+    assert.equal(d.calcularVencimiento('', 30), '');
+    assert.equal(d.calcularVencimiento(null, 30), '');
+    assert.equal(d.calcularVencimiento('no-es-fecha', 30), '');
+});
+
+test('validar: el vencimiento anterior al comprobante es error con el mensaje fijo del servidor; igual o posterior pasa', () => {
+    const d = cargar();
+    const base = { numero: 'FE-1', fecha: '2026-09-10', hoy: '2026-11-01', lineas: [{ cuentaId: '1', base: '100', iva: '13', codigoTarifa: '08', tratamiento: 'PLENO' }] };
+    const msg = 'La fecha de vencimiento no puede ser anterior a la fecha del comprobante';
+    assert.ok(d.validar({ ...base, vencimiento: '2026-09-09' }).errores.includes(msg));
+    assert.ok(!d.validar({ ...base, vencimiento: '2026-09-10' }).errores.includes(msg));
+    assert.ok(!d.validar({ ...base, vencimiento: '' }).errores.includes(msg));
+});
+
+test('armarPeticion incluye fechaVencimiento solo si el usuario la dejó con valor', () => {
+    const d = cargar();
+    const datos = { numero: 'A', fecha: '2026-09-10', lineas: [] };
+    assert.equal(d.armarPeticion({ ...datos, vencimiento: '2026-10-10' }).fechaVencimiento, '2026-10-10');
+    assert.equal(d.armarPeticion({ ...datos, vencimiento: '' }).fechaVencimiento, null);
+});
+
+test('las plantillas de CxP manual y de factura desde la OC proponen el vencimiento con CxpLineas.calcularVencimiento', () => {
+    const t = (r) => fs.readFileSync(path.join(raiz, 'src/main/resources/templates/modules', r), 'utf8');
+    assert.match(t('contabilidad/cuentas-pagar.html'), /CxpLineas\.calcularVencimiento/);
+    assert.match(t('proveedores/ordenes-compra.html'), /CxpLineas\.calcularVencimiento/);
+});

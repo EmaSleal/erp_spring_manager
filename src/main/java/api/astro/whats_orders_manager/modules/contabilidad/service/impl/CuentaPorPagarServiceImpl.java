@@ -137,6 +137,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
 
         // T-052/T-054: comprobante del proveedor y líneas con cuenta y tratamiento de IVA (ADR-066, ADR-067)
         comprobanteValidator.validar(dto);
+        LocalDate fechaVencimiento = comprobanteValidator.resolverVencimiento(dto.getFechaComprobante(),
+            dto.getFechaVencimiento(), proveedor.getDiasCredito());
         if (descripcion == null || descripcion.isBlank()) {
             throw new IllegalArgumentException("La descripción es obligatoria");
         }
@@ -221,7 +223,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .moneda(moneda)
             .tipoCambio(tipoCambio)
             .fechaEmision(fechaEmision)
-            .fechaVencimiento(dto.getFechaVencimiento())
+            .fechaVencimiento(fechaVencimiento)
             .notas(dto.getNotas())
             .numeroComprobanteProveedor(numeroComprobante)
             .claveComprobante(dto.getClaveComprobante() != null && !dto.getClaveComprobante().isBlank()
