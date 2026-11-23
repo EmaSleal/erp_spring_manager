@@ -1354,12 +1354,8 @@ public class AsientoContableService {
      * Genera y contabiliza el asiento de compra de una CxP (ADR-011: montos en CRC; ADR-015: toda
      * CxP genera su asiento al crearse).
      *
-     * CxP con orden de compra — el desglose sale de la OC:
-     *   DR CPP_CUENTA_COMPRAS      — oc.subtotal × tc (absorbe el ajuste de redondeo)
-     *   DR CPP_IVA_CREDITO_FISCAL  — oc.impuesto × tc (solo si &gt; 0)
-     *   CR CPP_CUENTA_POR_PAGAR    — oc.total × tc
-     *
-     * CxP manual (ADR-016, T-054/ADR-067 §3) — por líneas, cada una con su cuenta:
+     * Toda CxP, con o sin orden de compra (T-053), se contabiliza por líneas:
+     * (ADR-016, T-054/ADR-067 §3) cada línea con su cuenta:
      *   DR cuenta de cada línea    — Σ (base + IVA no acreditable) de las líneas de esa cuenta, agrupado por cuenta
      *   DR CPP_IVA_CREDITO_FISCAL  — Σ IVA acreditable (solo si &gt; 0)
      *   CR CPP_CUENTA_POR_PAGAR    — cpp.monto
@@ -1369,38 +1365,29 @@ public class AsientoContableService {
      * lleva a la línea de compras/gasto (en la CxP manual, a la cuenta de mayor débito), con el mismo criterio que
      * el asiento de venta.
      *
-     * Fecha (ADR-014): cpp.fechaEmision y, si falta, oc.fechaRecepcion; nunca la del sistema.
+     * Fecha (ADR-014): cpp.fechaEmision (la del comprobante del proveedor) y, si falta (CxP heredada), oc.fechaRecepcion;
+     * nunca la del sistema.
      *
      * @param cpp la CuentaPorPagar recién guardada
      * @return el asiento contabilizado
-     * @throws IllegalStateException si a una CxP manual le faltan las líneas, no hay
+     * @throws IllegalStateException si a la CxP le faltan las líneas, no hay
      *                               fecha de emisión ni de recepción, falta una clave contable, el tipo de
      *                               cambio o el asiento no cuadra
      */
     @Transactional
     public AsientoContable generarAsientoCompra(CuentaPorPagar cpp) {
-        var oc = cpp.getOrdenCompra();
-        BigDecimal subtotal = null;
-        BigDecimal impuesto = null;
-        BigDecimal total;
-        String concepto;
-        String referencia;
-        if (oc != null) {
-            subtotal = oc.getSubtotal();
-            impuesto = oc.getImpuesto();
-            total = oc.getTotal();
-            concepto = "Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre();
-            referencia = "OC " + oc.getNumero();
-        } else {
-            if (cpp.getLineas() == null || cpp.getLineas().isEmpty()) {
-                throw new IllegalStateException("La cuenta por pagar manual " + cpp.getNumero()
-                    + " requiere líneas con su cuenta contable para generar su asiento de compra (ADR-067)");
-            }
-            total = cpp.getMonto();
-            concepto = "CxP manual " + cpp.getNumero() + " - " + cpp.getProveedor().getNombre()
-                + " - " + cpp.getDescripcion();
-            referencia = "CxP " + cpp.getNumero();
+        // T-053: toda CxP (con o sin orden de compra) lleva líneas con su cuenta; el asiento sale de ellas (ADR-067)
+        if (cpp.getLineas() == null || cpp.getLineas().isEmpty()) {
+            throw new IllegalStateException("La cuenta por pagar " + cpp.getNumero()
+                + " requiere líneas con su cuenta contable para generar su asiento de compra (ADR-067)");
         }
+        var oc = cpp.getOrdenCompra();
+        BigDecimal total = cpp.getMonto();
+        String concepto = oc != null
+            ? "Compra según OC " + oc.getNumero() + " - " + cpp.getProveedor().getNombre()
+                + " - " + cpp.getNumeroComprobanteProveedor()
+            : "CxP manual " + cpp.getNumero() + " - " + cpp.getProveedor().getNombre() + " - " + cpp.getDescripcion();
+        String referencia = oc != null ? "OC " + oc.getNumero() + " CxP " + cpp.getNumero() : "CxP " + cpp.getNumero();
         LocalDate fecha = fechaAsientoCompra(cpp);
 
         MonedaFE moneda = ConversionMoneda.oCrc(cpp.getMoneda() != null ? cpp.getMoneda()
@@ -1410,7 +1397,6 @@ public class AsientoContableService {
             "La cuenta por pagar " + cpp.getNumero());
 
         BigDecimal totalCrc = convertirACrc(total, tipoCambio);
-        CuentaContable cuentaCompras = oc != null ? resolverCuenta(CLAVE_CPP_CUENTA_COMPRAS) : null;
         CuentaContable cuentaPorPagar  = resolverCuenta(CLAVE_CPP_CUENTA_POR_PAGAR);
 
         AsientoContable asiento = new AsientoContable();
@@ -1423,26 +1409,7 @@ public class AsientoContableService {
         asiento.setCuentaPorPagar(cpp);
 
         List<DetalleAsiento> detalles = new ArrayList<>();
-        if (oc != null) {
-            BigDecimal subtotalCrc = convertirACrc(subtotal, tipoCambio);
-            BigDecimal impuestoCrc = convertirACrc(impuesto, tipoCambio);
-            // Ajuste del centavo: la diferencia de redondeo se lleva a la línea de compras
-            BigDecimal diferencia = totalCrc.subtract(subtotalCrc).subtract(impuestoCrc);
-            if (diferencia.signum() != 0 && diferencia.abs().compareTo(TOLERANCIA_REDONDEO) <= 0) {
-                subtotalCrc = subtotalCrc.add(diferencia);
-            }
-            // DR Compras (subtotal + ajuste de redondeo)
-            if (subtotalCrc.signum() > 0) {
-                detalles.add(linea(asiento, cuentaCompras, subtotalCrc, null, "Compras — " + referencia));
-            }
-            // DR IVA Crédito Fiscal (cuando aplica)
-            if (impuestoCrc.signum() > 0) {
-                detalles.add(linea(asiento, resolverCuenta(CLAVE_CPP_IVA_CREDITO_FISCAL), impuestoCrc, null,
-                    "IVA Crédito Fiscal — " + referencia));
-            }
-        } else {
-            agregarDebitosPorLineas(asiento, cpp, tipoCambio, totalCrc, referencia, detalles);
-        }
+        agregarDebitosPorLineas(asiento, cpp, tipoCambio, totalCrc, referencia, detalles);
 
         // CR Cuentas por Pagar (total)
         detalles.add(linea(asiento, cuentaPorPagar, null, totalCrc,
@@ -1513,6 +1480,18 @@ public class AsientoContableService {
             detalles.add(linea(asiento, resolverCuenta(CLAVE_CPP_IVA_CREDITO_FISCAL), acreditableCrc, null,
                 "IVA Crédito Fiscal — " + referencia));
         }
+    }
+
+    /**
+     * Cuenta que se propone en las líneas de mercadería de una CxP de orden de compra (T-053, ADR-067): la del parámetro
+     * contable COMPRAS_MERCADERIA. Vacío si el parámetro no está configurado o su cuenta no es una hoja utilizable: la
+     * interfaz no propone ninguna y la CxP se puede registrar igual (no hay valor por defecto, ADR-024).
+     */
+    @Transactional(readOnly = true)
+    public Optional<CuentaContable> cuentaPropuestaMercaderia() {
+        return parametroContableRepository.findByClave(CLAVE_COMPRAS_MERCADERIA)
+            .map(ParametroContable::getCuentaContable)
+            .filter(c -> motivoNoEsHojaUtilizable(c) == null);
     }
 
     /**

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PagoProveedorRepository extends JpaRepository<PagoProveedor, Long> {
@@ -26,6 +27,15 @@ public interface PagoProveedorRepository extends JpaRepository<PagoProveedor, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM PagoProveedor p WHERE p.cuentaPorPagar = :cuenta AND p.estado = :estado")
     List<PagoProveedor> findByCuentaPorPagarAndEstadoForUpdate(CuentaPorPagar cuenta, EstadoPagoProveedor estado);
+
+    /** Id de la CxP del pago sin cargar el pago (para bloquear antes de leer su estado, T-053). */
+    @Query("SELECT p.cuentaPorPagar.id FROM PagoProveedor p WHERE p.id = :id")
+    Optional<Long> findCuentaPorPagarId(Long id);
+
+    /** El pago con bloqueo de escritura (SELECT ... FOR UPDATE): el estado leído tras el bloqueo es el vigente (T-053). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM PagoProveedor p WHERE p.id = :id")
+    Optional<PagoProveedor> findByIdForUpdate(Long id);
 
     List<PagoProveedor> findByFechaBetweenOrderByFechaDesc(LocalDate desde, LocalDate hasta);
 

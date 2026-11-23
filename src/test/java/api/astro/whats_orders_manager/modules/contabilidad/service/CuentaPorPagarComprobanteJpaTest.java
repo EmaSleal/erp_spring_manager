@@ -334,7 +334,10 @@ class CuentaPorPagarComprobanteJpaTest {
                 .estado(EstadoOrdenCompra.RECIBIDA).fecha(COMPROBANTE).fechaRecepcion(COMPROBANTE).moneda(MonedaFE.CRC)
                 .subtotal(new BigDecimal("1000.00")).impuesto(new BigDecimal("130.00"))
                 .total(new BigDecimal("1130.00")).build());
-        CuentaPorPagar cpp = cxpService.crearDesdeOrdenCompra(oc.getId());
+        CuentaPorPagar cpp = cxpService.crear(CuentaPorPagarDTO.builder().ordenCompraId(oc.getId())
+                .descripcion("Factura de la OC").numeroComprobanteProveedor("FE-OC-1").fechaComprobante(COMPROBANTE)
+                .lineas(List.of(new CuentaPorPagarLineaDTO("Mercadería", gasto.getIdCuenta(), "08", new BigDecimal("1000.00"),
+                        new BigDecimal("130.00"), TratamientoIvaCompra.PLENO, null))).build());
         assertThat(saldo(proveedor)).isEqualByComparingTo("1130.00");
 
         cxpService.anular(cpp.getId(), "OC mal recibida", usuario);

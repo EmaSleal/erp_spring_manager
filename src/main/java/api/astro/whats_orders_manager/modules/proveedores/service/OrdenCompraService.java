@@ -23,4 +23,10 @@ public interface OrdenCompraService {
     OrdenCompra findById(Long id);
 
     List<OrdenCompra> findByEstado(EstadoOrdenCompra estado);
+
+    /**
+     * ¿Recibir una OC registra entradas de inventario? Es la propiedad inventario.control.habilitado (T-053, ADR-066 §5):
+     * con false la recepción solo actualiza lo recibido y el estado de la orden.
+     */
+    boolean recepcionMueveInventario();
 }

@@ -7,6 +7,11 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarLineaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.TratamientoIvaCompra;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoCuenta;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagarLinea;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.DetalleAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
@@ -200,13 +205,19 @@ class AsientoCompraMultimonedaTest {
     }
 
     @Test
-    @DisplayName("la CxP generada desde una OC USD hereda moneda y tipo de cambio de la OC, y su asiento queda en CRC")
-    void crearDesdeOrdenCompra_heredaTipoCambio() {
+    @DisplayName("la CxP de una factura de una OC USD hereda moneda y tipo de cambio de la OC, y su asiento queda en CRC")
+    void crearConOc_heredaTipoCambio() {
         OrdenCompra oc = oc("100.00", "13.00", "113.00", MonedaFE.USD, "500");
         oc.setId(5L);
         oc.setEstado(EstadoOrdenCompra.RECIBIDA);
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
-        when(cuentaPorPagarRepository.save(any(CuentaPorPagar.class))).thenAnswer(inv -> inv.getArgument(0));
+        proveedor.setId(1L);
+        CuentaContable compras = cuentas.get("CPP_CUENTA_COMPRAS");
+        compras.setTipo(TipoCuenta.EGRESO);
+        when(cuentaRepository.findById(compras.getIdCuenta())).thenReturn(Optional.of(compras));
+        when(ordenCompraRepository.findProveedorId(5L)).thenReturn(Optional.of(1L));
+        when(ordenCompraRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(oc));
+        when(proveedorRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(proveedor));
+        when(cuentaPorPagarRepository.saveAndFlush(any(CuentaPorPagar.class))).thenAnswer(inv -> inv.getArgument(0));
         when(cuentaPorPagarRepository.findUltimoConsecutivo(anyInt())).thenReturn(null);
         CuentaPorPagarServiceImpl cxpService = new CuentaPorPagarServiceImpl(cuentaPorPagarRepository,
                 proveedorRepository, ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository),
@@ -215,7 +226,11 @@ class AsientoCompraMultimonedaTest {
                 mock(PagoProveedorRepository.class),
                 mock(UsuarioActividadService.class), RELOJ_PRUEBA);
 
-        CuentaPorPagar cpp = cxpService.crearDesdeOrdenCompra(5L);
+        CuentaPorPagar cpp = cxpService.crear(CuentaPorPagarDTO.builder().ordenCompraId(5L).descripcion("Factura")
+                .numeroComprobanteProveedor("FE-1").fechaComprobante(LocalDate.of(2026, 9, 15))
+                .lineas(List.of(new CuentaPorPagarLineaDTO("Mercadería", compras.getIdCuenta(), "08",
+                        new BigDecimal("100.00"), new BigDecimal("13.00"), TratamientoIvaCompra.PLENO, null)))
+                .build());
 
         assertThat(cpp.getMoneda()).isEqualTo(MonedaFE.USD);
         assertThat(cpp.getTipoCambio()).isEqualByComparingTo("500");
@@ -278,19 +293,29 @@ class AsientoCompraMultimonedaTest {
                 .build();
     }
 
+    /** CxP de la OC con una sola línea (T-053: todo asiento de compra sale de líneas) a la cuenta de compras de la prueba. */
     private CuentaPorPagar cpp(OrdenCompra oc, MonedaFE moneda, String tipoCambio) {
-        return CuentaPorPagar.builder()
+        CuentaPorPagar cpp = CuentaPorPagar.builder()
                 .id(10L)
                 .numero("CPP-2026-00001")
                 .proveedor(proveedor)
                 .ordenCompra(oc)
                 .descripcion("Compra")
+                .subtotal(oc.getSubtotal())
+                .impuesto(oc.getImpuesto())
                 .monto(oc.getTotal())
                 .saldoPendiente(oc.getTotal())
                 .moneda(moneda)
                 .tipoCambio(tipoCambio != null ? new BigDecimal(tipoCambio) : null)
                 .fechaEmision(LocalDate.of(2026, 10, 12))
                 .build();
+        CuentaPorPagarLinea linea = CuentaPorPagarLinea.builder().numeroLinea(1).descripcion("Compra")
+                .cuentaContable(cuentas.get("CPP_CUENTA_COMPRAS")).codigoTarifa("08").base(oc.getSubtotal())
+                .iva(oc.getImpuesto()).tratamiento(TratamientoIvaCompra.PLENO).ivaAcreditable(oc.getImpuesto())
+                .ivaNoAcreditable(BigDecimal.ZERO).build();
+        linea.setCuentaPorPagar(cpp);
+        cpp.getLineas().add(linea);
+        return cpp;
     }
 
     private BigDecimal debe(AsientoContable asiento, String clave) {

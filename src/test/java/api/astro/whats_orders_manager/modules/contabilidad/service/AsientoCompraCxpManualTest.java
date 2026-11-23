@@ -261,85 +261,73 @@ class AsientoCompraCxpManualTest {
         verify(asientoRepository, never()).save(any());
     }
 
-    // ── crear() con ordenCompraId ────────────────────────────────────────────
+    // ── crear() con ordenCompraId (T-053: factura del proveedor de la OC, por líneas) ──────────────
 
     @Test
-    @DisplayName("crear() con una OC que ya tiene CxP → rechazo sin guardar")
-    void crearConOc_yaTieneCxp_rechaza() {
+    @DisplayName("crear() con una OC que ya tiene CxP admite otra factura (varias CxP por OC) y las guarda ligadas a la OC")
+    void crearConOc_yaTieneCxp_admiteOtra() {
         OrdenCompra oc = oc();
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
-        when(cuentaPorPagarRepository.existsByOrdenCompra(oc)).thenReturn(true);
+        prepararOc(oc);
+        CuentaPorPagar existente = CuentaPorPagar.builder().id(99L).ordenCompra(oc).monto(new BigDecimal("50.00")).build();
+        when(cuentaPorPagarRepository.findByOrdenCompraAndEstadoNotForUpdate(oc,
+                api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar.ANULADA))
+                .thenReturn(List.of(existente));
 
-        assertThatThrownBy(() -> cxpService.crear(dtoConOc(null)))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("OC-1");
-        verify(cuentaPorPagarRepository, never()).save(any());
-        verify(asientoRepository, never()).save(any());
-        verify(proveedorRepository, never()).save(any());
+        var creada = cxpService.crearConAdvertencias(dtoConOc(null));
+
+        assertThat(creada.cuenta().getOrdenCompra()).isSameAs(oc);
+        assertThat(creada.advertencias()).as("50 + 113 = 163 supera 113 USD por 50").hasSize(1)
+                .first().asString().contains("OC-1").contains("163.00").contains("113.00").contains("por 50.00");
     }
 
     @Test
-    @DisplayName("crear() con ordenCompraId y monto distinto de oc.total → rechazo sin guardar")
-    void crearConOc_montoDistinto_rechaza() {
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc()));
+    @DisplayName("crear() con ordenCompraId ignora el monto del DTO: el total sale de las líneas de la factura, no del total de la OC")
+    void crearConOc_montoSaleDeLasLineas() {
+        prepararOc(oc());
 
-        assertThatThrownBy(() -> cxpService.crear(dtoConOc(new BigDecimal("112.00"))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("113.00");
-        verify(cuentaPorPagarRepository, never()).save(any());
-        verify(asientoRepository, never()).save(any());
-        verify(proveedorRepository, never()).save(any());
+        CuentaPorPagar cpp = cxpService.crear(dtoConOc(new BigDecimal("999.00")));
+
+        assertThat(cpp.getMonto()).isEqualByComparingTo("113.00");
+        assertThat(cpp.getSubtotal()).isEqualByComparingTo("100.00");
+        assertThat(cpp.getImpuesto()).isEqualByComparingTo("13.00");
+        assertThat(cpp.getLineas()).hasSize(1);
+        assertThat(cpp.getFechaEmision()).isEqualTo(LocalDate.of(2026, 9, 15));
     }
 
     @Test
-    @DisplayName("crear() con ordenCompraId válido genera el mismo asiento que crearDesdeOrdenCompra e ignora el desglose manual")
-    void crearConOc_mismoAsientoQueCrearDesdeOrdenCompra() {
+    @DisplayName("crear() con ordenCompraId genera el asiento por líneas (cuenta de la línea, IVA, CxP) y no usa CPP_CUENTA_COMPRAS")
+    void crearConOc_asientoPorLineas() {
         OrdenCompra oc = oc();
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+        oc.setMoneda(MonedaFE.CRC);
+        oc.setTipoCambio(BigDecimal.ONE);
+        prepararOc(oc);
 
-        CuentaPorPagarDTO dto = dtoConOc(new BigDecimal("113.00"));
-        dto.setSubtotal(new BigDecimal("1.00"));
-        dto.setImpuesto(new BigDecimal("2.00"));
-        CuentaPorPagar viaCrear = cxpService.crear(dto);
-        AsientoContable asientoCrear = ultimoAsientoGuardado();
+        cxpService.crear(dtoConOc(null));
+        AsientoContable asiento = ultimoAsientoGuardado();
 
-        CuentaPorPagar viaOc = cxpService.crearDesdeOrdenCompra(5L);
-        AsientoContable asientoOc = ultimoAsientoGuardado();
-
-        assertThat(viaCrear.getSubtotal()).isNull();
-        assertThat(viaCrear.getImpuesto()).isNull();
-        assertThat(viaCrear.getLineas()).isEmpty();
-        assertThat(viaCrear.getMonto()).isEqualByComparingTo(viaOc.getMonto());
-        assertThat(asientoCrear).isNotSameAs(asientoOc);
-        assertThat(asientoCrear.getTipo()).isEqualTo(asientoOc.getTipo());
-        assertThat(asientoCrear.getConcepto()).isEqualTo(asientoOc.getConcepto());
-        assertThat(lineas(asientoCrear)).isEqualTo(lineas(asientoOc));
-        assertThat(debe(asientoCrear, cuentas.get("CPP_CUENTA_COMPRAS"))).isEqualByComparingTo("56500.00");
-        assertThat(debe(asientoCrear, cuentas.get("CPP_IVA_CREDITO_FISCAL"))).isEqualByComparingTo("7345.00");
-        assertThat(haber(asientoCrear, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("63845.00");
+        assertThat(asiento.getFecha()).isEqualTo(LocalDate.of(2026, 9, 15));
+        assertThat(debe(asiento, gastoServicios)).isEqualByComparingTo("100.00");
+        assertThat(debe(asiento, cuentas.get("CPP_IVA_CREDITO_FISCAL"))).isEqualByComparingTo("13.00");
+        assertThat(haber(asiento, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("113.00");
+        assertThat(asiento.getDetalles()).noneMatch(d -> d.getCuenta() == cuentas.get("CPP_CUENTA_COMPRAS"));
     }
 
-    // ── Revisión 1: mismas reglas de moneda/TC y estado que crearDesdeOrdenCompra ──
+    // ── mismas reglas de moneda/TC de la OC (ADR-011) ──
 
     @Test
-    @DisplayName("crear() con OC USD a TC 520 y dto.moneda null → CxP en USD a 520 y mismo asiento que crearDesdeOrdenCompra")
+    @DisplayName("crear() con OC USD a TC 520 y dto.moneda null → CxP en USD a 520 y asiento convertido a CRC")
     void crearConOc_monedaNull_heredaMonedaYTipoCambioDeLaOc() {
         OrdenCompra oc = oc();
         oc.setTipoCambio(new BigDecimal("520.00"));
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+        prepararOc(oc);
 
         CuentaPorPagarDTO dto = dtoConOc(null);
         dto.setTipoCambio(new BigDecimal("999.00")); // con OC se ignora
         CuentaPorPagar viaCrear = cxpService.crear(dto);
         AsientoContable asientoCrear = ultimoAsientoGuardado();
 
-        CuentaPorPagar viaOc = cxpService.crearDesdeOrdenCompra(5L);
-        AsientoContable asientoOc = ultimoAsientoGuardado();
-
         assertThat(viaCrear.getMoneda()).isEqualTo(MonedaFE.USD);
         assertThat(viaCrear.getTipoCambio()).isEqualByComparingTo("520.00");
-        assertThat(viaCrear.getTipoCambio()).isEqualByComparingTo(viaOc.getTipoCambio());
-        assertThat(lineas(asientoCrear)).isEqualTo(lineas(asientoOc));
         assertThat(haber(asientoCrear, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("58760.00");
     }
 
@@ -348,7 +336,7 @@ class AsientoCompraCxpManualTest {
     void crearConOc_monedaIgual_usaLaDeLaOc() {
         OrdenCompra oc = oc();
         oc.setTipoCambio(new BigDecimal("520.00"));
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+        prepararOc(oc);
 
         CuentaPorPagarDTO dto = dtoConOc(null);
         dto.setMoneda(MonedaFE.USD);
@@ -363,7 +351,7 @@ class AsientoCompraCxpManualTest {
     void crearConOc_monedaDistinta_rechaza() {
         OrdenCompra oc = oc();
         oc.setTipoCambio(new BigDecimal("520.00"));
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+        prepararOc(oc);
 
         CuentaPorPagarDTO dto = dtoConOc(null);
         dto.setMoneda(MonedaFE.CRC);
@@ -380,18 +368,16 @@ class AsientoCompraCxpManualTest {
     @ParameterizedTest(name = "OC en {0}")
     @EnumSource(value = EstadoOrdenCompra.class, names = {"RECIBIDA", "RECIBIDA_PARCIAL"},
             mode = EnumSource.Mode.EXCLUDE)
-    @DisplayName("crear() con una OC no recibida → mismo rechazo que crearDesdeOrdenCompra, sin guardar")
+    @DisplayName("crear() con una OC no recibida → 409 con mensaje fijo, sin guardar")
     void crearConOc_noRecibida_rechaza(EstadoOrdenCompra estado) {
         OrdenCompra oc = oc();
         oc.setEstado(estado);
-        when(ordenCompraRepository.findById(5L)).thenReturn(Optional.of(oc));
+        prepararOc(oc);
 
         assertThatThrownBy(() -> cxpService.crear(dtoConOc(null)))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Solo se puede generar CPP de una OC recibida");
-        assertThatThrownBy(() -> cxpService.crearDesdeOrdenCompra(5L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Solo se puede generar CPP de una OC recibida");
+                .isInstanceOf(api.astro.whats_orders_manager.modules.contabilidad.service.OrdenCompraNoAdmiteFacturaException.class)
+                .hasMessage("La orden de compra no admite facturas en estado " + estado
+                        + "; debe estar recibida total o parcialmente");
         verify(cuentaPorPagarRepository, never()).save(any());
         verify(asientoRepository, never()).save(any());
         verify(proveedorRepository, never()).save(any());
@@ -473,12 +459,23 @@ class AsientoCompraCxpManualTest {
                 .build();
     }
 
+    private void prepararOc(OrdenCompra oc) {
+        when(ordenCompraRepository.findProveedorId(5L)).thenReturn(Optional.of(1L));
+        when(ordenCompraRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(oc));
+    }
+
+    /** Factura del proveedor de la OC: comprobante y una línea de 100,00 + IVA 13,00 a la cuenta de gasto. */
     private CuentaPorPagarDTO dtoConOc(BigDecimal monto) {
         return CuentaPorPagarDTO.builder()
                 .proveedorId(1L)
                 .ordenCompraId(5L)
                 .descripcion("Compra según OC OC-1")
                 .monto(monto)
+                .numeroComprobanteProveedor("FE-0001")
+                .fechaComprobante(LocalDate.of(2026, 9, 15))
+                .lineas(List.of(new api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarLineaDTO(
+                        "Mercadería", 50L, "08", new BigDecimal("100.00"), new BigDecimal("13.00"),
+                        TratamientoIvaCompra.PLENO, null)))
                 .build();
     }
 

@@ -8,6 +8,7 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacio
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorDuplicadoException;
+import api.astro.whats_orders_manager.modules.contabilidad.service.OrdenCompraNoAdmiteFacturaException;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.ProrrataNoConfiguradaException;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
@@ -114,12 +115,15 @@ public class CuentaPorPagarRestController {
             Authentication authentication
     ) {
         try {
-            var cpp = cuentaPorPagarService.crear(dto);
+            var resultado = cuentaPorPagarService.crearConAdvertencias(dto);
+            var cpp = resultado.cuenta();
+            // advertencias: IVA distinto de base × tarifa y, con orden de compra, el exceso de lo facturado (T-053)
             var creada = new CuentaPorPagarCreadaDTO(cuentaPorPagarService.detalleVista(cpp.getId()),
-                cuentaPorPagarService.advertencias(dto));
+                resultado.advertencias());
             return ResponseEntity.ok(ResponseDTO.success("Cuenta por pagar creada: " + cpp.getNumero(), creada));
-        } catch (ComprobanteProveedorDuplicadoException | ProrrataNoConfiguradaException e) {
-            // duplicado del comprobante o falta la prorrata del año (T-054): 409 con el mensaje fijo
+        } catch (ComprobanteProveedorDuplicadoException | ProrrataNoConfiguradaException
+                 | OrdenCompraNoAdmiteFacturaException e) {
+            // duplicado del comprobante, falta la prorrata del año (T-054) u orden que no admite facturas (T-053): 409
             return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
@@ -202,6 +206,11 @@ public class CuentaPorPagarRestController {
             Usuario usuario = resolverUsuario(authentication);
             pagoProveedorService.anularPago(pagoId, usuario);
             return ResponseEntity.ok(ResponseDTO.success("Pago anulado exitosamente"));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseDTO.error(e.getMessage()));
+        } catch (IllegalStateException e) {
+            // ya anulado (T-053, también ante dos anulaciones simultáneas) o CxP anulada: 409
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }

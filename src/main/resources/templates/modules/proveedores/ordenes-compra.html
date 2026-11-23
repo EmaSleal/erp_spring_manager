@@ -84,6 +84,12 @@
                                         th:text="${#numbers.formatDecimal(oc.total, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
+                                            <!-- T-053: detalle de la orden, sus facturas del proveedor (CxP) y lo facturado -->
+                                            <button class="btn btn-outline-secondary btn-detalle-oc"
+                                                    th:data-id="${oc.id}"
+                                                    title="Ver detalle y facturas del proveedor">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
                                             <!-- BORRADOR / PENDIENTE: Aprobar + Cancelar -->
                                             <th:block th:if="${oc.estado.name() == 'BORRADOR' or oc.estado.name() == 'PENDIENTE'}">
                                                 <button class="btn btn-outline-success btn-aprobar"
@@ -113,16 +119,6 @@
                                                         title="Cancelar"
                                                         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_CANCELAR')">
                                                     <i class="fas fa-ban"></i>
-                                                </button>
-                                            </th:block>
-
-                                            <!-- RECIBIDA: Generar CPP (only if no CPP exists yet) -->
-                                            <th:block th:if="${oc.estado.name() == 'RECIBIDA' and not ocsConCpp.contains(oc.id)}">
-                                                <button class="btn btn-outline-warning btn-generar-cpp"
-                                                        th:data-id="${oc.id}" th:data-numero="${oc.numero}"
-                                                        title="Generar Cuenta por Pagar"
-                                                        sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
-                                                    <i class="fas fa-file-invoice-dollar"></i>
                                                 </button>
                                             </th:block>
 
@@ -262,7 +258,8 @@
                             <tbody id="recLineas"></tbody>
                         </table>
                     </div>
-                    <p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>Solo se registran líneas con producto de catálogo.</p>
+                    <p class="text-muted small mb-0" th:if="${controlInventario}"><i class="fas fa-info-circle me-1"></i>Solo se registran líneas con producto de catálogo.</p>
+                    <p class="text-muted small mb-0" th:unless="${controlInventario}"><i class="fas fa-info-circle me-1"></i>El control de inventario está deshabilitado: la recepción registra lo recibido de cada línea pero no mueve el stock.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -274,7 +271,145 @@
         </div>
     </div>
 
+
+    <!-- T-053 (ADR-066 §4): detalle de la orden, facturado y pendiente, y sus facturas del proveedor -->
+    <div class="modal fade" id="modalDetalleOC" tabindex="-1" aria-labelledby="modalDetalleOCLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetalleOCLabel"><i class="fas fa-file-invoice me-2"></i>Detalle de la orden de compra</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="ocAdvertencias"></div>
+                    <div id="ocDetalleCuerpo">Cargando...</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="btnRegistrarFacturaOc" style="display: none;"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
+                        <i class="fas fa-file-invoice-dollar me-1"></i>Registrar factura del proveedor
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- T-053: factura del proveedor de la orden (mismo formulario de comprobante y líneas que la CxP manual; proveedor y moneda fijos) -->
+    <div class="modal fade" id="modalFacturaOC" tabindex="-1" aria-labelledby="modalFacturaOCLabel" aria-hidden="true"
+         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalFacturaOCLabel">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>Registrar factura del proveedor — <span id="facOcNumero"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formFacturaOC" novalidate>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-5">
+                                <label for="facProveedor" class="form-label">Proveedor</label>
+                                <input type="text" id="facProveedor" class="form-control" readonly />
+                            </div>
+                            <div class="col-md-2">
+                                <label for="facMoneda" class="form-label">Moneda</label>
+                                <input type="text" id="facMoneda" class="form-control" readonly />
+                            </div>
+                            <div class="col-md-5">
+                                <label for="facDescripcion" class="form-label">Descripción <span class="text-danger">*</span></label>
+                                <input type="text" id="facDescripcion" class="form-control" maxlength="300" required />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label for="facNumeroComprobante" class="form-label">N.º de comprobante del proveedor <span class="text-danger">*</span></label>
+                                <input type="text" id="facNumeroComprobante" class="form-control" maxlength="50" required
+                                       placeholder="Ej: 00100001010000000123" />
+                            </div>
+                            <div class="col-md-5">
+                                <label for="facClaveComprobante" class="form-label">Clave del comprobante (50 dígitos)</label>
+                                <input type="text" id="facClaveComprobante" class="form-control" maxlength="50"
+                                       inputmode="numeric" placeholder="Opcional" />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="facFechaComprobante" class="form-label">Fecha del comprobante <span class="text-danger">*</span></label>
+                                <input type="date" id="facFechaComprobante" class="form-control" required />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label for="facFechaVencimiento" class="form-label">Fecha de vencimiento</label>
+                                <input type="date" id="facFechaVencimiento" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">Líneas <span class="text-danger">*</span></label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarLineaFac">
+                                    <i class="fas fa-plus me-1"></i>Agregar línea
+                                </button>
+                            </div>
+                            <div class="form-text mb-1" id="facCuentaAyuda"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-1">
+                                    <thead>
+                                        <tr>
+                                            <th style="min-width: 15rem;">Cuenta</th>
+                                            <th style="min-width: 10rem;">Descripción</th>
+                                            <th style="min-width: 9rem;">Tarifa</th>
+                                            <th class="text-end" style="min-width: 7rem;">Base</th>
+                                            <th class="text-end" style="min-width: 6rem;">IVA</th>
+                                            <th style="min-width: 11rem;">Tratamiento</th>
+                                            <th class="text-end">Acreditable</th>
+                                            <th class="text-end">No acreditable</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="facLineas"></tbody>
+                                </table>
+                            </div>
+                            <div id="facLineasMensajes"></div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label for="facSubtotal" class="form-label">Subtotal</label>
+                                <input type="text" id="facSubtotal" class="form-control" readonly value="0.00" />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="facImpuesto" class="form-label">Impuesto (IVA)</label>
+                                <input type="text" id="facImpuesto" class="form-control" readonly value="0.00" />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="facTotal" class="form-label">Total de la factura</label>
+                                <input type="text" id="facTotal" class="form-control fw-bold" readonly value="0.00" />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="facTotalComprobante" class="form-label">Total del comprobante</label>
+                                <input type="number" id="facTotalComprobante" class="form-control" step="0.01" min="0"
+                                       placeholder="Opcional: para cotejar" />
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarFacturaOc">
+                        <i class="fas fa-save me-1"></i>Registrar factura
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ADR-011: selector de tipo de cambio compartido con cuentas-pagar.html -->
+    <!-- T-053: líneas de la factura (comprobante del proveedor, cuenta y tratamiento de IVA) y detalle de la orden; todo con textContent -->
+    <script th:src="@{/modules/contabilidad/js/cxp-lineas.js}"></script>
+    <script th:src="@{/modules/proveedores/js/oc-facturacion.js}"></script>
+
     <script th:src="@{/shared/js/tipo-cambio-documento.js}"></script>
 
     <!-- OC detail data for reception modal -->
@@ -282,6 +417,7 @@
     /*<![CDATA[*/
     const ocDetallesMap       = /*[[${ocDetallesMap}]]*/ {};
     const proveedorItemsMap   = /*[[${proveedorItemsMap}]]*/ {};
+    const controlInventario   = /*[[${controlInventario}]]*/ false;
     /*]]>*/
     </script>
 
@@ -546,19 +682,217 @@
         });
     });
 
-    // ── Generar CPP ───────────────────────────────────────────────────────────
-    document.querySelectorAll('.btn-generar-cpp').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            if (!await showConfirmDialog(`Generar cuenta por pagar`, `¿Generar CPP para OC ${btn.dataset.numero}?`)) return;
-            const res = await fetch(`/api/ordenes-compra/${btn.dataset.id}/generar-cpp`, {
-                method: 'POST',
-                headers: { [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token }
-            });
-            const data = await res.json();
-            if (data.success) { showToast('success', data.message); location.reload(); }
-            else showToast('error', data.message);
-        });
+    // ── Detalle de la OC y facturas del proveedor (T-053, ADR-066 §4) ─────────────────────────
+    let ocFacturacion = null;   // última respuesta de GET /api/ordenes-compra/{id}/facturacion
+    let lineasFac = [];
+    let cuentasFac = [];
+    let prorrataFac = { anio: null, porcentaje: null };
+
+    function hoyIso() {
+        // fecha local del navegador (el servidor valida contra el día de Costa Rica)
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    async function cargarFacturacionOc(id) {
+        const resp = await fetch('/api/ordenes-compra/' + encodeURIComponent(id) + '/facturacion');
+        const json = await resp.json().catch(() => null);
+        if (!resp.ok || !json || !json.success) {
+            throw new Error((json && json.message) || 'No se pudo cargar la orden de compra.');
+        }
+        return json.data;
+    }
+
+    function pintarDetalleOc() {
+        OcFacturacion.renderDetalle(document, document.getElementById('ocDetalleCuerpo'), ocFacturacion);
+        const boton = document.getElementById('btnRegistrarFacturaOc');
+        if (boton) boton.style.display = OcFacturacion.puedeFacturar(ocFacturacion, true) ? '' : 'none';
+    }
+
+    async function abrirDetalleOc(id, avisos) {
+        const cuerpo = document.getElementById('ocDetalleCuerpo');
+        cuerpo.textContent = 'Cargando...';
+        OcFacturacion.renderAdvertencias(document, document.getElementById('ocAdvertencias'), avisos || []);
+        const boton = document.getElementById('btnRegistrarFacturaOc');
+        if (boton) boton.style.display = 'none';
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDetalleOC'));
+        modal.show();
+        try {
+            ocFacturacion = await cargarFacturacionOc(id);
+            pintarDetalleOc();
+        } catch (e) {
+            cuerpo.textContent = e.message;
+        }
+    }
+
+    document.querySelectorAll('.btn-detalle-oc').forEach(btn => {
+        btn.addEventListener('click', () => abrirDetalleOc(btn.dataset.id));
     });
+
+    const modalFacturaOC = document.getElementById('modalFacturaOC');
+    const manejadoresFac = {
+        cambio(i, campo, valor) {
+            const antes = lineasFac[i];
+            const linea = CxpLineas.cambiarLinea(antes, campo, valor);
+            // el IVA se recalcula solo con la base y la tarifa; una vez editado a mano no se pisa
+            if ((campo === 'base' || campo === 'codigoTarifa') && antes.ivaManual) linea.iva = antes.iva;
+            if (campo === 'iva') linea.ivaManual = true;
+            lineasFac[i] = linea;
+            const fila = document.querySelector('#facLineas tr[data-fila="' + i + '"]');
+            if (fila) {
+                const inputIva = fila.querySelector('[data-campo="iva"]');
+                if (inputIva && campo !== 'iva') inputIva.value = linea.iva;
+            }
+            revalidarFac();
+        },
+        quitar(i) {
+            lineasFac.splice(i, 1);
+            repintarLineasFac();
+        }
+    };
+
+    function repintarLineasFac() {
+        CxpLineas.renderLineas(document, document.getElementById('facLineas'), lineasFac, cuentasFac, manejadoresFac,
+            prorrataFac.porcentaje);
+        revalidarFac();
+    }
+
+    function datosFormularioFac() {
+        return {
+            numero: document.getElementById('facNumeroComprobante').value,
+            clave: document.getElementById('facClaveComprobante').value,
+            fecha: document.getElementById('facFechaComprobante').value,
+            hoy: hoyIso(),
+            lineas: lineasFac,
+            prorrata: prorrataFac.porcentaje,
+            totalComprobante: document.getElementById('facTotalComprobante').value
+        };
+    }
+
+    function revalidarFac() {
+        const p = prorrataFac.porcentaje;
+        const t = CxpLineas.totales(lineasFac, p);
+        document.getElementById('facSubtotal').value = t.subtotal.toFixed(2);
+        document.getElementById('facImpuesto').value = t.impuesto.toFixed(2);
+        document.getElementById('facTotal').value = t.total.toFixed(2);
+        document.querySelectorAll('#facLineas tr[data-fila]').forEach(fila => {
+            const linea = lineasFac[parseInt(fila.dataset.fila, 10)];
+            if (linea) CxpLineas.actualizarLinea(fila, linea, p);
+        });
+        const r = CxpLineas.validar(datosFormularioFac());
+        CxpLineas.renderMensajes(document, document.getElementById('facLineasMensajes'),
+            { errores: [], advertencias: r.advertencias });
+        return r;
+    }
+
+    async function consultarProrrataFac() {
+        const anio = CxpLineas.anioDe(document.getElementById('facFechaComprobante').value);
+        if (anio === null || anio === prorrataFac.anio) return;
+        prorrataFac = { anio: anio, porcentaje: null };
+        try {
+            const resp = await fetch('/api/prorrata-iva/' + encodeURIComponent(anio));
+            const json = resp.ok ? await resp.json() : null;
+            const d = json && json.data;
+            if (d && d.configurado && prorrataFac.anio === anio) prorrataFac.porcentaje = Number(d.porcentaje);
+        } catch (e) {
+            // sin respuesta: se trata como no configurada y el servidor decide
+        }
+        revalidarFac();
+    }
+
+    async function cargarCuentasFac() {
+        try {
+            const resp = await fetch('/api/cuentas-pagar/cuentas-contrapartida');
+            const json = resp.ok ? await resp.json() : null;
+            cuentasFac = (json && json.data && json.data.cuentas) || [];
+        } catch (e) {
+            cuentasFac = [];
+            showToast('error', 'Error al cargar las cuentas de las líneas.');
+        }
+    }
+
+    async function abrirFacturaOc() {
+        if (!ocFacturacion || !OcFacturacion.puedeFacturar(ocFacturacion, true)) return;
+        document.getElementById('formFacturaOC').reset();
+        document.getElementById('facOcNumero').textContent = ocFacturacion.numero;
+        document.getElementById('facProveedor').value = ocFacturacion.proveedorNombre;
+        document.getElementById('facMoneda').value = ocFacturacion.moneda;
+        document.getElementById('facDescripcion').value = 'Factura de la OC ' + ocFacturacion.numero;
+        document.getElementById('facFechaComprobante').value = hoyIso();
+        prorrataFac = { anio: null, porcentaje: null };
+        // sin cuenta propuesta (parámetro COMPRAS_MERCADERIA sin configurar) no se propone ninguna y se puede registrar igual
+        document.getElementById('facCuentaAyuda').textContent = ocFacturacion.cuentaPropuestaId
+            ? 'Cuenta propuesta para la mercadería: ' + ocFacturacion.cuentaPropuestaCodigo + ' ' + ocFacturacion.cuentaPropuestaNombre
+                + ' (editable; fletes y otros conceptos van a su propia cuenta).'
+            : 'No hay cuenta propuesta para la mercadería: elija la cuenta de cada línea.';
+        await cargarCuentasFac();
+        lineasFac = OcFacturacion.lineasDesdeOc(ocFacturacion.detalles, ocFacturacion.cuentaPropuestaId);
+        repintarLineasFac();
+        consultarProrrataFac();
+        bootstrap.Modal.getOrCreateInstance(modalFacturaOC).show();
+    }
+
+    if (modalFacturaOC) {
+        document.getElementById('btnRegistrarFacturaOc').addEventListener('click', async () => {
+            const detalle = bootstrap.Modal.getInstance(document.getElementById('modalDetalleOC'));
+            if (detalle) detalle.hide();
+            await abrirFacturaOc();
+        });
+        document.getElementById('facFechaComprobante').addEventListener('change', () => { consultarProrrataFac(); revalidarFac(); });
+        ['facNumeroComprobante', 'facClaveComprobante', 'facFechaComprobante', 'facTotalComprobante']
+            .forEach(id => document.getElementById(id).addEventListener('input', revalidarFac));
+        document.getElementById('btnAgregarLineaFac').addEventListener('click', () => {
+            lineasFac.push(CxpLineas.lineaPorDefecto());
+            repintarLineasFac();
+        });
+        // al cerrar el formulario sin guardar se vuelve al detalle de la orden
+        modalFacturaOC.addEventListener('hidden.bs.modal', () => {
+            if (ocFacturacion && !modalFacturaOC.dataset.guardada) abrirDetalleOc(ocFacturacion.ordenCompraId);
+            delete modalFacturaOC.dataset.guardada;
+        });
+        document.getElementById('btnGuardarFacturaOc').addEventListener('click', guardarFacturaOc);
+    }
+
+    async function guardarFacturaOc() {
+        const descripcion = document.getElementById('facDescripcion').value.trim();
+        if (!descripcion) { showToast('warning', 'Ingrese la descripción.'); return; }
+        // las mismas reglas del servidor, antes de enviar; los errores se muestran junto a las líneas
+        const r = CxpLineas.validar(datosFormularioFac());
+        CxpLineas.renderMensajes(document, document.getElementById('facLineasMensajes'), r);
+        if (r.errores.length) return;
+
+        const btn = document.getElementById('btnGuardarFacturaOc');
+        btn.disabled = true;
+        try {
+            // el proveedor y la moneda son los de la orden; el servidor los toma de ella
+            const resp = await fetch('/api/cuentas-pagar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token },
+                body: JSON.stringify(CxpLineas.armarPeticion(Object.assign(datosFormularioFac(), {
+                    extra: {
+                        ordenCompraId:    ocFacturacion.ordenCompraId,
+                        descripcion:      descripcion,
+                        fechaVencimiento: document.getElementById('facFechaVencimiento').value || null
+                    }
+                })))
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data.success) {
+                const avisos = (data.data && data.data.advertencias) || [];
+                modalFacturaOC.dataset.guardada = '1';
+                bootstrap.Modal.getInstance(modalFacturaOC).hide();
+                showToast('success', data.message || 'Factura registrada.');
+                // la advertencia de exceso se muestra sin bloquear y el detalle se refresca
+                abrirDetalleOc(ocFacturacion.ordenCompraId, avisos);
+            } else {
+                showToast('error', data.message || 'Error al registrar la factura.');
+            }
+        } catch (e) {
+            showToast('error', 'Error de conexión. Intente nuevamente.');
+        } finally {
+            btn.disabled = false;
+        }
+    }
 
     // ── Recibir ───────────────────────────────────────────────────────────────
     let currentOcId = null;
@@ -567,28 +901,8 @@
             currentOcId = btn.dataset.id;
             document.getElementById('recOCNumero').textContent = btn.dataset.numero;
 
-            const detalles = ocDetallesMap[currentOcId] || [];
-            const tbody = document.getElementById('recLineas');
-            tbody.innerHTML = '';
-
-            if (detalles.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Esta OC no tiene líneas con productos de catálogo.</td></tr>';
-            } else {
-                detalles.forEach(d => {
-                    const porRecibir = d.porRecibir || (d.cantidad - d.cantidadRecibida);
-                    const tr = document.createElement('tr');
-                    tr.dataset.detalleId = d.id;
-                    tr.innerHTML = `
-                        <td class="small fw-semibold">${d.descripcion}</td>
-                        <td class="text-end small">${d.cantidad}</td>
-                        <td class="text-end small">${d.cantidadRecibida}</td>
-                        <td><input type="number" class="form-control form-control-sm inp-rec" min="0" max="${porRecibir}" value="${porRecibir}"></td>
-                        <td><input type="text" class="form-control form-control-sm inp-lote" placeholder="Opcional"></td>
-                        <td><input type="date" class="form-control form-control-sm inp-venc"></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
+            // las filas se pintan con textContent (la descripción viene del servidor)
+            OcFacturacion.renderFilasRecepcion(document, document.getElementById('recLineas'), ocDetallesMap[currentOcId] || []);
             new bootstrap.Modal(document.getElementById('modalRecepcion')).show();
         });
     });
