@@ -9,7 +9,9 @@ import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoCuenta;
 import api.astro.whats_orders_manager.modules.contabilidad.model.AsientoContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.TratamientoIvaCompra;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagarLinea;
 import api.astro.whats_orders_manager.modules.contabilidad.model.DetalleAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.AsientoContableRepository;
@@ -89,7 +91,8 @@ class AsientoCompraCxpManualTest {
                 parametroContableRepository);
         cxpService = new CuentaPorPagarServiceImpl(cuentaPorPagarRepository, proveedorRepository,
                 ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository),
-                new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(PagoProveedorRepository.class),
+                new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(api.astro.whats_orders_manager.modules.contabilidad.repository.ProrrataIvaRepository.class),
+                mock(PagoProveedorRepository.class),
                 mock(UsuarioActividadService.class), RELOJ_PRUEBA);
         long id = 1;
         List<ParametroContable> parametros = new ArrayList<>();
@@ -183,20 +186,78 @@ class AsientoCompraCxpManualTest {
     }
 
     @Test
-    @DisplayName("CxP manual sin subtotal, impuesto o cuenta de gasto → IllegalStateException con el número, sin guardar")
-    void manualIncompleta_lanzaIllegalState() {
-        CuentaPorPagar sinSubtotal = manual("100.00", "13.00", "113.00", MonedaFE.CRC, "1");
-        sinSubtotal.setSubtotal(null);
-        CuentaPorPagar sinImpuesto = manual("100.00", "13.00", "113.00", MonedaFE.CRC, "1");
-        sinImpuesto.setImpuesto(null);
-        CuentaPorPagar sinCuenta = manual("100.00", "13.00", "113.00", MonedaFE.CRC, "1");
-        sinCuenta.setCuentaGasto(null);
+    @DisplayName("CxP manual con dos cuentas e IVA limitado: un débito por cuenta (base + no acreditable), DR IVA por el acreditable, CR CxP por el total")
+    void manualVariasCuentas_ivaNoAcreditableSeSumaALaCuenta() {
+        CuentaContable mercaderia = cuenta(51L, "5.3.01.001", TipoCuenta.EGRESO);
+        CuentaPorPagar cpp = manualConLineas(MonedaFE.CRC, "1",
+                linea(1, gastoServicios, "100000.00", "13000.00", "13000.00", "0.00"),
+                linea(2, mercaderia, "50000.00", "6500.00", "500.00", "6000.00"));
 
-        for (CuentaPorPagar cpp : List.of(sinSubtotal, sinImpuesto, sinCuenta)) {
-            assertThatThrownBy(() -> service.generarAsientoCompra(cpp))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("CPP-2026-00001");
-        }
+        AsientoContable asiento = service.generarAsientoCompra(cpp);
+
+        assertThat(debe(asiento, gastoServicios)).isEqualByComparingTo("100000.00");
+        assertThat(debe(asiento, mercaderia)).as("50 000 de base + 6 000 no acreditable").isEqualByComparingTo("56000.00");
+        assertThat(debe(asiento, cuentas.get("CPP_IVA_CREDITO_FISCAL"))).isEqualByComparingTo("13500.00");
+        assertThat(haber(asiento, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("169500.00");
+        assertThat(asiento.getDetalles()).hasSize(4);
+        assertThat(asiento.estaCuadrado()).isTrue();
+        assertThat(asiento.getFecha()).isEqualTo(LocalDate.of(2026, 9, 15));
+    }
+
+    @Test
+    @DisplayName("varias líneas de la misma cuenta se agrupan en un solo débito")
+    void manualMismaCuenta_seAgrupa() {
+        CuentaPorPagar cpp = manualConLineas(MonedaFE.CRC, "1",
+                linea(1, gastoServicios, "1000.00", "130.00", "130.00", "0.00"),
+                linea(2, gastoServicios, "2000.00", "260.00", "0.00", "260.00"));
+
+        AsientoContable asiento = service.generarAsientoCompra(cpp);
+
+        assertThat(asiento.getDetalles().stream().filter(d -> d.getCuenta() == gastoServicios)).hasSize(1);
+        assertThat(debe(asiento, gastoServicios)).isEqualByComparingTo("3260.00");
+        assertThat(debe(asiento, cuentas.get("CPP_IVA_CREDITO_FISCAL"))).isEqualByComparingTo("130.00");
+        assertThat(haber(asiento, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("3390.00");
+        assertThat(asiento.estaCuadrado()).isTrue();
+    }
+
+    @Test
+    @DisplayName("todo el IVA no acreditable: sin débito a IVA crédito fiscal")
+    void manualSinIvaAcreditable_sinLineaDeIva() {
+        CuentaPorPagar cpp = manualConLineas(MonedaFE.CRC, "1",
+                linea(1, gastoServicios, "1000.00", "130.00", "0.00", "130.00"));
+
+        AsientoContable asiento = service.generarAsientoCompra(cpp);
+
+        assertThat(asiento.getDetalles()).hasSize(2);
+        assertThat(debe(asiento, gastoServicios)).isEqualByComparingTo("1130.00");
+        assertThat(asiento.estaCuadrado()).isTrue();
+    }
+
+    @Test
+    @DisplayName("USD con varias cuentas: cada cuenta se convierte a CRC y la diferencia de redondeo va a la cuenta de mayor débito; cuadra")
+    void manualUsdVariasCuentas_redondeoCuadra() {
+        CuentaContable otra = cuenta(52L, "5.3.01.002", TipoCuenta.EGRESO);
+        // 0,05 × 503,27 = 25,16 en cada cuenta (50,32) pero el total 0,10 × 503,27 = 50,33
+        CuentaPorPagar cpp = manualConLineas(MonedaFE.USD, "503.27",
+                linea(1, gastoServicios, "0.05", "0.00", "0.00", "0.00"),
+                linea(2, otra, "0.05", "0.00", "0.00", "0.00"));
+
+        AsientoContable asiento = service.generarAsientoCompra(cpp);
+
+        assertThat(haber(asiento, cuentas.get("CPP_CUENTA_POR_PAGAR"))).isEqualByComparingTo("50.33");
+        assertThat(debe(asiento, gastoServicios).add(debe(asiento, otra))).isEqualByComparingTo("50.33");
+        assertThat(asiento.estaCuadrado()).isTrue();
+    }
+
+    @Test
+    @DisplayName("CxP manual sin líneas → IllegalStateException con el número, sin guardar")
+    void manualSinLineas_lanzaIllegalState() {
+        CuentaPorPagar sinLineas = manual("100.00", "13.00", "113.00", MonedaFE.CRC, "1");
+        sinLineas.getLineas().clear();
+
+        assertThatThrownBy(() -> service.generarAsientoCompra(sinLineas))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CPP-2026-00001");
         verify(asientoRepository, never()).save(any());
     }
 
@@ -239,7 +300,6 @@ class AsientoCompraCxpManualTest {
         CuentaPorPagarDTO dto = dtoConOc(new BigDecimal("113.00"));
         dto.setSubtotal(new BigDecimal("1.00"));
         dto.setImpuesto(new BigDecimal("2.00"));
-        dto.setCuentaGastoId(50L);
         CuentaPorPagar viaCrear = cxpService.crear(dto);
         AsientoContable asientoCrear = ultimoAsientoGuardado();
 
@@ -248,7 +308,7 @@ class AsientoCompraCxpManualTest {
 
         assertThat(viaCrear.getSubtotal()).isNull();
         assertThat(viaCrear.getImpuesto()).isNull();
-        assertThat(viaCrear.getCuentaGasto()).isNull();
+        assertThat(viaCrear.getLineas()).isEmpty();
         assertThat(viaCrear.getMonto()).isEqualByComparingTo(viaOc.getMonto());
         assertThat(asientoCrear).isNotSameAs(asientoOc);
         assertThat(asientoCrear.getTipo()).isEqualTo(asientoOc.getTipo());
@@ -352,8 +412,34 @@ class AsientoCompraCxpManualTest {
         return c;
     }
 
+    private CuentaPorPagarLinea linea(int numero, CuentaContable cuenta, String base, String iva, String acreditable,
+                                      String noAcreditable) {
+        return CuentaPorPagarLinea.builder().numeroLinea(numero).descripcion("Línea " + numero).cuentaContable(cuenta)
+                .codigoTarifa("08").base(new BigDecimal(base)).iva(new BigDecimal(iva))
+                .tratamiento(TratamientoIvaCompra.PLENO).ivaAcreditable(new BigDecimal(acreditable))
+                .ivaNoAcreditable(new BigDecimal(noAcreditable)).build();
+    }
+
+    private CuentaPorPagar manualConLineas(MonedaFE moneda, String tc, CuentaPorPagarLinea... lineas) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+        BigDecimal impuesto = BigDecimal.ZERO;
+        for (CuentaPorPagarLinea l : lineas) {
+            subtotal = subtotal.add(l.getBase());
+            impuesto = impuesto.add(l.getIva());
+        }
+        CuentaPorPagar cpp = CuentaPorPagar.builder().id(10L).numero("CPP-2026-00001").proveedor(proveedor)
+                .descripcion("Servicios de mantenimiento").subtotal(subtotal).impuesto(impuesto)
+                .monto(subtotal.add(impuesto)).saldoPendiente(subtotal.add(impuesto)).moneda(moneda)
+                .tipoCambio(new BigDecimal(tc)).fechaEmision(LocalDate.of(2026, 9, 15)).build();
+        for (CuentaPorPagarLinea l : lineas) {
+            l.setCuentaPorPagar(cpp);
+            cpp.getLineas().add(l);
+        }
+        return cpp;
+    }
+
     private CuentaPorPagar manual(String subtotal, String impuesto, String total, MonedaFE moneda, String tc) {
-        return CuentaPorPagar.builder()
+        CuentaPorPagar cpp = CuentaPorPagar.builder()
                 .id(10L)
                 .numero("CPP-2026-00001")
                 .proveedor(proveedor)
@@ -362,11 +448,14 @@ class AsientoCompraCxpManualTest {
                 .impuesto(new BigDecimal(impuesto))
                 .monto(new BigDecimal(total))
                 .saldoPendiente(new BigDecimal(total))
-                .cuentaGasto(gastoServicios)
                 .moneda(moneda)
                 .tipoCambio(new BigDecimal(tc))
                 .fechaEmision(LocalDate.of(2026, 9, 15))
                 .build();
+        CuentaPorPagarLinea linea = linea(1, gastoServicios, subtotal, impuesto, impuesto, "0.00");
+        linea.setCuentaPorPagar(cpp);
+        cpp.getLineas().add(linea);
+        return cpp;
     }
 
     private OrdenCompra oc() {

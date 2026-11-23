@@ -126,6 +126,7 @@ public enum Permiso {
     CUENTA_PAGAR_CREAR("Crear cuentas por pagar", "Registrar cuentas por pagar a proveedores"),
     CUENTA_PAGAR_REGISTRAR_PAGO("Registrar pago a proveedor", "Registrar pagos de cuentas por pagar"),
     CUENTA_PAGAR_ANULAR("Anular cuentas por pagar", "Anular cuentas por pagar sin pagos activos (operación crítica)"),
+    PRORRATA_IVA_GESTIONAR("Gestionar la prorrata del IVA", "Registrar y corregir el porcentaje provisional de prorrata del IVA por año (operación crítica)"),
 
     // ==================== AUDITORÍA ====================
 
@@ -192,6 +193,7 @@ public enum Permiso {
         if (name.startsWith("PROVEEDOR_")) return "Proveedores";
         if (name.startsWith("ORDEN_COMPRA_")) return "Órdenes de Compra";
         if (name.startsWith("CUENTA_PAGAR_")) return "Cuentas por Pagar";
+        if (name.startsWith("PRORRATA_")) return "Contabilidad";
         if (name.startsWith("REPORTE_")) return "Reportes";
         if (name.startsWith("CONFIG_")) return "Configuración";
         if (name.startsWith("NOTIFICACION_")) return "Notificaciones";
@@ -216,6 +218,7 @@ public enum Permiso {
                this == FACTURA_ANULAR ||
                this == PAGO_ANULAR ||
                this == CUENTA_PAGAR_ANULAR ||
+               this == PRORRATA_IVA_GESTIONAR ||
                this == SALDO_FAVOR_DEVOLUCION_APROBAR ||
                this == CONTABILIDAD_ELIMINAR ||
                this == CONTABILIDAD_ANULAR ||

@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.contabilidad.model;
 
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -74,9 +76,13 @@ public class CuentaPorPagar {
     private BigDecimal impuesto;
 
     /**
-     * Contrapartida elegida por el usuario para una CxP manual (ADR-016): cuenta de gasto o de
-     * activo que se debita en el asiento de compra. Null en las CxP con orden de compra.
+     * Contrapartida única de la CxP manual anterior a T-054 (ADR-016).
+     *
+     * @deprecated En desuso desde T-054 (ADR-067): cada línea de la CxP lleva su propia cuenta
+     *             ({@link CuentaPorPagarLinea#getCuentaContable()}). La columna se conserva, nullable, y las CxP nuevas no la
+     *             llenan; no se usa en ningún asiento.
      */
+    @Deprecated
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cuenta_gasto_id")
     @ToString.Exclude
@@ -123,13 +129,28 @@ public class CuentaPorPagar {
     @JsonIgnore
     private String comprobanteNormalizado;
 
-    /** Desglose de IVA por tarifa del comprobante del proveedor (T-052). */
+    /** Líneas de la CxP manual, cada una con su cuenta, tarifa, base, IVA y tratamiento (T-054, reemplaza al desglose de T-052). */
     @OneToMany(mappedBy = "cuentaPorPagar", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("id ASC")
+    @OrderBy("numeroLinea ASC")
+    @BatchSize(size = 50)
     @Builder.Default
     @ToString.Exclude
     @JsonIgnore
-    private List<CuentaPorPagarIva> desglose = new ArrayList<>();
+    private List<CuentaPorPagarLinea> lineas = new ArrayList<>();
+
+    /** Aceptación del comprobante con mensaje receptor (T-054, ADR-067 §4); PENDIENTE hasta que se registre. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_aceptacion", nullable = false, length = 12)
+    @Builder.Default
+    private EstadoAceptacionComprobante estadoAceptacion = EstadoAceptacionComprobante.PENDIENTE;
+
+    /** Fecha del mensaje receptor; null mientras esté PENDIENTE. */
+    @Column(name = "fecha_aceptacion")
+    private LocalDate fechaAceptacion;
+
+    /** Número del mensaje receptor; null mientras esté PENDIENTE. */
+    @Column(name = "numero_mensaje_receptor", length = 50)
+    private String numeroMensajeReceptor;
 
     /** Usuario que anuló la CxP (T-052). */
     @Column(name = "anulada_por_id")

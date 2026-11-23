@@ -17,13 +17,14 @@ public class CuentaPorPagarDTO {
     private Long proveedorId;
     private Long ordenCompraId;
     private String descripcion;
-    /** Total de la CxP. En una CxP manual, si viene null se calcula como subtotal + impuesto. */
+    /**
+     * Total de la CxP con orden de compra (debe coincidir con el de la OC). En la CxP manual se ignora: subtotal, impuesto y
+     * total se calculan a partir de las líneas (T-054).
+     */
     private BigDecimal monto;
-    /** Desglose de la CxP manual (ADR-016); se ignora si viene ordenCompraId. */
+    /** Se ignoran (T-054, ADR-067): los totales de la CxP manual salen de las líneas. */
     private BigDecimal subtotal;
     private BigDecimal impuesto;
-    /** Contrapartida de la CxP manual (ADR-016); se ignora si viene ordenCompraId. */
-    private Long cuentaGastoId;
     private MonedaFE moneda;
     /** Tipo de cambio (ADR-011). Null → tasa de venta registrada para la fecha de emisión. */
     private BigDecimal tipoCambio;
@@ -38,8 +39,8 @@ public class CuentaPorPagarDTO {
     private String claveComprobante;
     /** Fecha de emisión del comprobante del proveedor; obligatoria en la CxP manual y no futura. */
     private LocalDate fechaComprobante;
-    /** Desglose de IVA por tarifa del comprobante; al menos una fila en la CxP manual. */
-    private List<CuentaPorPagarIvaDTO> desglose;
+    /** Líneas de la CxP manual (T-054, ADR-067): al menos una, cada una con su cuenta, tarifa, base, IVA y tratamiento. */
+    private List<CuentaPorPagarLineaDTO> lineas;
     private LocalDate fechaVencimiento;
     private String notas;
 }

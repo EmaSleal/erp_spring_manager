@@ -210,7 +210,9 @@ class AsientoCompraMultimonedaTest {
         when(cuentaPorPagarRepository.findUltimoConsecutivo(anyInt())).thenReturn(null);
         CuentaPorPagarServiceImpl cxpService = new CuentaPorPagarServiceImpl(cuentaPorPagarRepository,
                 proveedorRepository, ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository),
-                new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(PagoProveedorRepository.class),
+                new ComprobanteProveedorValidator(RELOJ_PRUEBA),
+                mock(api.astro.whats_orders_manager.modules.contabilidad.repository.ProrrataIvaRepository.class),
+                mock(PagoProveedorRepository.class),
                 mock(UsuarioActividadService.class), RELOJ_PRUEBA);
 
         CuentaPorPagar cpp = cxpService.crearDesdeOrdenCompra(5L);

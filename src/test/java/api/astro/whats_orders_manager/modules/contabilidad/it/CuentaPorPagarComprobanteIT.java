@@ -2,13 +2,15 @@ package api.astro.whats_orders_manager.modules.contabilidad.it;
 
 import api.astro.whats_orders_manager.config.MysqlZonaCostaRica;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
-import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarIvaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarLineaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.TratamientoIvaCompra;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoCuenta;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.ParametroContable;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.ParametroContableRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorDuplicadoException;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorValidator;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.ConfiguracionHaciendaService;
@@ -143,9 +145,7 @@ class CuentaPorPagarComprobanteIT {
         Proveedor p = proveedor();
         Map<String, Object> body = cuerpo(p, "FE-100", "100000.00", "13000.00");
         body.put("claveComprobante", "5".repeat(50));
-        ((List<Map<String, Object>>) body.get("desglose")).get(0).put("iva", "12000.00");
-        body.put("impuesto", "12000.00");
-        body.put("subtotal", "100000.00");
+        ((List<Map<String, Object>>) body.get("lineas")).get(0).put("iva", "12000.00");
 
         mockMvc.perform(post("/api/cuentas-pagar").with(user("contador")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
@@ -155,13 +155,16 @@ class CuentaPorPagarComprobanteIT {
                 .andExpect(jsonPath("$.data.cuenta.fechaEmisionComprobante").value("2026-10-20"))
                 .andExpect(jsonPath("$.data.cuenta.fechaEmision").value("2026-10-20"))
                 .andExpect(jsonPath("$.data.cuenta.proveedorNombre").value(p.getNombre()))
-                .andExpect(jsonPath("$.data.cuenta.desglose[0].codigoTarifa").value("08"))
-                .andExpect(jsonPath("$.data.cuenta.desglose[0].porcentaje").value(13))
+                .andExpect(jsonPath("$.data.cuenta.lineas[0].codigoTarifa").value("08"))
+                .andExpect(jsonPath("$.data.cuenta.lineas[0].porcentaje").value(13))
+                .andExpect(jsonPath("$.data.cuenta.lineas[0].tratamiento").value("PLENO"))
+                .andExpect(jsonPath("$.data.cuenta.lineas[0].cuentaCodigo").value("9.5.04.001"))
+                .andExpect(jsonPath("$.data.cuenta.estadoAceptacion").value("PENDIENTE"))
                 .andExpect(jsonPath("$.data.advertencias.length()").value(1));
     }
 
     @Test
-    @DisplayName("validaciones: 400 con mensaje fijo (número, fecha futura, clave, desglose, sumas)")
+    @DisplayName("validaciones: 400 con mensaje fijo (número, fecha futura, clave, líneas, base)")
     void crear_errores400() throws Exception {
         Proveedor p = proveedor();
         Map<String, Object> sinNumero = cuerpo(p, "", "100.00", "13.00");
@@ -170,15 +173,14 @@ class CuentaPorPagarComprobanteIT {
         Map<String, Object> clave = cuerpo(p, "FE-C", "100.00", "13.00");
         clave.put("claveComprobante", "123");
         Map<String, Object> sinFilas = cuerpo(p, "FE-S", "100.00", "13.00");
-        sinFilas.put("desglose", List.of());
-        Map<String, Object> suma = cuerpo(p, "FE-M", "100.00", "13.00");
-        suma.put("subtotal", "120.00");
+        sinFilas.put("lineas", List.of());
+        Map<String, Object> sinBase = cuerpo(p, "FE-M", "0.00", "0.00");
 
         esperar400(sinNumero, "El número del comprobante del proveedor es obligatorio");
         esperar400(futura, "La fecha de emisión del comprobante no puede ser futura");
         esperar400(clave, "La clave del comprobante debe tener 50 dígitos");
-        esperar400(sinFilas, "El desglose de IVA debe tener al menos una fila");
-        esperar400(suma, "La suma de las bases del desglose no coincide con el subtotal");
+        esperar400(sinFilas, "La cuenta por pagar debe tener al menos una línea");
+        esperar400(sinBase, ComprobanteProveedorValidator.MSG_LINEA);
     }
 
     @Test
@@ -340,6 +342,101 @@ class CuentaPorPagarComprobanteIT {
                 Integer.class, id)).as("original + una reversión").isEqualTo(2);
     }
 
+    // ── T-054: líneas con tratamiento, prorrata y aceptación del comprobante ──
+
+    @Test
+    @DisplayName("T-054 USO_COMUN sin prorrata del año: 409 con el año; con la prorrata cargada se crea y la línea guarda el porcentaje")
+    void usoComun_prorrata409YLuegoOk() throws Exception {
+        Proveedor p = proveedor();
+        jdbc.update("DELETE FROM prorrata_iva WHERE anio = 2026");
+        Map<String, Object> body = cuerpo(p, "FE-UC", "1000.00", "130.00");
+        ((List<Map<String, Object>>) body.get("lineas")).get(0).put("tratamiento", "USO_COMUN");
+
+        mockMvc.perform(post("/api/cuentas-pagar").with(user("contador")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("No hay porcentaje de prorrata configurado para 2026"));
+
+        jdbc.update("INSERT INTO prorrata_iva (anio, porcentaje, fecha_registro, fecha_actualizacion) VALUES (2026, 80.00, NOW(), NOW())");
+        try {
+            mockMvc.perform(post("/api/cuentas-pagar").with(user("contador")).with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.cuenta.lineas[0].tratamiento").value("USO_COMUN"))
+                    .andExpect(jsonPath("$.data.cuenta.lineas[0].porcentajeProrrata").value(80.0))
+                    .andExpect(jsonPath("$.data.cuenta.lineas[0].ivaAcreditable").value(104.0))
+                    .andExpect(jsonPath("$.data.cuenta.lineas[0].ivaNoAcreditable").value(26.0));
+        } finally {
+            jdbc.update("DELETE FROM prorrata_iva WHERE anio = 2026");
+        }
+    }
+
+    @Test
+    @DisplayName("T-054 compra al 13 % limitada al 1 %: acreditable 10,00 y no acreditable 120,00 en la base, y el asiento lo suma a la cuenta")
+    void limitado_enMysql() throws Exception {
+        Proveedor p = proveedor();
+        Map<String, Object> body = cuerpo(p, "FE-LIM", "1000.00", "130.00");
+        Map<String, Object> linea = ((List<Map<String, Object>>) body.get("lineas")).get(0);
+        linea.put("tratamiento", "LIMITADO");
+        linea.put("tarifaLimite", "1");
+
+        mockMvc.perform(post("/api/cuentas-pagar").with(user("contador")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cuenta.lineas[0].ivaAcreditable").value(10.0))
+                .andExpect(jsonPath("$.data.cuenta.lineas[0].ivaNoAcreditable").value(120.0));
+        Long id = jdbc.queryForObject("SELECT id FROM cuentas_por_pagar WHERE proveedor_id = ?", Long.class, p.getId());
+        assertThat(jdbc.queryForObject("SELECT iva_acreditable FROM cuenta_pagar_linea WHERE cuenta_por_pagar_id = ?",
+                BigDecimal.class, id)).isEqualByComparingTo("10.00");
+        assertThat(jdbc.queryForObject("SELECT SUM(d.debe) FROM detalles_asiento d JOIN asientos_contables a ON a.id = d.asiento_id "
+                + "WHERE a.cuenta_por_pagar_id = ?", BigDecimal.class, id)).isEqualByComparingTo("1130.00");
+    }
+
+    @Test
+    @DisplayName("T-054 aceptación: 403 sin permiso de CxP, 400 con fecha futura, 200 y auditoría; el listado filtra; 409 si está anulada")
+    void aceptacion_endpoint() throws Exception {
+        Proveedor p = proveedor();
+        Long id = crearYObtenerId(p, "FE-ACE");
+        String valida = "{\"estado\":\"ACEPTADO\",\"fecha\":\"" + FECHA.plusDays(1) + "\",\"numero\":\"MR-0001\"}";
+
+        mockMvc.perform(post("/api/cuentas-pagar/" + id + "/aceptacion").with(user("lector")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(valida))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/cuentas-pagar/" + id + "/aceptacion").with(user(USUARIO)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\":\"ACEPTADO\",\"fecha\":\"" + LocalDate.now().plusDays(3) + "\",\"numero\":\"MR-1\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("La fecha de aceptación no puede ser futura"));
+        mockMvc.perform(post("/api/cuentas-pagar/" + id + "/aceptacion").with(user(USUARIO)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\":\"ACEPTADO\",\"fecha\":\"" + FECHA.minusDays(1) + "\",\"numero\":\"MR-1\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("La fecha de aceptación no puede ser anterior a la fecha del comprobante"));
+        mockMvc.perform(get("/api/cuentas-pagar").param("aceptacion", "PENDIENTE").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.id == " + id + ")].diasDesdeComprobante").isNotEmpty());
+
+        mockMvc.perform(post("/api/cuentas-pagar/" + id + "/aceptacion").with(user(USUARIO)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(valida))
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT estado_aceptacion FROM cuentas_por_pagar WHERE id = ?", String.class, id)).isEqualTo("ACEPTADO");
+        assertThat(jdbc.queryForObject("SELECT numero_mensaje_receptor FROM cuentas_por_pagar WHERE id = ?", String.class, id)).isEqualTo("MR-0001");
+        mockMvc.perform(get("/api/cuentas-pagar").param("aceptacion", "ACEPTADO").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.id == " + id + ")].estadoAceptacion").value("ACEPTADO"))
+                .andExpect(jsonPath("$.data[?(@.id == " + id + ")].diasDesdeComprobante")
+                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())));
+        mockMvc.perform(get("/api/cuentas-pagar").param("aceptacion", "PENDIENTE").with(user("lector")))
+                .andExpect(jsonPath("$.data[?(@.id == " + id + ")]").isEmpty());
+
+        mockMvc.perform(post("/api/cuentas-pagar/" + id + "/anular").with(user(USUARIO)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"Registrada por error\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/cuentas-pagar/" + id + "/aceptacion").with(user(USUARIO)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(valida))
+                .andExpect(status().isConflict());
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private void esperar400(Map<String, Object> body, String mensaje) throws Exception {
@@ -360,28 +457,28 @@ class CuentaPorPagarComprobanteIT {
 
     private Map<String, Object> cuerpo(Proveedor p, String numero, String base, String iva) {
         Map<String, Object> fila = new LinkedHashMap<>();
+        fila.put("descripcion", "Línea de prueba");
+        fila.put("cuentaContableId", gastoId);
         fila.put("codigoTarifa", "08");
         fila.put("base", base);
         fila.put("iva", iva);
+        fila.put("tratamiento", "PLENO");
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("proveedorId", p.getId());
         m.put("descripcion", "Servicio de prueba");
         m.put("numeroComprobanteProveedor", numero);
         m.put("fechaComprobante", FECHA.toString());
-        m.put("subtotal", base);
-        m.put("impuesto", iva);
-        m.put("cuentaGastoId", gastoId);
         m.put("moneda", "CRC");
-        m.put("desglose", new ArrayList<>(List.of(fila)));
+        m.put("lineas", new ArrayList<>(List.of(fila)));
         return m;
     }
 
     private CuentaPorPagarDTO dto(Proveedor p, String numero, String base, String iva) {
         return CuentaPorPagarDTO.builder().proveedorId(p.getId()).descripcion("Servicio de prueba")
                 .numeroComprobanteProveedor(numero).fechaComprobante(FECHA)
-                .subtotal(new BigDecimal(base)).impuesto(new BigDecimal(iva)).cuentaGastoId(gastoId)
                 .moneda(MonedaFE.CRC)
-                .desglose(List.of(new CuentaPorPagarIvaDTO("08", new BigDecimal(base), new BigDecimal(iva)))).build();
+                .lineas(List.of(new CuentaPorPagarLineaDTO("Línea de prueba", gastoId, "08", new BigDecimal(base),
+                        new BigDecimal(iva), TratamientoIvaCompra.PLENO, null))).build();
     }
 
     private Proveedor proveedor() {

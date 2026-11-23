@@ -1,17 +1,24 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service.impl;
 
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
-import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarIvaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.AceptacionComprobanteDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarLineaDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarVistaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.TratamientoIvaCompra;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaContable;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
-import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagarIva;
+import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagarLinea;
+import api.astro.whats_orders_manager.modules.contabilidad.model.ProrrataIva;
 import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.ProrrataIvaRepository;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorDuplicadoException;
 import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorValidator;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.IvaCompraCalculo;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ProrrataNoConfiguradaException;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
@@ -38,6 +45,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Locale;
 import java.util.NoSuchElementException;
@@ -54,6 +63,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     private final AsientoContableService asientoService;
     private final TipoCambioService tipoCambioService;
     private final ComprobanteProveedorValidator comprobanteValidator;
+    private final ProrrataIvaRepository prorrataRepository;
     private final PagoProveedorRepository pagoProveedorRepository;
     private final UsuarioActividadService actividadService;
     private final Clock clock;
@@ -64,12 +74,14 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
      * Crea una CxP y genera su asiento de compra en la misma transacción (ADR-015).
      *
      * Con ordenCompraId: mismas reglas que {@link #crearDesdeOrdenCompra(Long)}. El desglose, la moneda y
-     * el tipo de cambio salen de la OC (se ignoran subtotal, impuesto, cuentaGastoId y tipoCambio); se
+     * el tipo de cambio salen de la OC (se ignoran subtotal, impuesto y tipoCambio); se
      * rechaza si la OC no está recibida, si ya tiene CxP, si el monto indicado difiere de oc.total o si
      * la moneda indicada difiere de la de la OC.
-     * Sin ordenCompraId (CxP manual, ADR-016): exige subtotal &gt;= 0, impuesto &gt;= 0,
-     * subtotal + impuesto = monto (monto null → la suma) y una contrapartida válida
-     * ({@link AsientoContableService#validarContrapartidaCxpManual(Long)}).
+     * Sin ordenCompraId (CxP manual, ADR-016, T-054): exige el comprobante del proveedor y al menos una línea; cada línea
+     * lleva su cuenta (hoja válida, {@link AsientoContableService#validarContrapartidaCxpManual(Long)}), tarifa, base, IVA y
+     * tratamiento. El subtotal, el impuesto y el monto se calculan a partir de las líneas (lo que envíe el cliente se
+     * ignora) y el IVA acreditable y no acreditable de cada línea se calcula y se guarda. Una línea de uso común exige el
+     * porcentaje de prorrata del año del comprobante ({@link ProrrataNoConfiguradaException}, 409).
      *
      * Si la validación o el asiento fallan no queda guardada la CxP ni el cambio de saldo del proveedor.
      */
@@ -89,7 +101,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         BigDecimal monto;
         BigDecimal subtotal = null;
         BigDecimal impuesto = null;
-        CuentaContable cuentaGasto = null;
+        List<CuentaPorPagarLinea> lineas = new ArrayList<>();
         String numeroComprobante = null;
         String comprobanteNormalizado = null;
         String descripcion = dto.getDescripcion();
@@ -112,31 +124,45 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
                 descripcion = "Compra según OC " + oc.getNumero();
             }
         } else {
-            // T-052: comprobante del proveedor y desglose de IVA (ADR-066 §1-2); subtotal e impuesto salen del
-            // desglose si no vienen, y si vienen deben coincidir con sus sumas
+            // T-052/T-054: comprobante del proveedor y líneas con cuenta y tratamiento de IVA (ADR-066, ADR-067)
             comprobanteValidator.validar(dto);
-            BigDecimal sumaBases = dto.getDesglose().stream().map(CuentaPorPagarIvaDTO::getBase)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal sumaIva = dto.getDesglose().stream().map(CuentaPorPagarIvaDTO::getIva)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-            subtotal = dto.getSubtotal() != null ? dto.getSubtotal() : sumaBases;
-            impuesto = dto.getImpuesto() != null ? dto.getImpuesto() : sumaIva;
-            if (subtotal.signum() < 0 || impuesto.signum() < 0) {
-                throw new IllegalArgumentException("El subtotal y el impuesto no pueden ser negativos");
-            }
-            BigDecimal suma = subtotal.add(impuesto);
-            monto = dto.getMonto() != null ? dto.getMonto() : suma;
-            if (monto.compareTo(suma) != 0) {
-                throw new IllegalArgumentException(String.format(
-                    "Subtotal + impuesto (%s) no coincide con el monto (%s)", suma, monto));
-            }
-            if (monto.signum() <= 0) {
-                throw new IllegalArgumentException("El monto de la cuenta por pagar debe ser mayor a 0");
-            }
             if (descripcion == null || descripcion.isBlank()) {
                 throw new IllegalArgumentException("La descripción es obligatoria");
             }
-            cuentaGasto = asientoService.validarContrapartidaCxpManual(dto.getCuentaGastoId());
+            // la cuenta de cada línea: hoja activa que acepta movimientos (se valida una vez por cuenta)
+            Map<Long, CuentaContable> cuentas = new LinkedHashMap<>();
+            for (CuentaPorPagarLineaDTO l : dto.getLineas()) {
+                cuentas.computeIfAbsent(l.getCuentaContableId(), asientoService::validarContrapartidaCxpManual);
+            }
+            BigDecimal prorrata = null;
+            if (dto.getLineas().stream().anyMatch(l -> l.getTratamiento() == TratamientoIvaCompra.USO_COMUN)) {
+                int anio = dto.getFechaComprobante().getYear();
+                prorrata = prorrataRepository.findByAnio(anio).map(ProrrataIva::getPorcentaje)
+                    .orElseThrow(() -> new ProrrataNoConfiguradaException(anio));
+            }
+            subtotal = BigDecimal.ZERO;
+            impuesto = BigDecimal.ZERO;
+            int numeroLinea = 1;
+            for (CuentaPorPagarLineaDTO l : dto.getLineas()) {
+                BigDecimal base = l.getBase().setScale(2, RoundingMode.HALF_UP);
+                BigDecimal iva = l.getIva().setScale(2, RoundingMode.HALF_UP);
+                boolean usoComun = l.getTratamiento() == TratamientoIvaCompra.USO_COMUN;
+                boolean limitado = l.getTratamiento() == TratamientoIvaCompra.LIMITADO;
+                BigDecimal tarifaLimite = limitado ? l.getTarifaLimite().setScale(2, RoundingMode.HALF_UP) : null;
+                IvaCompraCalculo.Resultado r = IvaCompraCalculo.calcular(base, iva, l.getTratamiento(), tarifaLimite,
+                    usoComun ? prorrata : null);
+                String descripcionLinea = l.getDescripcion() != null && !l.getDescripcion().isBlank()
+                    ? l.getDescripcion().trim() : descripcion.trim();
+                lineas.add(CuentaPorPagarLinea.builder().numeroLinea(numeroLinea++)
+                    .descripcion(descripcionLinea.length() > 300 ? descripcionLinea.substring(0, 300) : descripcionLinea)
+                    .cuentaContable(cuentas.get(l.getCuentaContableId())).codigoTarifa(l.getCodigoTarifa())
+                    .base(base).iva(iva).tratamiento(l.getTratamiento()).tarifaLimite(tarifaLimite)
+                    .porcentajeProrrata(usoComun ? prorrata : null)
+                    .ivaAcreditable(r.acreditable()).ivaNoAcreditable(r.noAcreditable()).build());
+                subtotal = subtotal.add(base);
+                impuesto = impuesto.add(iva);
+            }
+            monto = subtotal.add(impuesto);
             numeroComprobante = dto.getNumeroComprobanteProveedor().trim();
             comprobanteNormalizado = normalizarComprobante(numeroComprobante);
             if (cuentaRepository.existsByProveedorAndComprobanteNormalizado(proveedor, comprobanteNormalizado)) {
@@ -168,7 +194,6 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .saldoPendiente(monto)
             .subtotal(subtotal)
             .impuesto(impuesto)
-            .cuentaGasto(cuentaGasto)
             .moneda(moneda)
             .tipoCambio(tipoCambio)
             .fechaEmision(fechaEmision)
@@ -180,11 +205,9 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             .fechaComprobante(oc == null ? dto.getFechaComprobante() : null)
             .comprobanteNormalizado(comprobanteNormalizado)
             .build();
-        if (oc == null) {
-            for (CuentaPorPagarIvaDTO fila : dto.getDesglose()) {
-                cuenta.getDesglose().add(CuentaPorPagarIva.builder().cuentaPorPagar(cuenta)
-                    .codigoTarifa(fila.getCodigoTarifa()).base(fila.getBase()).iva(fila.getIva()).build());
-            }
+        for (CuentaPorPagarLinea linea : lineas) {
+            linea.setCuentaPorPagar(cuenta);
+            cuenta.getLineas().add(linea);
         }
 
         CuentaPorPagar guardada = guardarComprobando(cuenta, numeroComprobante);
@@ -363,6 +386,50 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         return anulada;
     }
 
+    @Override
+    @Transactional
+    public CuentaPorPagar registrarAceptacion(Long id, AceptacionComprobanteDTO dto, Usuario usuario) {
+        if (dto == null || dto.getEstado() == null || dto.getEstado() == EstadoAceptacionComprobante.PENDIENTE) {
+            throw new IllegalArgumentException(MSG_ACEPTACION_ESTADO);
+        }
+        if (dto.getFecha() == null) {
+            throw new IllegalArgumentException(MSG_ACEPTACION_FECHA);
+        }
+        String numero = dto.getNumero() == null ? "" : dto.getNumero().trim();
+        if (numero.isEmpty()) {
+            throw new IllegalArgumentException(MSG_ACEPTACION_NUMERO);
+        }
+        if (numero.length() > 50) {
+            throw new IllegalArgumentException(MSG_ACEPTACION_NUMERO_LARGO);
+        }
+        if (dto.getFecha().isAfter(LocalDate.now(clock))) {
+            throw new IllegalArgumentException(MSG_ACEPTACION_FECHA_FUTURA);
+        }
+        // mismo orden de bloqueo que la anulación y los pagos: proveedor y luego la CxP
+        CuentaPorPagar cuenta = bloquear(id);
+        if (cuenta.getEstado() == EstadoCuentaPorPagar.ANULADA) {
+            throw new IllegalStateException(MSG_ACEPTACION_ANULADA);
+        }
+        LocalDate fechaComprobante = cuenta.getFechaComprobante() != null ? cuenta.getFechaComprobante() : cuenta.getFechaEmision();
+        if (fechaComprobante != null && dto.getFecha().isBefore(fechaComprobante)) {
+            throw new IllegalArgumentException(MSG_ACEPTACION_FECHA_ANTERIOR);
+        }
+        EstadoAceptacionComprobante anterior = cuenta.getEstadoAceptacion();
+        cuenta.setEstadoAceptacion(dto.getEstado());
+        cuenta.setFechaAceptacion(dto.getFecha());
+        cuenta.setNumeroMensajeReceptor(numero);
+        CuentaPorPagar guardada = cuentaRepository.save(cuenta);
+
+        String descripcion = "Aceptación del comprobante de la cuenta por pagar " + cuenta.getNumero() + ": "
+            + anterior + " -> " + dto.getEstado() + " (fecha " + dto.getFecha() + ", mensaje receptor " + numero + ")";
+        if (usuario != null && usuario.getIdUsuario() != null) {
+            actividadService.registrarActividad(usuario.getIdUsuario(), "CXP_ACEPTACION_COMPROBANTE", descripcion,
+                "CuentaPorPagar", id.intValue());
+        }
+        log.info(descripcion);
+        return guardada;
+    }
+
     /**
      * Saldo del proveedor en CRC = Σ (saldo de cada CxP no anulada × su tipo de cambio), cada una redondeada a 2
      * decimales (HALF_UP). Único punto de escritura; los asientos y los pagos no lo tocan.
@@ -386,22 +453,26 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     @Override
     @Transactional(readOnly = true)
     public CuentaPorPagarVistaDTO detalleVista(Long id) {
-        return CuentaPorPagarVistaDTO.de(findById(id));
+        return CuentaPorPagarVistaDTO.de(findById(id), LocalDate.now(clock));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CuentaPorPagarVistaDTO> listarVista(EstadoCuentaPorPagar estado) {
+    public List<CuentaPorPagarVistaDTO> listarVista(EstadoCuentaPorPagar estado, EstadoAceptacionComprobante aceptacion) {
         var cuentas = estado != null ? cuentaRepository.findByEstadoConRelaciones(estado)
             : cuentaRepository.findAllConRelaciones();
-        return cuentas.stream().map(CuentaPorPagarVistaDTO::de).toList();
+        LocalDate hoy = LocalDate.now(clock);
+        return cuentas.stream()
+            .filter(c -> aceptacion == null || aceptacion == c.getEstadoAceptacion())
+            .map(c -> CuentaPorPagarVistaDTO.de(c, hoy)).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CuentaPorPagarVistaDTO> vencidasVista() {
-        return cuentaRepository.findVencidasConRelaciones(LocalDate.now(clock)).stream()
-            .map(CuentaPorPagarVistaDTO::de).toList();
+        LocalDate hoy = LocalDate.now(clock);
+        return cuentaRepository.findVencidasConRelaciones(hoy).stream()
+            .map(c -> CuentaPorPagarVistaDTO.de(c, hoy)).toList();
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

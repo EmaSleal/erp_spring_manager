@@ -2,7 +2,8 @@ package api.astro.whats_orders_manager.modules.contabilidad.service;
 
 import api.astro.whats_orders_manager.config.ClockConfig;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
-import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarIvaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarLineaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.TratamientoIvaCompra;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
@@ -129,7 +130,7 @@ class CuentaPorPagarComprobanteJpaTest {
             detalleRepository.deleteAllInBatch();
             asientoRepository.deleteAllInBatch();
             pagoRepository.deleteAllInBatch();
-            cxpRepository.findAll().forEach(c -> c.getDesglose().clear());
+            cxpRepository.findAll().forEach(c -> c.getLineas().clear());
             cxpRepository.flush();
             cxpRepository.deleteAllInBatch();
             ordenCompraRepository.deleteAllInBatch();
@@ -156,10 +157,10 @@ class CuentaPorPagarComprobanteJpaTest {
             assertThat(g.getClaveComprobante()).isEqualTo("1".repeat(50));
             assertThat(g.getFechaComprobante()).isEqualTo(COMPROBANTE);
             assertThat(g.getFechaEmision()).isEqualTo(COMPROBANTE);
-            assertThat(g.getDesglose()).hasSize(1);
-            assertThat(g.getDesglose().get(0).getCodigoTarifa()).isEqualTo("08");
-            assertThat(g.getDesglose().get(0).getBase()).isEqualByComparingTo("100000.00");
-            assertThat(g.getDesglose().get(0).getIva()).isEqualByComparingTo("13000.00");
+            assertThat(g.getLineas()).hasSize(1);
+            assertThat(g.getLineas().get(0).getCodigoTarifa()).isEqualTo("08");
+            assertThat(g.getLineas().get(0).getBase()).isEqualByComparingTo("100000.00");
+            assertThat(g.getLineas().get(0).getIva()).isEqualByComparingTo("13000.00");
             List<AsientoContable> asientos = asientoRepository.findAll();
             assertThat(asientos).hasSize(1);
             assertThat(asientos.get(0).getFecha()).isEqualTo(COMPROBANTE);
@@ -167,16 +168,15 @@ class CuentaPorPagarComprobanteJpaTest {
     }
 
     @Test
-    @DisplayName("sin número, sin fecha o con desglose que no cuadra la CxP manual se rechaza y no queda nada guardado")
+    @DisplayName("sin número o sin líneas la CxP manual se rechaza y no queda nada guardado")
     void crear_rechazaComprobanteInvalido() {
         CuentaPorPagarDTO sinNumero = dto(null, "100000.00", "13000.00");
         assertThatThrownBy(() -> cxpService.crear(sinNumero)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(ComprobanteProveedorValidator.MSG_NUMERO);
-        CuentaPorPagarDTO descuadrado = dto("FE-0002", "100000.00", "13000.00");
-        descuadrado.setSubtotal(new BigDecimal("90000.00"));
-        descuadrado.setMonto(null);
-        assertThatThrownBy(() -> cxpService.crear(descuadrado)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(ComprobanteProveedorValidator.MSG_SUMA_BASES);
+        CuentaPorPagarDTO sinLineas = dto("FE-0002", "100000.00", "13000.00");
+        sinLineas.setLineas(List.of());
+        assertThatThrownBy(() -> cxpService.crear(sinLineas)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(ComprobanteProveedorValidator.MSG_LINEAS);
         assertThat(cxpRepository.count()).isZero();
         assertThat(asientoRepository.count()).isZero();
     }
@@ -251,7 +251,7 @@ class CuentaPorPagarComprobanteJpaTest {
             assertThat(g.getAnuladaPorId()).isEqualTo(7);
             assertThat(g.getFechaAnulacion()).isNotNull();
             assertThat(g.getMotivoAnulacion()).isEqualTo("Factura registrada por error");
-            assertThat(g.getDesglose()).hasSize(1);
+            assertThat(g.getLineas()).hasSize(1);
 
             List<AsientoContable> asientos = asientoRepository.findAll();
             assertThat(asientos).hasSize(2);
@@ -393,9 +393,8 @@ class CuentaPorPagarComprobanteJpaTest {
                 .descripcion("Mantenimiento de equipos")
                 .numeroComprobanteProveedor(numero)
                 .fechaComprobante(COMPROBANTE)
-                .subtotal(b).impuesto(i)
-                .desglose(List.of(new CuentaPorPagarIvaDTO("08", b, i)))
-                .cuentaGastoId(gasto.getIdCuenta())
+                .lineas(List.of(new CuentaPorPagarLineaDTO("Mantenimiento", gasto.getIdCuenta(), "08", b, i,
+                        TratamientoIvaCompra.PLENO, null)))
                 .moneda(MonedaFE.CRC)
                 .build();
     }
