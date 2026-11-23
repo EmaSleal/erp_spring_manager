@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.electronica.service.i
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TipoComprobanteElectronico;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TarifaIva;
 import api.astro.whats_orders_manager.modules.facturacion.enums.CodigoReferenciaNota;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.service.XmlGeneratorService;
@@ -697,13 +698,7 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
      * 10=exenta(0%), 09=0,5%, 02=1%, 03=2%, 04=4%, 07=8%, 08=13% (tarifa general).
      */
     private String resolverCodigoTarifaIVA(BigDecimal porcentaje) {
-        if (porcentaje == null || porcentaje.compareTo(BigDecimal.ZERO) == 0) return "10";
-        if (porcentaje.compareTo(new BigDecimal("0.5")) == 0) return "09";
-        if (porcentaje.compareTo(new BigDecimal("1")) == 0)  return "02";
-        if (porcentaje.compareTo(new BigDecimal("2")) == 0)  return "03";
-        if (porcentaje.compareTo(new BigDecimal("4")) == 0)  return "04";
-        if (porcentaje.compareTo(new BigDecimal("8")) == 0)  return "07";
-        return "08"; // 13% tarifa general
+        return TarifaIva.codigoPorPorcentaje(porcentaje);
     }
 
     private String fmt(BigDecimal value, int decimals) {

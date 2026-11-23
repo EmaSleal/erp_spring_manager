@@ -120,7 +120,8 @@ class CuentasBancariasUiViewTest {
 
         @Bean
         ContabilidadViewController contabilidadViewController(CuentaPorPagarService cxp, ProveedorService proveedores) {
-            return new ContabilidadViewController(cxp, proveedores);
+            return new ContabilidadViewController(cxp, proveedores,
+                    mock(api.astro.whats_orders_manager.shared.service.MonedaService.class));
         }
 
         @Bean

@@ -1,5 +1,8 @@
 package api.astro.whats_orders_manager.modules.proveedores.service;
 
+import api.astro.whats_orders_manager.modules.proveedores.repository.PagoProveedorRepository;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorValidator;
 import api.astro.whats_orders_manager.modules.configuracion.model.CuentaBancaria;
 import api.astro.whats_orders_manager.modules.configuracion.service.CuentaBancariaService;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
@@ -49,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,6 +73,8 @@ import static org.mockito.Mockito.when;
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("PagoProveedorServiceImpl — multimoneda y reversión (ADR-011)")
 class PagoProveedorMultimonedaTest {
+
+    private static final java.time.Clock RELOJ_PRUEBA = java.time.Clock.system(java.time.ZoneId.of("America/Costa_Rica"));
 
     @Mock private PagoProveedorRepository pagoRepository;
     @Mock private CuentaPorPagarRepository cuentaPorPagarRepository;
@@ -92,7 +98,9 @@ class PagoProveedorMultimonedaTest {
                 asientoRepository, detalleRepository, cuentaRepository, parametroContableRepository);
         TipoCambioService tipoCambioService = new TipoCambioService(tipoCambioRepository);
         CuentaPorPagarServiceImpl cuentaService = new CuentaPorPagarServiceImpl(cuentaPorPagarRepository,
-                proveedorRepository, ordenCompraRepository, asientoService, tipoCambioService);
+                proveedorRepository, ordenCompraRepository, asientoService, tipoCambioService,
+                new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(PagoProveedorRepository.class),
+                mock(UsuarioActividadService.class), RELOJ_PRUEBA);
         service = new PagoProveedorServiceImpl(pagoRepository, cuentaPorPagarRepository, cuentaService,
                 asientoService, tipoCambioService, cuentaBancariaService);
 
@@ -314,6 +322,35 @@ class PagoProveedorMultimonedaTest {
         verify(asientoRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("T-052 registrarPago bloquea la CxP (findByIdForUpdate) y rechaza una CxP ANULADA leída tras el bloqueo")
+    void registrarPago_bloqueaYRechazaAnulada() {
+        CuentaPorPagar cpp = cppUsd("500");
+        cpp.setEstado(EstadoCuentaPorPagar.ANULADA);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.registrarPago(dto(cpp, "10.00", MonedaFE.USD, null), usuario))
+                .isInstanceOf(IllegalStateException.class).hasMessage("La cuenta por pagar ya está ANULADA");
+
+        org.mockito.InOrder orden = org.mockito.Mockito.inOrder(proveedorRepository, cuentaPorPagarRepository);
+        orden.verify(proveedorRepository).findByIdForUpdate(proveedor.getId());
+        orden.verify(cuentaPorPagarRepository).findByIdForUpdate(10L);
+        verify(cuentaPorPagarRepository, org.mockito.Mockito.never()).findById(10L);
+    }
+
+    @Test
+    @DisplayName("T-052 anularPago bloquea la CxP antes de revisar su estado")
+    void anularPago_bloqueaLaCuenta() {
+        CuentaPorPagar cpp = cppUsd("500");
+        PagoProveedor pago = PagoProveedor.builder().id(77L).numero("PP-1").cuentaPorPagar(cpp)
+                .monto(BigDecimal.TEN).montoAplicado(BigDecimal.TEN).estado(api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor.CONFIRMADO).build();
+        when(pagoRepository.findById(77L)).thenReturn(Optional.of(pago));
+        cpp.setEstado(EstadoCuentaPorPagar.ANULADA);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.anularPago(77L, usuario))
+                .isInstanceOf(IllegalStateException.class).hasMessage("La cuenta por pagar está anulada");
+        verify(cuentaPorPagarRepository).findByIdForUpdate(10L);
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================
@@ -331,6 +368,10 @@ class PagoProveedorMultimonedaTest {
                 .estado(EstadoCuentaPorPagar.PENDIENTE)
                 .build();
         when(cuentaPorPagarRepository.findById(10L)).thenReturn(Optional.of(cpp));
+        // T-052: el pago bloquea al proveedor y luego la fila de la CxP (mismo orden que la anulación)
+        when(cuentaPorPagarRepository.findProveedorId(10L)).thenReturn(Optional.of(proveedor.getId()));
+        when(proveedorRepository.findByIdForUpdate(proveedor.getId())).thenReturn(Optional.of(proveedor));
+        when(cuentaPorPagarRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(cpp));
         return cpp;
     }
 

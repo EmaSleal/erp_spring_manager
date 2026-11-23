@@ -60,12 +60,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.jpa.hibernate.ddl-auto=create-only",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
 })
-@Import({AsientoContableService.class, CuentaPorPagarServiceImpl.class, TipoCambioService.class})
+@Import({AsientoContableService.class, CuentaPorPagarServiceImpl.class, TipoCambioService.class,
+        ComprobanteProveedorValidator.class, api.astro.whats_orders_manager.config.ClockConfig.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("CxP manual: asiento de compra en la misma transacción (H2)")
 class CuentaPorPagarManualJpaTest {
 
     private static final LocalDate EMISION = LocalDate.of(2026, 9, 15);
+    private int secuencia;
 
     @Autowired private CuentaPorPagarServiceImpl cxpService;
     @Autowired private AsientoContableService asientoService;
@@ -77,6 +79,8 @@ class CuentaPorPagarManualJpaTest {
     @Autowired private ProveedorRepository proveedorRepository;
     @Autowired private PagoProveedorRepository pagoRepository;
     @Autowired private PlatformTransactionManager transactionManager;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService actividadService;
 
     private TransactionTemplate tx;
     private Proveedor proveedor;
@@ -124,6 +128,8 @@ class CuentaPorPagarManualJpaTest {
             detalleRepository.deleteAllInBatch();
             asientoRepository.deleteAllInBatch();
             pagoRepository.deleteAllInBatch();
+            cxpRepository.findAll().forEach(c -> c.getDesglose().clear()); // T-052: filas de desglose (orphanRemoval)
+            cxpRepository.flush();
             cxpRepository.deleteAllInBatch();
             parametroRepository.deleteAllInBatch();
             cuentaRepository.deleteAllInBatch();
@@ -157,7 +163,8 @@ class CuentaPorPagarManualJpaTest {
             assertThat(guardada.getImpuesto()).isEqualByComparingTo("13000.00");
             assertThat(guardada.getCuentaGastoId()).isEqualTo(gastoServicios.getIdCuenta());
         });
-        assertThat(saldoProveedor()).isEqualByComparingTo("114000.00");
+        // T-052: el saldo se recalcula (Σ saldo × TC de las CxP); los 1 000 sembrados no estaban respaldados por una CxP
+        assertThat(saldoProveedor()).isEqualByComparingTo("113000.00");
     }
 
     @Test
@@ -482,7 +489,11 @@ class CuentaPorPagarManualJpaTest {
                 .monto(monto != null ? new BigDecimal(monto) : null)
                 .cuentaGastoId(cuentaGastoId)
                 .moneda(MonedaFE.CRC)
-                .fechaEmision(EMISION)
+                // T-052: la fecha de emisión y del asiento es la del comprobante; el desglose de 13 % cuadra con subtotal e impuesto
+                .numeroComprobanteProveedor("FE-" + (++secuencia))
+                .fechaComprobante(EMISION)
+                .desglose(List.of(new api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarIvaDTO(
+                        "08", new BigDecimal(subtotal), new BigDecimal(impuesto))))
                 .build();
     }
 

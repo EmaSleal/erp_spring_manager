@@ -39,7 +39,7 @@
                     <div th:replace="~{shared/fragments/stat-card :: statCard(
                         'bg-warning',
                         'Saldo Pendiente',
-                        '&#x20A1; ' + ${#numbers.formatDecimal(totalSaldoPendiente ?: 0, 1, 2)},
+                        ${simboloMoneda} + ' ' + ${#numbers.formatDecimal(totalSaldoPendiente ?: 0, 1, 2)},
                         'fas fa-clock fa-3x',
                         'text-white-50')}"></div>
                 </div>
@@ -55,7 +55,7 @@
                     <div th:replace="~{shared/fragments/stat-card :: statCard(
                         'bg-success',
                         'Total Pagado',
-                        '&#x20A1; ' + ${#numbers.formatDecimal(totalPagado ?: 0, 1, 2)},
+                        ${simboloMoneda} + ' ' + ${#numbers.formatDecimal(totalPagado ?: 0, 1, 2)},
                         'fas fa-check-circle fa-3x',
                         'text-white-50')}"></div>
                 </div>
@@ -92,6 +92,7 @@
                             <thead>
                                 <tr>
                                     <th>Número</th>
+                                    <th>Comprobante</th>
                                     <th>Proveedor</th>
                                     <th>Descripción</th>
                                     <th class="text-end">Monto</th>
@@ -106,6 +107,13 @@
                                     th:attr="data-estado=${cpp.estado.name()}">
                                     <td>
                                         <div class="fw-bold" th:text="${cpp.numero}">CPP-2026-00001</div>
+                                    </td>
+                                    <td>
+                                        <div th:if="${cpp.numeroComprobanteProveedor != null}"
+                                             th:text="${cpp.numeroComprobanteProveedor}">FE-0001</div>
+                                        <small th:if="${cpp.fechaComprobante != null}" class="text-muted"
+                                               th:text="${#temporals.format(cpp.fechaComprobante, 'dd/MM/yyyy')}">01/01/2026</small>
+                                        <span th:if="${cpp.numeroComprobanteProveedor == null}" class="text-muted">—</span>
                                     </td>
                                     <td>
                                         <div class="fw-semibold" th:text="${cpp.proveedor.nombre}">Proveedor</div>
@@ -147,6 +155,12 @@
                                                     title="Registrar Pago">
                                                 <i class="fas fa-money-bill-wave"></i>
                                             </button>
+                                            <button class="btn btn-sm btn-outline-primary btn-detalle"
+                                                    th:attr="data-id=${cpp.id}"
+                                                    onclick="abrirModalDetalle(this)"
+                                                    title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
                                             <button class="btn btn-sm btn-outline-secondary btn-historial"
                                                     th:attr="data-id=${cpp.id}, data-numero=${cpp.numero}"
                                                     onclick="abrirModalHistorial(this)"
@@ -157,7 +171,7 @@
                                     </td>
                                 </tr>
                                 <th:block th:if="${#lists.isEmpty(cuentas)}">
-                                    <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(8, 'fas fa-file-invoice-dollar', 'No hay cuentas por pagar registradas')}"></tr>
+                                    <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(9, 'fas fa-file-invoice-dollar', 'No hay cuentas por pagar registradas')}"></tr>
                                 </th:block>
                             </tbody>
                         </table>
@@ -198,23 +212,37 @@
                             </div>
                         </div>
 
+                        <!-- ADR-066: datos del comprobante del proveedor (la fecha del comprobante es la fecha de emisión y la del asiento) -->
                         <div class="row g-3 mb-3">
-                            <div class="col-md-3">
-                                <label for="cppFechaEmision" class="form-label">Fecha de emisión <span class="text-danger">*</span></label>
-                                <input type="date" id="cppFechaEmision" class="form-control" required />
+                            <div class="col-md-4">
+                                <label for="cppNumeroComprobante" class="form-label">N.º de comprobante del proveedor <span class="text-danger">*</span></label>
+                                <input type="text" id="cppNumeroComprobante" class="form-control" maxlength="50" required
+                                       placeholder="Ej: 00100001010000000123" />
+                            </div>
+                            <div class="col-md-5">
+                                <label for="cppClaveComprobante" class="form-label">Clave del comprobante (50 dígitos)</label>
+                                <input type="text" id="cppClaveComprobante" class="form-control" maxlength="50"
+                                       inputmode="numeric" placeholder="Opcional" />
                             </div>
                             <div class="col-md-3">
+                                <label for="cppFechaComprobante" class="form-label">Fecha del comprobante <span class="text-danger">*</span></label>
+                                <input type="date" id="cppFechaComprobante" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
                                 <label for="cppFechaVencimiento" class="form-label">Fecha de vencimiento</label>
                                 <input type="date" id="cppFechaVencimiento" class="form-control" />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label for="cppMoneda" class="form-label">Moneda</label>
                                 <select id="cppMoneda" class="form-select">
                                     <option th:each="m : ${monedas}" th:value="${m}" th:text="${m}"></option>
                                 </select>
                             </div>
                             <!-- ADR-011: tipo de cambio de la cuenta, solo en moneda extranjera -->
-                            <div class="col-md-3" id="cppTipoCambioGroup" style="display: none;">
+                            <div class="col-md-4" id="cppTipoCambioGroup" style="display: none;">
                                 <label for="cppTipoCambio" class="form-label">Tipo de Cambio</label>
                                 <input type="number" id="cppTipoCambio" class="form-control"
                                        step="0.00001" min="0.00001" placeholder="Ej: 510.00000" />
@@ -222,20 +250,42 @@
                             </div>
                         </div>
 
+                        <!-- ADR-066 §1: desglose de IVA por tarifa; el subtotal, el IVA y el total salen de sus filas -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">Desglose de IVA <span class="text-danger">*</span></label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarFilaIva">
+                                    <i class="fas fa-plus me-1"></i>Agregar fila
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-1">
+                                    <thead>
+                                        <tr><th>Tarifa</th><th class="text-end">Base</th><th class="text-end">IVA</th><th></th></tr>
+                                    </thead>
+                                    <tbody id="cppDesglose"></tbody>
+                                </table>
+                            </div>
+                            <div id="cppDesgloseMensajes"></div>
+                        </div>
+
                         <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label for="cppSubtotal" class="form-label">Subtotal <span class="text-danger">*</span></label>
-                                <input type="number" id="cppSubtotal" class="form-control" step="0.01" min="0" required
-                                       placeholder="0.00" />
+                            <div class="col-md-3">
+                                <label for="cppSubtotal" class="form-label">Subtotal</label>
+                                <input type="text" id="cppSubtotal" class="form-control" readonly value="0.00" />
                             </div>
-                            <div class="col-md-4">
-                                <label for="cppImpuesto" class="form-label">Impuesto (IVA) <span class="text-danger">*</span></label>
-                                <input type="number" id="cppImpuesto" class="form-control" step="0.01" min="0" required
-                                       value="0.00" />
+                            <div class="col-md-3">
+                                <label for="cppImpuesto" class="form-label">Impuesto (IVA)</label>
+                                <input type="text" id="cppImpuesto" class="form-control" readonly value="0.00" />
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="cppTotal" class="form-label">Total</label>
                                 <input type="text" id="cppTotal" class="form-control fw-bold" readonly value="0.00" />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cppTotalComprobante" class="form-label">Total del comprobante</label>
+                                <input type="number" id="cppTotalComprobante" class="form-control" step="0.01" min="0"
+                                       placeholder="Opcional: verificar" />
                             </div>
                         </div>
 
@@ -252,6 +302,59 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" id="btnGuardarCpp" onclick="guardarNuevaCpp()">
                         <i class="fas fa-save me-1"></i>Crear cuenta por pagar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: detalle de la CxP (T-052); el botón Anular solo aparece con CUENTA_PAGAR_ANULAR -->
+    <span id="permisoAnularCpp" hidden
+          sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_ANULAR')"></span>
+    <div class="modal fade" id="modalDetalleCpp" tabindex="-1" aria-labelledby="modalDetalleCppLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetalleCppLabel">
+                        <i class="fas fa-eye me-2 text-module-contabilidad"></i>Detalle de la cuenta por pagar
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body" id="detalleCppCuerpo"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" id="btnAbrirAnularCpp" style="display: none;"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_ANULAR')">
+                        <i class="fas fa-ban me-1"></i>Anular
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: anular CxP (ADR-066 §3): exige un motivo de 3 a 180 caracteres -->
+    <div class="modal fade" id="modalAnularCpp" tabindex="-1" aria-labelledby="modalAnularCppLabel" aria-hidden="true"
+         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_ANULAR')">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAnularCppLabel">
+                        <i class="fas fa-ban me-2 text-danger"></i>Anular cuenta por pagar
+                        — <span id="anularNumeroCpp"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Se revierte el asiento de compra y se recalcula el saldo del proveedor. No se borra nada.</p>
+                    <input type="hidden" id="anularCppId" />
+                    <label for="anularMotivo" class="form-label">Motivo <span class="text-danger">*</span></label>
+                    <textarea id="anularMotivo" class="form-control" rows="2" minlength="3" maxlength="180" required></textarea>
+                    <div class="text-danger small mt-1" id="anularError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btnAnularCpp" onclick="confirmarAnularCpp()">
+                        <i class="fas fa-ban me-1"></i>Anular cuenta por pagar
                     </button>
                 </div>
             </div>
@@ -396,6 +499,8 @@
 
     <!-- ADR-011: selector de tipo de cambio compartido con ordenes-compra.html -->
     <script th:src="@{/shared/js/tipo-cambio-documento.js}"></script>
+    <!-- T-052: comprobante del proveedor, desglose de IVA, detalle y anulación (todo con textContent) -->
+    <script th:src="@{/modules/contabilidad/js/cxp-desglose.js}"></script>
 
     <script th:inline="javascript">
     /*<![CDATA[*/
@@ -418,16 +523,82 @@
     if (modalNuevaCpp) {
         modalNuevaCpp.addEventListener('show.bs.modal', () => {
             document.getElementById('formNuevaCpp').reset();
-            document.getElementById('cppFechaEmision').value = new Date().toISOString().split('T')[0];
-            document.getElementById('cppImpuesto').value = '0.00';
-            actualizarTotalCpp();
+            document.getElementById('cppFechaComprobante').value = hoyIso();
+            filasDesglose = [CxpDesglose.filaPorDefecto()]; // una fila por defecto al 13 %
+            repintarDesglose();
             actualizarTipoCambioCpp();
             cargarCuentasContrapartida();
         });
         document.getElementById('cppMoneda').addEventListener('change', actualizarTipoCambioCpp);
-        document.getElementById('cppFechaEmision').addEventListener('change', actualizarTipoCambioCpp);
-        document.getElementById('cppSubtotal').addEventListener('input', actualizarTotalCpp);
-        document.getElementById('cppImpuesto').addEventListener('input', actualizarTotalCpp);
+        document.getElementById('cppFechaComprobante').addEventListener('change', actualizarTipoCambioCpp);
+        document.getElementById('cppNumeroComprobante').addEventListener('input', revalidarCpp);
+        document.getElementById('cppClaveComprobante').addEventListener('input', revalidarCpp);
+        document.getElementById('cppFechaComprobante').addEventListener('input', revalidarCpp);
+        document.getElementById('cppTotalComprobante').addEventListener('input', revalidarCpp);
+        document.getElementById('btnAgregarFilaIva').addEventListener('click', () => {
+            filasDesglose.push(CxpDesglose.filaPorDefecto());
+            repintarDesglose();
+        });
+    }
+
+    // ── Desglose de IVA (T-052, ADR-066): estado de las filas y recálculo en vivo ──
+    let filasDesglose = [CxpDesglose.filaPorDefecto()];
+
+    function hoyIso() {
+        // fecha local del navegador (el servidor valida contra el día de Costa Rica)
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    const manejadoresDesglose = {
+        cambio(i, campo, valor) {
+            const fila = filasDesglose[i];
+            fila[campo] = valor;
+            // el IVA se calcula solo mientras el usuario no lo edite a mano
+            if (campo === 'base' || campo === 'codigoTarifa') {
+                if (!fila.ivaManual) {
+                    fila.iva = String(CxpDesglose.calcularFila(fila.base, CxpDesglose.porcentajeDe(fila.codigoTarifa)));
+                    const input = document.querySelector('#cppDesglose tr[data-fila="' + i + '"] [data-campo="iva"]');
+                    if (input) input.value = fila.iva;
+                }
+            } else if (campo === 'iva') {
+                fila.ivaManual = true;
+            }
+            revalidarCpp();
+        },
+        quitar(i) {
+            filasDesglose.splice(i, 1);
+            repintarDesglose();
+        }
+    };
+
+    function repintarDesglose() {
+        CxpDesglose.renderDesglose(document, document.getElementById('cppDesglose'), filasDesglose, manejadoresDesglose);
+        revalidarCpp();
+    }
+
+    function datosFormularioCpp() {
+        return {
+            numero: document.getElementById('cppNumeroComprobante').value,
+            clave: document.getElementById('cppClaveComprobante').value,
+            fecha: document.getElementById('cppFechaComprobante').value,
+            hoy: hoyIso(),
+            filas: filasDesglose,
+            totalComprobante: document.getElementById('cppTotalComprobante').value
+        };
+    }
+
+    // Recalcula subtotal, IVA y total y muestra los avisos (la suma no cuadra, IVA distinto de base × tarifa)
+    function revalidarCpp() {
+        const t = CxpDesglose.totales(filasDesglose);
+        document.getElementById('cppSubtotal').value = t.subtotal.toFixed(2);
+        document.getElementById('cppImpuesto').value = t.impuesto.toFixed(2);
+        document.getElementById('cppTotal').value = t.total.toFixed(2);
+        const r = CxpDesglose.validar(datosFormularioCpp());
+        // los errores de campos vacíos se muestran al guardar; en vivo solo los avisos
+        CxpDesglose.renderMensajes(document, document.getElementById('cppDesgloseMensajes'),
+            { errores: [], advertencias: r.advertencias });
+        return r;
     }
 
     // ADR-011: tasa de venta de la fecha de emisión para la moneda de la cuenta (editable)
@@ -437,18 +608,8 @@
             fila: document.getElementById('cppTipoCambioGroup'),
             input: document.getElementById('cppTipoCambio'),
             ayuda: document.getElementById('cppTipoCambioAyuda'),
-            fecha: document.getElementById('cppFechaEmision').value
+            fecha: document.getElementById('cppFechaComprobante').value
         });
-    }
-
-    function totalCpp() {
-        const subtotal = parseFloat(document.getElementById('cppSubtotal').value) || 0;
-        const impuesto = parseFloat(document.getElementById('cppImpuesto').value) || 0;
-        return Number((subtotal + impuesto).toFixed(2));
-    }
-
-    function actualizarTotalCpp() {
-        document.getElementById('cppTotal').value = totalCpp().toFixed(2);
     }
 
     async function cargarCuentasContrapartida() {
@@ -479,15 +640,18 @@
     async function guardarNuevaCpp() {
         const proveedorId = document.getElementById('cppProveedor').value;
         const descripcion = document.getElementById('cppDescripcion').value.trim();
-        const fechaEmision = document.getElementById('cppFechaEmision').value;
-        const subtotal = document.getElementById('cppSubtotal').value;
-        const impuesto = document.getElementById('cppImpuesto').value;
         const cuentaGastoId = document.getElementById('cppCuentaGasto').value;
         const moneda = document.getElementById('cppMoneda').value;
         const tipoCambio = document.getElementById('cppTipoCambio').value;
 
-        if (!proveedorId || !descripcion || !fechaEmision || subtotal === '' || impuesto === '' || !cuentaGastoId) {
+        if (!proveedorId || !descripcion || !cuentaGastoId) {
             mostrarToast('Por favor complete los campos requeridos.', 'warning');
+            return;
+        }
+        // las mismas reglas del servidor, antes de enviar; los errores se muestran junto al desglose
+        const r = CxpDesglose.validar(datosFormularioCpp());
+        CxpDesglose.renderMensajes(document, document.getElementById('cppDesgloseMensajes'), r);
+        if (r.errores.length) {
             return;
         }
 
@@ -502,24 +666,24 @@
                     'Content-Type': 'application/json',
                     [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
                 },
-                body: JSON.stringify({
-                    proveedorId:      parseInt(proveedorId),
-                    descripcion:      descripcion,
-                    fechaEmision:     fechaEmision,
-                    fechaVencimiento: document.getElementById('cppFechaVencimiento').value || null,
-                    moneda:           moneda,
-                    tipoCambio:       moneda !== 'CRC' && tipoCambio ? parseFloat(tipoCambio) : null,
-                    subtotal:         parseFloat(subtotal),
-                    impuesto:         parseFloat(impuesto),
-                    monto:            totalCpp(),
-                    cuentaGastoId:    parseInt(cuentaGastoId)
-                })
+                body: JSON.stringify(CxpDesglose.armarPeticion(Object.assign(datosFormularioCpp(), {
+                    extra: {
+                        proveedorId:      parseInt(proveedorId),
+                        descripcion:      descripcion,
+                        fechaVencimiento: document.getElementById('cppFechaVencimiento').value || null,
+                        moneda:           moneda,
+                        tipoCambio:       moneda !== 'CRC' && tipoCambio ? parseFloat(tipoCambio) : null,
+                        cuentaGastoId:    parseInt(cuentaGastoId)
+                    }
+                })))
             });
             const data = await resp.json().catch(() => ({}));
             if (resp.ok && data.success) {
                 bootstrap.Modal.getInstance(modalNuevaCpp).hide();
                 mostrarToast(data.message || 'Cuenta por pagar creada.', 'success');
-                setTimeout(() => location.reload(), 1200);
+                const avisos = (data.data && data.data.advertencias) || [];
+                avisos.forEach(a => mostrarToast(a, 'warning'));
+                setTimeout(() => location.reload(), avisos.length ? 4500 : 1200);
             } else {
                 mostrarToast(data.message || 'Error al crear la cuenta por pagar.', 'danger');
             }
@@ -528,6 +692,76 @@
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save me-1"></i>Crear cuenta por pagar';
+        }
+    }
+
+    // ── Detalle y anulación (T-052, ADR-066 §3) ──────────────────────────────
+    let cuentaDetalle = null;
+
+    async function abrirModalDetalle(btn) {
+        const cuerpo = document.getElementById('detalleCppCuerpo');
+        cuerpo.textContent = 'Cargando...';
+        document.getElementById('btnAbrirAnularCpp')?.style.setProperty('display', 'none');
+        new bootstrap.Modal(document.getElementById('modalDetalleCpp')).show();
+        try {
+            const resp = await fetch('/api/cuentas-pagar/' + encodeURIComponent(btn.dataset.id));
+            const json = await resp.json().catch(() => null);
+            if (!resp.ok || !json || !json.success) {
+                cuerpo.textContent = (json && json.message) || 'No se pudo cargar la cuenta por pagar.';
+                return;
+            }
+            cuentaDetalle = json.data;
+            CxpDesglose.renderDetalle(document, cuerpo, cuentaDetalle);
+            const puede = document.getElementById('permisoAnularCpp') !== null;
+            const botonAnular = document.getElementById('btnAbrirAnularCpp');
+            if (botonAnular) {
+                botonAnular.style.display = CxpDesglose.puedeAnular(cuentaDetalle, puede) ? '' : 'none';
+            }
+        } catch (e) {
+            cuerpo.textContent = 'Error de conexión. Intente nuevamente.';
+        }
+    }
+
+    const botonAbrirAnular = document.getElementById('btnAbrirAnularCpp');
+    if (botonAbrirAnular) {
+        botonAbrirAnular.addEventListener('click', () => {
+            document.getElementById('anularCppId').value = cuentaDetalle.id;
+            document.getElementById('anularNumeroCpp').textContent = cuentaDetalle.numero;
+            document.getElementById('anularMotivo').value = '';
+            document.getElementById('anularError').textContent = '';
+            bootstrap.Modal.getInstance(document.getElementById('modalDetalleCpp'))?.hide();
+            new bootstrap.Modal(document.getElementById('modalAnularCpp')).show();
+        });
+    }
+
+    async function confirmarAnularCpp() {
+        const motivo = document.getElementById('anularMotivo').value;
+        const error = CxpDesglose.validarMotivo(motivo);
+        document.getElementById('anularError').textContent = error || '';
+        if (error) return;
+        const btn = document.getElementById('btnAnularCpp');
+        btn.disabled = true;
+        try {
+            const resp = await fetch('/api/cuentas-pagar/' + encodeURIComponent(document.getElementById('anularCppId').value) + '/anular', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+                },
+                body: JSON.stringify({ motivo: motivo.trim() })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalAnularCpp')).hide();
+                mostrarToast(data.message || 'Cuenta por pagar anulada.', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                document.getElementById('anularError').textContent = data.message || 'No se pudo anular la cuenta por pagar.';
+            }
+        } catch (e) {
+            document.getElementById('anularError').textContent = 'Error de conexión. Intente nuevamente.';
+        } finally {
+            btn.disabled = false;
         }
     }
 
@@ -707,44 +941,21 @@
     async function abrirModalHistorial(btn) {
         const id     = btn.dataset.id;
         const numero = btn.dataset.numero;
+        const cuerpo = document.getElementById('historialBody');
 
         document.getElementById('historialNumeroCpp').textContent = numero;
-        document.getElementById('historialBody').innerHTML =
-            '<tr><td colspan="6" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-1"></i>Cargando...</td></tr>';
+        CxpDesglose.renderHistorial(document, cuerpo, []);
+        cuerpo.firstChild.firstChild.textContent = 'Cargando...';
 
         new bootstrap.Modal(document.getElementById('modalHistorial')).show();
 
         try {
             const resp = await fetch(`/api/cuentas-pagar/${id}/pagos`);
             const json = resp.ok ? await resp.json() : null;
-            const pagos = json?.data ?? [];
-
-            if (!pagos.length) {
-                document.getElementById('historialBody').innerHTML =
-                    '<tr><td colspan="6" class="text-center text-muted py-3">Sin pagos registrados.</td></tr>';
-                return;
-            }
-
-            const rows = pagos.map(p => {
-                const estadoBadge = p.estado === 'CONFIRMADO'
-                    ? '<span class="badge badge-secondary">CONFIRMADO</span>'
-                    : '<span class="badge badge-outline-secondary">ANULADO</span>';
-                return `<tr>
-                    <td class="fw-bold">${p.numero ?? '—'}</td>
-                    <td>${p.fecha ?? '—'}</td>
-                    <td class="text-end">${p.moneda ?? 'CRC'} ${parseFloat(p.monto ?? 0).toFixed(2)}${p.tipoCambio && p.moneda !== 'CRC' ? ` <small class="text-muted">(TC ${p.tipoCambio})</small>` : ''}</td>
-                    <td class="text-center"><span class="badge bg-secondary">${p.metodoPago ?? '—'}</span>${p.cuentaBancaria
-                        ? `<br><small class="text-muted">${String(p.cuentaBancaria).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</small>`
-                        : ''}</td>
-                    <td>${p.referencia ?? '—'}</td>
-                    <td class="text-center">${estadoBadge}</td>
-                </tr>`;
-            }).join('');
-
-            document.getElementById('historialBody').innerHTML = rows;
+            CxpDesglose.renderHistorial(document, cuerpo, json?.data ?? []);
         } catch (e) {
-            document.getElementById('historialBody').innerHTML =
-                '<tr><td colspan="6" class="text-center text-danger py-3">Error al cargar historial.</td></tr>';
+            CxpDesglose.renderHistorial(document, cuerpo, []);
+            cuerpo.firstChild.firstChild.textContent = 'Error al cargar historial.';
         }
     }
 

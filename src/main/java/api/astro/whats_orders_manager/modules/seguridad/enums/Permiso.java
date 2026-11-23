@@ -125,6 +125,7 @@ public enum Permiso {
     CUENTA_PAGAR_VER("Ver cuentas por pagar", "Visualizar cuentas por pagar a proveedores"),
     CUENTA_PAGAR_CREAR("Crear cuentas por pagar", "Registrar cuentas por pagar a proveedores"),
     CUENTA_PAGAR_REGISTRAR_PAGO("Registrar pago a proveedor", "Registrar pagos de cuentas por pagar"),
+    CUENTA_PAGAR_ANULAR("Anular cuentas por pagar", "Anular cuentas por pagar sin pagos activos (operación crítica)"),
 
     // ==================== AUDITORÍA ====================
 
@@ -214,6 +215,7 @@ public enum Permiso {
                this == FACTURA_ELIMINAR ||
                this == FACTURA_ANULAR ||
                this == PAGO_ANULAR ||
+               this == CUENTA_PAGAR_ANULAR ||
                this == SALDO_FAVOR_DEVOLUCION_APROBAR ||
                this == CONTABILIDAD_ELIMINAR ||
                this == CONTABILIDAD_ANULAR ||

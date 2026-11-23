@@ -7,6 +7,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
 import api.astro.whats_orders_manager.modules.seguridad.dto.ModuloDTO;
+import api.astro.whats_orders_manager.shared.service.MonedaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,6 +36,7 @@ public class ContabilidadViewController {
 
     private final CuentaPorPagarService cuentaPorPagarService;
     private final ProveedorService proveedorService;
+    private final MonedaService monedaService;
 
 
     /**
@@ -76,7 +78,7 @@ public class ContabilidadViewController {
 
         // ADR-011: totales en CRC; cada CxP se convierte con su propio tipo de cambio
         BigDecimal totalSaldoPendiente = cuentas.stream()
-            .filter(c -> c.getEstado() != EstadoCuentaPorPagar.PAGADA)
+            .filter(c -> c.getEstado() != EstadoCuentaPorPagar.PAGADA && c.getEstado() != EstadoCuentaPorPagar.ANULADA)
             .map(c -> ConversionMoneda.montoEnCrcReporte(c.getSaldoPendiente(), c.getMoneda(), c.getTipoCambio()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -97,6 +99,7 @@ public class ContabilidadViewController {
         // Alta de CxP manual (ADR-016): proveedores activos y monedas del modal
         model.addAttribute("proveedores", proveedorService.findActivos());
         model.addAttribute("monedas", MonedaFE.values());
+        model.addAttribute("simboloMoneda", monedaService.obtenerSimboloMoneda());
 
         return "modules/contabilidad/cuentas-pagar";
     }

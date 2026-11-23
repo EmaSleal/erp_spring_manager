@@ -1,5 +1,8 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service;
 
+import api.astro.whats_orders_manager.modules.proveedores.repository.PagoProveedorRepository;
+import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorValidator;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAsiento;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TipoAsiento;
@@ -43,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,6 +65,8 @@ import static org.mockito.Mockito.when;
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AsientoContableService.generarAsientoCompra — CxP manual (ADR-016)")
 class AsientoCompraCxpManualTest {
+
+    private static final java.time.Clock RELOJ_PRUEBA = java.time.Clock.system(java.time.ZoneId.of("America/Costa_Rica"));
 
     @Mock private AsientoContableRepository asientoRepository;
     @Mock private DetalleAsientoRepository detalleRepository;
@@ -82,7 +88,9 @@ class AsientoCompraCxpManualTest {
         service = new AsientoContableService(asientoRepository, detalleRepository, cuentaRepository,
                 parametroContableRepository);
         cxpService = new CuentaPorPagarServiceImpl(cuentaPorPagarRepository, proveedorRepository,
-                ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository));
+                ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository),
+                new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(PagoProveedorRepository.class),
+                mock(UsuarioActividadService.class), RELOJ_PRUEBA);
         long id = 1;
         List<ParametroContable> parametros = new ArrayList<>();
         for (String clave : List.of("CPP_CUENTA_COMPRAS", "CPP_IVA_CREDITO_FISCAL", "CPP_CUENTA_POR_PAGAR")) {
@@ -100,6 +108,7 @@ class AsientoCompraCxpManualTest {
         when(asientoRepository.findUltimoNumeroDelAnio(anyString())).thenReturn(Optional.empty());
         when(asientoRepository.save(any(AsientoContable.class))).thenAnswer(inv -> inv.getArgument(0));
         when(cuentaPorPagarRepository.save(any(CuentaPorPagar.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(cuentaPorPagarRepository.saveAndFlush(any(CuentaPorPagar.class))).thenAnswer(inv -> inv.getArgument(0));
         when(cuentaPorPagarRepository.findUltimoConsecutivo(anyInt())).thenReturn(null);
 
         proveedor = new Proveedor();
@@ -108,6 +117,7 @@ class AsientoCompraCxpManualTest {
         proveedor.setSaldoPendiente(BigDecimal.ZERO);
         proveedor.setDiasCredito(0);
         when(proveedorRepository.findById(1L)).thenReturn(Optional.of(proveedor));
+        when(proveedorRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(proveedor));
     }
 
     @Test

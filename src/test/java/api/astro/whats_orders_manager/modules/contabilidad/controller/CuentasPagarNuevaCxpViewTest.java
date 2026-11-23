@@ -14,6 +14,7 @@ import api.astro.whats_orders_manager.modules.proveedores.service.PagoProveedorS
 import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
 import api.astro.whats_orders_manager.modules.seguridad.service.PermisoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
+import api.astro.whats_orders_manager.shared.service.MonedaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -106,8 +107,14 @@ class CuentasPagarNuevaCxpViewTest {
         }
 
         @Bean
-        ContabilidadViewController contabilidadViewController(CuentaPorPagarService cxp, ProveedorService proveedores) {
-            return new ContabilidadViewController(cxp, proveedores);
+        MonedaService monedaService() {
+            return mock(MonedaService.class);
+        }
+
+        @Bean
+        ContabilidadViewController contabilidadViewController(CuentaPorPagarService cxp, ProveedorService proveedores,
+                                                              MonedaService monedaService) {
+            return new ContabilidadViewController(cxp, proveedores, monedaService);
         }
 
         @Bean
@@ -149,6 +156,7 @@ class CuentasPagarNuevaCxpViewTest {
     @Autowired private PermisoService permisoService;
     @Autowired private CuentaPorPagarService cuentaPorPagarService;
     @Autowired private ProveedorService proveedorService;
+    @Autowired private MonedaService monedaService;
     @Autowired private CuentaContableRepository cuentaContableRepository;
     @Autowired private ParametroContableRepository parametroContableRepository;
 
@@ -157,12 +165,17 @@ class CuentasPagarNuevaCxpViewTest {
     @BeforeEach
     void setUp() {
         reset(permisoService, cuentaPorPagarService, proveedorService, cuentaContableRepository,
-                parametroContableRepository);
+                parametroContableRepository, monedaService);
+        when(monedaService.obtenerSimboloMoneda()).thenReturn("\u20A1");
         when(permisoService.tienePermisoPorCodigo(anyString(), anyString())).thenReturn(false);
         for (String usuario : List.of("lector", "contador")) {
             when(permisoService.tienePermisoPorCodigo(eq(usuario), eq("CUENTA_PAGAR_VER"))).thenReturn(true);
         }
         when(permisoService.tienePermisoPorCodigo(eq("contador"), eq("CUENTA_PAGAR_CREAR"))).thenReturn(true);
+        for (String usuario : List.of("anulador")) {
+            when(permisoService.tienePermisoPorCodigo(eq(usuario), eq("CUENTA_PAGAR_VER"))).thenReturn(true);
+            when(permisoService.tienePermisoPorCodigo(eq(usuario), eq("CUENTA_PAGAR_ANULAR"))).thenReturn(true);
+        }
         when(cuentaPorPagarService.findAll()).thenReturn(List.of());
         Proveedor proveedor = new Proveedor();
         proveedor.setId(7L);
@@ -197,7 +210,12 @@ class CuentasPagarNuevaCxpViewTest {
                 .andExpect(content().string(containsString("id=\"cppProveedor\"")))
                 .andExpect(content().string(containsString("Servicios Técnicos S.A.")))
                 .andExpect(content().string(containsString("id=\"cppDescripcion\"")))
-                .andExpect(content().string(containsString("id=\"cppFechaEmision\"")))
+                .andExpect(content().string(containsString("id=\"cppNumeroComprobante\"")))
+                .andExpect(content().string(containsString("id=\"cppClaveComprobante\"")))
+                .andExpect(content().string(containsString("id=\"cppFechaComprobante\"")))
+                .andExpect(content().string(containsString("id=\"cppDesglose\"")))
+                .andExpect(content().string(containsString("id=\"btnAgregarFilaIva\"")))
+                .andExpect(content().string(containsString("/modules/contabilidad/js/cxp-desglose.js")))
                 .andExpect(content().string(containsString("id=\"cppFechaVencimiento\"")))
                 .andExpect(content().string(containsString("id=\"cppMoneda\"")))
                 .andExpect(content().string(containsString("<option value=\"USD\">USD</option>")))
@@ -208,6 +226,51 @@ class CuentasPagarNuevaCxpViewTest {
                 .andExpect(content().string(containsString("id=\"cppTotal\"")))
                 .andExpect(content().string(containsString("id=\"cppCuentaGasto\"")))
                 .andExpect(content().string(containsString("/shared/js/tipo-cambio-documento.js")));
+    }
+
+    // ── T-052: rótulos, símbolo de moneda y anulación ────────────────────────
+
+    @Test
+    @DisplayName("T-052 los totales usan el símbolo de MonedaService y no un símbolo fijo")
+    void totales_usanElSimboloDeMonedaService() throws Exception {
+        when(monedaService.obtenerSimboloMoneda()).thenReturn("Q");
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Q 0.00")))
+                .andExpect(content().string(not(containsString("\u20A1"))))
+                .andExpect(content().string(not(containsString("&#x20A1;"))));
+    }
+
+    @Test
+    @DisplayName("T-052 sin CUENTA_PAGAR_ANULAR no se renderiza el modal de anulación; con el permiso sí, con el motivo")
+    void anular_soloConPermiso() throws Exception {
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("id=\"modalAnularCpp\""))))
+                .andExpect(content().string(not(containsString("id=\"btnAnularCpp\""))));
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("anulador")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"modalAnularCpp\"")))
+                .andExpect(content().string(containsString("id=\"btnAnularCpp\"")))
+                .andExpect(content().string(containsString("id=\"anularMotivo\"")))
+                .andExpect(content().string(containsString("id=\"modalDetalleCpp\"")));
+    }
+
+    @Test
+    @DisplayName("T-052 el listado muestra el número y la fecha del comprobante del proveedor")
+    void listado_muestraNumeroYFechaDelComprobante() throws Exception {
+        var proveedor = new Proveedor();
+        proveedor.setId(7L);
+        proveedor.setNombre("Servicios Técnicos S.A.");
+        var cpp = api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar.builder()
+                .id(1L).numero("CPP-2026-00001").proveedor(proveedor).descripcion("Mantenimiento")
+                .monto(new java.math.BigDecimal("113000.00")).saldoPendiente(new java.math.BigDecimal("113000.00"))
+                .numeroComprobanteProveedor("FE-0001").fechaComprobante(java.time.LocalDate.of(2026, 11, 20)).build();
+        when(cuentaPorPagarService.findAll()).thenReturn(List.of(cpp));
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("FE-0001")))
+                .andExpect(content().string(containsString("20/11/2026")));
     }
 
     // ── Endpoint de cuentas de contrapartida ─────────────────────────────────

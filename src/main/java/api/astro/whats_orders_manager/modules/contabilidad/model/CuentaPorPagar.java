@@ -22,6 +22,10 @@ import java.util.List;
     @Index(name = "idx_cpp_proveedor", columnList = "proveedor_id"),
     @Index(name = "idx_cpp_estado", columnList = "estado"),
     @Index(name = "idx_cpp_vencimiento", columnList = "fecha_vencimiento")
+}, uniqueConstraints = {
+    // T-052 (ADR-066): un proveedor no repite el comprobante en CxP no anuladas. comprobante_normalizado es null en las
+    // anuladas y en las sin comprobante, y los null no chocan entre sí en un índice único.
+    @UniqueConstraint(name = "uk_cpp_proveedor_comprobante", columnNames = {"proveedor_id", "comprobante_normalizado"})
 })
 @Getter
 @Setter
@@ -92,8 +96,50 @@ public class CuentaPorPagar {
     @Column(name = "tipo_cambio", precision = 18, scale = 5)
     private BigDecimal tipoCambio;
 
+    /**
+     * Fecha de emisión de la CxP. En una CxP manual es la fecha del comprobante del proveedor (ADR-014, T-052) y de ella
+     * sale la fecha del asiento de compra.
+     */
     @Column(name = "fecha_emision", nullable = false)
     private LocalDate fechaEmision;
+
+    /** Número o consecutivo del comprobante del proveedor (T-052, ADR-066). Null en las CxP de OC y en las anteriores a V53. */
+    @Column(name = "numero_comprobante_proveedor", length = 50)
+    private String numeroComprobanteProveedor;
+
+    /** Clave numérica de 50 dígitos del comprobante del proveedor (opcional). */
+    @Column(name = "clave_comprobante", length = 50)
+    private String claveComprobante;
+
+    /** Fecha de emisión del comprobante del proveedor; igual a {@link #fechaEmision} en las CxP manuales nuevas. */
+    @Column(name = "fecha_comprobante")
+    private LocalDate fechaComprobante;
+
+    /**
+     * Número del comprobante sin espacios y en mayúsculas, para el índice único (proveedor, comprobante). Null cuando la
+     * CxP está anulada o no tiene comprobante: así no bloquea volver a registrarlo. Lo mantiene el servicio.
+     */
+    @Column(name = "comprobante_normalizado", length = 50)
+    @JsonIgnore
+    private String comprobanteNormalizado;
+
+    /** Desglose de IVA por tarifa del comprobante del proveedor (T-052). */
+    @OneToMany(mappedBy = "cuentaPorPagar", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
+    private List<CuentaPorPagarIva> desglose = new ArrayList<>();
+
+    /** Usuario que anuló la CxP (T-052). */
+    @Column(name = "anulada_por_id")
+    private Integer anuladaPorId;
+
+    @Column(name = "fecha_anulacion")
+    private LocalDateTime fechaAnulacion;
+
+    @Column(name = "motivo_anulacion", length = 180)
+    private String motivoAnulacion;
 
     @Column(name = "fecha_vencimiento")
     private LocalDate fechaVencimiento;

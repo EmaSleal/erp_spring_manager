@@ -11,6 +11,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
+import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorVistaDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.PagoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.repository.PagoProveedorRepository;
@@ -42,8 +43,8 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
     @Override
     @Transactional
     public PagoProveedor registrarPago(PagoProveedorDTO dto, Usuario usuario) {
-        CuentaPorPagar cuenta = cuentaRepository.findById(dto.getCuentaPorPagarId())
-            .orElseThrow(() -> new NoSuchElementException("Cuenta por pagar no encontrada: " + dto.getCuentaPorPagarId()));
+        // T-052: bloqueo proveedor → CxP antes de revisar estado y saldo (no se cuela un pago durante una anulación)
+        CuentaPorPagar cuenta = cuentaService.bloquear(dto.getCuentaPorPagarId());
 
         if (cuenta.getEstado() == EstadoCuentaPorPagar.PAGADA
             || cuenta.getEstado() == EstadoCuentaPorPagar.ANULADA) {
@@ -112,7 +113,7 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
             throw new IllegalStateException("El pago ya está anulado");
         }
 
-        CuentaPorPagar cuenta = pago.getCuentaPorPagar();
+        CuentaPorPagar cuenta = cuentaService.bloquear(pago.getCuentaPorPagar().getId());
         if (cuenta.getEstado() == EstadoCuentaPorPagar.ANULADA) {
             throw new IllegalStateException("La cuenta por pagar está anulada");
         }
@@ -148,6 +149,18 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
     @Transactional(readOnly = true)
     public List<PagoProveedor> findByPeriodo(LocalDate desde, LocalDate hasta) {
         return pagoRepository.findByFechaBetweenOrderByFechaDesc(desde, hasta);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PagoProveedorVistaDTO> findByCuentaVista(Long cuentaId) {
+        return findByCuenta(cuentaId).stream().map(PagoProveedorVistaDTO::de).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PagoProveedorVistaDTO> findByPeriodoVista(LocalDate desde, LocalDate hasta) {
+        return findByPeriodo(desde, hasta).stream().map(PagoProveedorVistaDTO::de).toList();
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
