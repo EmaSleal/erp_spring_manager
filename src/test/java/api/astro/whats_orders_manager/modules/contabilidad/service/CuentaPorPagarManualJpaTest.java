@@ -128,7 +128,7 @@ class CuentaPorPagarManualJpaTest {
             detalleRepository.deleteAllInBatch();
             asientoRepository.deleteAllInBatch();
             pagoRepository.deleteAllInBatch();
-            cxpRepository.findAll().forEach(c -> c.getDesglose().clear()); // T-052: filas de desglose (orphanRemoval)
+            cxpRepository.findAll().forEach(c -> c.getLineas().clear()); // T-054: líneas (orphanRemoval)
             cxpRepository.flush();
             cxpRepository.deleteAllInBatch();
             parametroRepository.deleteAllInBatch();
@@ -161,7 +161,9 @@ class CuentaPorPagarManualJpaTest {
             assertThat(guardada.getMonto()).isEqualByComparingTo("113000.00");
             assertThat(guardada.getSubtotal()).isEqualByComparingTo("100000.00");
             assertThat(guardada.getImpuesto()).isEqualByComparingTo("13000.00");
-            assertThat(guardada.getCuentaGastoId()).isEqualTo(gastoServicios.getIdCuenta());
+            assertThat(guardada.getLineas()).hasSize(1);
+            assertThat(guardada.getLineas().get(0).getCuentaContable().getIdCuenta()).isEqualTo(gastoServicios.getIdCuenta());
+            assertThat(guardada.getCuentaGastoId()).as("cuenta_gasto_id está en desuso").isNull();
         });
         // T-052: el saldo se recalcula (Σ saldo × TC de las CxP); los 1 000 sembrados no estaban respaldados por una CxP
         assertThat(saldoProveedor()).isEqualByComparingTo("113000.00");
@@ -197,16 +199,9 @@ class CuentaPorPagarManualJpaTest {
     // ── Rechazos: no queda nada guardado ─────────────────────────────────────
 
     @Test
-    @DisplayName("rechazo: subtotal + impuesto ≠ monto")
-    void rechazo_sumaDistintaDelMonto() {
-        assertRechazoSinCambios(dto("100000.00", "13000.00", "113000.01", gastoServicios.getIdCuenta()),
-                "no coincide con el monto");
-    }
-
-    @Test
-    @DisplayName("rechazo: falta cuentaGastoId")
+    @DisplayName("rechazo: la línea no trae cuenta")
     void rechazo_sinCuentaGasto() {
-        assertRechazoSinCambios(dto("100000.00", "13000.00", null, null), "cuentaGastoId");
+        assertRechazoSinCambios(dto("100000.00", "13000.00", null, null), ComprobanteProveedorValidator.MSG_LINEA_CUENTA);
     }
 
     @Test
@@ -315,8 +310,6 @@ class CuentaPorPagarManualJpaTest {
 
         assertThat(elegibles).extracting(CuentaContable::getCodigo)
                 .containsExactly("1.2.01.001", "5.1.03.001", "5.1.04.001");
-        Optional<Long> idCompras = tx.execute(s -> asientoService.obtenerIdCuentaComprasCpp());
-        assertThat(idCompras).contains(compras.getIdCuenta());
     }
 
     @Test
@@ -341,8 +334,6 @@ class CuentaPorPagarManualJpaTest {
         assertThat(elegibles).extracting(CuentaContable::getCodigo)
                 .contains("5.1.01", "5.1.02.003")
                 .doesNotContain("5", "5.1", "5.1.02");
-        Optional<Long> idCompras = tx.execute(s -> asientoService.obtenerIdCuentaComprasCpp());
-        assertThat(idCompras).contains(arbol[2].getIdCuenta());
 
         // Same rule for the parametros contables selector (/contabilidad/cuentas/api/hojas)
         List<CuentaContable> hojas = tx.execute(s -> cuentaRepository.findHojasActivasConMovimientos());
@@ -365,7 +356,7 @@ class CuentaPorPagarManualJpaTest {
     // ── T-019 (ADR-022): cuentas asignadas a parámetros contables ────────────
 
     @Test
-    @DisplayName("T-019 cuentas elegibles: excluyen toda cuenta de parametros_contables salvo CPP_CUENTA_COMPRAS")
+    @DisplayName("T-019 cuentas elegibles: excluyen toda cuenta de parametros_contables salvo CPP_CUENTA_COMPRAS y COMPRAS_MERCADERIA")
     void cuentasElegibles_excluyenCuentasParametrizadasSalvoCompras() {
         tx.executeWithoutResult(s -> {
             param("NOMINA_GASTO_SUELDOS", cuenta("5.1.02.001", TipoCuenta.EGRESO, true, true));
@@ -377,15 +368,28 @@ class CuentaPorPagarManualJpaTest {
         List<CuentaContable> elegibles = tx.execute(s -> asientoService.obtenerCuentasContrapartidaCxpManual());
 
         List<Long> parametrizadas = tx.execute(s -> parametroRepository.findAllWithCuentas().stream()
-                .filter(p -> !p.getClave().equals("CPP_CUENTA_COMPRAS"))
+                .filter(p -> !p.getClave().equals("CPP_CUENTA_COMPRAS") && !p.getClave().equals("COMPRAS_MERCADERIA"))
                 .map(p -> p.getCuentaContable().getIdCuenta())
                 .toList());
         assertThat(elegibles).extracting(CuentaContable::getIdCuenta).doesNotContainAnyElementsOf(parametrizadas);
         assertThat(elegibles).extracting(CuentaContable::getCodigo)
                 .containsExactly("5.1.03.001", "5.1.04.001")
                 .doesNotContain("5.1.02.001", "5.1.02.002", "5.1.02.003", "5.2.01.001");
-        Optional<Long> idCompras = tx.execute(s -> asientoService.obtenerIdCuentaComprasCpp());
-        assertThat(idCompras).contains(compras.getIdCuenta());
+    }
+
+    @Test
+    @DisplayName("T-054 la cuenta de COMPRAS_MERCADERIA (5.3.01.001) sigue elegible como cuenta de línea")
+    void cuentasElegibles_comprasMercaderiaElegible() {
+        CuentaContable mercaderia = tx.execute(s -> {
+            CuentaContable c = cuenta("5.3.01.001", TipoCuenta.EGRESO, true, true);
+            param("COMPRAS_MERCADERIA", c);
+            return c;
+        });
+
+        List<CuentaContable> elegibles = tx.execute(s -> asientoService.obtenerCuentasContrapartidaCxpManual());
+
+        assertThat(elegibles).extracting(CuentaContable::getCodigo).contains("5.3.01.001");
+        assertThat(cxpService.crear(dto("1000.00", "130.00", null, mercaderia.getIdCuenta())).getId()).isNotNull();
     }
 
     @Test
@@ -484,16 +488,13 @@ class CuentaPorPagarManualJpaTest {
         return CuentaPorPagarDTO.builder()
                 .proveedorId(proveedor.getId())
                 .descripcion("Mantenimiento de equipos")
-                .subtotal(new BigDecimal(subtotal))
-                .impuesto(new BigDecimal(impuesto))
-                .monto(monto != null ? new BigDecimal(monto) : null)
-                .cuentaGastoId(cuentaGastoId)
                 .moneda(MonedaFE.CRC)
                 // T-052: la fecha de emisión y del asiento es la del comprobante; el desglose de 13 % cuadra con subtotal e impuesto
                 .numeroComprobanteProveedor("FE-" + (++secuencia))
                 .fechaComprobante(EMISION)
-                .desglose(List.of(new api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarIvaDTO(
-                        "08", new BigDecimal(subtotal), new BigDecimal(impuesto))))
+                .lineas(List.of(new api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarLineaDTO(
+                        "Mantenimiento", cuentaGastoId, "08", new BigDecimal(subtotal), new BigDecimal(impuesto),
+                        api.astro.whats_orders_manager.modules.contabilidad.enums.TratamientoIvaCompra.PLENO, null)))
                 .build();
     }
 

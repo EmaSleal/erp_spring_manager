@@ -114,7 +114,8 @@ class CuentasPagarNuevaCxpViewTest {
         @Bean
         ContabilidadViewController contabilidadViewController(CuentaPorPagarService cxp, ProveedorService proveedores,
                                                               MonedaService monedaService) {
-            return new ContabilidadViewController(cxp, proveedores, monedaService);
+            return new ContabilidadViewController(cxp, proveedores, monedaService,
+                    java.time.Clock.fixed(java.time.Instant.parse("2026-11-23T02:00:00Z"), java.time.ZoneId.of("America/Costa_Rica")));
         }
 
         @Bean
@@ -213,9 +214,9 @@ class CuentasPagarNuevaCxpViewTest {
                 .andExpect(content().string(containsString("id=\"cppNumeroComprobante\"")))
                 .andExpect(content().string(containsString("id=\"cppClaveComprobante\"")))
                 .andExpect(content().string(containsString("id=\"cppFechaComprobante\"")))
-                .andExpect(content().string(containsString("id=\"cppDesglose\"")))
-                .andExpect(content().string(containsString("id=\"btnAgregarFilaIva\"")))
-                .andExpect(content().string(containsString("/modules/contabilidad/js/cxp-desglose.js")))
+                .andExpect(content().string(containsString("id=\"cppLineas\"")))
+                .andExpect(content().string(containsString("id=\"btnAgregarLinea\"")))
+                .andExpect(content().string(containsString("/modules/contabilidad/js/cxp-lineas.js")))
                 .andExpect(content().string(containsString("id=\"cppFechaVencimiento\"")))
                 .andExpect(content().string(containsString("id=\"cppMoneda\"")))
                 .andExpect(content().string(containsString("<option value=\"USD\">USD</option>")))
@@ -224,7 +225,8 @@ class CuentasPagarNuevaCxpViewTest {
                 .andExpect(content().string(containsString("id=\"cppSubtotal\"")))
                 .andExpect(content().string(containsString("id=\"cppImpuesto\"")))
                 .andExpect(content().string(containsString("id=\"cppTotal\"")))
-                .andExpect(content().string(containsString("id=\"cppCuentaGasto\"")))
+                .andExpect(content().string(not(containsString("id=\"cppCuentaGasto\""))))
+                .andExpect(content().string(containsString("id=\"cppAdvertenciaProrrata\"")))
                 .andExpect(content().string(containsString("/shared/js/tipo-cambio-documento.js")));
     }
 
@@ -276,7 +278,7 @@ class CuentasPagarNuevaCxpViewTest {
     // ── Endpoint de cuentas de contrapartida ─────────────────────────────────
 
     @Test
-    @DisplayName("cuentas de contrapartida: solo activas con movimientos EGRESO/ACTIVO no configuradas como banco, CxC, CxP o IVA; marca CPP_CUENTA_COMPRAS")
+    @DisplayName("cuentas de contrapartida: solo activas con movimientos EGRESO/ACTIVO no configuradas como banco, CxC, CxP o IVA; sin cuenta predeterminada (T-054)")
     void cuentasContrapartida_filtraYMarcaCompras() throws Exception {
         CuentaContable compras = cuenta(1L, "5.1.04.001", TipoCuenta.EGRESO, true, true);
         CuentaContable activoFijo = cuenta(2L, "1.2.01.001", TipoCuenta.ACTIVO, true, true);
@@ -303,12 +305,106 @@ class CuentasPagarNuevaCxpViewTest {
 
         mockMvc.perform(get("/api/cuentas-pagar/cuentas-contrapartida").with(user("contador")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.cuentaComprasId").value(1))
+                .andExpect(jsonPath("$.data.cuentaComprasId").doesNotExist())
                 .andExpect(jsonPath("$.data.cuentas[*].codigo").value(contains("1.2.01.001", "5.1.03.001", "5.1.04.001")))
                 .andExpect(jsonPath("$.data.cuentas[*].id").value(contains(2, 3, 1)))
                 .andExpect(jsonPath("$.data.cuentas[*].tipo").value(contains("ACTIVO", "EGRESO", "EGRESO")))
-                .andExpect(jsonPath("$.data.cuentas[*].predeterminada").value(contains(false, false, true)))
+                .andExpect(jsonPath("$.data.cuentas[0].predeterminada").doesNotExist())
                 .andExpect(jsonPath("$.data.cuentas[0].nombre").value("Cuenta 1.2.01.001"));
+    }
+
+    @Test
+    @DisplayName("T-054 cuentas de línea: COMPRAS_MERCADERIA e inventario son elegibles; la cuenta de CPP_CUENTA_COMPRAS ya no se propone")
+    void cuentasContrapartida_comprasMercaderiaElegible() throws Exception {
+        CuentaContable mercaderia = cuenta(21L, "5.3.01.001", TipoCuenta.EGRESO, true, true);
+        CuentaContable inventario = cuenta(22L, "1.1.04.001", TipoCuenta.ACTIVO, true, true);
+        CuentaContable compras = cuenta(23L, "5.1.01", TipoCuenta.EGRESO, true, true);
+        when(cuentaContableRepository.findByAceptaMovimientosAndActiva(true, true)).thenReturn(List.of(mercaderia, inventario, compras));
+        when(parametroContableRepository.findAllWithCuentas()).thenReturn(List.of(
+                param("COMPRAS_MERCADERIA", mercaderia), param("CPP_CUENTA_COMPRAS", compras)));
+
+        mockMvc.perform(get("/api/cuentas-pagar/cuentas-contrapartida").with(user("contador")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cuentas[*].codigo").value(contains("1.1.04.001", "5.1.01", "5.3.01.001")))
+                .andExpect(jsonPath("$.data.cuentas[*].predeterminada").doesNotExist())
+                .andExpect(jsonPath("$.data.cuentaComprasId").doesNotExist());
+    }
+
+    // ── T-054: aceptación del comprobante en el listado ──────────────────────
+
+    private api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar cpp(long id, String numero, String comprobante,
+            api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante aceptacion) {
+        var proveedor = new Proveedor();
+        proveedor.setId(7L);
+        proveedor.setNombre("Servicios Técnicos S.A.");
+        return api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar.builder()
+                .id(id).numero(numero).proveedor(proveedor).descripcion("Mantenimiento")
+                .monto(new java.math.BigDecimal("113000.00")).saldoPendiente(new java.math.BigDecimal("113000.00"))
+                .numeroComprobanteProveedor(comprobante).fechaComprobante(java.time.LocalDate.of(2026, 11, 20))
+                .estadoAceptacion(aceptacion).build();
+    }
+
+    @Test
+    @DisplayName("T-054 el listado trae el filtro de aceptación, la columna de aceptación y los días de las pendientes")
+    void listado_muestraAceptacionYDias() throws Exception {
+        var pendiente = cpp(1L, "CPP-2026-00001", "FE-0001",
+                api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante.PENDIENTE);
+        var aceptada = cpp(2L, "CPP-2026-00002", "FE-0002",
+                api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante.ACEPTADO);
+        when(cuentaPorPagarService.findAll()).thenReturn(List.of(pendiente, aceptada));
+
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"filtroAceptacion\"")))
+                .andExpect(content().string(containsString("<option value=\"PENDIENTE\"")))
+                .andExpect(content().string(containsString("<option value=\"ACEPTADO\"")))
+                .andExpect(content().string(containsString("<option value=\"RECHAZADO\"")))
+                .andExpect(content().string(containsString("2 días")))
+                .andExpect(content().string(containsString("ACEPTADO")));
+    }
+
+    @Test
+    @DisplayName("T-054 ?aceptacion=PENDIENTE deja solo las pendientes; el días no se muestra en las aceptadas")
+    void listado_filtraPorAceptacion() throws Exception {
+        var pendiente = cpp(1L, "CPP-2026-00001", "FE-0001",
+                api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante.PENDIENTE);
+        var aceptada = cpp(2L, "CPP-2026-00002", "FE-0002",
+                api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante.ACEPTADO);
+        when(cuentaPorPagarService.findAll()).thenReturn(List.of(pendiente, aceptada));
+
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").param("aceptacion", "PENDIENTE").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("CPP-2026-00001")))
+                .andExpect(content().string(not(containsString("CPP-2026-00002"))));
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").param("aceptacion", "ACEPTADO").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("CPP-2026-00002")))
+                .andExpect(content().string(not(containsString("CPP-2026-00001"))))
+                .andExpect(content().string(not(containsString("2 días"))));
+    }
+
+    @Test
+    @DisplayName("T-054 «Registrar aceptación»: el modal solo se renderiza con CUENTA_PAGAR_CREAR")
+    void aceptacion_soloConPermisoDeCxp() throws Exception {
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("id=\"modalAceptacionCpp\""))));
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("contador")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"modalAceptacionCpp\"")))
+                .andExpect(content().string(containsString("id=\"aceptacionNumero\"")))
+                .andExpect(content().string(containsString("id=\"aceptacionFecha\"")))
+                .andExpect(content().string(containsString("id=\"aceptacionEstado\"")));
+    }
+
+    @Test
+    @DisplayName("T-054 el formulario de CxP enlaza con la pantalla de prorrata solo si el usuario puede gestionarla")
+    void enlaceAProrrata_soloConPermiso() throws Exception {
+        when(permisoService.tienePermisoPorCodigo(eq("contador"), eq("PRORRATA_IVA_GESTIONAR"))).thenReturn(true);
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("contador")))
+                .andExpect(content().string(containsString("/contabilidad/prorrata-iva")));
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("lector")))
+                .andExpect(content().string(not(containsString("/contabilidad/prorrata-iva"))));
     }
 
     @Test

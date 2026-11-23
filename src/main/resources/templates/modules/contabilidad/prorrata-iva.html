@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Prorrata del IVA</title>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+
+    <!-- Sidebar -->
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content module-contabilidad-scope">
+        <div class="container-fluid py-4">
+
+            <!-- Breadcrumb -->
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/contabilidad', 'fas fa-calculator', 'Contabilidad', 'fas fa-percent', 'Prorrata del IVA')}"></div>
+
+            <!-- Page Header -->
+            <div class="page-header mb-4">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-percent', 'text-module-contabilidad', 'Porcentaje provisional de', 'Prorrata del IVA', 'Porcentaje por año que se aplica al IVA de uso común en las cuentas por pagar')}"></div>
+                <div class="page-header-actions">
+                    <a class="btn btn-outline-secondary" th:href="@{/contabilidad/cuentas-pagar}">
+                        <i class="fas fa-arrow-left me-1"></i>Volver a Cuentas por Pagar
+                    </a>
+                </div>
+            </div>
+
+            <div class="alert alert-info" id="notaProrrata" role="note">
+                <i class="fas fa-info-circle me-1"></i>
+                Corregir el porcentaje no recalcula las cuentas por pagar ya registradas; la liquidación anual se registra con un
+                asiento manual. Cada cuenta por pagar guarda el porcentaje con el que se creó.
+            </div>
+
+            <div class="row g-4">
+                <!-- Alta y corrección -->
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white">
+                            <h6 class="mb-0" id="tituloFormProrrata">Registrar porcentaje</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="formProrrata" novalidate>
+                                <div class="mb-3">
+                                    <label for="prorrataAnio" class="form-label">Año <span class="text-danger">*</span></label>
+                                    <input type="number" id="prorrataAnio" class="form-control" min="2000" max="2100" step="1" required />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="prorrataPorcentaje" class="form-label">Porcentaje (0 a 100) <span class="text-danger">*</span></label>
+                                    <input type="number" id="prorrataPorcentaje" class="form-control" min="0" max="100" step="0.01" required />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="prorrataNota" class="form-label">Nota</label>
+                                    <input type="text" id="prorrataNota" class="form-control" maxlength="300"
+                                           placeholder="Ej: provisional del año anterior" />
+                                </div>
+                                <div class="text-danger small mb-2" id="prorrataError"></div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" id="btnGuardarProrrata">
+                                        <i class="fas fa-save me-1"></i>Guardar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btnNuevaProrrata">Nuevo</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista -->
+                <div class="col-lg-8">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" id="tablaProrrata">
+                                    <thead>
+                                        <tr>
+                                            <th>Año</th>
+                                            <th class="text-end">Porcentaje</th>
+                                            <th>Nota</th>
+                                            <th>Registrado por</th>
+                                            <th>Actualizado</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="prorrataCuerpo"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+
+    <!-- Scripts base -->
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+    // Todo el contenido se pinta con createElement/textContent: ningún dato del servidor se interpreta como HTML.
+    let anioEnCorreccion = null;
+
+    function celda(texto, clase) {
+        const td = document.createElement('td');
+        if (clase) td.className = clase;
+        td.textContent = texto === null || texto === undefined || texto === '' ? '—' : String(texto);
+        return td;
+    }
+
+    function formatoFecha(valor) {
+        return valor ? String(valor).replace('T', ' ').substring(0, 16) : '';
+    }
+
+    function pintarProrrata(lista) {
+        const cuerpo = document.getElementById('prorrataCuerpo');
+        cuerpo.replaceChildren();
+        if (!lista.length) {
+            const tr = document.createElement('tr');
+            const td = celda('No hay porcentajes registrados', 'text-center text-muted py-3');
+            td.setAttribute('colspan', '6');
+            tr.appendChild(td);
+            cuerpo.appendChild(tr);
+            return;
+        }
+        lista.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.appendChild(celda(p.anio, 'fw-bold'));
+            tr.appendChild(celda(Number(p.porcentaje).toFixed(2) + ' %', 'text-end'));
+            tr.appendChild(celda(p.nota));
+            tr.appendChild(celda(p.usuarioNombre));
+            tr.appendChild(celda(formatoFecha(p.fechaActualizacion)));
+            const acciones = document.createElement('td');
+            acciones.className = 'text-center';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-outline-primary';
+            btn.title = 'Corregir';
+            btn.setAttribute('aria-label', 'Corregir el porcentaje de ' + p.anio);
+            const icono = document.createElement('i');
+            icono.className = 'fas fa-edit';
+            btn.appendChild(icono);
+            btn.addEventListener('click', () => editarProrrata(p));
+            acciones.appendChild(btn);
+            tr.appendChild(acciones);
+            cuerpo.appendChild(tr);
+        });
+    }
+
+    async function cargarProrrata() {
+        try {
+            const resp = await fetch('/api/prorrata-iva');
+            const json = resp.ok ? await resp.json() : null;
+            pintarProrrata((json && json.data) || []);
+        } catch (e) {
+            mostrarToast('Error al cargar los porcentajes.', 'danger');
+        }
+    }
+
+    function editarProrrata(p) {
+        anioEnCorreccion = p.anio;
+        document.getElementById('prorrataAnio').value = p.anio;
+        document.getElementById('prorrataAnio').readOnly = true;
+        document.getElementById('prorrataPorcentaje').value = p.porcentaje;
+        document.getElementById('prorrataNota').value = p.nota || '';
+        document.getElementById('tituloFormProrrata').textContent = 'Corregir el porcentaje de ' + p.anio;
+        document.getElementById('prorrataError').textContent = '';
+    }
+
+    function nuevaProrrata() {
+        anioEnCorreccion = null;
+        document.getElementById('formProrrata').reset();
+        document.getElementById('prorrataAnio').readOnly = false;
+        document.getElementById('tituloFormProrrata').textContent = 'Registrar porcentaje';
+        document.getElementById('prorrataError').textContent = '';
+    }
+
+    async function guardarProrrata(evento) {
+        evento.preventDefault();
+        const anio = parseInt(document.getElementById('prorrataAnio').value, 10);
+        const porcentaje = document.getElementById('prorrataPorcentaje').value;
+        const nota = document.getElementById('prorrataNota').value;
+        const error = document.getElementById('prorrataError');
+        error.textContent = '';
+        if (isNaN(anio) || porcentaje === '' || isNaN(parseFloat(porcentaje))) {
+            error.textContent = 'El año y el porcentaje son obligatorios';
+            return;
+        }
+        const corrigiendo = anioEnCorreccion !== null;
+        const btn = document.getElementById('btnGuardarProrrata');
+        btn.disabled = true;
+        try {
+            const resp = await fetch(corrigiendo ? '/api/prorrata-iva/' + encodeURIComponent(anioEnCorreccion) : '/api/prorrata-iva', {
+                method: corrigiendo ? 'PUT' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+                },
+                body: JSON.stringify({ anio: anio, porcentaje: parseFloat(porcentaje), nota: nota })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data.success) {
+                mostrarToast(data.message || 'Guardado.', 'success');
+                nuevaProrrata();
+                cargarProrrata();
+            } else {
+                error.textContent = data.message || 'No se pudo guardar el porcentaje.';
+            }
+        } catch (e) {
+            error.textContent = 'Error de conexión. Intente nuevamente.';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function mostrarToast(mensaje, tipo) {
+        const contenedor = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-bg-' + (tipo || 'primary') + ' border-0';
+        toast.setAttribute('role', 'alert');
+        const flex = document.createElement('div');
+        flex.className = 'd-flex';
+        const cuerpo = document.createElement('div');
+        cuerpo.className = 'toast-body';
+        cuerpo.textContent = mensaje;
+        flex.appendChild(cuerpo);
+        toast.appendChild(flex);
+        contenedor.appendChild(toast);
+        new bootstrap.Toast(toast, { delay: 4000 }).show();
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+
+    document.getElementById('formProrrata').addEventListener('submit', guardarProrrata);
+    document.getElementById('btnNuevaProrrata').addEventListener('click', nuevaProrrata);
+    cargarProrrata();
+    /*]]>*/
+    </script>
+</body>
+</html>

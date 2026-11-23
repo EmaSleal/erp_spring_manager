@@ -29,6 +29,11 @@
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
                         <i class="fas fa-plus me-1"></i>Nueva cuenta por pagar
                     </button>
+                    <!-- T-054: pantalla de la prorrata provisional del IVA por año (solo quien puede gestionarla) -->
+                    <a class="btn btn-outline-secondary me-2" th:href="@{/contabilidad/prorrata-iva}" id="enlaceProrrataIva"
+                       sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PRORRATA_IVA_GESTIONAR')">
+                        <i class="fas fa-percent me-1"></i>Prorrata del IVA
+                    </a>
                     <a th:replace="~{shared/fragments/back-button :: backButton('/contabilidad', 'Volver a Contabilidad', 'Volver a Contabilidad')}"></a>
                 </div>
             </div>
@@ -74,9 +79,20 @@
                                         th:text="${estado.name()}"></option>
                             </select>
                         </div>
+                        <!-- T-054: estado de aceptación del comprobante (recarga la lista con ?aceptacion=) -->
+                        <div class="col-md-4">
+                            <label for="filtroAceptacion" class="form-label">Aceptación del comprobante</label>
+                            <select id="filtroAceptacion" class="form-select" onchange="filtrarPorAceptacion()">
+                                <option value="">Todas</option>
+                                <option th:each="a : ${aceptaciones}"
+                                        th:value="${a.name()}"
+                                        th:text="${a.name()}"
+                                        th:selected="${a.name() == filtroAceptacion}"></option>
+                            </select>
+                        </div>
                         <div class="col-md-2">
                             <button type="button" class="btn btn-outline-secondary w-100"
-                                    onclick="document.getElementById('filtroEstado').value=''; filtrarPorEstado()">
+                                    onclick="document.getElementById('filtroEstado').value=''; document.getElementById('filtroAceptacion').value=''; filtrarPorAceptacion()">
                                 <i class="fas fa-eraser me-1"></i>Limpiar
                             </button>
                         </div>
@@ -99,6 +115,7 @@
                                     <th class="text-end">Saldo</th>
                                     <th class="text-center">Vencimiento</th>
                                     <th class="text-center">Estado</th>
+                                    <th class="text-center">Aceptación</th>
                                     <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
@@ -147,6 +164,14 @@
                                               class="badge bg-dark">ANULADA</span>
                                     </td>
                                     <td class="text-center">
+                                        <!-- T-054: aceptación del comprobante; las pendientes muestran los días desde su fecha -->
+                                        <span th:if="${cpp.estadoAceptacion.name() == 'PENDIENTE'}" class="badge bg-warning text-dark">PENDIENTE</span>
+                                        <span th:if="${cpp.estadoAceptacion.name() == 'ACEPTADO'}" class="badge bg-success">ACEPTADO</span>
+                                        <span th:if="${cpp.estadoAceptacion.name() == 'RECHAZADO'}" class="badge bg-danger">RECHAZADO</span>
+                                        <div th:if="${diasPendientes[cpp.id] != null}" class="small text-muted"
+                                             th:text="${diasPendientes[cpp.id]} + ' días'">2 días</div>
+                                    </td>
+                                    <td class="text-center">
                                         <div class="btn-group" role="group">
                                             <button th:if="${cpp.estado.name() != 'PAGADA' and cpp.estado.name() != 'ANULADA'}"
                                                     class="btn btn-sm btn-outline-success btn-pagar"
@@ -171,7 +196,7 @@
                                     </td>
                                 </tr>
                                 <th:block th:if="${#lists.isEmpty(cuentas)}">
-                                    <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(9, 'fas fa-file-invoice-dollar', 'No hay cuentas por pagar registradas')}"></tr>
+                                    <tr th:replace="~{shared/fragments/empty-state :: emptyStateRow(10, 'fas fa-file-invoice-dollar', 'No hay cuentas por pagar registradas')}"></tr>
                                 </th:block>
                             </tbody>
                         </table>
@@ -185,7 +210,7 @@
     <!-- Modal: New manual CxP (ADR-015 / ADR-016) -->
     <div class="modal fade" id="modalNuevaCpp" tabindex="-1" aria-labelledby="modalNuevaCppLabel" aria-hidden="true"
          sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalNuevaCppLabel">
@@ -250,51 +275,66 @@
                             </div>
                         </div>
 
-                        <!-- ADR-066 §1: desglose de IVA por tarifa; el subtotal, el IVA y el total salen de sus filas -->
+                        <!-- ADR-067 §3: líneas con cuenta, tarifa, base y tratamiento del IVA; el subtotal, el IVA y el total salen de ellas -->
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label mb-0">Desglose de IVA <span class="text-danger">*</span></label>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarFilaIva">
-                                    <i class="fas fa-plus me-1"></i>Agregar fila
+                                <label class="form-label mb-0">Líneas <span class="text-danger">*</span></label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarLinea">
+                                    <i class="fas fa-plus me-1"></i>Agregar línea
                                 </button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle mb-1">
                                     <thead>
-                                        <tr><th>Tarifa</th><th class="text-end">Base</th><th class="text-end">IVA</th><th></th></tr>
+                                        <tr>
+                                            <th style="min-width: 15rem;">Cuenta</th>
+                                            <th style="min-width: 10rem;">Descripción</th>
+                                            <th style="min-width: 9rem;">Tarifa</th>
+                                            <th class="text-end" style="min-width: 7rem;">Base</th>
+                                            <th class="text-end" style="min-width: 6rem;">IVA</th>
+                                            <th style="min-width: 11rem;">Tratamiento</th>
+                                            <th class="text-end">Acreditable</th>
+                                            <th class="text-end">No acreditable</th>
+                                            <th></th>
+                                        </tr>
                                     </thead>
-                                    <tbody id="cppDesglose"></tbody>
+                                    <tbody id="cppLineas"></tbody>
                                 </table>
                             </div>
-                            <div id="cppDesgloseMensajes"></div>
+                            <div id="cppAdvertenciaProrrata"></div>
+                            <div id="cppLineasMensajes"></div>
                         </div>
 
                         <div class="row g-3 mb-3">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label for="cppSubtotal" class="form-label">Subtotal</label>
                                 <input type="text" id="cppSubtotal" class="form-control" readonly value="0.00" />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label for="cppImpuesto" class="form-label">Impuesto (IVA)</label>
                                 <input type="text" id="cppImpuesto" class="form-control" readonly value="0.00" />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label for="cppTotal" class="form-label">Total</label>
                                 <input type="text" id="cppTotal" class="form-control fw-bold" readonly value="0.00" />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <label for="cppAcreditable" class="form-label">IVA acreditable</label>
+                                <input type="text" id="cppAcreditable" class="form-control" readonly value="0.00" />
+                            </div>
+                            <div class="col-md-2">
+                                <label for="cppNoAcreditable" class="form-label">IVA no acreditable</label>
+                                <input type="text" id="cppNoAcreditable" class="form-control" readonly value="0.00" />
+                            </div>
+                            <div class="col-md-2">
                                 <label for="cppTotalComprobante" class="form-label">Total del comprobante</label>
                                 <input type="number" id="cppTotalComprobante" class="form-control" step="0.01" min="0"
                                        placeholder="Opcional: verificar" />
                             </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label for="cppCuentaGasto" class="form-label">Contrapartida <span class="text-danger">*</span></label>
-                            <select id="cppCuentaGasto" class="form-select" required>
-                                <option value="">Cargando cuentas...</option>
-                            </select>
-                            <div class="form-text">Cuenta de gasto o de activo que se debita en el asiento de compra.</div>
+                        <div class="form-text mb-2">
+                            El IVA no acreditable se suma a la cuenta de su línea. El crédito del IVA de uso común usa el
+                            porcentaje provisional de prorrata del año del comprobante.
                         </div>
                     </form>
                 </div>
@@ -322,11 +362,57 @@
                 </div>
                 <div class="modal-body" id="detalleCppCuerpo"></div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="btnAbrirAceptacionCpp" style="display: none;"
+                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
+                        <i class="fas fa-envelope-open-text me-1"></i>Registrar aceptación
+                    </button>
                     <button type="button" class="btn btn-outline-danger" id="btnAbrirAnularCpp" style="display: none;"
                             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_ANULAR')">
                         <i class="fas fa-ban me-1"></i>Anular
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: registrar la aceptación del comprobante con mensaje receptor (T-054, ADR-067 §4); permiso de CxP -->
+    <div class="modal fade" id="modalAceptacionCpp" tabindex="-1" aria-labelledby="modalAceptacionCppLabel" aria-hidden="true"
+         sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAceptacionCppLabel">
+                        <i class="fas fa-envelope-open-text me-2 text-module-contabilidad"></i>Registrar aceptación
+                        — <span id="aceptacionNumeroCpp"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Sin mensaje receptor de aceptación no hay crédito fiscal. La fecha no puede ser futura ni anterior a la del comprobante.</p>
+                    <input type="hidden" id="aceptacionCppId" />
+                    <div class="mb-3">
+                        <label for="aceptacionEstado" class="form-label">Estado <span class="text-danger">*</span></label>
+                        <select id="aceptacionEstado" class="form-select">
+                            <option value="ACEPTADO">ACEPTADO</option>
+                            <option value="RECHAZADO">RECHAZADO</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="aceptacionFecha" class="form-label">Fecha del mensaje receptor <span class="text-danger">*</span></label>
+                        <input type="date" id="aceptacionFecha" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="aceptacionNumero" class="form-label">Número del mensaje receptor <span class="text-danger">*</span></label>
+                        <input type="text" id="aceptacionNumero" class="form-control" maxlength="50" required />
+                    </div>
+                    <div class="text-danger small mt-1" id="aceptacionError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarAceptacion" onclick="confirmarAceptacionCpp()">
+                        <i class="fas fa-save me-1"></i>Registrar aceptación
+                    </button>
                 </div>
             </div>
         </div>
@@ -499,8 +585,8 @@
 
     <!-- ADR-011: selector de tipo de cambio compartido con ordenes-compra.html -->
     <script th:src="@{/shared/js/tipo-cambio-documento.js}"></script>
-    <!-- T-052: comprobante del proveedor, desglose de IVA, detalle y anulación (todo con textContent) -->
-    <script th:src="@{/modules/contabilidad/js/cxp-desglose.js}"></script>
+    <!-- T-052/T-054: comprobante del proveedor, líneas con tratamiento de IVA, detalle, aceptación y anulación (todo con textContent) -->
+    <script th:src="@{/modules/contabilidad/js/cxp-lineas.js}"></script>
 
     <script th:inline="javascript">
     /*<![CDATA[*/
@@ -518,31 +604,45 @@
         });
     }
 
+    // T-054: el filtro de aceptación recarga la lista con ?aceptacion= (se conserva el filtro de estado en el navegador)
+    function filtrarPorAceptacion() {
+        const valor = document.getElementById('filtroAceptacion').value;
+        const url = new URL(window.location.href);
+        if (valor) url.searchParams.set('aceptacion', valor);
+        else url.searchParams.delete('aceptacion');
+        window.location.href = url.toString();
+    }
+
     // ── New manual CxP modal (ADR-015 / ADR-016) ─────────────────────────────
     const modalNuevaCpp = document.getElementById('modalNuevaCpp');
     if (modalNuevaCpp) {
         modalNuevaCpp.addEventListener('show.bs.modal', () => {
             document.getElementById('formNuevaCpp').reset();
             document.getElementById('cppFechaComprobante').value = hoyIso();
-            filasDesglose = [CxpDesglose.filaPorDefecto()]; // una fila por defecto al 13 %
-            repintarDesglose();
+            lineasCpp = [CxpLineas.lineaPorDefecto()]; // una línea por defecto al 13 %, sin cuenta preseleccionada
+            prorrataAnio = { anio: null, porcentaje: null };
             actualizarTipoCambioCpp();
-            cargarCuentasContrapartida();
+            cargarCuentasLineas().then(() => { repintarLineas(); consultarProrrata(); });
         });
         document.getElementById('cppMoneda').addEventListener('change', actualizarTipoCambioCpp);
-        document.getElementById('cppFechaComprobante').addEventListener('change', actualizarTipoCambioCpp);
+        document.getElementById('cppFechaComprobante').addEventListener('change', () => {
+            actualizarTipoCambioCpp();
+            consultarProrrata();
+        });
         document.getElementById('cppNumeroComprobante').addEventListener('input', revalidarCpp);
         document.getElementById('cppClaveComprobante').addEventListener('input', revalidarCpp);
         document.getElementById('cppFechaComprobante').addEventListener('input', revalidarCpp);
         document.getElementById('cppTotalComprobante').addEventListener('input', revalidarCpp);
-        document.getElementById('btnAgregarFilaIva').addEventListener('click', () => {
-            filasDesglose.push(CxpDesglose.filaPorDefecto());
-            repintarDesglose();
+        document.getElementById('btnAgregarLinea').addEventListener('click', () => {
+            lineasCpp.push(CxpLineas.lineaPorDefecto());
+            repintarLineas();
         });
     }
 
-    // ── Desglose de IVA (T-052, ADR-066): estado de las filas y recálculo en vivo ──
-    let filasDesglose = [CxpDesglose.filaPorDefecto()];
+    // ── Líneas (T-054, ADR-067): estado, cuentas elegibles, prorrata del año y recálculo en vivo ──
+    let lineasCpp = [CxpLineas.lineaPorDefecto()];
+    let cuentasLineas = [];
+    let prorrataAnio = { anio: null, porcentaje: null };
 
     function hoyIso() {
         // fecha local del navegador (el servidor valida contra el día de Costa Rica)
@@ -550,30 +650,30 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
-    const manejadoresDesglose = {
+    const manejadoresLineas = {
         cambio(i, campo, valor) {
-            const fila = filasDesglose[i];
-            fila[campo] = valor;
-            // el IVA se calcula solo mientras el usuario no lo edite a mano
-            if (campo === 'base' || campo === 'codigoTarifa') {
-                if (!fila.ivaManual) {
-                    fila.iva = String(CxpDesglose.calcularFila(fila.base, CxpDesglose.porcentajeDe(fila.codigoTarifa)));
-                    const input = document.querySelector('#cppDesglose tr[data-fila="' + i + '"] [data-campo="iva"]');
-                    if (input) input.value = fila.iva;
-                }
-            } else if (campo === 'iva') {
-                fila.ivaManual = true;
+            const antes = lineasCpp[i];
+            const linea = CxpLineas.cambiarLinea(antes, campo, valor);
+            // el IVA se recalcula solo con la base y la tarifa; una vez editado a mano no se pisa
+            if ((campo === 'base' || campo === 'codigoTarifa') && antes.ivaManual) linea.iva = antes.iva;
+            if (campo === 'iva') linea.ivaManual = true;
+            lineasCpp[i] = linea;
+            const fila = document.querySelector('#cppLineas tr[data-fila="' + i + '"]');
+            if (fila) {
+                const inputIva = fila.querySelector('[data-campo="iva"]');
+                if (inputIva && campo !== 'iva') inputIva.value = linea.iva;
             }
             revalidarCpp();
         },
         quitar(i) {
-            filasDesglose.splice(i, 1);
-            repintarDesglose();
+            lineasCpp.splice(i, 1);
+            repintarLineas();
         }
     };
 
-    function repintarDesglose() {
-        CxpDesglose.renderDesglose(document, document.getElementById('cppDesglose'), filasDesglose, manejadoresDesglose);
+    function repintarLineas() {
+        CxpLineas.renderLineas(document, document.getElementById('cppLineas'), lineasCpp, cuentasLineas, manejadoresLineas,
+            prorrataAnio.porcentaje);
         revalidarCpp();
     }
 
@@ -583,22 +683,47 @@
             clave: document.getElementById('cppClaveComprobante').value,
             fecha: document.getElementById('cppFechaComprobante').value,
             hoy: hoyIso(),
-            filas: filasDesglose,
+            lineas: lineasCpp,
+            prorrata: prorrataAnio.porcentaje,
             totalComprobante: document.getElementById('cppTotalComprobante').value
         };
     }
 
-    // Recalcula subtotal, IVA y total y muestra los avisos (la suma no cuadra, IVA distinto de base × tarifa)
+    // Recalcula los valores de cada línea y los totales, y muestra los avisos (IVA distinto de base × tarifa, falta la
+    // prorrata del año, el total no cuadra)
     function revalidarCpp() {
-        const t = CxpDesglose.totales(filasDesglose);
+        const p = prorrataAnio.porcentaje;
+        const t = CxpLineas.totales(lineasCpp, p);
         document.getElementById('cppSubtotal').value = t.subtotal.toFixed(2);
         document.getElementById('cppImpuesto').value = t.impuesto.toFixed(2);
         document.getElementById('cppTotal').value = t.total.toFixed(2);
-        const r = CxpDesglose.validar(datosFormularioCpp());
+        document.getElementById('cppAcreditable').value = t.acreditable.toFixed(2);
+        document.getElementById('cppNoAcreditable').value = t.noAcreditable.toFixed(2);
+        document.querySelectorAll('#cppLineas tr[data-fila]').forEach(fila => {
+            const linea = lineasCpp[parseInt(fila.dataset.fila, 10)];
+            if (linea) CxpLineas.actualizarLinea(fila, linea, p);
+        });
+        const r = CxpLineas.validar(datosFormularioCpp());
         // los errores de campos vacíos se muestran al guardar; en vivo solo los avisos
-        CxpDesglose.renderMensajes(document, document.getElementById('cppDesgloseMensajes'),
+        CxpLineas.renderMensajes(document, document.getElementById('cppLineasMensajes'),
             { errores: [], advertencias: r.advertencias });
         return r;
+    }
+
+    // Porcentaje provisional de prorrata del año de la fecha del comprobante (para el acreditable de las líneas de uso común)
+    async function consultarProrrata() {
+        const anio = CxpLineas.anioDe(document.getElementById('cppFechaComprobante').value);
+        if (anio === null || anio === prorrataAnio.anio) return;
+        prorrataAnio = { anio: anio, porcentaje: null };
+        try {
+            const resp = await fetch('/api/prorrata-iva/' + encodeURIComponent(anio));
+            const json = resp.ok ? await resp.json() : null;
+            const d = json && json.data;
+            if (d && d.configurado && prorrataAnio.anio === anio) prorrataAnio.porcentaje = Number(d.porcentaje);
+        } catch (e) {
+            // sin respuesta: se trata como no configurada y el servidor decide
+        }
+        revalidarCpp();
     }
 
     // ADR-011: tasa de venta de la fecha de emisión para la moneda de la cuenta (editable)
@@ -612,45 +737,35 @@
         });
     }
 
-    async function cargarCuentasContrapartida() {
-        const sel = document.getElementById('cppCuentaGasto');
-        sel.innerHTML = '<option value="">Cargando cuentas...</option>';
+    // Hojas elegibles como cuenta de una línea (activas, con movimientos, EGRESO o ACTIVO); ninguna preseleccionada
+    async function cargarCuentasLineas() {
         try {
             const resp = await fetch('/api/cuentas-pagar/cuentas-contrapartida');
             const json = resp.ok ? await resp.json() : null;
-            const cuentas = json?.data?.cuentas ?? [];
-            sel.innerHTML = '<option value="">— Seleccionar —</option>';
-            cuentas.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = `${c.codigo} - ${c.nombre} (${c.tipo})`;
-                if (c.predeterminada) opt.selected = true;
-                sel.appendChild(opt);
-            });
-            if (!cuentas.length) {
+            cuentasLineas = (json && json.data && json.data.cuentas) || [];
+            if (!cuentasLineas.length) {
                 mostrarToast((json && json.message && !json.success) ? json.message
-                    : 'No hay cuentas disponibles como contrapartida.', 'warning');
+                    : 'No hay cuentas disponibles para las líneas.', 'warning');
             }
         } catch (e) {
-            sel.innerHTML = '<option value="">— Seleccionar —</option>';
-            mostrarToast('Error al cargar las cuentas de contrapartida.', 'danger');
+            cuentasLineas = [];
+            mostrarToast('Error al cargar las cuentas de las líneas.', 'danger');
         }
     }
 
     async function guardarNuevaCpp() {
         const proveedorId = document.getElementById('cppProveedor').value;
         const descripcion = document.getElementById('cppDescripcion').value.trim();
-        const cuentaGastoId = document.getElementById('cppCuentaGasto').value;
         const moneda = document.getElementById('cppMoneda').value;
         const tipoCambio = document.getElementById('cppTipoCambio').value;
 
-        if (!proveedorId || !descripcion || !cuentaGastoId) {
+        if (!proveedorId || !descripcion) {
             mostrarToast('Por favor complete los campos requeridos.', 'warning');
             return;
         }
-        // las mismas reglas del servidor, antes de enviar; los errores se muestran junto al desglose
-        const r = CxpDesglose.validar(datosFormularioCpp());
-        CxpDesglose.renderMensajes(document, document.getElementById('cppDesgloseMensajes'), r);
+        // las mismas reglas del servidor, antes de enviar; los errores se muestran junto a las líneas
+        const r = CxpLineas.validar(datosFormularioCpp());
+        CxpLineas.renderMensajes(document, document.getElementById('cppLineasMensajes'), r);
         if (r.errores.length) {
             return;
         }
@@ -666,14 +781,13 @@
                     'Content-Type': 'application/json',
                     [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
                 },
-                body: JSON.stringify(CxpDesglose.armarPeticion(Object.assign(datosFormularioCpp(), {
+                body: JSON.stringify(CxpLineas.armarPeticion(Object.assign(datosFormularioCpp(), {
                     extra: {
                         proveedorId:      parseInt(proveedorId),
                         descripcion:      descripcion,
                         fechaVencimiento: document.getElementById('cppFechaVencimiento').value || null,
                         moneda:           moneda,
-                        tipoCambio:       moneda !== 'CRC' && tipoCambio ? parseFloat(tipoCambio) : null,
-                        cuentaGastoId:    parseInt(cuentaGastoId)
+                        tipoCambio:       moneda !== 'CRC' && tipoCambio ? parseFloat(tipoCambio) : null
                     }
                 })))
             });
@@ -711,14 +825,72 @@
                 return;
             }
             cuentaDetalle = json.data;
-            CxpDesglose.renderDetalle(document, cuerpo, cuentaDetalle);
+            CxpLineas.renderDetalle(document, cuerpo, cuentaDetalle);
             const puede = document.getElementById('permisoAnularCpp') !== null;
+            const botonAceptacion = document.getElementById('btnAbrirAceptacionCpp');
+            if (botonAceptacion) {
+                // el botón solo existe con CUENTA_PAGAR_CREAR (sec:authorize)
+                botonAceptacion.style.display = CxpLineas.puedeRegistrarAceptacion(cuentaDetalle, true) ? '' : 'none';
+            }
             const botonAnular = document.getElementById('btnAbrirAnularCpp');
             if (botonAnular) {
-                botonAnular.style.display = CxpDesglose.puedeAnular(cuentaDetalle, puede) ? '' : 'none';
+                botonAnular.style.display = CxpLineas.puedeAnular(cuentaDetalle, puede) ? '' : 'none';
             }
         } catch (e) {
             cuerpo.textContent = 'Error de conexión. Intente nuevamente.';
+        }
+    }
+
+    // ── Aceptación del comprobante (T-054, ADR-067 §4) ───────────────────────
+    const botonAbrirAceptacion = document.getElementById('btnAbrirAceptacionCpp');
+    if (botonAbrirAceptacion) {
+        botonAbrirAceptacion.addEventListener('click', () => {
+            document.getElementById('aceptacionCppId').value = cuentaDetalle.id;
+            document.getElementById('aceptacionNumeroCpp').textContent = cuentaDetalle.numero;
+            document.getElementById('aceptacionEstado').value = cuentaDetalle.estadoAceptacion === 'RECHAZADO' ? 'RECHAZADO' : 'ACEPTADO';
+            document.getElementById('aceptacionFecha').value = cuentaDetalle.fechaAceptacion || hoyIso();
+            document.getElementById('aceptacionNumero').value = cuentaDetalle.numeroMensajeReceptor || '';
+            document.getElementById('aceptacionError').textContent = '';
+            bootstrap.Modal.getInstance(document.getElementById('modalDetalleCpp'))?.hide();
+            new bootstrap.Modal(document.getElementById('modalAceptacionCpp')).show();
+        });
+    }
+
+    async function confirmarAceptacionCpp() {
+        const datos = {
+            estado: document.getElementById('aceptacionEstado').value,
+            fecha: document.getElementById('aceptacionFecha').value,
+            numero: document.getElementById('aceptacionNumero').value.trim()
+        };
+        const error = CxpLineas.validarAceptacion(Object.assign({
+            hoy: hoyIso(),
+            fechaComprobante: cuentaDetalle.fechaEmisionComprobante || cuentaDetalle.fechaEmision
+        }, datos));
+        document.getElementById('aceptacionError').textContent = error || '';
+        if (error) return;
+        const btn = document.getElementById('btnGuardarAceptacion');
+        btn.disabled = true;
+        try {
+            const resp = await fetch('/api/cuentas-pagar/' + encodeURIComponent(document.getElementById('aceptacionCppId').value) + '/aceptacion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token
+                },
+                body: JSON.stringify(datos)
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalAceptacionCpp')).hide();
+                mostrarToast(data.message || 'Aceptación registrada.', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                document.getElementById('aceptacionError').textContent = data.message || 'No se pudo registrar la aceptación.';
+            }
+        } catch (e) {
+            document.getElementById('aceptacionError').textContent = 'Error de conexión. Intente nuevamente.';
+        } finally {
+            btn.disabled = false;
         }
     }
 
@@ -736,7 +908,7 @@
 
     async function confirmarAnularCpp() {
         const motivo = document.getElementById('anularMotivo').value;
-        const error = CxpDesglose.validarMotivo(motivo);
+        const error = CxpLineas.validarMotivo(motivo);
         document.getElementById('anularError').textContent = error || '';
         if (error) return;
         const btn = document.getElementById('btnAnularCpp');
@@ -944,7 +1116,7 @@
         const cuerpo = document.getElementById('historialBody');
 
         document.getElementById('historialNumeroCpp').textContent = numero;
-        CxpDesglose.renderHistorial(document, cuerpo, []);
+        CxpLineas.renderHistorial(document, cuerpo, []);
         cuerpo.firstChild.firstChild.textContent = 'Cargando...';
 
         new bootstrap.Modal(document.getElementById('modalHistorial')).show();
@@ -952,9 +1124,9 @@
         try {
             const resp = await fetch(`/api/cuentas-pagar/${id}/pagos`);
             const json = resp.ok ? await resp.json() : null;
-            CxpDesglose.renderHistorial(document, cuerpo, json?.data ?? []);
+            CxpLineas.renderHistorial(document, cuerpo, json?.data ?? []);
         } catch (e) {
-            CxpDesglose.renderHistorial(document, cuerpo, []);
+            CxpLineas.renderHistorial(document, cuerpo, []);
             cuerpo.firstChild.firstChild.textContent = 'Error al cargar historial.';
         }
     }
@@ -967,16 +1139,27 @@
                          : tipo === 'danger'  ? 'bg-danger text-white'
                          : tipo === 'warning' ? 'bg-warning text-dark'
                          : 'bg-info text-white';
-        container.insertAdjacentHTML('beforeend', `
-            <div id="${id}" class="toast align-items-center border-0 ${colorClass}" role="alert"
-                 aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">${mensaje}</div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
-                            data-bs-dismiss="toast" aria-label="Cerrar"></button>
-                </div>
-            </div>`);
-        const toastEl = document.getElementById(id);
+        // T-054: el mensaje puede traer datos escritos por el usuario (p. ej. el número del comprobante): solo textContent
+        const toastEl = document.createElement('div');
+        toastEl.id = id;
+        toastEl.className = 'toast align-items-center border-0 ' + colorClass;
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        const flex = document.createElement('div');
+        flex.className = 'd-flex';
+        const cuerpoToast = document.createElement('div');
+        cuerpoToast.className = 'toast-body';
+        cuerpoToast.textContent = mensaje;
+        const cerrar = document.createElement('button');
+        cerrar.type = 'button';
+        cerrar.className = 'btn-close btn-close-white me-2 m-auto';
+        cerrar.setAttribute('data-bs-dismiss', 'toast');
+        cerrar.setAttribute('aria-label', 'Cerrar');
+        flex.appendChild(cuerpoToast);
+        flex.appendChild(cerrar);
+        toastEl.appendChild(flex);
+        container.appendChild(toastEl);
         const toast   = new bootstrap.Toast(toastEl, { delay: 4000 });
         toast.show();
         toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());

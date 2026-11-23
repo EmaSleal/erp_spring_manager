@@ -1,12 +1,15 @@
 package api.astro.whats_orders_manager.modules.contabilidad.controller;
 
+import api.astro.whats_orders_manager.modules.contabilidad.dto.AceptacionComprobanteDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.AnularCuentaPorPagarDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarCreadaDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.service.AsientoContableService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobanteProveedorDuplicadoException;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.contabilidad.service.ProrrataNoConfiguradaException;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
 import api.astro.whats_orders_manager.modules.proveedores.service.PagoProveedorService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
@@ -41,10 +44,12 @@ public class CuentaPorPagarRestController {
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
     public ResponseEntity<ResponseDTO> listar(
             @RequestParam(required = false) EstadoCuentaPorPagar estado,
+            @RequestParam(required = false) EstadoAceptacionComprobante aceptacion,
             Authentication authentication
     ) {
-        // T-052 (P-023 §1): DTO armados en una transacción de lectura, nunca la entidad con sus proxies perezosos
-        return ResponseEntity.ok(ResponseDTO.success("OK", cuentaPorPagarService.listarVista(estado)));
+        // T-052 (P-023 §1): DTO armados en una transacción de lectura, nunca la entidad con sus proxies perezosos.
+        // T-054: filtro opcional por estado de aceptación del comprobante, combinable con el estado
+        return ResponseEntity.ok(ResponseDTO.success("OK", cuentaPorPagarService.listarVista(estado, aceptacion)));
     }
 
     @GetMapping("/vencidas")
@@ -54,27 +59,23 @@ public class CuentaPorPagarRestController {
     }
 
     /**
-     * Cuentas elegibles como contrapartida de una CxP manual (ADR-016), ordenadas por código.
-     * cuentaComprasId es la cuenta de CPP_CUENTA_COMPRAS (null si no está configurada); la cuenta
-     * correspondiente de la lista viene con predeterminada = true para preseleccionarla.
+     * Hojas elegibles como cuenta de una línea de CxP manual (ADR-016, T-054), ordenadas por código: activas, que aceptan
+     * movimientos, sin subcuentas, de tipo EGRESO o ACTIVO. Ninguna se propone por defecto.
      */
     @GetMapping("/cuentas-contrapartida")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
     public ResponseEntity<ResponseDTO> cuentasContrapartida(Authentication authentication) {
-        Long cuentaComprasId = asientoContableService.obtenerIdCuentaComprasCpp().orElse(null);
         var cuentas = asientoContableService.obtenerCuentasContrapartidaCxpManual().stream()
             .map(c -> {
                 Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id",             c.getIdCuenta());
-                m.put("codigo",         c.getCodigo());
-                m.put("nombre",         c.getNombre());
-                m.put("tipo",           c.getTipo() != null ? c.getTipo().name() : null);
-                m.put("predeterminada", c.getIdCuenta().equals(cuentaComprasId));
+                m.put("id",     c.getIdCuenta());
+                m.put("codigo", c.getCodigo());
+                m.put("nombre", c.getNombre());
+                m.put("tipo",   c.getTipo() != null ? c.getTipo().name() : null);
                 return m;
             })
             .toList();
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("cuentaComprasId", cuentaComprasId);
         data.put("cuentas", cuentas);
         return ResponseEntity.ok(ResponseDTO.success("OK", data));
     }
@@ -117,7 +118,8 @@ public class CuentaPorPagarRestController {
             var creada = new CuentaPorPagarCreadaDTO(cuentaPorPagarService.detalleVista(cpp.getId()),
                 cuentaPorPagarService.advertencias(dto));
             return ResponseEntity.ok(ResponseDTO.success("Cuenta por pagar creada: " + cpp.getNumero(), creada));
-        } catch (ComprobanteProveedorDuplicadoException e) {
+        } catch (ComprobanteProveedorDuplicadoException | ProrrataNoConfiguradaException e) {
+            // duplicado del comprobante o falta la prorrata del año (T-054): 409 con el mensaje fijo
             return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
@@ -139,6 +141,31 @@ public class CuentaPorPagarRestController {
             Usuario usuario = resolverUsuario(authentication);
             var cpp = cuentaPorPagarService.anular(id, dto.getMotivo(), usuario);
             return ResponseEntity.ok(ResponseDTO.success("Cuenta por pagar " + cpp.getNumero() + " anulada"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseDTO.error(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * Registra la aceptación (o el rechazo) del comprobante del proveedor con su mensaje receptor (T-054, ADR-067 §4).
+     * 400 con estado, fecha o número inválidos, 404 si no existe, 409 si la CxP está anulada.
+     */
+    @PostMapping("/{id}/aceptacion")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
+    public ResponseEntity<ResponseDTO> registrarAceptacion(
+            @PathVariable Long id,
+            @RequestBody AceptacionComprobanteDTO dto,
+            Authentication authentication
+    ) {
+        try {
+            Usuario usuario = resolverUsuario(authentication);
+            var cpp = cuentaPorPagarService.registrarAceptacion(id, dto, usuario);
+            return ResponseEntity.ok(ResponseDTO.success("Aceptación del comprobante de " + cpp.getNumero() + " registrada",
+                cuentaPorPagarService.detalleVista(id)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         } catch (NoSuchElementException e) {

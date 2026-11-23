@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.contabilidad.controller;
 
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
@@ -16,10 +17,16 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Controlador de vistas para el módulo de Contabilidad.
@@ -37,6 +44,7 @@ public class ContabilidadViewController {
     private final CuentaPorPagarService cuentaPorPagarService;
     private final ProveedorService proveedorService;
     private final MonedaService monedaService;
+    private final Clock clock;
 
 
     /**
@@ -71,28 +79,44 @@ public class ContabilidadViewController {
      */
     @GetMapping("/cuentas-pagar")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
-    public String cuentasPagar(Model model, Authentication authentication) {
+    public String cuentasPagar(@RequestParam(required = false) EstadoAceptacionComprobante aceptacion, Model model,
+                               Authentication authentication) {
         log.info("Accessing Cuentas por Pagar view");
 
-        List<CuentaPorPagar> cuentas = cuentaPorPagarService.findAll();
+        List<CuentaPorPagar> todas = cuentaPorPagarService.findAll();
+        // T-054: filtro por estado de aceptación del comprobante (los totales de arriba son de todas las cuentas)
+        List<CuentaPorPagar> cuentas = aceptacion == null ? todas
+            : todas.stream().filter(c -> c.getEstadoAceptacion() == aceptacion).toList();
+        LocalDate hoy = LocalDate.now(clock);
+        // días desde la fecha del comprobante, solo de las pendientes no anuladas
+        Map<Long, Long> diasPendientes = new HashMap<>();
+        for (CuentaPorPagar c : cuentas) {
+            if (c.getEstadoAceptacion() == EstadoAceptacionComprobante.PENDIENTE && c.getEstado() != EstadoCuentaPorPagar.ANULADA
+                && c.getFechaComprobante() != null) {
+                diasPendientes.put(c.getId(), ChronoUnit.DAYS.between(c.getFechaComprobante(), hoy));
+            }
+        }
 
         // ADR-011: totales en CRC; cada CxP se convierte con su propio tipo de cambio
-        BigDecimal totalSaldoPendiente = cuentas.stream()
+        BigDecimal totalSaldoPendiente = todas.stream()
             .filter(c -> c.getEstado() != EstadoCuentaPorPagar.PAGADA && c.getEstado() != EstadoCuentaPorPagar.ANULADA)
             .map(c -> ConversionMoneda.montoEnCrcReporte(c.getSaldoPendiente(), c.getMoneda(), c.getTipoCambio()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        long countVencidas = cuentas.stream()
+        long countVencidas = todas.stream()
             .filter(c -> c.getEstado() == EstadoCuentaPorPagar.VENCIDA)
             .count();
 
-        BigDecimal totalPagado = cuentas.stream()
+        BigDecimal totalPagado = todas.stream()
             .filter(c -> c.getEstado() == EstadoCuentaPorPagar.PAGADA)
             .map(c -> ConversionMoneda.montoEnCrcReporte(c.getMonto(), c.getMoneda(), c.getTipoCambio()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         model.addAttribute("cuentas", cuentas);
         model.addAttribute("estados", EstadoCuentaPorPagar.values());
+        model.addAttribute("aceptaciones", EstadoAceptacionComprobante.values());
+        model.addAttribute("filtroAceptacion", aceptacion != null ? aceptacion.name() : "");
+        model.addAttribute("diasPendientes", diasPendientes);
         model.addAttribute("totalSaldoPendiente", totalSaldoPendiente);
         model.addAttribute("countVencidas", countVencidas);
         model.addAttribute("totalPagado", totalPagado);

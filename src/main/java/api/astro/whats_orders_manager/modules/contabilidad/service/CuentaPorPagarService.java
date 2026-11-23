@@ -1,7 +1,9 @@
 package api.astro.whats_orders_manager.modules.contabilidad.service;
 
+import api.astro.whats_orders_manager.modules.contabilidad.dto.AceptacionComprobanteDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarVistaDTO;
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.contabilidad.model.CuentaPorPagar;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
@@ -16,6 +18,14 @@ public interface CuentaPorPagarService {
     String MSG_ANULAR_MOTIVO = "El motivo de anulación debe tener entre 3 y 180 caracteres";
     String MSG_ANULAR_CON_PAGOS = "La cuenta por pagar tiene pagos activos; anule los pagos antes de anular la cuenta";
     String MSG_ANULAR_YA_ANULADA = "La cuenta por pagar ya está anulada";
+
+    String MSG_ACEPTACION_ESTADO = "El estado de aceptación debe ser ACEPTADO o RECHAZADO";
+    String MSG_ACEPTACION_FECHA = "La fecha de aceptación es obligatoria";
+    String MSG_ACEPTACION_FECHA_FUTURA = "La fecha de aceptación no puede ser futura";
+    String MSG_ACEPTACION_FECHA_ANTERIOR = "La fecha de aceptación no puede ser anterior a la fecha del comprobante";
+    String MSG_ACEPTACION_NUMERO = "El número del mensaje receptor es obligatorio";
+    String MSG_ACEPTACION_NUMERO_LARGO = "El número del mensaje receptor no puede exceder 50 caracteres";
+    String MSG_ACEPTACION_ANULADA = "No se puede registrar la aceptación de una cuenta por pagar anulada";
 
     CuentaPorPagar crear(CuentaPorPagarDTO dto);
 
@@ -49,6 +59,17 @@ public interface CuentaPorPagarService {
     CuentaPorPagar anular(Long id, String motivo, Usuario usuario);
 
     /**
+     * Registra la aceptación (o el rechazo) del comprobante del proveedor con su mensaje receptor (T-054, ADR-067 §4):
+     * estado ACEPTADO o RECHAZADO, fecha del mensaje (no futura y no anterior a la fecha del comprobante) y número. Se
+     * puede volver a registrar para corregirlo. Deja registro en la auditoría.
+     *
+     * @throws IllegalArgumentException estado, fecha o número inválidos (400)
+     * @throws IllegalStateException    la CxP está anulada (409)
+     * @throws java.util.NoSuchElementException la CxP no existe (404)
+     */
+    CuentaPorPagar registrarAceptacion(Long id, AceptacionComprobanteDTO dto, Usuario usuario);
+
+    /**
      * Bloquea y devuelve la CxP con datos frescos. Orden de bloqueo único para toda operación que cambie su estado o
      * saldo (anulación, pagos): primero el proveedor, luego la fila de la CxP; evita carreras e interbloqueos (T-052).
      * Debe llamarse dentro de una transacción.
@@ -67,8 +88,8 @@ public interface CuentaPorPagarService {
     /** DTO de una CxP, armado en una transacción de lectura (API JSON). */
     CuentaPorPagarVistaDTO detalleVista(Long id);
 
-    /** CxP como DTO, todas o filtradas por estado (API JSON). */
-    List<CuentaPorPagarVistaDTO> listarVista(EstadoCuentaPorPagar estado);
+    /** CxP como DTO, todas o filtradas por estado y por estado de aceptación del comprobante; ambos filtros son opcionales (API JSON). */
+    List<CuentaPorPagarVistaDTO> listarVista(EstadoCuentaPorPagar estado, EstadoAceptacionComprobante aceptacion);
 
     /** CxP vencidas como DTO (API JSON). */
     List<CuentaPorPagarVistaDTO> vencidasVista();
