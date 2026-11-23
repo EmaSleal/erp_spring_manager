@@ -226,7 +226,7 @@
                                 <select id="cppProveedor" class="form-select" required>
                                     <option value="">— Seleccionar —</option>
                                     <option th:each="p : ${proveedores}"
-                                            th:value="${p.id}"
+                                            th:value="${p.id}" th:attr="data-dias-credito=${p.diasCredito}"
                                             th:text="${p.nombre}"></option>
                                 </select>
                             </div>
@@ -259,6 +259,7 @@
                             <div class="col-md-4">
                                 <label for="cppFechaVencimiento" class="form-label">Fecha de vencimiento</label>
                                 <input type="date" id="cppFechaVencimiento" class="form-control" />
+                                <div class="form-text">Por defecto: fecha del comprobante + días de crédito del proveedor (editable).</div>
                             </div>
                             <div class="col-md-4">
                                 <label for="cppMoneda" class="form-label">Moneda</label>
@@ -619,13 +620,19 @@
         modalNuevaCpp.addEventListener('show.bs.modal', () => {
             document.getElementById('formNuevaCpp').reset();
             document.getElementById('cppFechaComprobante').value = hoyIso();
+            vencimientoCppEditado = false;
+            proponerVencimientoCpp();
             lineasCpp = [CxpLineas.lineaPorDefecto()]; // una línea por defecto al 13 %, sin cuenta preseleccionada
             prorrataAnio = { anio: null, porcentaje: null };
             actualizarTipoCambioCpp();
             cargarCuentasLineas().then(() => { repintarLineas(); consultarProrrata(); });
         });
         document.getElementById('cppMoneda').addEventListener('change', actualizarTipoCambioCpp);
+        // T-053: vencimiento propuesto = fecha del comprobante + días de crédito del proveedor; deja de proponerse si el usuario lo edita
+        document.getElementById('cppFechaVencimiento').addEventListener('input', () => { vencimientoCppEditado = true; revalidarCpp(); });
+        document.getElementById('cppProveedor').addEventListener('change', proponerVencimientoCpp);
         document.getElementById('cppFechaComprobante').addEventListener('change', () => {
+            proponerVencimientoCpp();
             actualizarTipoCambioCpp();
             consultarProrrata();
         });
@@ -677,11 +684,22 @@
         revalidarCpp();
     }
 
+    let vencimientoCppEditado = false;
+    function proponerVencimientoCpp() {
+        if (vencimientoCppEditado) return;
+        const sel = document.getElementById('cppProveedor');
+        const opcion = sel.options[sel.selectedIndex];
+        const dias = opcion ? opcion.getAttribute('data-dias-credito') : null;
+        document.getElementById('cppFechaVencimiento').value =
+            CxpLineas.calcularVencimiento(document.getElementById('cppFechaComprobante').value, dias);
+    }
+
     function datosFormularioCpp() {
         return {
             numero: document.getElementById('cppNumeroComprobante').value,
             clave: document.getElementById('cppClaveComprobante').value,
             fecha: document.getElementById('cppFechaComprobante').value,
+            vencimiento: document.getElementById('cppFechaVencimiento').value,
             hoy: hoyIso(),
             lineas: lineasCpp,
             prorrata: prorrataAnio.porcentaje,
@@ -785,7 +803,6 @@
                     extra: {
                         proveedorId:      parseInt(proveedorId),
                         descripcion:      descripcion,
-                        fechaVencimiento: document.getElementById('cppFechaVencimiento').value || null,
                         moneda:           moneda,
                         tipoCambio:       moneda !== 'CRC' && tipoCambio ? parseFloat(tipoCambio) : null
                     }

@@ -29,7 +29,16 @@ public interface CuentaPorPagarRepository extends JpaRepository<CuentaPorPagar, 
     @Query("SELECT MAX(CAST(SUBSTRING(c.numero, 10) AS int)) FROM CuentaPorPagar c WHERE c.numero LIKE CONCAT('CPP-', :anio, '-%')")
     Integer findUltimoConsecutivo(int anio);
 
-    boolean existsByOrdenCompra(OrdenCompra ordenCompra);
+    /**
+     * Las CxP de la orden de compra (excepto las del estado indicado, ANULADA) con lectura bloqueante: lo facturado que
+     * se calcula con ellas es lo último confirmado aunque la transacción ya tenga una instantánea anterior (T-053).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM CuentaPorPagar c WHERE c.ordenCompra = :ordenCompra AND c.estado <> :estado")
+    List<CuentaPorPagar> findByOrdenCompraAndEstadoNotForUpdate(OrdenCompra ordenCompra, EstadoCuentaPorPagar estado);
+
+    /** Las CxP de la orden de compra, anuladas incluidas, de la más antigua a la más reciente (T-053). */
+    List<CuentaPorPagar> findByOrdenCompraOrderByIdAsc(OrdenCompra ordenCompra);
 
     /** Id del proveedor de la CxP sin cargar la entidad (para bloquear primero al proveedor, T-052). */
     @Query("SELECT c.proveedor.id FROM CuentaPorPagar c WHERE c.id = :id")
@@ -57,7 +66,4 @@ public interface CuentaPorPagarRepository extends JpaRepository<CuentaPorPagar, 
     @Query("SELECT c FROM CuentaPorPagar c JOIN FETCH c.proveedor LEFT JOIN FETCH c.ordenCompra "
          + "WHERE c.estado IN ('PENDIENTE', 'PARCIAL') AND c.fechaVencimiento < :hoy ORDER BY c.fechaVencimiento ASC")
     List<CuentaPorPagar> findVencidasConRelaciones(LocalDate hoy);
-
-    @Query("SELECT c.ordenCompra.id FROM CuentaPorPagar c WHERE c.ordenCompra IS NOT NULL")
-    List<Long> findOrdenCompraIds();
 }

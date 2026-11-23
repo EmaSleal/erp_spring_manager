@@ -7,5 +7,10 @@ public enum EstadoOrdenCompra {
     ENVIADA,
     RECIBIDA_PARCIAL,
     RECIBIDA,
-    CANCELADA
+    CANCELADA;
+
+    /** ¿Admite registrar facturas del proveedor (CxP)? Solo la OC recibida, total o parcialmente (T-053, ADR-066 §4). */
+    public boolean admiteFacturar() {
+        return this == RECIBIDA || this == RECIBIDA_PARCIAL;
+    }
 }

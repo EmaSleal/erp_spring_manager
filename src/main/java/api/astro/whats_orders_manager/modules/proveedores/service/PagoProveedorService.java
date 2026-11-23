@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface PagoProveedorService {
 
+    String MSG_PAGO_YA_ANULADO = "El pago ya está anulado";
+
     PagoProveedor registrarPago(PagoProveedorDTO dto, Usuario usuario);
 
     void anularPago(Long pagoId, Usuario usuario);

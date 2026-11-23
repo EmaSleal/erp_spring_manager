@@ -171,6 +171,15 @@ tipo-cambio:
     timeout-segundos: ${TIPO_CAMBIO_HACIENDA_TIMEOUT:10}
 
 # ========================================
+# CONTROL DE INVENTARIO (T-053, ADR-066 §5, ADR-061)
+# ========================================
+inventario:
+  control:
+    # false: recibir una orden de compra no registra entradas de inventario ni cambia el stock
+    # (mientras el control de inventario no esté habilitado). true: cada recepción registra su entrada.
+    habilitado: ${INVENTARIO_CONTROL_HABILITADO:false}
+
+# ========================================
 # RESILIENCE4J - CIRCUIT BREAKER Y RETRY
 # ========================================
 resilience4j:

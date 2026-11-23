@@ -276,7 +276,8 @@ class PagoProveedorMultimonedaTest {
         int lineasOriginal = original.getDetalles().size();
         BigDecimal debeOriginal = original.getTotalDebe();
         clearInvocations(asientoRepository);
-        when(pagoRepository.findById(55L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findCuentaPorPagarId(55L)).thenReturn(Optional.of(10L));
+        when(pagoRepository.findByIdForUpdate(55L)).thenReturn(Optional.of(pago));
         when(asientoRepository.findAsientosPagoProveedorVigentes(55L)).thenReturn(List.of(original));
 
         service.anularPago(55L, usuario);
@@ -315,7 +316,8 @@ class PagoProveedorMultimonedaTest {
         PagoProveedor pago = PagoProveedor.builder().id(56L).numero("PP-2026-00009").cuentaPorPagar(cpp)
                 .monto(new BigDecimal("113.00")).metodoPago(MetodoPagoProveedor.TRANSFERENCIA)
                 .estado(EstadoPagoProveedor.CONFIRMADO).fecha(LocalDate.now()).build();
-        when(pagoRepository.findById(56L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findCuentaPorPagarId(56L)).thenReturn(Optional.of(10L));
+        when(pagoRepository.findByIdForUpdate(56L)).thenReturn(Optional.of(pago));
         when(asientoRepository.findAsientosPagoProveedorVigentes(56L)).thenReturn(List.of());
 
         service.anularPago(56L, usuario);
@@ -345,7 +347,8 @@ class PagoProveedorMultimonedaTest {
         CuentaPorPagar cpp = cppUsd("500");
         PagoProveedor pago = PagoProveedor.builder().id(77L).numero("PP-1").cuentaPorPagar(cpp)
                 .monto(BigDecimal.TEN).montoAplicado(BigDecimal.TEN).estado(api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor.CONFIRMADO).build();
-        when(pagoRepository.findById(77L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findCuentaPorPagarId(77L)).thenReturn(Optional.of(10L));
+        when(pagoRepository.findByIdForUpdate(77L)).thenReturn(Optional.of(pago));
         cpp.setEstado(EstadoCuentaPorPagar.ANULADA);
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.anularPago(77L, usuario))

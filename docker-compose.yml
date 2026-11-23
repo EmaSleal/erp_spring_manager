@@ -55,6 +55,9 @@ services:
       BOOTSTRAP_ADMIN_TELEFONO: ${BOOTSTRAP_ADMIN_TELEFONO:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
 
+      # T-053: false = recibir una orden de compra no mueve el inventario (hasta habilitar su control)
+      INVENTARIO_CONTROL_HABILITADO: "false"
+
       # Configuración de WhatsApp (ajustar según necesidad)
       WHATSAPP_API_URL: ${WHATSAPP_API_URL:-https://graph.facebook.com/v17.0}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}

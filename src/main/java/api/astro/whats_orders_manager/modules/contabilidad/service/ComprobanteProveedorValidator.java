@@ -35,6 +35,7 @@ public class ComprobanteProveedorValidator {
     public static final String MSG_LINEA_CUENTA = "Cada línea requiere una cuenta contable";
     public static final String MSG_TARIFA = "La tarifa de IVA de una línea no es válida";
     public static final String MSG_TRATAMIENTO = "Cada línea requiere un tratamiento de IVA";
+    public static final String MSG_VENCIMIENTO = "La fecha de vencimiento no puede ser anterior a la fecha del comprobante";
     public static final String MSG_LIMITE = "La tarifa límite de una línea limitada debe ser mayor a 0 y menor que su tarifa";
 
     /** Tolerancia de redondeo entre el IVA de una línea y base × tarifa. */
@@ -98,6 +99,23 @@ public class ComprobanteProveedorValidator {
                 }
             }
         }
+    }
+
+    /**
+     * Fecha de vencimiento de la CxP (T-053, criterio 15): la enviada se respeta siempre que no sea anterior a la fecha del
+     * comprobante; si no viene, es la fecha del comprobante más los días de crédito del proveedor (sin días, o 0: de
+     * contado, la fecha del comprobante).
+     *
+     * @throws IllegalArgumentException con {@link #MSG_VENCIMIENTO} si la enviada es anterior a la del comprobante
+     */
+    public LocalDate resolverVencimiento(LocalDate fechaComprobante, LocalDate enviada, Integer diasCredito) {
+        if (enviada != null) {
+            if (enviada.isBefore(fechaComprobante)) {
+                throw new IllegalArgumentException(MSG_VENCIMIENTO);
+            }
+            return enviada;
+        }
+        return fechaComprobante.plusDays(diasCredito != null && diasCredito > 0 ? diasCredito : 0);
     }
 
     /** Avisos (no errores): líneas cuyo IVA difiere de base × tarifa por más de 0,01. Vacío si todo cuadra. */

@@ -7,7 +7,6 @@ import api.astro.whats_orders_manager.modules.proveedores.enums.TipoProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.DetalleOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
-import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraService;
 import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +30,6 @@ public class ProveedorViewController {
 
     private final ProveedorService proveedorService;
     private final OrdenCompraService ordenCompraService;
-    private final CuentaPorPagarService cuentaPorPagarService;
 
     @GetMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_VER')")
@@ -82,14 +80,18 @@ public class ProveedorViewController {
         model.addAttribute("categorias", CategoriaProveedor.values());
 
         // Build detail map for reception modal (avoids JSON serialization of entities)
+        boolean controlInventario = ordenCompraService.recepcionMueveInventario();
+        model.addAttribute("controlInventario", controlInventario);
         Map<Long, List<Map<String, Object>>> ocDetallesMap = new LinkedHashMap<>();
         for (OrdenCompra oc : ordenes) {
             List<Map<String, Object>> items = new ArrayList<>();
             for (DetalleOrdenCompra d : oc.getDetalles()) {
-                if (d.getProducto() == null) continue;
+                // con el control de inventario deshabilitado (T-053) toda línea se recibe por cantidad, tenga o no producto
+                if (d.getProducto() == null && controlInventario) continue;
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("id", d.getId());
-                item.put("descripcion", d.getDescripcion() != null ? d.getDescripcion() : d.getProducto().getDescripcion());
+                item.put("descripcion", d.getDescripcion() != null ? d.getDescripcion()
+                    : (d.getProducto() != null ? d.getProducto().getDescripcion() : ""));
                 item.put("cantidad", d.getCantidad());
                 item.put("cantidadRecibida", d.getCantidadRecibida());
                 item.put("porRecibir", d.getCantidad() - d.getCantidadRecibida());
@@ -100,7 +102,6 @@ public class ProveedorViewController {
         }
         model.addAttribute("ocDetallesMap", ocDetallesMap);
         model.addAttribute("proveedorItemsMap", proveedorService.findItemIdsByCategoria(CategoriaProveedor.PRODUCTOS_TERMINADOS));
-        model.addAttribute("ocsConCpp", cuentaPorPagarService.findOrdenCompraIdsConCpp());
 
         return "modules/proveedores/ordenes-compra";
     }

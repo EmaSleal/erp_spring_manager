@@ -127,3 +127,7 @@ management:
   health:
     mail:
       enabled: false
+
+inventario:
+  control:
+    habilitado: false

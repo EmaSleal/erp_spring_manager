@@ -11,13 +11,14 @@ import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 
 public interface CuentaPorPagarService {
 
     String MSG_ANULAR_MOTIVO = "El motivo de anulación debe tener entre 3 y 180 caracteres";
     String MSG_ANULAR_CON_PAGOS = "La cuenta por pagar tiene pagos activos; anule los pagos antes de anular la cuenta";
     String MSG_ANULAR_YA_ANULADA = "La cuenta por pagar ya está anulada";
+
+    String MSG_PROVEEDOR_DE_LA_OC = "El proveedor de la cuenta por pagar debe ser el de la orden de compra";
 
     String MSG_ACEPTACION_ESTADO = "El estado de aceptación debe ser ACEPTADO o RECHAZADO";
     String MSG_ACEPTACION_FECHA = "La fecha de aceptación es obligatoria";
@@ -29,7 +30,8 @@ public interface CuentaPorPagarService {
 
     CuentaPorPagar crear(CuentaPorPagarDTO dto);
 
-    CuentaPorPagar crearDesdeOrdenCompra(Long ordenCompraId);
+    /** Como {@link #crear} y devuelve además los avisos del alta (T-053: incluye el exceso de lo facturado sobre la OC). */
+    CuentaPorPagarCreada crearConAdvertencias(CuentaPorPagarDTO dto);
 
     CuentaPorPagar findById(Long id);
 
@@ -40,8 +42,6 @@ public interface CuentaPorPagarService {
     List<CuentaPorPagar> findVencidas();
 
     int actualizarVencidas();
-
-    Set<Long> findOrdenCompraIdsConCpp();
 
     void aplicarPago(CuentaPorPagar cuenta, BigDecimal monto);
 

@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 
+import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
+import api.astro.whats_orders_manager.modules.contabilidad.repository.CuentaPorPagarRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.inventario.enums.TipoMovimientoInventario;
@@ -9,6 +11,7 @@ import api.astro.whats_orders_manager.modules.inventario.service.MovimientoInven
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
 import api.astro.whats_orders_manager.modules.proveedores.dto.DetalleOrdenCompraDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraDTO;
+import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraVistaDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.RecepcionDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.DetalleOrdenCompra;
@@ -16,14 +19,16 @@ import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import api.astro.whats_orders_manager.modules.proveedores.repository.OrdenCompraRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
+import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraConFacturasException;
 import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,7 +36,6 @@ import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrdenCompraServiceImpl implements OrdenCompraService {
 
     private final OrdenCompraRepository ordenCompraRepository;
@@ -40,6 +44,25 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
     private final MovimientoInventarioService movimientoService;
     private final LoteProductoService loteService;
     private final TipoCambioService tipoCambioService;
+    private final CuentaPorPagarRepository cuentaPorPagarRepository;
+    private final Clock clock;
+    private final boolean controlInventarioHabilitado;
+
+    public OrdenCompraServiceImpl(OrdenCompraRepository ordenCompraRepository, ProveedorRepository proveedorRepository,
+                                  ProductoRepository productoRepository, MovimientoInventarioService movimientoService,
+                                  LoteProductoService loteService, TipoCambioService tipoCambioService,
+                                  CuentaPorPagarRepository cuentaPorPagarRepository, Clock clock,
+                                  @Value("${inventario.control.habilitado}") boolean controlInventarioHabilitado) {
+        this.ordenCompraRepository = ordenCompraRepository;
+        this.proveedorRepository = proveedorRepository;
+        this.productoRepository = productoRepository;
+        this.movimientoService = movimientoService;
+        this.loteService = loteService;
+        this.tipoCambioService = tipoCambioService;
+        this.cuentaPorPagarRepository = cuentaPorPagarRepository;
+        this.clock = clock;
+        this.controlInventarioHabilitado = controlInventarioHabilitado;
+    }
 
     @Override
     @Transactional
@@ -110,9 +133,19 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
     @Override
     @Transactional
     public OrdenCompra cancelar(Long id, Usuario usuario) {
-        OrdenCompra oc = findById(id);
+        // mismo orden de bloqueo que el alta de una CxP (proveedor → orden → CxP): una factura que se registra a la vez
+        // o la ve esta cancelación o la rechaza el estado de la orden
+        Long proveedorId = ordenCompraRepository.findProveedorId(id)
+            .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + id));
+        proveedorRepository.findByIdForUpdate(proveedorId)
+            .orElseThrow(() -> new NoSuchElementException("Proveedor no encontrado: " + proveedorId));
+        OrdenCompra oc = ordenCompraRepository.findByIdForUpdate(id)
+            .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + id));
         if (oc.getEstado() == EstadoOrdenCompra.RECIBIDA || oc.getEstado() == EstadoOrdenCompra.CANCELADA) {
             throw new IllegalStateException("No se puede cancelar una OC en estado " + oc.getEstado());
+        }
+        if (!cuentaPorPagarRepository.findByOrdenCompraAndEstadoNotForUpdate(oc, EstadoCuentaPorPagar.ANULADA).isEmpty()) {
+            throw new OrdenCompraConFacturasException();
         }
         oc.setEstado(EstadoOrdenCompra.CANCELADA);
         log.info("OC {} cancelada por {}", oc.getNumero(), usuario.getNombre());
@@ -140,50 +173,59 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
                 .findFirst()
                 .orElseThrow(() -> new NoSuchElementException("Detalle de OC no encontrado: " + item.getDetalleId()));
 
-            if (detalle.getProducto() == null) continue;
+            // con el control de inventario habilitado solo se reciben las líneas con producto (comportamiento anterior);
+            // sin él (ADR-066 §5, ADR-061) toda línea se recibe por cantidad y nada toca el inventario
+            if (controlInventarioHabilitado && detalle.getProducto() == null) continue;
 
             int max = detalle.getCantidad() - detalle.getCantidadRecibida();
             int aRecibir = Math.min(item.getCantidadRecibida(), max);
             if (aRecibir <= 0) continue;
 
-            LoteProducto lote = null;
-            if (item.getCodigoLote() != null && !item.getCodigoLote().isBlank()) {
-                lote = loteService.crearLote(
+            if (controlInventarioHabilitado) {
+                LoteProducto lote = null;
+                if (item.getCodigoLote() != null && !item.getCodigoLote().isBlank()) {
+                    lote = loteService.crearLote(
+                        detalle.getProducto().getIdProducto(),
+                        item.getCodigoLote(),
+                        aRecibir,
+                        item.getFechaVencimiento(),
+                        oc.getProveedor()
+                    );
+                }
+
+                BigDecimal costo = item.getCostoUnitario() != null ? item.getCostoUnitario() : detalle.getPrecioUnitario();
+                movimientoService.registrarEntrada(
                     detalle.getProducto().getIdProducto(),
-                    item.getCodigoLote(),
                     aRecibir,
-                    item.getFechaVencimiento(),
-                    oc.getProveedor()
+                    costo,
+                    TipoMovimientoInventario.ENTRADA_COMPRA,
+                    "OC",
+                    oc.getId(),
+                    usuario,
+                    "Recepción OC " + oc.getNumero(),
+                    lote
                 );
             }
-
-            BigDecimal costo = item.getCostoUnitario() != null ? item.getCostoUnitario() : detalle.getPrecioUnitario();
-            movimientoService.registrarEntrada(
-                detalle.getProducto().getIdProducto(),
-                aRecibir,
-                costo,
-                TipoMovimientoInventario.ENTRADA_COMPRA,
-                "OC",
-                oc.getId(),
-                usuario,
-                "Recepción OC " + oc.getNumero(),
-                lote
-            );
 
             detalle.setCantidadRecibida(detalle.getCantidadRecibida() + aRecibir);
         }
 
-        List<DetalleOrdenCompra> detallesConProducto = oc.getDetalles().stream()
-            .filter(d -> d.getProducto() != null)
+        List<DetalleOrdenCompra> detallesAContar = oc.getDetalles().stream()
+            .filter(d -> !controlInventarioHabilitado || d.getProducto() != null)
             .toList();
 
-        boolean todosCompletos = !detallesConProducto.isEmpty()
-            && detallesConProducto.stream().allMatch(DetalleOrdenCompra::isRecibidoCompleto);
+        boolean todosCompletos = !detallesAContar.isEmpty()
+            && detallesAContar.stream().allMatch(DetalleOrdenCompra::isRecibidoCompleto);
 
         oc.setEstado(todosCompletos ? EstadoOrdenCompra.RECIBIDA : EstadoOrdenCompra.RECIBIDA_PARCIAL);
-        if (todosCompletos) oc.setFechaRecepcion(LocalDate.now());
+        if (todosCompletos) oc.setFechaRecepcion(LocalDate.now(clock));
 
         return ordenCompraRepository.save(oc);
+    }
+
+    @Override
+    public boolean recepcionMueveInventario() {
+        return controlInventarioHabilitado;
     }
 
     @Override
@@ -197,6 +239,20 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
     public OrdenCompra findById(Long id) {
         return ordenCompraRepository.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Orden de compra no encontrada: " + id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrdenCompraVistaDTO vistaById(Long id) {
+        return OrdenCompraVistaDTO.de(findById(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrdenCompraVistaDTO> vistas(EstadoOrdenCompra estado) {
+        List<OrdenCompra> lista = estado != null ? ordenCompraRepository.findByEstadoOrderByFechaDesc(estado)
+            : ordenCompraRepository.findAll();
+        return lista.stream().map(OrdenCompraVistaDTO::de).toList();
     }
 
     @Override

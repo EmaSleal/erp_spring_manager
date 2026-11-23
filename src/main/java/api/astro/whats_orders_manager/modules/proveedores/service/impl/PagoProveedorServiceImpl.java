@@ -107,13 +107,17 @@ public class PagoProveedorServiceImpl implements PagoProveedorService {
     @Override
     @Transactional
     public void anularPago(Long pagoId, Usuario usuario) {
-        PagoProveedor pago = findById(pagoId);
+        // T-053: bloqueo proveedor → CxP → pago y solo entonces se lee el estado del pago. El id de la CxP sale de una
+        // proyección: cargar el pago antes del bloqueo dejaría en el contexto de persistencia un estado ya vencido.
+        Long cuentaId = pagoRepository.findCuentaPorPagarId(pagoId)
+            .orElseThrow(() -> new NoSuchElementException("Pago no encontrado: " + pagoId));
+        CuentaPorPagar cuenta = cuentaService.bloquear(cuentaId);
+        PagoProveedor pago = pagoRepository.findByIdForUpdate(pagoId)
+            .orElseThrow(() -> new NoSuchElementException("Pago no encontrado: " + pagoId));
 
         if (pago.getEstado() == EstadoPagoProveedor.ANULADO) {
-            throw new IllegalStateException("El pago ya está anulado");
+            throw new IllegalStateException(MSG_PAGO_YA_ANULADO);
         }
-
-        CuentaPorPagar cuenta = cuentaService.bloquear(pago.getCuentaPorPagar().getId());
         if (cuenta.getEstado() == EstadoCuentaPorPagar.ANULADA) {
             throw new IllegalStateException("La cuenta por pagar está anulada");
         }

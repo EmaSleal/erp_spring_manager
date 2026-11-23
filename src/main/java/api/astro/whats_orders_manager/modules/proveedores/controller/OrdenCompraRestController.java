@@ -4,17 +4,21 @@ import api.astro.whats_orders_manager.modules.proveedores.dto.OrdenCompraDTO;
 import api.astro.whats_orders_manager.modules.proveedores.dto.RecepcionDTO;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoOrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
-import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
+import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraConFacturasException;
+import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraFacturacionService;
 import api.astro.whats_orders_manager.modules.proveedores.service.OrdenCompraService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import api.astro.whats_orders_manager.shared.dto.ResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.NoSuchElementException;
 
 @Slf4j
 @RestController
@@ -23,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 public class OrdenCompraRestController {
 
     private final OrdenCompraService ordenCompraService;
-    private final CuentaPorPagarService cuentaPorPagarService;
+    private final OrdenCompraFacturacionService facturacionService;
     private final UsuarioService usuarioService;
 
     @GetMapping
@@ -32,17 +36,14 @@ public class OrdenCompraRestController {
             @RequestParam(required = false) EstadoOrdenCompra estado,
             Authentication authentication
     ) {
-        var lista = estado != null
-            ? ordenCompraService.findByEstado(estado)
-            : ordenCompraService.findAll();
-        return ResponseEntity.ok(ResponseDTO.success("OK", lista));
+        return ResponseEntity.ok(ResponseDTO.success("OK", ordenCompraService.vistas(estado)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_VER')")
     public ResponseEntity<ResponseDTO> findById(@PathVariable Long id, Authentication authentication) {
         try {
-            return ResponseEntity.ok(ResponseDTO.success("OK", ordenCompraService.findById(id)));
+            return ResponseEntity.ok(ResponseDTO.success("OK", ordenCompraService.vistaById(id)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }
@@ -82,6 +83,8 @@ public class OrdenCompraRestController {
             Usuario usuario = resolverUsuario(authentication);
             OrdenCompra oc = ordenCompraService.cancelar(id, usuario);
             return ResponseEntity.ok(ResponseDTO.success("OC " + oc.getNumero() + " cancelada", null));
+        } catch (OrdenCompraConFacturasException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
         }
@@ -104,17 +107,17 @@ public class OrdenCompraRestController {
         }
     }
 
-    @PostMapping("/{id}/generar-cpp")
-    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
-    public ResponseEntity<ResponseDTO> generarCuentaPorPagar(
-            @PathVariable Long id,
-            Authentication authentication
-    ) {
+    /**
+     * Total, facturado, pendiente, exceso, CxP y detalles de la orden y la cuenta propuesta para las líneas de mercadería
+     * (T-053, ADR-066 §4). 404 si no existe.
+     */
+    @GetMapping("/{id}/facturacion")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'ORDEN_COMPRA_VER')")
+    public ResponseEntity<ResponseDTO> facturacion(@PathVariable Long id, Authentication authentication) {
         try {
-            var cpp = cuentaPorPagarService.crearDesdeOrdenCompra(id);
-            return ResponseEntity.ok(ResponseDTO.success("Cuenta por pagar generada: " + cpp.getNumero(), null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));
+            return ResponseEntity.ok(ResponseDTO.success("OK", facturacionService.detalle(id)));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseDTO.error(e.getMessage()));
         }
     }
 
