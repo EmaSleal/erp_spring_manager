@@ -44,6 +44,14 @@ Los datos de esta sección son los que Resend documenta para un dominio propio; 
    | MX | `send` | `feedback-smtp.<región>.amazonses.com`, prioridad 10 (valor exacto en el panel) | Retorno de rebotes (bounce) |
    | TXT | `send` | `v=spf1 include:amazonses.com ~all` (valor exacto en el panel) | SPF del dominio de retorno |
 
+   > **Advertencia: posible conflicto con el MAIL FROM de SES/useSend.** useSend/SES puede tener ya un subdominio MAIL FROM
+   > propio en `astro-solutions.net` (por ejemplo `send`, `mail` u otro). Antes de crear registros, revisar en Cloudflare si ya
+   > existen MX o TXT en `send`, `mail` o similares. Si `send.astro-solutions.net` ya lo usa SES/useSend, **no sobrescribir
+   > sus registros**: al agregar el dominio en Resend, elegir otro subdominio de retorno (custom return-path, por ejemplo
+   > `resend` o `rs`; confirmar en el panel de Resend) y crear el MX y el TXT SPF en ese nombre. Así ambos proveedores conviven.
+   > Nunca dos TXT `v=spf1` en el mismo nombre ni dos conjuntos de MX en el mismo nombre. En lo que sigue, `send` es el
+   > subdominio por defecto de Resend; sustituirlo por el elegido.
+
 3. **SPF y el registro actual de SES/useSend.** El SPF de Resend va en el subdominio `send.astro-solutions.net`, que es el
    dominio del Return-Path. SPF se evalúa contra el dominio del Return-Path, no contra el `From`, así que **no hay que
    modificar el SPF del dominio raíz** que ya usa SES/useSend: los dos conviven porque están en nombres distintos
