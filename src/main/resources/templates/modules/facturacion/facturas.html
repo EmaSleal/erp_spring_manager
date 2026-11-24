@@ -284,12 +284,13 @@
                                                         <i class="bi bi-file-earmark-check me-2"></i>Enviar a Hacienda
                                                     </button>
                                                 </li>
-                                                <li th:if="${factura.cliente.email != null and factura.cliente.email != ''}"
-                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ENVIAR')">
+                                                <li th:if="${factura.comprobanteElectronico}"
+                                                    sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'COMPROBANTE_REENVIAR_CORREO')">
+                                                    <!-- T-055: el reenvío por correo (cola de entregas) vive en el detalle de la factura -->
                                                     <button type="button" class="dropdown-item"
-                                                            th:attr="data-id=${factura.idFactura}, data-email=${factura.cliente.email}"
-                                                            onclick="enviarFacturaPorEmail(this)">
-                                                        <i class="fas fa-envelope me-2"></i>Enviar por Email
+                                                            th:attr="data-id=${factura.idFactura}"
+                                                            onclick="openModal(this)">
+                                                        <i class="fas fa-envelope me-2"></i>Reenviar comprobante por correo
                                                     </button>
                                                 </li>
                                                 <li th:if="${factura.cliente.telefono != null and factura.cliente.telefono != ''}"

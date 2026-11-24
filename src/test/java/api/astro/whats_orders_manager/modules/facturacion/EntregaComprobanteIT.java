@@ -357,6 +357,7 @@ class EntregaComprobanteIT {
     @Autowired private PanelFacturacionService panelService;
     @Autowired private EnvioHaciendaService envioHaciendaService;
     @MockitoBean private FacturaPdfService pdfService;
+    @MockitoBean private api.astro.whats_orders_manager.shared.service.EmailService emailService;
 
     private static final String EMAIL_CLIENTE = "cliente@t055.example";
     private static final String PRUEBA = "prueba@monrachem.example";
@@ -1205,6 +1206,20 @@ class EntregaComprobanteIT {
                 .doesNotContain("fallida@t055.example");
         assertThat(mockMvc.perform(get("/facturas/entregas").param("estado", "OTRO").with(user(USUARIO).roles("ADMIN")))
                 .andReturn().getResponse().getStatus()).isEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("T-055 criterio 17: las rutas SMTP antiguas enviar-email ya no existen (404) y no tocan EmailService")
+    void rutasSmtpAntiguasRetiradas() throws Exception {
+        Doc f = facturaCon(EstadoComprobante.ACEPTADO, AmbienteHacienda.PRODUCCION);
+        clearInvocations(emailService);
+
+        assertThat(mockMvc.perform(post(API_COMP + f.idComprobante() + "/enviar-email")
+                .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn().getResponse().getStatus()).isEqualTo(404);
+        assertThat(mockMvc.perform(post("/facturas/" + f.idFactura() + "/enviar-email")
+                .with(user(USUARIO).roles("ADMIN")).with(csrf())).andReturn().getResponse().getStatus()).isEqualTo(404);
+
+        org.mockito.Mockito.verifyNoInteractions(emailService);
     }
 
     // ── Fixture ──────────────────────────────────────────────────────────────

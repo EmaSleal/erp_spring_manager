@@ -74,14 +74,6 @@ public interface EmailService {
     boolean enviarEmailPrueba(String to);
 
     /**
-     * Env├¡a una factura por email al cliente usando el template HTML
-     * 
-     * @param factura Factura a enviar
-     * @throws MessagingException Si hay error al enviar
-     */
-    void enviarFacturaPorEmail(Factura factura) throws MessagingException;
-
-    /**
      * Env├¡a las credenciales de acceso a un nuevo usuario por email
      * 
      * @param usuario Usuario al que se enviar├ín las credenciales

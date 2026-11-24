@@ -11,7 +11,6 @@ import api.astro.whats_orders_manager.modules.facturacion.service.FacturaSustitu
 import api.astro.whats_orders_manager.modules.facturacion.service.NotaCreditoElegibilidad;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabilidadFactura;
-import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +41,7 @@ class FacturaDetalleNotaCreditoTest {
     void setUp() {
         factura.setIdFactura(7);
         FacturaController controller = new FacturaController(facturaService, mock(ClienteService.class),
-            mock(PagoService.class), mock(EmailService.class), mock(MonedaService.class), facturaMapper,
+            mock(PagoService.class), mock(MonedaService.class), facturaMapper,
             mock(FacturaPdfService.class), mock(PagoMapper.class), mock(PoliticaMutabilidadFactura.class),
             mock(FacturaSustitutaService.class), elegibilidad,
             mock(api.astro.whats_orders_manager.modules.facturacion.electronica.service.AmbienteComprobanteGuard.class),

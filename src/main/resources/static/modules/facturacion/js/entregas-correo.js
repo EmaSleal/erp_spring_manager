@@ -27,6 +27,7 @@
     const TEXTO_ACCION = 'Reenviar comprobante por correo';
     const TEXTO_VACIO = 'Sin entregas por correo.';
     const ERROR_CORREO = 'Indique un correo electrónico válido';
+    const ERROR_PERMISO = 'No tiene permiso para reenviar comprobantes por correo.';
     const ERROR_RED = 'No se pudo conectar con el servidor. Intente nuevamente.';
     const REGEX_CORREO = /^[^\s@,;]+@[^\s@,;.]+(\.[^\s@,;.]+)+$/;
 
@@ -94,6 +95,32 @@
     }
 
     /**
+     * Registra un reenvío MANUAL en la cola (POST /entregas con {destinatario}). Único camino de envío manual por correo
+     * de un comprobante (T-055 revisión 1): el antiguo enviar-email por SMTP se retiró. Devuelve {ok, mensaje}; el
+     * mensaje se muestra siempre como texto. deps: fetch, headers().
+     */
+    async function enviarReenvio(comprobanteId, destinatarioCrudo, deps) {
+        const destinatario = (destinatarioCrudo || '').trim();
+        if (!correoValido(destinatario)) return { ok: false, mensaje: ERROR_CORREO };
+        const d = deps || {};
+        const doFetch = d.fetch || global.fetch;
+        const cabeceras = d.headers || (() => ({ 'Content-Type': 'application/json' }));
+        try {
+            const res = await doFetch(urlEntregas(comprobanteId), {
+                method: 'POST',
+                headers: cabeceras(),
+                body: JSON.stringify({ destinatario })
+            });
+            const cuerpo = await res.json().catch(() => null);
+            if (res.ok) return { ok: true, mensaje: 'Reenvío registrado: el correo se enviará en breve.' };
+            if (res.status === 403) return { ok: false, mensaje: ERROR_PERMISO };
+            return { ok: false, mensaje: mensajeError(cuerpo, 'No se pudo registrar el reenvío.') };
+        } catch (err) {
+            return { ok: false, mensaje: ERROR_RED };
+        }
+    }
+
+    /**
      * Pinta el bloque en `contenedor`. deps: fetch, headers() con CSRF y Content-Type, notify(tipo, mensaje).
      * Devuelve una promesa que se resuelve al cargar el historial.
      */
@@ -122,28 +149,10 @@
         }
 
         async function reenviar() {
-            const destinatario = (input.value || '').trim();
-            if (!correoValido(destinatario)) {
-                avisar('error', ERROR_CORREO);
-                return;
-            }
             boton.disabled = true;
-            try {
-                const res = await doFetch(url, {
-                    method: 'POST',
-                    headers: cabeceras(),
-                    body: JSON.stringify({ destinatario })
-                });
-                const cuerpo = await res.json().catch(() => null);
-                if (res.ok) {
-                    avisar('success', 'Reenvío registrado: el correo se enviará en breve.');
-                    await cargarHistorial();
-                } else {
-                    avisar('error', mensajeError(cuerpo, 'No se pudo registrar el reenvío.'));
-                }
-            } catch (err) {
-                avisar('error', ERROR_RED);
-            }
+            const r = await enviarReenvio(correo.comprobanteId, input.value, { fetch: doFetch, headers: cabeceras });
+            avisar(r.ok ? 'success' : 'error', r.mensaje);
+            if (r.ok) await cargarHistorial();
             boton.disabled = false;
         }
 
@@ -195,5 +204,5 @@
         return montar(global.document, contenedor, correo, dependenciasNavegador());
     }
 
-    global.EntregasCorreo = { correoValido, etiquetaEstado, mensajeError, mostrarAccion, pintarHistorial, montar, montarEnPagina };
+    global.EntregasCorreo = { correoValido, etiquetaEstado, mensajeError, mostrarAccion, pintarHistorial, enviarReenvio, montar, montarEnPagina, dependenciasNavegador };
 })(typeof window !== 'undefined' ? window : globalThis);

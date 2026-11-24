@@ -17,7 +17,6 @@ import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
-import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
@@ -63,7 +62,6 @@ public class FacturaController {
     private final FacturaService facturaService;
     private final ClienteService clienteService;
     private final PagoService pagoService;
-    private final EmailService emailService;
     private final MonedaService monedaService;
     private final FacturaMapper facturaMapper;
     private final FacturaPdfService facturaPdfService;
@@ -406,53 +404,6 @@ public class FacturaController {
         } catch (Exception e) {
             log.error("Error al generar PDF de factura {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * Envía una factura por email al cliente (API REST)
-     * Punto 5.3.1 - Envío de facturas por email
-     */
-    @PostMapping("/{id}/enviar-email")
-    @ResponseBody
-    public ResponseEntity<?> enviarFacturaPorEmail(@PathVariable Integer id) {
-        log.info("Intentando enviar factura ID: {} por email", id);
-        
-        try {
-            // Buscar la factura
-            Optional<Factura> facturaOpt = facturaService.findById(id);
-            
-            if (facturaOpt.isEmpty()) {
-                log.warn("Factura con ID {} no encontrada", id);
-                return ResponseEntity.notFound().build();
-            }
-            
-            Factura factura = facturaOpt.get();
-            
-            // Validar que el cliente tenga email
-            if (factura.getCliente() == null || 
-                factura.getCliente().getEmail() == null || 
-                factura.getCliente().getEmail().isBlank()) {
-                log.warn("El cliente de la factura {} no tiene email configurado", id);
-                return ResponseEntity.badRequest()
-                    .body("{\"error\": \"El cliente no tiene email configurado\"}");
-            }
-            
-            // Enviar el email
-            emailService.enviarFacturaPorEmail(factura);
-            
-            log.info("✅ Factura {} enviada por email a {}", 
-                factura.getNumeroFactura(), 
-                factura.getCliente().getEmail());
-            
-            return ResponseEntity.ok()
-                .body("{\"message\": \"Factura enviada exitosamente a " + 
-                    factura.getCliente().getEmail() + "\"}");
-            
-        } catch (Exception e) {
-            log.error("Error al enviar factura por email: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                .body("{\"error\": \"Error al enviar el email: " + e.getMessage() + "\"}");
         }
     }
 

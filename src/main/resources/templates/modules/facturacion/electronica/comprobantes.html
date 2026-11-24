@@ -238,10 +238,12 @@
     <script th:src="@{/modules/facturacion/electronica/js/estado-envio.js}"></script>
     <script th:src="@{/modules/facturacion/js/ambiente-comprobante.js}"></script>
     <script th:src="@{/modules/facturacion/js/filtro-url.js}"></script>
+    <script th:src="@{/modules/facturacion/js/entregas-correo.js}"></script>
     <script th:inline="javascript">
         const EMPRESA_ID = /*[[${empresaId ?: 1}]]*/ 1;
         const csrfToken  = /*[[${_csrf.token}]]*/ '';
         const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+        const PUEDE_REENVIAR_CORREO = /*[[${@permisoService.tienePermisoPorCodigo(#authentication.name, 'COMPROBANTE_REENVIAR_CORREO')}]]*/ false;
         let comprobantes = [];
 
         // Cargar estadísticas
@@ -839,10 +841,10 @@
                             </button>
                         `;
                     }
-                    if (comp.estado === 'ACEPTADO') {
+                    if (comp.estado === 'ACEPTADO' && PUEDE_REENVIAR_CORREO) {
                         actionButtons += `
-                            <button onclick="enviarPorEmail(${comp.id})" class="btn btn-primary">
-                                <i class="fas fa-envelope me-1"></i>Enviar por Email
+                            <button onclick="reenviarPorCorreo(${comp.id})" class="btn btn-primary">
+                                <i class="fas fa-envelope me-1"></i>Reenviar comprobante por correo
                             </button>
                         `;
                     }
@@ -1024,49 +1026,32 @@
                 });
         }
         
-        async function enviarPorEmail(id) {
+        // T-055 (ADR-070): el reenvío por correo es una entrega MANUAL de la cola (POST /entregas), con el permiso
+        // COMPROBANTE_REENVIAR_CORREO y las reglas de SANDBOX; ya no hay envío directo por SMTP desde esta pantalla.
+        async function reenviarPorCorreo(id) {
             const result = await Swal.fire({
-                title: '¿Enviar por email?',
-                text: 'Se enviará el comprobante al email registrado del cliente.',
-                icon: 'question',
+                title: 'Reenviar comprobante por correo',
+                text: 'Se registrará un reenvío con el PDF, el XML firmado y la respuesta de Hacienda.',
+                input: 'email',
+                inputPlaceholder: 'correo@ejemplo.com',
+                inputLabel: 'Destinatario',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, enviar',
+                confirmButtonText: 'Reenviar',
                 cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#0d6efd'
             });
-
             if (!result.isConfirmed) return;
 
-            Swal.fire({
-                title: 'Enviando...',
-                text: 'Por favor espere',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
+            const r = await window.EntregasCorreo.enviarReenvio(id, result.value, {
+                fetch: (u, o) => fetch(u, o),
+                headers: () => ({ 'Content-Type': 'application/json', [csrfHeader]: csrfToken })
             });
-
-            fetch(`/api/facturas/electronica/comprobantes/${id}/enviar-email`, {
-                method: 'POST',
-                headers: { [csrfHeader]: csrfToken }
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Enviado!',
-                            text: data.message,
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                        bootstrap.Modal.getInstance(document.getElementById('detalleComprobanteModal')).hide();
-                    } else {
-                        Swal.fire({ icon: 'error', title: 'Error al enviar', text: data.message });
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo enviar el comprobante por email.' });
-                });
+            if (r.ok) {
+                Swal.fire({ icon: 'success', title: 'Reenvío registrado', text: r.mensaje, timer: 3000, showConfirmButton: false });
+                bootstrap.Modal.getInstance(document.getElementById('detalleComprobanteModal')).hide();
+            } else {
+                Swal.fire({ icon: 'error', title: 'No se pudo reenviar', text: r.mensaje });
+            }
         }
 
         function mostrarAlerta(mensaje, tipo) {

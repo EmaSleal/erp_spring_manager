@@ -140,11 +140,6 @@ public interface ComprobanteElectronicoService {
     void registrarConsultaIncierta(Long comprobanteId);
     
     /**
-     * Envía comprobante por correo al cliente.
-     */
-    boolean enviarPorEmail(Long id, String emailAdicional);
-    
-    /**
      * Ya no anula: un comprobante ACEPTADO solo se anula con una nota de crédito total (ADR-037 §7,
      * POST /api/facturas/notas-credito).
      *

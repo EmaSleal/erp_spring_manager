@@ -227,3 +227,64 @@ test('las tres pantallas cargan el módulo y tienen su contenedor', () => {
         assert.match(fs.readFileSync(path.join(base, f), 'utf8'), /id="[a-z-]*correo"/, f);
     }
 });
+
+// ---- T-055 revisión 1, criterio 17: los antiguos botones de «Enviar por Email» usan el reenvío de la cola ----
+
+test('enviarReenvio: POST a /entregas con {destinatario} recortado y CSRF; 201 es éxito', async () => {
+    const e = cargar();
+    const llamadas = [];
+    const deps = {
+        fetch: async (u, o) => { llamadas.push([u, o]); return { ok: true, status: 201, json: async () => ({ id: 5 }) }; },
+        headers: () => ({ 'Content-Type': 'application/json', 'X-CSRF': 't' })
+    };
+    const r = await e.enviarReenvio(77, ' cli@ejemplo.com ', deps);
+    assert.equal(r.ok, true);
+    assert.equal(llamadas.length, 1);
+    assert.equal(llamadas[0][0], '/api/facturas/electronica/comprobantes/77/entregas');
+    assert.equal(llamadas[0][1].method, 'POST');
+    assert.equal(llamadas[0][1].headers['X-CSRF'], 't');
+    assert.deepEqual(JSON.parse(llamadas[0][1].body), { destinatario: 'cli@ejemplo.com' });
+});
+
+test('enviarReenvio: correo inválido no llama a la red; 403, 409 y 400 devuelven un mensaje claro', async () => {
+    const e = cargar();
+    let n = 0;
+    const con = (status, cuerpo) => ({ fetch: async () => { n++; return { ok: false, status, json: async () => cuerpo }; }, headers: () => ({}) });
+    const inval = await e.enviarReenvio(1, 'no-es-correo', con(400, {}));
+    assert.equal(inval.ok, false);
+    assert.equal(n, 0);
+    const sinPermiso = await e.enviarReenvio(1, 'a@b.co', con(403, null));
+    assert.equal(sinPermiso.ok, false);
+    assert.match(sinPermiso.mensaje, /permiso/i);
+    const conflicto = await e.enviarReenvio(1, 'a@b.co', con(409, { message: 'Solo comprobantes aceptados' }));
+    assert.equal(conflicto.mensaje, 'Solo comprobantes aceptados');
+    const red = await e.enviarReenvio(1, 'a@b.co', { fetch: async () => { throw new Error('x'); }, headers: () => ({}) });
+    assert.equal(red.ok, false);
+});
+
+test('ninguna pantalla llama ya a las rutas SMTP antiguas enviar-email', () => {
+    const base = path.join(raiz, 'src/main/resources');
+    const archivos = [
+        'templates/modules/facturacion/electronica/comprobantes.html',
+        'templates/modules/facturacion/facturas.html',
+        'static/modules/facturacion/js/facturas.js'
+    ];
+    for (const a of archivos) {
+        const t = fs.readFileSync(path.join(base, a), 'utf8');
+        assert.doesNotMatch(t, /enviar-email/, a);
+        assert.doesNotMatch(t, /enviarFacturaPorEmail|enviarPorEmail\(/, a);
+    }
+});
+
+test('comprobantes.html: el botón de correo del modal usa EntregasCorreo.enviarReenvio y exige el permiso', () => {
+    const t = fs.readFileSync(path.join(raiz, 'src/main/resources/templates/modules/facturacion/electronica/comprobantes.html'), 'utf8');
+    assert.match(t, /entregas-correo\.js/);
+    assert.match(t, /EntregasCorreo\.enviarReenvio/);
+    assert.match(t, /COMPROBANTE_REENVIAR_CORREO/);
+});
+
+test('facturas.html: la opción de correo del listado exige COMPROBANTE_REENVIAR_CORREO y abre el detalle con el reenvío', () => {
+    const t = fs.readFileSync(path.join(raiz, 'src/main/resources/templates/modules/facturacion/facturas.html'), 'utf8');
+    assert.match(t, /COMPROBANTE_REENVIAR_CORREO/);
+    assert.match(t, /Reenviar comprobante por correo/);
+});
