@@ -390,53 +390,6 @@ public class EmailServiceImpl implements EmailService {
     }
 
     /**
-     * Envía una factura por email al cliente usando el template HTML
-     * Requiere que el cliente tenga email configurado
-     */
-    @Override
-    public void enviarFacturaPorEmail(Factura factura) throws MessagingException {
-        log.info("Preparando envío de factura #{} por email", factura.getNumeroFactura());
-        
-        try {
-            Cliente cliente = factura.getCliente();
-            
-            // Validar que el cliente tenga email
-            if (cliente == null || cliente.getEmail() == null || cliente.getEmail().isBlank()) {
-                throw new IllegalArgumentException("El cliente no tiene email configurado");
-            }
-            
-            // Obtener información de la empresa
-            var empresa = empresaService.getEmpresaPrincipal();
-            
-            // Obtener símbolo de moneda
-            String simboloMoneda = monedaService.obtenerSimboloMoneda();
-            
-            // Crear contexto de Thymeleaf
-            Context context = new Context();
-            context.setVariable("factura", factura);
-            context.setVariable("empresa", empresa);
-            context.setVariable("simboloMoneda", simboloMoneda);
-            
-            // Procesar el template
-            String htmlContent = templateEngine.process("email/factura", context);
-            
-            // Enviar el email
-            enviarEmailHtml(
-                cliente.getEmail(),
-                "Factura #" + factura.getNumeroFactura() + " - " + empresa.getNombreEmpresa(),
-                htmlContent
-            );
-            
-            log.info("✅ Factura #{} enviada exitosamente por email a: {}", 
-                factura.getNumeroFactura(), cliente.getEmail());
-        } catch (Exception e) {
-            log.error("❌ Error al enviar factura #{} por email: {}", 
-                factura.getNumeroFactura(), e.getMessage());
-            throw new MessagingException("Error al enviar factura por email: " + e.getMessage(), e);
-        }
-    }
-
-    /**
      * Envía las credenciales de acceso a un nuevo usuario por email
      * Usa el template HTML credenciales-usuario.html
      */

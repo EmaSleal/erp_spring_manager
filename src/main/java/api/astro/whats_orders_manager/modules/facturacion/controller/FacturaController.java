@@ -17,7 +17,6 @@ import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
 import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
 import api.astro.whats_orders_manager.modules.facturacion.model.Pago;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
-import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
@@ -63,7 +62,6 @@ public class FacturaController {
     private final FacturaService facturaService;
     private final ClienteService clienteService;
     private final PagoService pagoService;
-    private final EmailService emailService;
     private final MonedaService monedaService;
     private final FacturaMapper facturaMapper;
     private final FacturaPdfService facturaPdfService;
@@ -73,6 +71,9 @@ public class FacturaController {
     private final NotaCreditoElegibilidad notaCreditoElegibilidad;
     private final AmbienteComprobanteGuard ambienteGuard;
     private final SaldoFavorService saldoFavorService;
+    /** T-055: por campo para no cambiar el constructor del que dependen las pruebas; sin él no hay campo correo. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private api.astro.whats_orders_manager.modules.facturacion.correo.service.EntregaComprobanteService entregaCorreoService;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -205,6 +206,10 @@ public class FacturaController {
                 detalle.setRevisarEnAtv(estadoFe.revisarEnAtv());
             } else {
                 detalle.setRevisarEnAtv(false);
+            }
+            if (entregaCorreoService != null) {
+                // T-055: reenvío por correo del comprobante vigente (null si no hay)
+                detalle.setCorreo(entregaCorreoService.resumenCorreo(detalle.getIdComprobante(), authentication.getName()));
             }
             sustitutaService.completarDetalle(factura, detalle);
             completarPagosPorSaldoFavor(detalle);
@@ -399,53 +404,6 @@ public class FacturaController {
         } catch (Exception e) {
             log.error("Error al generar PDF de factura {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * Envía una factura por email al cliente (API REST)
-     * Punto 5.3.1 - Envío de facturas por email
-     */
-    @PostMapping("/{id}/enviar-email")
-    @ResponseBody
-    public ResponseEntity<?> enviarFacturaPorEmail(@PathVariable Integer id) {
-        log.info("Intentando enviar factura ID: {} por email", id);
-        
-        try {
-            // Buscar la factura
-            Optional<Factura> facturaOpt = facturaService.findById(id);
-            
-            if (facturaOpt.isEmpty()) {
-                log.warn("Factura con ID {} no encontrada", id);
-                return ResponseEntity.notFound().build();
-            }
-            
-            Factura factura = facturaOpt.get();
-            
-            // Validar que el cliente tenga email
-            if (factura.getCliente() == null || 
-                factura.getCliente().getEmail() == null || 
-                factura.getCliente().getEmail().isBlank()) {
-                log.warn("El cliente de la factura {} no tiene email configurado", id);
-                return ResponseEntity.badRequest()
-                    .body("{\"error\": \"El cliente no tiene email configurado\"}");
-            }
-            
-            // Enviar el email
-            emailService.enviarFacturaPorEmail(factura);
-            
-            log.info("✅ Factura {} enviada por email a {}", 
-                factura.getNumeroFactura(), 
-                factura.getCliente().getEmail());
-            
-            return ResponseEntity.ok()
-                .body("{\"message\": \"Factura enviada exitosamente a " + 
-                    factura.getCliente().getEmail() + "\"}");
-            
-        } catch (Exception e) {
-            log.error("Error al enviar factura por email: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                .body("{\"error\": \"Error al enviar el email: " + e.getMessage() + "\"}");
         }
     }
 

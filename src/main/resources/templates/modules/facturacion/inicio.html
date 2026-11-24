@@ -159,6 +159,34 @@
                     </div>
                 </div>
             </div>
+            <div class="col-12 col-sm-6 col-lg-4 mb-3">
+                <div class="stat-card contador-card" data-contador-card>
+                    <div class="stat-icon"><i class="fas fa-envelope-circle-check fa-2x"></i></div>
+                    <div class="stat-content">
+                        <h3 class="stat-number" data-contador th:text="${contadores.entregasFallidas}">0</h3>
+                        <p class="stat-label">Correos de comprobantes fallidos</p>
+                    </div>
+                    <div class="stat-footer">
+                        <a th:href="@{/facturas/entregas(estado='FALLIDO')}" class="stat-link">
+                            Ver listado <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-4 mb-3">
+                <div class="stat-card contador-card" data-contador-card>
+                    <div class="stat-icon"><i class="fas fa-hourglass-half fa-2x"></i></div>
+                    <div class="stat-content">
+                        <h3 class="stat-number" data-contador th:text="${contadores.entregasPendientesVencidas}">0</h3>
+                        <p class="stat-label">Correos de comprobantes pendientes vencidos</p>
+                    </div>
+                    <div class="stat-footer">
+                        <a th:href="@{/facturas/entregas(estado='PENDIENTE')}" class="stat-link">
+                            Ver listado <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="row mb-3">

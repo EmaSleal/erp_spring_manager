@@ -127,6 +127,12 @@ public class FacturaDetalleDTO {
     /** T-046: mes (AAAA-MM) del comprobante ACEPTADO vigente, al que la nota 13 atribuye el IVA; null si no lo hay. */
     private String periodoFacturaOriginal;
 
+    /**
+     * T-055 (ADR-070): reenvío del comprobante por correo: id y estado del comprobante vigente, correo por defecto del
+     * receptor y si el usuario puede reenviar. Null si la factura no tiene comprobante vigente.
+     */
+    private api.astro.whats_orders_manager.modules.facturacion.correo.dto.CorreoDetalleDTO correo;
+
     // Auditoría
     private Integer createBy;
     private Integer updateBy;

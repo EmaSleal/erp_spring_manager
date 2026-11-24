@@ -55,6 +55,15 @@ services:
       BOOTSTRAP_ADMIN_TELEFONO: ${BOOTSTRAP_ADMIN_TELEFONO:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
 
+      # T-055 (ADR-070): correo de comprobantes con Resend. Apagado por defecto; la clave solo por variable de entorno
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      CORREO_COMPROBANTES_HABILITADO: ${CORREO_COMPROBANTES_HABILITADO:-false}
+      CORREO_REMITENTE: ${CORREO_REMITENTE:-Monrachem <no-reply@astro-solutions.net>}
+      CORREO_REPLY_TO: ${CORREO_REPLY_TO:-}
+      CORREO_CCO: ${CORREO_CCO:-}
+      CORREO_SANDBOX_DESTINATARIO_PRUEBA: ${CORREO_SANDBOX_DESTINATARIO_PRUEBA:-}
+      CORREO_TOPE_DIARIO: ${CORREO_TOPE_DIARIO:-100}
+
       # T-053: false = recibir una orden de compra no mueve el inventario (hasta habilitar su control)
       INVENTARIO_CONTROL_HABILITADO: "false"
 

@@ -23,6 +23,7 @@ public enum Permiso {
     FACTURA_ANULAR("Anular facturas", "Anular facturas pagadas/completadas"),
     FACTURA_EXPORTAR("Exportar facturas", "Exportar facturas a PDF/Excel"),
     FACTURA_ENVIAR_EMAIL("Enviar facturas", "Enviar facturas por email a clientes"),
+    COMPROBANTE_REENVIAR_CORREO("Reenviar comprobante por correo", "Reenviar por correo al cliente el PDF, el XML firmado y la respuesta de Hacienda de un comprobante aceptado"),
     
     // ==================== CLIENTES ====================
     
@@ -184,7 +185,7 @@ public enum Permiso {
      */
     public String getCategoria() {
         String name = this.name();
-        if (name.startsWith("FACTURA_")) return "Facturación";
+        if (name.startsWith("FACTURA_") || name.startsWith("COMPROBANTE_")) return "Facturación";
         if (name.startsWith("CLIENTE_")) return "Clientes";
         if (name.startsWith("PRODUCTO_")) return "Productos";
         if (name.startsWith("PAGO_")) return "Pagos";

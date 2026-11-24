@@ -171,6 +171,38 @@ tipo-cambio:
     timeout-segundos: ${TIPO_CAMBIO_HACIENDA_TIMEOUT:10}
 
 # ========================================
+# CORREO DE COMPROBANTES (T-055, ADR-070)
+# ========================================
+# Envío del PDF, el XML firmado y la respuesta de Hacienda al correo del receptor con Resend. Apagado por defecto: las
+# entregas se registran PENDIENTE y se envían al habilitarlo. La clave solo sale de la variable RESEND_API_KEY.
+correo:
+  comprobantes:
+    habilitado: ${CORREO_COMPROBANTES_HABILITADO:false}
+  remitente: ${CORREO_REMITENTE:Monrachem <no-reply@astro-solutions.net>}
+  reply-to: ${CORREO_REPLY_TO:}
+  # Copia oculta; varias direcciones separadas por coma
+  cco: ${CORREO_CCO:}
+  sandbox:
+    # Los comprobantes de SANDBOX solo se envían a esta dirección (con el prefijo [SANDBOX]); vacía = no se envían
+    destinatario-prueba: ${CORREO_SANDBOX_DESTINATARIO_PRUEBA:}
+  # Correos ENVIADOS por día (día de America/Costa_Rica); al alcanzarlo, el resto pasa al día siguiente
+  tope-diario: ${CORREO_TOPE_DIARIO:100}
+  reintentos:
+    maximo: ${CORREO_REINTENTOS_MAXIMO:5}
+    # Espera tras el primer fallo; se duplica en cada intento siguiente
+    espera-inicial: ${CORREO_REINTENTOS_ESPERA_INICIAL:PT5M}
+  resend:
+    url-base: ${RESEND_URL_BASE:https://api.resend.com}
+    # Sin valor por defecto: solo de la variable de entorno; nunca se registra
+    api-key: ${RESEND_API_KEY:}
+    connect-timeout: ${RESEND_CONNECT_TIMEOUT:5s}
+    read-timeout: ${RESEND_READ_TIMEOUT:20s}
+  job:
+    intervalo: ${CORREO_JOB_INTERVALO:PT1M}
+    lote: ${CORREO_JOB_LOTE:20}
+    reserva: ${CORREO_JOB_RESERVA:PT10M}
+
+# ========================================
 # CONTROL DE INVENTARIO (T-053, ADR-066 §5, ADR-061)
 # ========================================
 inventario:

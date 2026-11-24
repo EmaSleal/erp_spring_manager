@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Entregas por correo</title>
+</head>
+<body>
+<div th:replace="~{shared/components/navbar :: navbar}"></div>
+<div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+<main class="main-content" id="entregas-correo">
+    <div class="container-fluid mt-4 px-4">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h1 class="page-title"><i class="fas fa-envelope me-2"></i><span th:text="${titulo}">Entregas por correo</span></h1>
+                <p class="text-muted mb-1" th:if="${ambienteContadores != null}"
+                   th:text="'Ambiente ' + ${ambienteContadores}">Ambiente</p>
+                <a th:href="@{/facturas/inicio}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>Volver al panel
+                </a>
+                <a th:href="@{/facturas/entregas(estado=${estado == 'FALLIDO' ? 'PENDIENTE' : 'FALLIDO'})}"
+                   class="btn btn-outline-primary btn-sm ms-1"
+                   th:text="${estado == 'FALLIDO' ? 'Ver pendientes vencidas' : 'Ver fallidas'}">Cambiar</a>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <p class="text-muted mb-0" id="entregas-vacio" th:if="${#lists.isEmpty(filas)}">No hay entregas en este estado.</p>
+                <div class="table-responsive" th:unless="${#lists.isEmpty(filas)}">
+                    <table class="table table-sm align-middle" id="tabla-entregas">
+                        <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Documento</th>
+                            <th>Destinatario</th>
+                            <th>Estado</th>
+                            <th class="text-end">Intentos</th>
+                            <th>Error</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="f : ${filas}">
+                            <td th:text="${#temporals.format(f.entrega.fechaCreacion, 'dd/MM/yyyy HH:mm')}">01/01/2026</td>
+                            <td><a th:href="@{${f.enlace}}" th:text="${f.documento}">Factura</a>
+                                <span class="badge bg-warning text-dark ms-1" th:if="${f.ambiente == 'SANDBOX'}">SANDBOX</span></td>
+                            <td th:text="${f.entrega.destinatario != null ? f.entrega.destinatario : '—'}">correo</td>
+                            <td><span class="badge bg-secondary" th:text="${f.entrega.estado}">FALLIDO</span>
+                                <span class="badge bg-light text-dark" th:text="${f.entrega.origen}">AUTOMATICO</span></td>
+                            <td class="text-end" th:text="${f.entrega.intentos}">0</td>
+                            <td class="small" th:text="${f.entrega.ultimoError}">error</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<th:block th:replace="~{shared/layout :: scripts}"></th:block>
+</body>
+</html>

@@ -151,6 +151,12 @@ function openModal(button) {
                 feBotonEnviar.setAttribute('data-id', data.idFactura);
             }
 
+            // T-055 (ADR-070): reenvío por correo e historial de entregas del comprobante vigente
+            const contenedorCorreo = document.getElementById('modal-correo');
+            if (contenedorCorreo && window.EntregasCorreo) {
+                window.EntregasCorreo.montarEnPagina(contenedorCorreo, data.correo);
+            }
+
             // Cargar Productos desde el DTO (ya vienen incluidas las líneas)
             const productosTable = document.getElementById("modal-productos");
             productosTable.innerHTML = "";
@@ -611,60 +617,6 @@ function limpiarFiltros() {
 }
 
 
-
-// ========================================
-// Función para Enviar Factura por Email
-// ========================================
-function enviarFacturaPorEmail(button) {
-    const facturaId = button.getAttribute("data-id");
-    const email = button.getAttribute("data-email");
-    
-    // Obtener token CSRF
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-    
-    Swal.fire({
-        title: '📧 Enviar Factura',
-        html: `¿Desea enviar la factura por email a:<br><strong>${email}</strong>?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#0dcaf0',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fas fa-paper-plane me-1"></i>Enviar',
-        cancelButtonText: 'Cancelar',
-        showLoaderOnConfirm: true,
-        preConfirm: () => {
-            // Crear headers con token CSRF
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            headers[csrfHeader] = csrfToken;
-            
-            return fetch(`/facturas/${facturaId}/enviar-email`, {
-                method: 'POST',
-                headers: headers
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => {
-                        throw new Error(err.error || 'Error al enviar el email');
-                    }).catch(() => {
-                        throw new Error('Error al enviar el email');
-                    });
-                }
-                return response.json();
-            })
-            .catch(error => {
-                Swal.showValidationMessage(`Error: ${error.message}`);
-            });
-        },
-        allowOutsideClick: () => !Swal.isLoading()
-    }).then((result) => {
-        if (result.isConfirmed) {
-            showToast('success', `Email enviado exitosamente a: ${email}`);
-        }
-    });
-}
 
 // ========================================
 // Enviar por WhatsApp

@@ -8,7 +8,6 @@ import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService
 import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabilidadFactura;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import api.astro.whats_orders_manager.modules.seguridad.service.PermisoService;
-import api.astro.whats_orders_manager.shared.service.EmailService;
 import api.astro.whats_orders_manager.shared.service.MonedaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -75,7 +74,6 @@ class FacturaAnularPermisoTest {
                     facturaService,
                     mock(ClienteService.class),
                     mock(PagoService.class),
-                    mock(EmailService.class),
                     mock(MonedaService.class),
                     mock(FacturaMapper.class),
                     mock(FacturaPdfService.class),
