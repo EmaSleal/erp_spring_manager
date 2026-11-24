@@ -171,6 +171,8 @@
         pintarLineas(d);
         pintarComprobante(d);
         pintarAsiento(d);
+        // T-055 (ADR-070): reenvío por correo e historial de entregas
+        if (typeof EntregasCorreo !== 'undefined' && $('nd-correo')) EntregasCorreo.montarEnPagina($('nd-correo'), d.correo);
         // T-044 (P-099): con otro ambiente que el activo el botón se ve deshabilitado, con el motivo fijo
         const botonSustituta = $('nd-sustituta');
         const motivoSustituta = typeof d.motivoSustitutaNoDisponible === 'string' ? d.motivoSustitutaNoDisponible : '';

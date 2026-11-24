@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.AmbienteDistintoException;
 import api.astro.whats_orders_manager.modules.facturacion.dto.EmitirNotaCreditoRequest;
+import api.astro.whats_orders_manager.modules.facturacion.dto.NotaCreditoDetalleDTO;
 import api.astro.whats_orders_manager.modules.facturacion.dto.NotaFacturaDTO;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.controller.MensajesEnvioHacienda;
@@ -54,6 +55,9 @@ public class NotaCreditoRestController {
     private final NotaFacturaService notaService;
     private final EnvioHaciendaService envioService;
     private final NotaCreditoConsultaService consultaService;
+    /** T-055: por campo para no cambiar el constructor del que dependen las pruebas; sin él no hay campo correo. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private api.astro.whats_orders_manager.modules.facturacion.correo.service.EntregaComprobanteService entregaService;
 
     @PostMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_ANULAR')")
@@ -111,8 +115,12 @@ public class NotaCreditoRestController {
     @GetMapping("/{id}/detalle")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
     public ResponseEntity<ResponseDTO> detalle(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(ResponseDTO.success("OK",
-            consultaService.detalle(id).orElseThrow(NotaNoEncontradaException::new)));
+        NotaCreditoDetalleDTO detalle = consultaService.detalle(id).orElseThrow(NotaNoEncontradaException::new);
+        if (entregaService != null && detalle.comprobante() != null) {
+            // T-055: lo que la interfaz necesita para «Reenviar comprobante por correo»
+            detalle = detalle.conCorreo(entregaService.resumenCorreo(detalle.comprobante().id(), authentication.getName()));
+        }
+        return ResponseEntity.ok(ResponseDTO.success("OK", detalle));
     }
 
     @GetMapping("/{id}")

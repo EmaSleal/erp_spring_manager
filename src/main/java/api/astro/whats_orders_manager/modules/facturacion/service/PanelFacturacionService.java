@@ -3,6 +3,8 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 import api.astro.whats_orders_manager.modules.cliente.service.ClienteService;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.repository.ConfiguracionEmpresaRepository;
+import api.astro.whats_orders_manager.modules.facturacion.correo.model.EstadoEntrega;
+import api.astro.whats_orders_manager.modules.facturacion.correo.repository.EntregaComprobanteRepository;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConfiguracionHaciendaNoDisponibleException;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -48,7 +51,8 @@ public class PanelFacturacionService {
     /** Contadores del panel; todos son enteros no negativos. */
     public record Contadores(long comprobantesError, long comprobantesNoTransmitido, long comprobantesEnvioIncierto,
                              long comprobantesRechazado, long notasEnTramite, long anuladasSinSustituta,
-                             long sinComprobante, long articulosSinCabys, long clientesFeInvalidos) {
+                             long sinComprobante, long articulosSinCabys, long clientesFeInvalidos,
+                             long entregasFallidas, long entregasPendientesVencidas) {
     }
 
     /**
@@ -93,6 +97,9 @@ public class PanelFacturacionService {
     private final ConfiguracionEmpresaRepository empresaRepository;
     private final CertificadoHaciendaValidator certificadoValidator;
     private final PlatformTransactionManager transactionManager;
+    /** T-055: entregas de comprobantes por correo (FALLIDO y PENDIENTE vencidas) para dos contadores del panel. */
+    private final EntregaComprobanteRepository entregaRepository;
+    private final Clock clock;
 
     public PanelFacturacionService(ComprobanteElectronicoRepository comprobanteRepository,
                                    NotaFacturaRepository notaRepository, FacturaRepository facturaRepository,
@@ -100,7 +107,8 @@ public class PanelFacturacionService {
                                    ConfiguracionHaciendaService configuracionService,
                                    ConfiguracionEmpresaRepository empresaRepository,
                                    CertificadoHaciendaValidator certificadoValidator,
-                                   PlatformTransactionManager transactionManager) {
+                                   PlatformTransactionManager transactionManager,
+                                   EntregaComprobanteRepository entregaRepository, Clock clock) {
         this.comprobanteRepository = comprobanteRepository;
         this.notaRepository = notaRepository;
         this.facturaRepository = facturaRepository;
@@ -110,6 +118,8 @@ public class PanelFacturacionService {
         this.empresaRepository = empresaRepository;
         this.certificadoValidator = certificadoValidator;
         this.transactionManager = transactionManager;
+        this.entregaRepository = entregaRepository;
+        this.clock = clock;
     }
 
     /**
@@ -141,7 +151,9 @@ public class PanelFacturacionService {
             facturaRepository.contarAnuladasQueAdmitenSustituta(ambiente),
             facturaRepository.contarSinComprobante(),
             articuloMaestroService.countActivosSinCabys(),
-            clienteService.contarClientesConDatosFeInvalidos());
+            clienteService.contarClientesConDatosFeInvalidos(),
+            entregaRepository.contarPorEstado(EstadoEntrega.FALLIDO, ambiente),
+            entregaRepository.contarVencidas(EstadoEntrega.PENDIENTE, LocalDateTime.now(clock), ambiente));
     }
 
     /**

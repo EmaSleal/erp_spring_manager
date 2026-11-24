@@ -121,7 +121,7 @@ class FacturacionInicioViewTest {
     }
 
     private static Panel panel(TarjetaHacienda tarjeta) {
-        return new Panel(new Contadores(3, 0, 12, 1, 4, 2, 5, 7, 6), tarjeta,
+        return new Panel(new Contadores(3, 0, 12, 1, 4, 2, 5, 7, 6, 8, 9), tarjeta,
             tarjeta.disponible() ? tarjeta.ambienteEnum() : null);
     }
 

@@ -1,5 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.dto;
 
+import api.astro.whats_orders_manager.modules.facturacion.correo.dto.CorreoDetalleDTO;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,5 +21,36 @@ public record NotaCreditoDetalleDTO(Long id, String numero, String estado, Strin
                                     String motivoSustitutaNoDisponible,
                                     LocalDate fechaContable, String periodoFiscalAtribucion,
                                     LocalDate fechaAsientoReversion, boolean parcial,
-                                    BigDecimal montoCreditoCxc, BigDecimal montoSaldoFavor, Long idSaldoFavor) {
+                                    BigDecimal montoCreditoCxc, BigDecimal montoSaldoFavor, Long idSaldoFavor,
+                                    CorreoDetalleDTO correo) {
+
+    /** Sin el campo de correo (T-055): el controlador lo completa con {@link #conCorreo}. */
+    public NotaCreditoDetalleDTO(Long id, String numero, String estado, String tipo, String codigoReferencia,
+                                 String codigoNombre, String razon, LocalDateTime fechaEmision,
+                                 LocalDateTime fechaAplicacion, String moneda, BigDecimal tipoCambio,
+                                 BigDecimal subtotal, BigDecimal descuento, BigDecimal impuesto, BigDecimal total,
+                                 String usuarioCreador, Integer idFactura, String numeroFactura,
+                                 String clienteNombre, String claveReferencia,
+                                 LocalDateTime fechaEmisionReferencia, List<LineaNotaCreditoDTO> lineas,
+                                 ComprobanteNotaDTO comprobante, List<ComprobanteNotaDTO> historial,
+                                 Long idAsientoReversion, String numeroAsientoReversion,
+                                 boolean puedeEmitirSustituta,
+                                 String motivoSustitutaNoDisponible,
+                                 LocalDate fechaContable, String periodoFiscalAtribucion,
+                                 LocalDate fechaAsientoReversion, boolean parcial,
+                                 BigDecimal montoCreditoCxc, BigDecimal montoSaldoFavor, Long idSaldoFavor) {
+        this(id, numero, estado, tipo, codigoReferencia, codigoNombre, razon, fechaEmision, fechaAplicacion, moneda,
+            tipoCambio, subtotal, descuento, impuesto, total, usuarioCreador, idFactura, numeroFactura, clienteNombre,
+            claveReferencia, fechaEmisionReferencia, lineas, comprobante, historial, idAsientoReversion,
+            numeroAsientoReversion, puedeEmitirSustituta, motivoSustitutaNoDisponible, fechaContable,
+            periodoFiscalAtribucion, fechaAsientoReversion, parcial, montoCreditoCxc, montoSaldoFavor, idSaldoFavor, null);
+    }
+
+    public NotaCreditoDetalleDTO conCorreo(CorreoDetalleDTO nuevo) {
+        return new NotaCreditoDetalleDTO(id, numero, estado, tipo, codigoReferencia, codigoNombre, razon, fechaEmision,
+            fechaAplicacion, moneda, tipoCambio, subtotal, descuento, impuesto, total, usuarioCreador, idFactura,
+            numeroFactura, clienteNombre, claveReferencia, fechaEmisionReferencia, lineas, comprobante, historial,
+            idAsientoReversion, numeroAsientoReversion, puedeEmitirSustituta, motivoSustitutaNoDisponible, fechaContable,
+            periodoFiscalAtribucion, fechaAsientoReversion, parcial, montoCreditoCxc, montoSaldoFavor, idSaldoFavor, nuevo);
+    }
 }

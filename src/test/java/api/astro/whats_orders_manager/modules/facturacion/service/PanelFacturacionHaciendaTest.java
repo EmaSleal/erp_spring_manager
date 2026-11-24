@@ -48,7 +48,9 @@ class PanelFacturacionHaciendaTest {
     private final PanelFacturacionService service = new PanelFacturacionService(
         mock(ComprobanteElectronicoRepository.class), mock(NotaFacturaRepository.class), mock(FacturaRepository.class),
         mock(ArticuloMaestroService.class), mock(ClienteService.class), configuracionService, empresaRepository,
-        new CertificadoHaciendaValidator(), null);
+        new CertificadoHaciendaValidator(), null,
+        mock(api.astro.whats_orders_manager.modules.facturacion.correo.repository.EntregaComprobanteRepository.class),
+        java.time.Clock.systemDefaultZone());
 
     @BeforeAll
     static void keystores() throws Exception {

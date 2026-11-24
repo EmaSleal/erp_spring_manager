@@ -125,6 +125,13 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private AmbienteComprobanteGuard ambienteGuard;
 
     /**
+     * T-055 (ADR-070): al pasar a ACEPTADO se registra la entrega por correo en esta misma transacción. Por campo, como
+     * los anteriores; sin él (pruebas unitarias) no se registra.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private api.astro.whats_orders_manager.modules.facturacion.correo.service.EntregaComprobanteService entregaCorreo;
+
+    /**
      * Minutos desde el último envío a partir de los cuales un 404 de la consulta de un ENVIO_INCIERTO significa que
      * Hacienda no lo tiene (NO_TRANSMITIDO). Antes, el 404 no cambia el estado (ADR-030 §2, ADR-031 §4).
      */
@@ -820,6 +827,11 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         if (comprobante.esDeNota() && (estado == EstadoComprobante.ACEPTADO || estado == EstadoComprobante.RECHAZADO)) {
             // Efectos de la nota (ADR-037 §3) en esta misma transacción: si fallan, el estado tampoco se guarda
             eventPublisher.publishEvent(new ComprobanteNotaResueltoEvent(comprobante));
+        }
+        if (estado == EstadoComprobante.ACEPTADO && entregaCorreo != null) {
+            // T-055: la entrega por correo nace con el cambio de estado (misma transacción; idempotente); si falla, el
+            // estado tampoco se guarda y el sondeo lo repite
+            entregaCorreo.registrarAutomatica(comprobante);
         }
         if (estado != EstadoComprobante.ERROR_HACIENDA) {
             // T-045: un ENVIO_INCIERTO que sigue igual conserva el contador de consultas sin resolver (lo incrementa

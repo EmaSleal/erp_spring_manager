@@ -151,6 +151,12 @@ function openModal(button) {
                 feBotonEnviar.setAttribute('data-id', data.idFactura);
             }
 
+            // T-055 (ADR-070): reenvío por correo e historial de entregas del comprobante vigente
+            const contenedorCorreo = document.getElementById('modal-correo');
+            if (contenedorCorreo && window.EntregasCorreo) {
+                window.EntregasCorreo.montarEnPagina(contenedorCorreo, data.correo);
+            }
+
             // Cargar Productos desde el DTO (ya vienen incluidas las líneas)
             const productosTable = document.getElementById("modal-productos");
             productosTable.innerHTML = "";

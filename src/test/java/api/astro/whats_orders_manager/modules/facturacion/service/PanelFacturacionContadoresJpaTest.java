@@ -57,6 +57,7 @@ class PanelFacturacionContadoresJpaTest {
     @Autowired private ComprobanteElectronicoRepository comprobanteRepository;
     @Autowired private NotaFacturaRepository notaRepository;
     @Autowired private FacturaRepository facturaRepository;
+    @Autowired private api.astro.whats_orders_manager.modules.facturacion.correo.repository.EntregaComprobanteRepository entregaRepository;
     @Autowired private ConfiguracionEmpresaRepository empresaRepository;
 
     private ConfiguracionEmpresa empresa;
@@ -131,7 +132,7 @@ class PanelFacturacionContadoresJpaTest {
         when(clientes.contarClientesConDatosFeInvalidos()).thenReturn(2L);
         return new PanelFacturacionService(comprobanteRepository, notaRepository, facturaRepository, articulos,
             clientes, mock(ConfiguracionHaciendaService.class), empresaRepository, new CertificadoHaciendaValidator(),
-            null);
+            null, entregaRepository, java.time.Clock.systemDefaultZone());
     }
 
     @Test
@@ -297,7 +298,7 @@ class PanelFacturacionContadoresJpaTest {
     }
 
     @Test
-    @DisplayName("la página hace un número acotado de consultas: 4 COUNT propios, sin N+1")
+    @DisplayName("la página hace un número acotado de consultas: 4 COUNT propios + 2 de entregas por correo (T-055), sin N+1")
     void consultasAcotadas() {
         for (int i = 0; i < 5; i++) {
             Factura f = anulada(TipoNotaFactura.CREDITO, EstadoNotaFactura.APLICADA, "01",
@@ -312,7 +313,7 @@ class PanelFacturacionContadoresJpaTest {
 
         var c = servicio.contadores(null);
 
-        assertThat(stats.getPrepareStatementCount()).isEqualTo(4);
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(6);
         assertThat(stats.getEntityLoadCount()).isZero();
         assertThat(c.anuladasSinSustituta()).isEqualTo(5);
         assertThat(c.articulosSinCabys()).isEqualTo(4);

@@ -73,6 +73,9 @@ public class FacturaController {
     private final NotaCreditoElegibilidad notaCreditoElegibilidad;
     private final AmbienteComprobanteGuard ambienteGuard;
     private final SaldoFavorService saldoFavorService;
+    /** T-055: por campo para no cambiar el constructor del que dependen las pruebas; sin él no hay campo correo. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private api.astro.whats_orders_manager.modules.facturacion.correo.service.EntregaComprobanteService entregaCorreoService;
 
     /**
      * Lista todas las facturas con paginación y ordenamiento
@@ -205,6 +208,10 @@ public class FacturaController {
                 detalle.setRevisarEnAtv(estadoFe.revisarEnAtv());
             } else {
                 detalle.setRevisarEnAtv(false);
+            }
+            if (entregaCorreoService != null) {
+                // T-055: reenvío por correo del comprobante vigente (null si no hay)
+                detalle.setCorreo(entregaCorreoService.resumenCorreo(detalle.getIdComprobante(), authentication.getName()));
             }
             sustitutaService.completarDetalle(factura, detalle);
             completarPagosPorSaldoFavor(detalle);
