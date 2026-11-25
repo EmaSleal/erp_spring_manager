@@ -28,17 +28,23 @@ public class ConsultaDocumentosPorFecha {
 
     @Transactional(readOnly = true)
     public boolean existenDesde(LocalDate desde) {
-        LocalDateTime inicio = desde.atStartOfDay();
-        return cuenta("select count(f) from Factura f where f.createDate >= :inicio or f.fechaContable >= :desde", desde, inicio)
-            || cuenta("select count(n) from NotaFactura n where n.fechaEmision >= :inicio or n.fechaContable >= :desde", desde, inicio)
-            || cuenta("select count(c) from CuentaPorPagar c where coalesce(c.fechaComprobante, c.fechaEmision) >= :desde", desde, null);
+        return contarDesde(desde) > 0;
     }
 
-    private boolean cuenta(String jpql, LocalDate desde, LocalDateTime inicio) {
+    /** Cantidad de facturas, notas y CxP con fecha igual o posterior a {@code desde} (las mismas fechas que {@link #existenDesde}). */
+    @Transactional(readOnly = true)
+    public long contarDesde(LocalDate desde) {
+        LocalDateTime inicio = desde.atStartOfDay();
+        return cuenta("select count(f) from Factura f where f.createDate >= :inicio or f.fechaContable >= :desde", desde, inicio)
+            + cuenta("select count(n) from NotaFactura n where n.fechaEmision >= :inicio or n.fechaContable >= :desde", desde, inicio)
+            + cuenta("select count(c) from CuentaPorPagar c where coalesce(c.fechaComprobante, c.fechaEmision) >= :desde", desde, null);
+    }
+
+    private long cuenta(String jpql, LocalDate desde, LocalDateTime inicio) {
         TypedQuery<Long> query = em.createQuery(jpql, Long.class).setParameter("desde", desde);
         if (inicio != null) {
             query.setParameter("inicio", inicio);
         }
-        return query.getSingleResult() > 0;
+        return query.getSingleResult();
     }
 }

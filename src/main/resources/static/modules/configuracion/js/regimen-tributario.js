@@ -24,7 +24,8 @@
     }
 
     /**
-     * Valida el formulario antes de enviarlo. {@code hoy} es la fecha ISO de hoy en Costa Rica que da el servidor.
+     * Valida el formulario antes de enviarlo. El inicio puede ser hoy o anterior: el servidor rechaza (409) si ya hay
+     * documentos desde esa fecha. {@code hoy} se conserva por compatibilidad y no se usa.
      * @returns {string|null} el mensaje del primer error, o null si es válido
      */
     function validarTramo(tramo, hoy) {
@@ -34,9 +35,6 @@
         }
         if (!fechaIsoValida(t.vigenteDesde)) {
             return 'Indique una fecha de inicio válida';
-        }
-        if (fechaIsoValida(hoy) && t.vigenteDesde <= hoy) {
-            return 'La fecha de inicio debe ser posterior a hoy';
         }
         if (t.nota != null && String(t.nota).length > LARGO_NOTA) {
             return 'La nota no puede exceder ' + LARGO_NOTA + ' caracteres';

@@ -29,9 +29,10 @@ import java.util.NoSuchElementException;
  * Reglas de escritura (errores: IllegalArgumentException -> 400, IllegalStateException -> 409, NoSuchElementException ->
  * 404, con mensaje fijo):
  * <ul>
- *   <li>un tramo cuyo inicio es hoy o anterior no se edita ni se borra, y no se crea uno nuevo en el pasado;</li>
- *   <li>un tramo futuro se crea, edita o borra solo si no hay facturas, notas ni CxP con fecha igual o posterior al
- *       inicio (en una edición, al menor entre el inicio anterior y el nuevo);</li>
+ *   <li>un tramo cuyo inicio es hoy o anterior no se edita ni se borra;</li>
+ *   <li>un tramo se crea (con inicio futuro, hoy o anterior), edita o borra solo si no hay facturas, notas ni CxP con
+ *       fecha igual o posterior al inicio (en una edición, al menor entre el inicio anterior y el nuevo); al crear, el
+ *       mensaje del 409 dice cuántos documentos hay;</li>
  *   <li>dos tramos seguidos no pueden tener el mismo régimen (al crear, editar o borrar);</li>
  *   <li>las fechas de inicio no se repiten.</li>
  * </ul>
@@ -46,6 +47,7 @@ public class RegimenTributarioService {
     public static final String MSG_REGIMEN = "Indique el régimen (GENERAL o SIMPLIFICADO)";
     public static final String MSG_FECHA = "Indique la fecha de inicio del tramo";
     public static final String MSG_NOTA = "La nota no puede exceder 300 caracteres";
+    /** Al editar, el nuevo inicio de un tramo futuro debe seguir siendo posterior a hoy. */
     public static final String MSG_PASADO_CREAR = "El inicio de un tramo debe ser posterior a hoy";
     public static final String MSG_PASADO_EDITAR = "Un tramo que ya empezó no se edita ni se borra";
     public static final String MSG_PASADO_ELIMINAR = MSG_PASADO_EDITAR;
@@ -53,6 +55,9 @@ public class RegimenTributarioService {
     public static final String MSG_CONSECUTIVOS = "Dos tramos seguidos no pueden tener el mismo régimen";
     public static final String MSG_DOCUMENTOS =
         "Hay facturas, notas de crédito o cuentas por pagar con fecha igual o posterior al inicio del tramo";
+    /** Al crear: dice que ya hay documentos desde la fecha y cuántos ({@code %s} fecha ISO, {@code %d} cantidad). */
+    public static final String MSG_DOCUMENTOS_CANTIDAD =
+        "Ya existen documentos (facturas, notas de crédito o cuentas por pagar) con fecha igual o posterior al %s: %d en total";
     public static final String MSG_NO_EXISTE = "El tramo no existe";
 
     private static final int LARGO_NOTA = 300;
@@ -162,18 +167,17 @@ public class RegimenTributarioService {
 
     /**
      * @throws IllegalArgumentException régimen, fecha o nota inválidos (400)
-     * @throws IllegalStateException    inicio hoy o anterior, fecha repetida, documentos en el tramo o dos tramos seguidos
-     *                                  con el mismo régimen (409)
+     * @throws IllegalStateException    fecha repetida, documentos con fecha igual o posterior al inicio (también si el inicio
+     *                                  es hoy o anterior) o dos tramos seguidos con el mismo régimen (409)
      */
     @Transactional
     public RegimenTributario crear(RegimenTributarioDTO dto, Usuario usuario) {
         Regimen regimen = validarRegimen(dto.getRegimen());
         LocalDate desde = validarFecha(dto.getVigenteDesde());
         String nota = validarNota(dto.getNota());
-        validarFutura(desde);
         List<RegimenTributario> actuales = repository.findAllByOrderByVigenteDesdeAsc();
         validarFechaLibre(actuales, desde, null);
-        validarSinDocumentos(desde);
+        validarSinDocumentosAlCrear(desde);
         validarSecuencia(actuales, null, new Punto(desde, regimen));
 
         RegimenTributario guardado = repository.saveAndFlush(RegimenTributario.builder().regimen(regimen).vigenteDesde(desde)
@@ -313,6 +317,13 @@ public class RegimenTributarioService {
     private void validarSinDocumentos(LocalDate desde) {
         if (documentos.existenDesde(desde)) {
             throw new IllegalStateException(MSG_DOCUMENTOS);
+        }
+    }
+
+    private void validarSinDocumentosAlCrear(LocalDate desde) {
+        long cantidad = documentos.contarDesde(desde);
+        if (cantidad > 0) {
+            throw new IllegalStateException(String.format(MSG_DOCUMENTOS_CANTIDAD, desde, cantidad));
         }
     }
 

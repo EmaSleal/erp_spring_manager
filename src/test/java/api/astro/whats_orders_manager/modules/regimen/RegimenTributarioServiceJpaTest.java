@@ -204,16 +204,6 @@ class RegimenTributarioServiceJpaTest {
     }
 
     @Test
-    @DisplayName("crear con inicio hoy o anterior: 409, la historia no se toca")
-    void crear_enElPasado() {
-        for (LocalDate fecha : List.of(HOY, HOY.minusDays(1), LocalDate.of(2020, 1, 1))) {
-            assertThatThrownBy(() -> service.crear(dto(Regimen.SIMPLIFICADO, fecha), usuario))
-                    .isInstanceOf(IllegalStateException.class).hasMessage(RegimenTributarioService.MSG_PASADO_CREAR);
-        }
-        assertThat(repository.count()).isEqualTo(2);
-    }
-
-    @Test
     @DisplayName("crear con una fecha que ya tiene tramo: 409")
     void crear_fechaRepetida() {
         service.crear(dto(Regimen.SIMPLIFICADO, FUTURO), usuario);
@@ -243,9 +233,10 @@ class RegimenTributarioServiceJpaTest {
     @Test
     @DisplayName("crear con documentos de fecha igual o posterior al inicio: 409")
     void crear_conDocumentos() {
-        when(documentos.existenDesde(FUTURO)).thenReturn(true);
+        when(documentos.contarDesde(FUTURO)).thenReturn(3L);
         assertThatThrownBy(() -> service.crear(dto(Regimen.SIMPLIFICADO, FUTURO), usuario))
-                .isInstanceOf(IllegalStateException.class).hasMessage(RegimenTributarioService.MSG_DOCUMENTOS);
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage(String.format(RegimenTributarioService.MSG_DOCUMENTOS_CANTIDAD, FUTURO, 3));
         assertThat(repository.count()).isEqualTo(2);
     }
 

@@ -60,4 +60,22 @@ class NotificadorAdministradoresTest {
         assertThatCode(() -> new NotificadorAdministradores(usuarios, notificaciones).notificar("T", "M")).doesNotThrowAnyException();
         verify(notificaciones).enviarNotificacion(b, TipoNotificacion.SISTEMA, CanalNotificacion.WEB, "T", "M");
     }
+
+    @Test
+    @DisplayName("notificarCritico usa el envío sin preferencias y notificar el corriente")
+    void criticoUsaElEnvioSinPreferencias() {
+        UsuarioService usuarios = mock(UsuarioService.class);
+        NotificacionService notificaciones = mock(NotificacionService.class);
+        Usuario a = admin(true);
+        when(usuarios.findByRol("ADMIN")).thenReturn(List.of(a));
+        NotificadorAdministradores notificador = new NotificadorAdministradores(usuarios, notificaciones);
+
+        notificador.notificarCritico("C", "M");
+        verify(notificaciones).enviarNotificacionSinPreferencias(a, TipoNotificacion.SISTEMA, CanalNotificacion.WEB, "C", "M");
+        verify(notificaciones, never()).enviarNotificacion(a, TipoNotificacion.SISTEMA, CanalNotificacion.WEB, "C", "M");
+
+        notificador.notificar("N", "M");
+        verify(notificaciones).enviarNotificacion(a, TipoNotificacion.SISTEMA, CanalNotificacion.WEB, "N", "M");
+        verify(notificaciones, never()).enviarNotificacionSinPreferencias(a, TipoNotificacion.SISTEMA, CanalNotificacion.WEB, "N", "M");
+    }
 }

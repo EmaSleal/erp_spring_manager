@@ -175,7 +175,11 @@ public class TopeComprasRtsService {
         EstadoTope estado = calcular(p);
         NivelTope previo = p.getNivelNotificado() == null ? NivelTope.BAJO : p.getNivelNotificado();
         if (estado.nivel().compareTo(previo) > 0) {
-            notificador.notificar(titulo(estado), estado.mensaje());
+            if (estado.nivel() == NivelTope.TOPE) {
+                notificador.notificarCritico(titulo(estado), estado.mensaje());
+            } else {
+                notificador.notificar(titulo(estado), estado.mensaje());
+            }
         }
         if (estado.nivel() != previo) {
             p.setNivelNotificado(estado.nivel());

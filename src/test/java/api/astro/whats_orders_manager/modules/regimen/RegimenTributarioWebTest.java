@@ -198,7 +198,6 @@ class RegimenTributarioWebTest {
     @DisplayName("con CONFIG_VER se puede leer el historial, el vigente y la pantalla, pero no escribir")
     void configVer_lee() throws Exception {
         when(servicio.historial()).thenReturn(List.of());
-        when(servicio.vigenteHoy()).thenReturn(tramo(2, Regimen.GENERAL, "2026-09-01"));
         mockMvc.perform(get("/api/regimen-tributario").with(user("lector"))).andExpect(status().isOk());
         mockMvc.perform(get("/api/regimen-tributario/vigente").with(user("lector"))).andExpect(status().isOk());
         mockMvc.perform(get("/configuracion/regimen-tributario").with(user("lector"))).andExpect(status().isOk());
@@ -225,18 +224,48 @@ class RegimenTributarioWebTest {
     }
 
     @Test
-    @DisplayName("vigente: devuelve el tramo de hoy; sin tramo, 200 con data nula y mensaje")
+    @DisplayName("vigente: el tramo de hoy con vigente=true y el siguiente con proximo=true; sin siguiente, nulo; sin vigente, data nula")
     void vigente() throws Exception {
-        when(servicio.vigenteHoy()).thenReturn(tramo(2, Regimen.GENERAL, "2026-09-01"));
+        String bloqueo = "Un tramo que ya empezó no se edita ni se borra";
+        when(servicio.historial()).thenReturn(List.of(
+                new TramoEstado(tramo(1, Regimen.SIMPLIFICADO, "2000-01-01"), false, false, false, bloqueo),
+                new TramoEstado(tramo(2, Regimen.GENERAL, "2026-09-01"), true, false, false, bloqueo),
+                new TramoEstado(tramo(3, Regimen.SIMPLIFICADO, "2027-01-01"), false, true, true, null)));
         mockMvc.perform(get("/api/regimen-tributario/vigente").with(user("admin")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.regimen").value("GENERAL"))
-                .andExpect(jsonPath("$.data.vigenteDesde").value("2026-09-01"));
-        reset(servicio);
-        when(servicio.vigenteHoy()).thenThrow(new RegimenNoDefinidoException(LocalDate.of(2026, 11, 25)));
+                .andExpect(jsonPath("$.data.vigenteDesde").value("2026-09-01"))
+                .andExpect(jsonPath("$.data.vigente").value(true))
+                .andExpect(jsonPath("$.data.proximo").value(false))
+                .andExpect(jsonPath("$.data.siguiente.regimen").value("SIMPLIFICADO"))
+                .andExpect(jsonPath("$.data.siguiente.proximo").value(true))
+                .andExpect(jsonPath("$.data.siguiente.vigente").value(false))
+                .andExpect(jsonPath("$.data.siguiente.editable").value(true));
+
+        when(servicio.historial()).thenReturn(List.of(
+                new TramoEstado(tramo(2, Regimen.GENERAL, "2026-09-01"), true, false, false, bloqueo)));
+        mockMvc.perform(get("/api/regimen-tributario/vigente").with(user("admin")))
+                .andExpect(jsonPath("$.data.vigente").value(true))
+                .andExpect(jsonPath("$.data.siguiente").doesNotExist());
+
+        when(servicio.historial()).thenReturn(List.of());
         mockMvc.perform(get("/api/regimen-tributario/vigente").with(user("admin")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("crear y corregir: la respuesta lleva el estado real del tramo (vigente, próximo, editable)")
+    void escrituraConEstadoReal() throws Exception {
+        RegimenTributario creado = tramo(3, Regimen.SIMPLIFICADO, "2026-11-24");
+        when(servicio.crear(any(), eq(admin))).thenReturn(creado);
+        when(servicio.historial()).thenReturn(List.of(
+                new TramoEstado(creado, true, false, false, "Un tramo que ya empezó no se edita ni se borra")));
+        mockMvc.perform(post("/api/regimen-tributario").with(user("admin")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"regimen\":\"SIMPLIFICADO\",\"vigenteDesde\":\"2026-11-24\",\"nota\":\"n\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.vigente").value(true))
+                .andExpect(jsonPath("$.data.editable").value(false));
     }
 
     @Test

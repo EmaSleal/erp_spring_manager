@@ -51,13 +51,13 @@ test('validarTramo: el régimen es obligatorio y solo GENERAL o SIMPLIFICADO', (
     assert.equal(u.validarTramo({ regimen: 'SIMPLIFICADO', vigenteDesde: '2027-01-01', nota: 'n' }, HOY), null);
 });
 
-test('validarTramo: la fecha es obligatoria, válida y posterior a hoy', () => {
+test('validarTramo: la fecha es obligatoria y válida; puede ser hoy o anterior (lo decide el servidor)', () => {
     const { RegimenTributarioUI: u } = cargar().window;
     for (const f of ['', null, undefined, 'abc', '2027-13-01', '2027-02-30', '01/01/2027']) {
         assert.match(u.validarTramo({ regimen: 'GENERAL', vigenteDesde: f, nota: '' }, HOY), /fecha/i, String(f));
     }
-    assert.match(u.validarTramo({ regimen: 'GENERAL', vigenteDesde: HOY, nota: '' }, HOY), /posterior a hoy/i);
-    assert.match(u.validarTramo({ regimen: 'GENERAL', vigenteDesde: '2026-11-24', nota: '' }, HOY), /posterior a hoy/i);
+    assert.equal(u.validarTramo({ regimen: 'GENERAL', vigenteDesde: HOY, nota: '' }, HOY), null);
+    assert.equal(u.validarTramo({ regimen: 'GENERAL', vigenteDesde: '2026-11-24', nota: '' }, HOY), null);
     assert.equal(u.validarTramo({ regimen: 'GENERAL', vigenteDesde: '2026-11-26', nota: '' }, HOY), null);
 });
 

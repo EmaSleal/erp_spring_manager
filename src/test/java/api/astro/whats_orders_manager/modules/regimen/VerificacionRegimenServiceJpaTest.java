@@ -149,7 +149,8 @@ class VerificacionRegimenServiceJpaTest {
         VerificacionRegimen v = servicio.verificar();
         assertThat(v.getResultado()).isEqualTo(ResultadoVerificacion.DIFIERE);
         assertThat(v.getRegimenHacienda()).isEqualTo("SIMPLIFICADO");
-        verify(notificador, times(1)).notificar(anyString(), anyString());
+        verify(notificador, times(1)).notificarCritico(anyString(), anyString());
+        verify(notificador, never()).notificar(anyString(), anyString());
         assertThat(servicio.avisoPanel()).hasValueSatisfying(texto -> assertThat(texto)
                 .contains("Hacienda").contains("Simplificado").contains("General").contains("Régimen Simplificado"));
     }
@@ -212,15 +213,15 @@ class VerificacionRegimenServiceJpaTest {
         respuestaHacienda(2, "Régimen Simplificado");
         servicio.verificar();
         servicio.verificar();
-        verify(notificador, times(1)).notificar(anyString(), anyString());
+        verify(notificador, times(1)).notificarCritico(anyString(), anyString());
         respuestaHacienda(3, "No contribuyente");
         servicio.verificar();
-        verify(notificador, times(2)).notificar(anyString(), anyString());
+        verify(notificador, times(2)).notificarCritico(anyString(), anyString());
         respuestaHacienda(1, "Régimen General");
         servicio.verificar();
         respuestaHacienda(2, "Régimen Simplificado");
         servicio.verificar();
-        verify(notificador, times(3)).notificar(anyString(), anyString());
+        verify(notificador, times(3)).notificarCritico(anyString(), anyString());
     }
 
     @Test

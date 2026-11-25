@@ -157,7 +157,7 @@ public class VerificacionRegimenService {
                 && java.util.Objects.equals(anterior.getRegimenLocal(), actual.getRegimenLocal())
                 && java.util.Objects.equals(anterior.getCodigoHacienda(), actual.getCodigoHacienda());
             if (!igual) {
-                notificador.notificar("El régimen en Hacienda difiere del ERP", textoDifiere(actual));
+                notificador.notificarCritico("El régimen en Hacienda difiere del ERP", textoDifiere(actual));
             }
         } else if (actual.getResultado() == ResultadoVerificacion.SIN_RESPUESTA) {
             int dias = diasSinRespuestaSeguidos();

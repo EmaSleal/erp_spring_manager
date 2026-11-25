@@ -42,6 +42,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -228,14 +229,15 @@ class TopeComprasRtsServiceJpaTest {
         servicio.evaluar(2026);
         cxp("16000000.00", "2026-06-01");
         assertThat(servicio.evaluar(2026).nivel()).isEqualTo(NivelTope.TOPE);
-        verify(notificador, times(2)).notificar(anyString(), anyString());
-        verify(notificador, times(1)).notificar(contains("100"), anyString());
+        verify(notificador, times(1)).notificar(contains("80"), anyString());
+        verify(notificador, times(1)).notificarCritico(contains("100"), anyString());
 
         reset(notificador);
         servicio.crear(new TopeComprasRtsDTO(2025, new BigDecimal("462200.00"), null, null, null, null), usuario);
         cxp("90000000.00", "2025-02-02");
         assertThat(servicio.evaluar(2025).nivel()).isEqualTo(NivelTope.TOPE);
-        verify(notificador, times(1)).notificar(anyString(), anyString());
+        verify(notificador, times(1)).notificarCritico(anyString(), anyString());
+        verify(notificador, never()).notificar(anyString(), anyString());
     }
 
     @Test

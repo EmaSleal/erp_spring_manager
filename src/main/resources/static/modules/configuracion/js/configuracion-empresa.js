@@ -57,7 +57,7 @@ const ConfiguracionEmpresa = {
         try {
             const resp = await fetch('/api/regimen-tributario/vigente');
             const json = resp.ok ? await resp.json() : null;
-            const t = json && json.data;
+            const t = json && json.data; // el tramo vigente (data.vigente=true); data.siguiente es el próximo, si hay
             const nombres = { GENERAL: 'Régimen general', SIMPLIFICADO: 'Régimen simplificado' };
             el.textContent = t ? (nombres[t.regimen] || String(t.regimen)) + ' (desde ' + t.vigenteDesde + ')'
                                : 'Sin régimen definido para hoy';

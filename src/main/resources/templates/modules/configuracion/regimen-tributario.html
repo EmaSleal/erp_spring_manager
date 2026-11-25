@@ -27,7 +27,7 @@
 
             <div class="alert alert-info" role="note">
                 <i class="fas fa-info-circle me-1"></i>
-                Un tramo que ya empezó no se edita ni se borra. Un tramo futuro solo se puede agregar, editar o borrar mientras no haya
+                Un tramo que ya empezó no se edita ni se borra. Un tramo se puede agregar (también con inicio hoy o anterior), editar o borrar solo mientras no haya
                 facturas, notas ni cuentas por pagar con fecha igual o posterior a su inicio. Dos tramos seguidos no pueden tener el
                 mismo régimen. Cambiar el régimen no modifica por sí solo ningún cálculo de ventas, emisión ni compras.
             </div>
@@ -67,8 +67,8 @@
                                 </div>
                                 <div class="mb-3">
                                     <label for="regimenDesde" class="form-label">Vigente desde <span class="text-danger">*</span></label>
-                                    <input type="date" id="regimenDesde" class="form-control" th:min="${hoy}" required />
-                                    <div class="form-text">Debe ser posterior a hoy.</div>
+                                    <input type="date" id="regimenDesde" class="form-control" required />
+                                    <div class="form-text">Puede ser hoy o una fecha anterior si aún no hay facturas, notas ni cuentas por pagar desde esa fecha.</div>
                                 </div>
                                 <div class="mb-3">
                                     <label for="regimenNota" class="form-label">Nota</label>

@@ -3,8 +3,8 @@ package api.astro.whats_orders_manager.modules.regimen.controller;
 import api.astro.whats_orders_manager.modules.regimen.dto.RegimenTributarioDTO;
 import api.astro.whats_orders_manager.modules.regimen.dto.RegimenTributarioVistaDTO;
 import api.astro.whats_orders_manager.modules.regimen.model.RegimenTributario;
-import api.astro.whats_orders_manager.modules.regimen.service.RegimenNoDefinidoException;
 import api.astro.whats_orders_manager.modules.regimen.service.RegimenTributarioService;
+import api.astro.whats_orders_manager.modules.regimen.service.RegimenTributarioService.TramoEstado;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import api.astro.whats_orders_manager.shared.dto.ResponseDTO;
@@ -43,15 +43,23 @@ public class RegimenTributarioRestController {
         return ResponseEntity.ok(ResponseDTO.success("OK", datos));
     }
 
-    /** El tramo que rige hoy; si no hay ninguno, 200 con {@code data} nula. */
+    /**
+     * El tramo que rige hoy y el siguiente. {@code data} es el tramo vigente (con {@code vigente=true}; mismos campos que un
+     * elemento del historial) más {@code siguiente}: el primer tramo futuro (con {@code proximo=true}), que no aparece si no
+     * hay. Si ningún tramo rige hoy, 200 con {@code data} nula.
+     */
     @GetMapping("/vigente")
     @PreAuthorize(LEER)
     public ResponseEntity<ResponseDTO> vigente(Authentication authentication) {
-        try {
-            return ResponseEntity.ok(ResponseDTO.success("OK", vista(servicio.vigenteHoy())));
-        } catch (RegimenNoDefinidoException e) {
-            return ResponseEntity.ok(ResponseDTO.success(e.getMessage(), null));
+        List<TramoEstado> historial = servicio.historial();
+        RegimenTributarioVistaDTO vigente = historial.stream().filter(TramoEstado::vigente).findFirst()
+            .map(e -> RegimenTributarioVistaDTO.de(e, nombreDe(e.tramo()))).orElse(null);
+        if (vigente == null) {
+            return ResponseEntity.ok(ResponseDTO.success("No hay un tramo de régimen vigente hoy", null));
         }
+        RegimenTributarioVistaDTO siguiente = historial.stream().filter(TramoEstado::proximo).findFirst()
+            .map(e -> RegimenTributarioVistaDTO.de(e, nombreDe(e.tramo()))).orElse(null);
+        return ResponseEntity.ok(ResponseDTO.success("OK", new RegimenTributarioVistaDTO.Vigente(vigente, siguiente)));
     }
 
     @PostMapping
@@ -96,8 +104,11 @@ public class RegimenTributarioRestController {
         }
     }
 
+    /** El tramo con su estado real respecto de hoy (vigente, próximo, editable), tomado del historial. */
     private RegimenTributarioVistaDTO vista(RegimenTributario t) {
-        return RegimenTributarioVistaDTO.de(t, nombreDe(t));
+        return servicio.historial().stream().filter(e -> t.getId() != null && t.getId().equals(e.tramo().getId())).findFirst()
+            .map(e -> RegimenTributarioVistaDTO.de(e, nombreDe(t)))
+            .orElseGet(() -> RegimenTributarioVistaDTO.de(t, nombreDe(t)));
     }
 
     private String nombreDe(RegimenTributario t) {
