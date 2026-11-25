@@ -388,4 +388,30 @@ class RegimenTributarioServiceJpaTest {
         assertThat(h.get(2).bloqueo()).isNull();
         assertThat(h.get(3).bloqueo()).isEqualTo(RegimenTributarioService.MSG_DOCUMENTOS);
     }
+
+    // ── Parte 2 (criterios 5 y 7): próximo tramo e intervalos por régimen ────
+
+    @Test
+    @DisplayName("proximoTramo: el primero que empieza después de hoy, o vacío")
+    void proximoTramo() {
+        assertThat(service.proximoTramo()).isEmpty();
+        service.crear(dto(Regimen.SIMPLIFICADO, FUTURO), usuario);
+        service.crear(dto(Regimen.GENERAL, LocalDate.of(2028, 1, 1)), usuario);
+        assertThat(service.proximoTramo()).hasValueSatisfying(t -> assertThat(t.getVigenteDesde()).isEqualTo(FUTURO));
+    }
+
+    @Test
+    @DisplayName("intervalos: los días de un rango en que rige un régimen, recortados al rango")
+    void intervalosPorRegimen() {
+        service.crear(dto(Regimen.SIMPLIFICADO, FUTURO), usuario);
+        LocalDate desde = LocalDate.of(2026, 1, 1);
+        LocalDate hasta = LocalDate.of(2027, 12, 31);
+
+        assertThat(service.intervalos(Regimen.SIMPLIFICADO, desde, hasta)).containsExactly(
+                new RegimenTributarioService.Intervalo(desde, LocalDate.of(2026, 8, 31)),
+                new RegimenTributarioService.Intervalo(FUTURO, hasta));
+        assertThat(service.intervalos(Regimen.GENERAL, desde, hasta)).containsExactly(
+                new RegimenTributarioService.Intervalo(INICIO_GENERAL, LocalDate.of(2026, 12, 31)));
+        assertThat(service.intervalos(Regimen.GENERAL, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 8, 31))).isEmpty();
+    }
 }

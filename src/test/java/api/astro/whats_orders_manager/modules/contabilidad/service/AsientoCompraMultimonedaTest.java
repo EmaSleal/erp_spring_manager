@@ -224,7 +224,7 @@ class AsientoCompraMultimonedaTest {
                 new ComprobanteProveedorValidator(RELOJ_PRUEBA),
                 mock(api.astro.whats_orders_manager.modules.contabilidad.repository.ProrrataIvaRepository.class),
                 mock(PagoProveedorRepository.class),
-                mock(UsuarioActividadService.class), RELOJ_PRUEBA);
+                mock(UsuarioActividadService.class), RELOJ_PRUEBA, mock(api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService.class));
 
         CuentaPorPagar cpp = cxpService.crear(CuentaPorPagarDTO.builder().ordenCompraId(5L).descripcion("Factura")
                 .numeroComprobanteProveedor("FE-1").fechaComprobante(LocalDate.of(2026, 9, 15))

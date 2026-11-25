@@ -17,6 +17,14 @@ import java.util.Optional;
 @Repository
 public interface CuentaPorPagarRepository extends JpaRepository<CuentaPorPagar, Long> {
 
+    /**
+     * Monto (total con IVA), moneda y tipo de cambio de las CxP no anuladas cuya fecha (la del comprobante o, si no tiene, la
+     * de registro) cae en [desde, hasta]. Alimenta el acumulado de compras del tope del RTS (T-056).
+     */
+    @Query("SELECT c.monto, c.moneda, c.tipoCambio FROM CuentaPorPagar c WHERE c.estado <> :anulada "
+        + "AND COALESCE(c.fechaComprobante, c.fechaEmision) BETWEEN :desde AND :hasta")
+    List<Object[]> montosParaTope(java.time.LocalDate desde, java.time.LocalDate hasta, EstadoCuentaPorPagar anulada);
+
     List<CuentaPorPagar> findByProveedorOrderByFechaVencimientoAsc(Proveedor proveedor);
 
     List<CuentaPorPagar> findByEstadoOrderByFechaVencimientoAsc(EstadoCuentaPorPagar estado);

@@ -154,6 +154,19 @@ facturacion:
       max-consultas: ${HACIENDA_SONDEO_MAX_CONSULTAS:5}
 
 # ========================================
+# RÉGIMEN TRIBUTARIO - VERIFICACIÓN CON HACIENDA Y TOPE DEL RTS (T-056)
+# ========================================
+regimen:
+  verificacion:
+    # Job diario (respeta app.scheduling.enabled): verifica el régimen con /fe/ae y evalúa el tope de compras del RTS
+    cron: "${REGIMEN_VERIFICACION_CRON:0 30 6 * * *}"
+    zone: ${REGIMEN_VERIFICACION_ZONE:America/Costa_Rica}
+    # SIN_RESPUESTA avisa solo al repetirse estos días seguidos
+    dias-sin-respuesta-aviso: ${REGIMEN_VERIFICACION_DIAS_SIN_RESPUESTA:3}
+    # Retención corta de verificaciones guardadas (siempre se conserva la última)
+    retencion-dias: ${REGIMEN_VERIFICACION_RETENCION_DIAS:90}
+
+# ========================================
 # TIPO DE CAMBIO - SINCRONIZACIÓN DIARIA (T-008)
 # ========================================
 tipo-cambio:

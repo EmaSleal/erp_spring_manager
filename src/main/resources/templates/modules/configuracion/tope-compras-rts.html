@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Tope de compras del RTS</title>
+</head>
+<body>
+
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div class="container-fluid py-4">
+
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/configuracion', 'fas fa-cog', 'Configuración', 'fas fa-chart-line', 'Tope de compras del RTS')}"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1"><i class="fas fa-chart-line text-primary me-2"></i>Tope de compras del RTS</h1>
+                    <p class="text-muted mb-0">Parámetros por año del tope anual de compras del régimen simplificado: salario base × multiplicador, con IVA.</p>
+                </div>
+                <a th:href="@{/configuracion}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Volver
+                </a>
+            </div>
+
+            <div class="alert alert-info" role="note">
+                <i class="fas fa-info-circle me-1"></i>
+                El acumulado suma el total con IVA, en colones, de las cuentas por pagar no anuladas con fecha de comprobante en el año y
+                en tramos de régimen simplificado. Solo incluye las compras registradas en el ERP. Los avisos al 80 % y al 100 % no
+                bloquean el registro de compras. Si el año no tiene parámetros no hay tope y no se usan los de otro año.
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <h6 class="mb-2">Estado del año <span th:text="${anio}">2026</span></h6>
+                    <div id="topeEstado" class="alert alert-secondary mb-0">Calculando…</div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white">
+                            <h6 class="mb-0" id="tituloFormTope">Agregar año</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="formTope" novalidate>
+                                <div class="mb-3">
+                                    <label for="topeAnio" class="form-label">Año <span class="text-danger">*</span></label>
+                                    <input type="number" id="topeAnio" class="form-control" min="2000" max="2100" required />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="topeSalario" class="form-label">Salario base (₡) <span class="text-danger">*</span></label>
+                                    <input type="number" id="topeSalario" class="form-control" min="0.01" step="0.01" required />
+                                    <div class="form-text">El salario base de la Ley 7337 publicado para el año.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="topeMultiplicador" class="form-label">Multiplicador</label>
+                                    <input type="number" id="topeMultiplicador" class="form-control" min="0.01" step="0.01" placeholder="Por defecto (186)" />
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <label for="topeUmbralAviso" class="form-label">Aviso (%)</label>
+                                        <input type="number" id="topeUmbralAviso" class="form-control" min="0.01" max="100" step="0.01" placeholder="Por defecto (80)" />
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <label for="topeUmbralTope" class="form-label">Tope (%)</label>
+                                        <input type="number" id="topeUmbralTope" class="form-control" min="0.01" max="100" step="0.01" placeholder="Por defecto (100)" />
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="topeNota" class="form-label">Nota</label>
+                                    <input type="text" id="topeNota" class="form-control" maxlength="300" />
+                                </div>
+                                <div class="text-danger small mb-2" id="topeError" role="alert"></div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" id="btnGuardarTope">
+                                        <i class="fas fa-save me-1"></i>Guardar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btnNuevoTope">Nuevo</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" id="tablaTope" th:attr="data-anio=${anio}">
+                                    <thead>
+                                        <tr>
+                                            <th>Año</th>
+                                            <th class="text-end">Salario base</th>
+                                            <th class="text-end">Multiplicador</th>
+                                            <th class="text-end">Tope</th>
+                                            <th class="text-center">Aviso / tope</th>
+                                            <th>Nota</th>
+                                            <th>Registrado por</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="topeCuerpo"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    <script th:src="@{/modules/configuracion/js/tope-compras-rts.js}"></script>
+</body>
+</html>

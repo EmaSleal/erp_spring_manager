@@ -129,3 +129,30 @@ test('el código nunca asigna innerHTML ni usa insertAdjacentHTML/outerHTML', ()
     assert.doesNotMatch(CODIGO, /\.innerHTML\s*=/);
     assert.doesNotMatch(CODIGO, /insertAdjacentHTML|outerHTML|document\.write/);
 });
+
+// ── T-056 criterio 5: resultado de la verificación con Hacienda ───────────────
+
+test('textoVerificacion: cada resultado tiene su texto y DIFIERE muestra los dos valores', () => {
+    const u = cargar().window.RegimenTributarioUI;
+    assert.match(u.textoVerificacion({ resultado: 'COINCIDE', regimenLocal: 'GENERAL', codigoHacienda: 1, descripcionHacienda: 'Régimen General' }), /coincide/i);
+    const difiere = u.textoVerificacion({ resultado: 'DIFIERE', regimenLocal: 'GENERAL', regimenHacienda: 'SIMPLIFICADO', codigoHacienda: 2, descripcionHacienda: 'Régimen Simplificado' });
+    assert.match(difiere, /Régimen general/);
+    assert.match(difiere, /Régimen Simplificado/);
+    assert.match(difiere, /código 2/);
+    assert.match(u.textoVerificacion({ resultado: 'NO_ENCONTRADO' }), /no encontr/i);
+    assert.match(u.textoVerificacion({ resultado: 'SIN_RESPUESTA' }), /no respondi/i);
+    assert.equal(u.textoVerificacion(null), 'Todavía no se ha verificado con Hacienda.');
+});
+
+test('pintarVerificacion usa textContent: el texto de Hacienda con HTML no se interpreta y DIFIERE sale como advertencia', () => {
+    const u = cargar().window.RegimenTributarioUI;
+    const caja = elemento('div');
+    u.pintarVerificacion(caja, { resultado: 'DIFIERE', regimenLocal: 'GENERAL', regimenHacienda: 'SIMPLIFICADO', codigoHacienda: 2,
+        descripcionHacienda: '<img src=x onerror=alert(1)>', fechaHora: '2026-11-25T06:30:00' });
+    assert.match(caja.textContent, /<img src=x onerror=alert\(1\)>/);
+    assert.match(caja.className, /alert-warning/);
+    u.pintarVerificacion(caja, { resultado: 'COINCIDE', regimenLocal: 'GENERAL', codigoHacienda: 1 });
+    assert.match(caja.className, /alert-success/);
+    u.pintarVerificacion(caja, { resultado: 'SIN_RESPUESTA' });
+    assert.match(caja.className, /alert-secondary/);
+});

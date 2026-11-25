@@ -147,6 +147,13 @@
                         </a>
                     </li>
 
+                    <!-- Enlace al tope de compras del RTS (página aparte, T-056) -->
+                    <li class="nav-item" role="presentation" sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REGIMEN_TOPE_COMPRAS_GESTIONAR')">
+                        <a class="nav-link" th:href="@{/configuracion/tope-compras-rts}">
+                            <i class="fas fa-chart-line me-2"></i> Tope de compras del RTS
+                        </a>
+                    </li>
+
                     <!-- Tab Usuarios (Próximamente) -->
                     <li class="nav-item" role="presentation">
                         <button class="nav-link disabled" 

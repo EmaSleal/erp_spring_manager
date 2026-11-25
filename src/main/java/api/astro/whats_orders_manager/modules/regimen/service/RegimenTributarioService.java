@@ -69,6 +69,10 @@ public class RegimenTributarioService {
     public record TramoEstado(RegimenTributario tramo, boolean vigente, boolean proximo, boolean editable, String bloqueo) {
     }
 
+    /** Rango de fechas cerrado (ambos extremos incluidos). */
+    public record Intervalo(LocalDate desde, LocalDate hasta) {
+    }
+
     private record Punto(LocalDate desde, Regimen regimen) {
     }
 
@@ -100,6 +104,36 @@ public class RegimenTributarioService {
     /** Tramo que rige hoy (fecha del Clock). */
     public RegimenTributario vigenteHoy() {
         return vigenteEn(hoy());
+    }
+
+    /** El primer tramo que empieza después de hoy (fecha del Clock), si hay alguno. */
+    public java.util.Optional<RegimenTributario> proximoTramo() {
+        LocalDate hoy = hoy();
+        return tramos().stream().filter(t -> t.getVigenteDesde().isAfter(hoy)).findFirst();
+    }
+
+    /**
+     * Los días de {@code [desde, hasta]} en que rige {@code regimen}, como rangos cerrados disjuntos y en orden. Cada tramo
+     * rige hasta el día anterior al inicio del siguiente; un rango anterior al primer tramo no devuelve nada.
+     */
+    public List<Intervalo> intervalos(Regimen regimen, LocalDate desde, LocalDate hasta) {
+        List<RegimenTributario> lista = tramos();
+        List<Intervalo> res = new ArrayList<>();
+        for (int i = 0; i < lista.size(); i++) {
+            RegimenTributario t = lista.get(i);
+            if (t.getRegimen() != regimen) {
+                continue;
+            }
+            LocalDate inicio = t.getVigenteDesde().isAfter(desde) ? t.getVigenteDesde() : desde;
+            LocalDate fin = i + 1 < lista.size() ? lista.get(i + 1).getVigenteDesde().minusDays(1) : hasta;
+            if (fin.isAfter(hasta)) {
+                fin = hasta;
+            }
+            if (!inicio.isAfter(fin)) {
+                res.add(new Intervalo(inicio, fin));
+            }
+        }
+        return res;
     }
 
     /** Historial completo, del más antiguo al más reciente, con el vigente hoy, el próximo y si cada tramo se puede tocar. */

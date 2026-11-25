@@ -8,6 +8,7 @@
     'use strict';
 
     const REGIMENES = { GENERAL: 'Régimen general', SIMPLIFICADO: 'Régimen simplificado' };
+    const REGIMENES_HACIENDA = Object.assign({ OTRO: 'Otro régimen' }, REGIMENES);
     const LARGO_NOTA = 300;
     const FECHA_ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -112,7 +113,37 @@
         });
     }
 
-    global.RegimenTributarioUI = { validarTramo, etiquetaRegimen, estadoTramo, pintarHistorial, fechaIsoValida, LARGO_NOTA };
+    function etiquetaHacienda(regimen) {
+        return Object.prototype.hasOwnProperty.call(REGIMENES_HACIENDA, regimen) ? REGIMENES_HACIENDA[regimen] : String(regimen == null ? '' : regimen);
+    }
+
+    /** Texto de una verificación con Hacienda (T-056). DIFIERE muestra el régimen del ERP y el que reporta Hacienda. */
+    function textoVerificacion(v) {
+        if (!v) return 'Todavía no se ha verificado con Hacienda.';
+        const hacienda = (v.descripcionHacienda ? v.descripcionHacienda + ' ' : '') + '(código ' + v.codigoHacienda + ')';
+        switch (v.resultado) {
+            case 'COINCIDE':
+                return 'Hacienda coincide con el ERP: ' + etiquetaRegimen(v.regimenLocal) + ' ' + hacienda + '.';
+            case 'DIFIERE':
+                return 'Hacienda reporta ' + hacienda + ' y el ERP tiene ' + etiquetaRegimen(v.regimenLocal)
+                    + ' vigente hoy. El ERP no se modificó: revise el historial de tramos.';
+            case 'NO_ENCONTRADO':
+                return 'Hacienda no encontró la identificación de la empresa.';
+            default:
+                return 'Hacienda no respondió' + (v.detalle ? ': ' + v.detalle : '.');
+        }
+    }
+
+    /** Pinta el resultado en una caja (una sola cadena de texto) con el color que corresponde. */
+    function pintarVerificacion(caja, v) {
+        const clases = { COINCIDE: 'alert-success', DIFIERE: 'alert-warning', NO_ENCONTRADO: 'alert-danger' };
+        caja.className = 'alert mb-0 ' + ((v && clases[v.resultado]) || 'alert-secondary');
+        const fecha = v && v.fechaHora ? String(v.fechaHora).replace('T', ' ').slice(0, 16) + ' — ' : '';
+        caja.textContent = fecha + textoVerificacion(v);
+    }
+
+    global.RegimenTributarioUI = { validarTramo, etiquetaRegimen, etiquetaHacienda, estadoTramo, pintarHistorial, fechaIsoValida,
+        textoVerificacion, pintarVerificacion, LARGO_NOTA };
 
     // ── Página (solo con DOM real) ──────────────────────────────────────────────
 
@@ -215,6 +246,34 @@
         }
     }
 
+    async function cargarVerificacion() {
+        const caja = porId('verificacionResultado');
+        if (!caja) return;
+        try {
+            const resp = await fetch('/api/regimen/verificacion');
+            const json = resp.ok ? await resp.json() : null;
+            pintarVerificacion(caja, json ? json.data : null);
+        } catch (e) {
+            caja.textContent = 'No se pudo leer la última verificación.';
+        }
+    }
+
+    async function verificar() {
+        const btn = porId('btnVerificarHacienda');
+        const caja = porId('verificacionResultado');
+        btn.disabled = true;
+        try {
+            const resp = await fetch('/api/regimen/verificacion', { method: 'POST', headers: cabeceras() });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data.success) pintarVerificacion(caja, data.data);
+            else toast(data.message || 'No se pudo verificar con Hacienda.', 'danger');
+        } catch (e) {
+            toast('Error de conexión. Intente nuevamente.', 'danger');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
     doc.addEventListener('DOMContentLoaded', () => {
         const tabla = porId('tablaRegimen');
         if (!tabla) return;
@@ -225,6 +284,9 @@
             form.addEventListener('submit', guardar);
             porId('btnNuevoRegimen').addEventListener('click', vaciarFormulario);
         }
+        const botonVerificar = porId('btnVerificarHacienda');
+        if (botonVerificar) botonVerificar.addEventListener('click', verificar);
+        cargarVerificacion();
         cargar();
     });
 })(typeof window !== 'undefined' ? window : globalThis);

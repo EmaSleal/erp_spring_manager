@@ -92,6 +92,7 @@ class CuentaPorPagarComprobanteJpaTest {
     @Autowired private PagoProveedorRepository pagoRepository;
     @Autowired private PlatformTransactionManager transactionManager;
     @MockitoBean private UsuarioActividadService actividadService;
+    @MockitoBean private api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService topeComprasRts;
 
     private TransactionTemplate tx;
     private Proveedor proveedor;
