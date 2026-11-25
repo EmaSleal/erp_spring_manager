@@ -79,18 +79,28 @@
                         <div class="form-text">Registro fiscal</div>
                     </div>
 
-                    <!-- Régimen Fiscal -->
+                    <!-- Régimen tributario vigente (T-056, ADR-072): sale de la tabla de tramos, no se edita aquí -->
                     <div class="col-md-8 mb-3">
-                        <label for="regimenFiscal" class="form-label">
-                            <i class="fas fa-balance-scale me-1"></i> Régimen Fiscal
+                        <label class="form-label">
+                            <i class="fas fa-balance-scale me-1"></i> Régimen tributario vigente
                         </label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="regimenFiscal" 
+                        <div class="form-control-plaintext fw-semibold" id="regimenVigenteTexto">Cargando…</div>
+                        <div class="form-text">
+                            Se administra por tramos con vigencia en
+                            <a th:href="@{/configuracion/regimen-tributario}">Régimen tributario</a>.
+                            <span id="regimenHaciendaInfo"></span>
+                        </div>
+                        <label for="regimenFiscal" class="form-label mt-2 small text-muted">
+                            Régimen fiscal (texto heredado) <span class="badge bg-secondary">En desuso</span>
+                        </label>
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               id="regimenFiscal"
                                name="regimenFiscal"
-                               placeholder="Régimen General, RUS, etc."
-                               maxlength="100">
-                        <div class="form-text">Tipo de régimen tributario</div>
+                               readonly
+                               tabindex="-1"
+                               aria-describedby="regimenFiscalAyuda">
+                        <div class="form-text" id="regimenFiscalAyuda">Solo lectura: ya no se edita ni se usa.</div>
                     </div>
                 </div>
 

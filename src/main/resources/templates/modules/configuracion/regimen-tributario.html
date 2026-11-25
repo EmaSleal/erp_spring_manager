@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Régimen tributario</title>
+</head>
+<body>
+
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div class="container-fluid py-4">
+
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/configuracion', 'fas fa-cog', 'Configuración', 'fas fa-balance-scale', 'Régimen tributario')}"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1"><i class="fas fa-balance-scale text-primary me-2"></i>Régimen tributario</h1>
+                    <p class="text-muted mb-0">Historial de tramos con vigencia: cada tramo rige desde su fecha de inicio hasta el día anterior al inicio del siguiente.</p>
+                </div>
+                <a th:href="@{/configuracion}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Volver
+                </a>
+            </div>
+
+            <div class="alert alert-info" role="note">
+                <i class="fas fa-info-circle me-1"></i>
+                Un tramo que ya empezó no se edita ni se borra. Un tramo futuro solo se puede agregar, editar o borrar mientras no haya
+                facturas, notas ni cuentas por pagar con fecha igual o posterior a su inicio. Dos tramos seguidos no pueden tener el
+                mismo régimen. Cambiar el régimen no modifica por sí solo ningún cálculo de ventas, emisión ni compras.
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-4" sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'REGIMEN_TRIBUTARIO_GESTIONAR')">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white">
+                            <h6 class="mb-0" id="tituloFormRegimen">Agregar tramo</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="formRegimen" novalidate>
+                                <div class="mb-3">
+                                    <label for="regimenSel" class="form-label">Régimen <span class="text-danger">*</span></label>
+                                    <select id="regimenSel" class="form-select" required>
+                                        <option value="">Seleccione…</option>
+                                        <option value="GENERAL">Régimen general</option>
+                                        <option value="SIMPLIFICADO">Régimen simplificado</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="regimenDesde" class="form-label">Vigente desde <span class="text-danger">*</span></label>
+                                    <input type="date" id="regimenDesde" class="form-control" th:min="${hoy}" required />
+                                    <div class="form-text">Debe ser posterior a hoy.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="regimenNota" class="form-label">Nota</label>
+                                    <input type="text" id="regimenNota" class="form-control" maxlength="300"
+                                           placeholder="Ej: cambio de régimen informado por Hacienda" />
+                                </div>
+                                <div class="text-danger small mb-2" id="regimenError" role="alert"></div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" id="btnGuardarRegimen">
+                                        <i class="fas fa-save me-1"></i>Guardar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btnNuevoRegimen">Nuevo</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" id="tablaRegimen"
+                                       th:attr="data-hoy=${hoy},data-puede-gestionar=${#authorization.expression('@permisoService.tienePermisoPorCodigo(#authentication.name, ''REGIMEN_TRIBUTARIO_GESTIONAR'')')}">
+                                    <thead>
+                                        <tr>
+                                            <th>Desde</th>
+                                            <th>Régimen</th>
+                                            <th>Estado</th>
+                                            <th>Nota</th>
+                                            <th>Registrado por</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="regimenCuerpo"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+    <script th:src="@{/modules/configuracion/js/regimen-tributario.js}"></script>
+</body>
+</html>
