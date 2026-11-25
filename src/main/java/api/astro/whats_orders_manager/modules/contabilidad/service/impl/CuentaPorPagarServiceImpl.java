@@ -33,6 +33,7 @@ import api.astro.whats_orders_manager.modules.proveedores.repository.PagoProveed
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService;
+import api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -66,6 +67,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     private final PagoProveedorRepository pagoProveedorRepository;
     private final UsuarioActividadService actividadService;
     private final Clock clock;
+    /** T-056: evalúa el tope de compras del RTS tras registrar una CxP (nunca la bloquea). */
+    private final TopeComprasRtsService topeComprasRtsService;
 
     private static final String NOMBRE_INDICE_COMPROBANTE = "uk_cpp_proveedor_comprobante";
 
@@ -241,8 +244,22 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         // El saldo del proveedor se recalcula después, para no dejarlo modificado en memoria si el asiento falla.
         asientoService.generarAsientoCompra(guardada);
         recalcularSaldoProveedor(proveedor);
+        evaluarTope(guardada);
         log.info("Cuenta por pagar {} creada para proveedor {}", guardada.getNumero(), proveedor.getNombre());
         return new CuentaPorPagarCreada(guardada, advertencias);
+    }
+
+    /**
+     * T-056: avisa si el acumulado de compras del RTS del año del comprobante cruzó un umbral. El servicio espera a que esta
+     * transacción confirme y corre aparte; un fallo solo se registra: el aviso nunca bloquea ni revierte el registro.
+     */
+    private void evaluarTope(CuentaPorPagar cuenta) {
+        try {
+            LocalDate fecha = cuenta.getFechaComprobante() != null ? cuenta.getFechaComprobante() : cuenta.getFechaEmision();
+            topeComprasRtsService.evaluarTrasRegistro(fecha.getYear());
+        } catch (RuntimeException e) {
+            log.warn("No se pudo evaluar el tope de compras del RTS tras registrar la cuenta por pagar: {}", e.getMessage());
+        }
     }
 
     /** Moneda y tipo de cambio que hereda de la OC una CxP creada desde ella (ADR-011). */

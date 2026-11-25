@@ -46,8 +46,18 @@ public class ConfiguracionEmpresa implements Serializable {
     @Column(name = "rfc", length = 35)
     private String rfc;
 
-    @Column(name = "regimen_fiscal", length = 100)
-    private String regimenFiscal;
+    /**
+     * EN DESUSO (T-056, ADR-072): texto libre heredado, solo lectura. El régimen tributario vigente sale de la tabla
+     * regimen_tributario (RegimenTributarioService); nada lo escribe ni lo consulta para decidir. Se conserva la columna
+     * regimen_fiscal y el campo se llama distinto del dato real a propósito: así no existe un getter getRegimenFiscal()
+     * que invite a usarlo (ArquitecturaRegimenTest lo prohíbe fuera del paquete del régimen) ni un setter ni un
+     * constructor que lo escriba.
+     */
+    @Deprecated
+    @Getter(AccessLevel.PUBLIC)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "regimen_fiscal", length = 100, updatable = false)
+    private String regimenFiscalHistorico;
 
     // ==================== DIRECCIÓN ====================
     
@@ -234,11 +244,13 @@ public class ConfiguracionEmpresa implements Serializable {
     /**
      * Verifica si los datos fiscales están completos.
      *
-     * @return true si RFC y régimen fiscal están configurados
+     * T-056 (ADR-072): ya no exige el texto libre de régimen fiscal, que es solo lectura y está en desuso; el régimen
+     * vigente sale de la tabla regimen_tributario. Solo exige el RFC (la identificación del emisor).
+     *
+     * @return true si el RFC está configurado
      */
     public boolean tieneDatosFiscalesCompletos() {
-        return rfc != null && !rfc.isEmpty() &&
-               regimenFiscal != null && !regimenFiscal.isEmpty();
+        return rfc != null && !rfc.isEmpty();
     }
 
     // ==================== COMPATIBILIDAD FACTURACIÓN ELECTRÓNICA ====================

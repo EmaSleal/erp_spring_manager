@@ -81,6 +81,8 @@ class CuentaPorPagarManualJpaTest {
     @Autowired private PlatformTransactionManager transactionManager;
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     private api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService actividadService;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService topeComprasRts;
 
     private TransactionTemplate tx;
     private Proveedor proveedor;

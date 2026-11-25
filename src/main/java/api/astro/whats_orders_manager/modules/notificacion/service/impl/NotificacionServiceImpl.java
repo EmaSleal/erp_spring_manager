@@ -101,6 +101,31 @@ public class NotificacionServiceImpl implements NotificacionService {
             return null;
         }
 
+        return crearYEnviar(usuario, tipo, canal, titulo, mensaje);
+    }
+
+    @Override
+    @Transactional
+    @Async
+    public Notificacion enviarNotificacionSinPreferencias(
+            Usuario usuario,
+            TipoNotificacion tipo,
+            CanalNotificacion canal,
+            String titulo,
+            String mensaje
+    ) {
+        log.info("📬 Enviando notificación crítica {} por {} a usuario {} (sin consultar preferencias)",
+            tipo, canal, usuario.getIdUsuario());
+        return crearYEnviar(usuario, tipo, canal, titulo, mensaje);
+    }
+
+    private Notificacion crearYEnviar(
+            Usuario usuario,
+            TipoNotificacion tipo,
+            CanalNotificacion canal,
+            String titulo,
+            String mensaje
+    ) {
         // Crear notificación
         Notificacion notificacion = Notificacion.builder()
                 .tipo(tipo)

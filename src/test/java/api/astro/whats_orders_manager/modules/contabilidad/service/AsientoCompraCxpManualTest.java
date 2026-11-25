@@ -79,6 +79,8 @@ class AsientoCompraCxpManualTest {
     @Mock private OrdenCompraRepository ordenCompraRepository;
     @Mock private TipoCambioRepository tipoCambioRepository;
 
+    @Mock private api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService tope;
+
     private AsientoContableService service;
     private CuentaPorPagarServiceImpl cxpService;
     private final Map<String, CuentaContable> cuentas = new HashMap<>();
@@ -93,7 +95,7 @@ class AsientoCompraCxpManualTest {
                 ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository),
                 new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(api.astro.whats_orders_manager.modules.contabilidad.repository.ProrrataIvaRepository.class),
                 mock(PagoProveedorRepository.class),
-                mock(UsuarioActividadService.class), RELOJ_PRUEBA);
+                mock(UsuarioActividadService.class), RELOJ_PRUEBA, tope);
         long id = 1;
         List<ParametroContable> parametros = new ArrayList<>();
         for (String clave : List.of("CPP_CUENTA_COMPRAS", "CPP_IVA_CREDITO_FISCAL", "CPP_CUENTA_POR_PAGAR")) {
@@ -278,6 +280,19 @@ class AsientoCompraCxpManualTest {
         assertThat(creada.cuenta().getOrdenCompra()).isSameAs(oc);
         assertThat(creada.advertencias()).as("50 + 113 = 163 supera 113 USD por 50").hasSize(1)
                 .first().asString().contains("OC-1").contains("163.00").contains("113.00").contains("por 50.00");
+    }
+
+    @Test
+    @DisplayName("T-056: crear() evalúa el tope del RTS del año del comprobante; si la evaluación falla, la CxP se crea igual")
+    void crearEvaluaElTopeYUnFalloNoLaBloquea() {
+        prepararOc(oc());
+        CuentaPorPagar cpp = cxpService.crear(dtoConOc(null));
+        verify(tope).evaluarTrasRegistro(2026);
+        assertThat(cpp.getMonto()).isEqualByComparingTo("113.00");
+
+        org.mockito.Mockito.doThrow(new IllegalStateException("tope roto")).when(tope).evaluarTrasRegistro(anyInt());
+        CuentaPorPagar otra = cxpService.crear(dtoConOc(null));
+        assertThat(otra.getMonto()).isEqualByComparingTo("113.00");
     }
 
     @Test

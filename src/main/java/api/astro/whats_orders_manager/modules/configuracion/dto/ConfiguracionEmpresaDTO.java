@@ -31,7 +31,8 @@ public class ConfiguracionEmpresaDTO {
     private String rfc;
 
     /**
-     * Régimen fiscal
+     * Régimen fiscal: texto libre heredado, SOLO LECTURA y en desuso (T-056, ADR-072). Se devuelve como lo guardó la base
+     * pero no se acepta al escribir; el régimen vigente sale de /api/regimen-tributario/vigente.
      */
     private String regimenFiscal;
 

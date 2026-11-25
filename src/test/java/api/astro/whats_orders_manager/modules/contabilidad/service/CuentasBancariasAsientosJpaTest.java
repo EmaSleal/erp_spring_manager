@@ -102,6 +102,7 @@ class CuentasBancariasAsientosJpaTest {
 
     @MockitoBean private EmpresaService empresaService;
     @MockitoBean private api.astro.whats_orders_manager.modules.seguridad.service.UsuarioActividadService actividadService;
+    @MockitoBean private api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService topeComprasRts;
 
     @Autowired private PagoServiceImpl pagoService;
     @Autowired private PagoProveedorServiceImpl pagoProveedorService;

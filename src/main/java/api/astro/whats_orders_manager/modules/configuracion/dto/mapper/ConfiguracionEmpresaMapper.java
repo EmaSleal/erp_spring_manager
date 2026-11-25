@@ -30,7 +30,7 @@ public class ConfiguracionEmpresaMapper {
         dto.setRazonSocial(entity.getRazonSocial());
         dto.setNombreComercial(entity.getNombreComercial());
         dto.setRfc(entity.getRfc());
-        dto.setRegimenFiscal(entity.getRegimenFiscal());
+        dto.setRegimenFiscal(entity.getRegimenFiscalHistorico()); // solo lectura, en desuso (T-056)
         dto.setDireccionCalle(entity.getDireccionCalle());
         dto.setDireccionNumero(entity.getDireccionNumero());
         dto.setDireccionColonia(entity.getDireccionColonia());
@@ -87,7 +87,6 @@ public class ConfiguracionEmpresaMapper {
                 .razonSocial(dto.getRazonSocial())
                 .nombreComercial(dto.getNombreComercial())
                 .rfc(dto.getRfc())
-                .regimenFiscal(dto.getRegimenFiscal())
                 .direccionCalle(dto.getDireccionCalle())
                 .direccionNumero(dto.getDireccionNumero())
                 .direccionColonia(dto.getDireccionColonia())

@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.facturacion.controller;
 
 import api.astro.whats_orders_manager.modules.facturacion.service.PanelFacturacionService;
+import api.astro.whats_orders_manager.modules.regimen.panel.RegimenPanelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class FacturacionInicioController {
 
     private final PanelFacturacionService panelService;
+    /** T-056: aviso de verificación del régimen y tope de compras del RTS. */
+    private final RegimenPanelService regimenPanelService;
 
     @GetMapping("/inicio")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
@@ -32,6 +35,7 @@ public class FacturacionInicioController {
         // parámetro que los enlaces de comprobantes y notas añaden para listar solo ese ambiente (vacío = sin filtro)
         model.addAttribute("sufijoAmbiente", ambiente != null ? "&ambiente=" + ambiente : "");
         model.addAttribute("leyendaSinAmbiente", PanelFacturacionService.LEYENDA_SIN_AMBIENTE);
+        model.addAttribute("regimenPanel", regimenPanelService.obtener());
         return "modules/facturacion/inicio";
     }
 }

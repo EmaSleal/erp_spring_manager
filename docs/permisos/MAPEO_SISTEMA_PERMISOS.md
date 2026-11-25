@@ -124,7 +124,7 @@ Convertir el sistema de permisos de **código estático** a **base de datos din�
 | `REPORTE_EXPORTAR_EXCEL` | Exportar Excel | Exportar reportes a Excel | ❌ |
 | `REPORTE_EXPORTAR_CSV` | Exportar CSV | Exportar reportes a CSV | ❌ |
 
-#### 5️⃣ CONFIGURACIÓN (5 permisos)
+#### 5️⃣ CONFIGURACIÓN (6 permisos)
 | Código | Nombre | Descripción | ¿Crítico? |
 |--------|--------|-------------|-----------|
 | `CONFIG_VER` | Ver configuración | Visualizar configuración del sistema | ❌ |
@@ -132,6 +132,8 @@ Convertir el sistema de permisos de **código estático** a **base de datos din�
 | `CONFIG_EDITAR_FACTURACION` | Editar facturación | Modificar configuración de facturación | ❌ |
 | `CONFIG_EDITAR_EMAIL` | Editar email | Modificar configuración de email | ❌ |
 | `CONFIG_EDITAR_WHATSAPP` | Editar WhatsApp | Modificar configuración de WhatsApp | ❌ |
+| `REGIMEN_TRIBUTARIO_GESTIONAR` | Gestionar el régimen tributario | Agregar, corregir y borrar tramos futuros del régimen tributario con vigencia (T-056, ADR-072); solo ADMIN. Leer el historial lo permite también `CONFIG_VER` | ✅ |
+| `REGIMEN_TOPE_COMPRAS_GESTIONAR` | Gestionar el tope de compras del RTS | Registrar y corregir por año el salario base, el multiplicador y los umbrales del tope de compras del régimen simplificado (T-056, ADR-072); solo ADMIN | ✅ |
 
 #### 6️⃣ NOTIFICACIONES (5 permisos)
 | Código | Nombre | Descripción | ¿Crítico? |

@@ -102,7 +102,7 @@ class PagoProveedorMultimonedaTest {
                 new ComprobanteProveedorValidator(RELOJ_PRUEBA),
                 mock(api.astro.whats_orders_manager.modules.contabilidad.repository.ProrrataIvaRepository.class),
                 mock(PagoProveedorRepository.class),
-                mock(UsuarioActividadService.class), RELOJ_PRUEBA);
+                mock(UsuarioActividadService.class), RELOJ_PRUEBA, mock(api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService.class));
         service = new PagoProveedorServiceImpl(pagoRepository, cuentaPorPagarRepository, cuentaService,
                 asientoService, tipoCambioService, cuentaBancariaService);
 

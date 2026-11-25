@@ -99,9 +99,7 @@ public class ConfiguracionEmpresaServiceImpl implements ConfiguracionEmpresaServ
         if (configuracion.getRfc() != null) {
             configuracionExistente.setRfc(configuracion.getRfc());
         }
-        if (configuracion.getRegimenFiscal() != null) {
-            configuracionExistente.setRegimenFiscal(configuracion.getRegimenFiscal());
-        }
+        // regimen_fiscal (texto libre) es solo lectura y está en desuso (T-056, ADR-072): el PUT no lo escribe.
         if (configuracion.getDireccionCalle() != null) {
             configuracionExistente.setDireccionCalle(configuracion.getDireccionCalle());
         }

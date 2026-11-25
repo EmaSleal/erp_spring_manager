@@ -223,6 +223,38 @@
             </div>
         </div>
 
+        <!-- T-056: régimen tributario (verificación con Hacienda) y tope de compras del RTS; todo con th:text -->
+        <div th:if="${regimenPanel != null}">
+            <div class="row mb-3">
+                <div class="col-12"><h2 class="section-title"><i class="fas fa-balance-scale me-2"></i>Régimen tributario</h2></div>
+            </div>
+            <div class="row mb-4" id="panel-regimen">
+                <div class="col-12" th:if="${regimenPanel.avisoVerificacion() != null}">
+                    <div class="alert alert-warning" id="regimen-verificacion-aviso" role="alert"
+                         th:text="${regimenPanel.avisoVerificacion()}">Aviso</div>
+                </div>
+                <div class="col-12" th:if="${regimenPanel.tope() != null}">
+                    <div class="card border-0 shadow-sm" id="regimen-tope">
+                        <div class="card-body">
+                            <h3 class="h6 mb-2">Tope de compras del RTS</h3>
+                            <p class="mb-2" id="regimen-tope-sin-configurar" th:if="${!regimenPanel.tope().configurado()}"
+                               th:text="${regimenPanel.tope().mensaje()}">Tope de 2027 sin configurar</p>
+                            <div th:if="${regimenPanel.tope().configurado()}">
+                                <p class="mb-2" id="regimen-tope-cifras"
+                                   th:text="${'Acumulado ' + regimenPanel.tope().anio() + ': ₡' + #numbers.formatDecimal(regimenPanel.tope().acumulado(), 1, 'POINT', 2, 'COMMA') + ' de ₡' + #numbers.formatDecimal(regimenPanel.tope().tope(), 1, 'POINT', 2, 'COMMA') + ' (' + #numbers.formatDecimal(regimenPanel.tope().porcentaje(), 1, 'POINT', 2, 'COMMA') + ' %)'}">Acumulado</p>
+                                <div class="alert mb-2" id="regimen-tope-aviso" role="alert"
+                                     th:if="${regimenPanel.tope().mensaje() != null}"
+                                     th:classappend="${regimenPanel.tope().nivel().name() == 'TOPE'} ? 'alert-danger' : 'alert-warning'"
+                                     th:text="${regimenPanel.tope().mensaje()}">Aviso</div>
+                            </div>
+                            <p class="text-muted small mb-0" id="regimen-tope-advertencia"
+                               th:text="${regimenPanel.advertenciaTope()}">Solo ERP</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row mb-3">
             <div class="col-12"><h2 class="section-title"><i class="fas fa-th-large me-2"></i>Accesos</h2></div>
         </div>

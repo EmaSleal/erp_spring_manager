@@ -49,6 +49,24 @@ const ConfiguracionEmpresa = {
     },
     
     /**
+     * Muestra el régimen tributario vigente hoy, que sale de la tabla de tramos (T-056, ADR-072). Solo textContent.
+     */
+    async cargarRegimenVigente() {
+        const el = document.getElementById('regimenVigenteTexto');
+        if (!el) return;
+        try {
+            const resp = await fetch('/api/regimen-tributario/vigente');
+            const json = resp.ok ? await resp.json() : null;
+            const t = json && json.data; // el tramo vigente (data.vigente=true); data.siguiente es el próximo, si hay
+            const nombres = { GENERAL: 'Régimen general', SIMPLIFICADO: 'Régimen simplificado' };
+            el.textContent = t ? (nombres[t.regimen] || String(t.regimen)) + ' (desde ' + t.vigenteDesde + ')'
+                               : 'Sin régimen definido para hoy';
+        } catch (e) {
+            el.textContent = 'No se pudo consultar el régimen vigente';
+        }
+    },
+
+    /**
      * Carga la configuración actual
      */
     cargarConfiguracion: async function() {
@@ -63,7 +81,8 @@ const ConfiguracionEmpresa = {
                 document.getElementById('razonSocial').value = datos.razonSocial || '';
                 document.getElementById('nombreComercial').value = datos.nombreComercial || '';
                 document.getElementById('rfc').value = datos.rfc || '';
-                document.getElementById('regimenFiscal').value = datos.regimenFiscal || '';
+                document.getElementById('regimenFiscal').value = datos.regimenFiscal || ''; // solo lectura, en desuso
+                this.cargarRegimenVigente();
                 
                 // Dirección
                 document.getElementById('direccionCalle').value = datos.direccionCalle || '';
@@ -209,9 +228,10 @@ const ConfiguracionEmpresa = {
                     }
                 }
                 
-                // Régimen fiscal
+                // Régimen según Hacienda: solo informativo (T-056); el régimen vigente sale de los tramos con vigencia
                 if (hacienda.regimen && hacienda.regimen.descripcion) {
-                    document.getElementById('regimenFiscal').value = hacienda.regimen.descripcion;
+                    const info = document.getElementById('regimenHaciendaInfo');
+                    if (info) info.textContent = 'Hacienda reporta: ' + hacienda.regimen.descripcion + '.';
                 }
                 
                 // Mostrar éxito
@@ -322,7 +342,6 @@ const ConfiguracionEmpresa = {
                 razonSocial: document.getElementById('razonSocial').value,
                 nombreComercial: document.getElementById('nombreComercial').value || null,
                 rfc: document.getElementById('rfc').value,
-                regimenFiscal: document.getElementById('regimenFiscal').value || null,
                 direccionCalle: document.getElementById('direccionCalle').value || null,
                 direccionCiudad: document.getElementById('direccionCiudad').value || null,
                 direccionEstado: document.getElementById('direccionEstado').value || null,

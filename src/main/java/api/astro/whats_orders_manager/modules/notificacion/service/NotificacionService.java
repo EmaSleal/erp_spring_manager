@@ -50,6 +50,19 @@ public interface NotificacionService {
     );
 
     /**
+     * Igual que {@link #enviarNotificacion} pero sin consultar las preferencias de notificación del usuario (el filtro
+     * de T-030 no se modifica). Reservado a avisos críticos del sistema que el destinatario no puede silenciar; hoy lo
+     * usa solo el notificador de administradores del régimen tributario (T-056). No usar para notificaciones corrientes.
+     */
+    Notificacion enviarNotificacionSinPreferencias(
+            Usuario usuario,
+            TipoNotificacion tipo,
+            CanalNotificacion canal,
+            String titulo,
+            String mensaje
+    );
+
+    /**
      * Envía una notificación con URL de acción
      * 
      * @param usuario Usuario destinatario

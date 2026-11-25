@@ -1,5 +1,10 @@
 package api.astro.whats_orders_manager.modules.facturacion.controller;
 
+import api.astro.whats_orders_manager.modules.regimen.panel.RegimenPanel;
+import api.astro.whats_orders_manager.modules.regimen.panel.RegimenPanelService;
+import api.astro.whats_orders_manager.modules.regimen.tope.EstadoTope;
+import api.astro.whats_orders_manager.modules.regimen.tope.NivelTope;
+import api.astro.whats_orders_manager.modules.regimen.tope.TopeComprasRtsService;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.exception.ConfiguracionHaciendaNoDisponibleException;
 import api.astro.whats_orders_manager.modules.facturacion.service.PanelFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.service.PanelFacturacionService.Contadores;
@@ -28,6 +33,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver;
 import org.thymeleaf.spring6.view.ThymeleafViewResolver;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,8 +78,13 @@ class FacturacionInicioViewTest {
         }
 
         @Bean
-        FacturacionInicioController facturacionInicioController(PanelFacturacionService panel) {
-            return new FacturacionInicioController(panel);
+        RegimenPanelService regimenPanelService() {
+            return mock(RegimenPanelService.class);
+        }
+
+        @Bean
+        FacturacionInicioController facturacionInicioController(PanelFacturacionService panel, RegimenPanelService regimen) {
+            return new FacturacionInicioController(panel, regimen);
         }
 
         @Bean
@@ -107,12 +118,13 @@ class FacturacionInicioViewTest {
     @Autowired private WebApplicationContext context;
     @Autowired private PermisoService permisoService;
     @Autowired private PanelFacturacionService panelService;
+    @Autowired private RegimenPanelService regimenPanelService;
 
     private MockMvc mvc;
 
     @BeforeEach
     void preparar() {
-        reset(permisoService, panelService);
+        reset(permisoService, panelService, regimenPanelService);
         when(permisoService.tienePermisoPorCodigo(anyString(), anyString())).thenReturn(false);
         when(permisoService.tienePermisoPorCodigo(eq("gerente"), eq("FACTURA_VER"))).thenReturn(true);
         when(permisoService.tienePermisoPorCodigo(eq("admin"), eq("FACTURA_VER"))).thenReturn(true);
@@ -271,5 +283,37 @@ class FacturacionInicioViewTest {
             assertThat(html).contains("/facturas/comprobantes?estado=RECHAZADO&amp;vigente=true\"")
                 .doesNotContain("ambiente=");
         }
+    }
+
+    // ── T-056: bloque de régimen ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("T-056: sin parámetros del año el panel dice «Tope de 2027 sin configurar» y que solo cuenta lo registrado en el ERP")
+    void regimen_topeSinConfigurar() throws Exception {
+        when(regimenPanelService.obtener()).thenReturn(new RegimenPanel(null, EstadoTope.sinConfigurar(2027),
+                TopeComprasRtsService.ADVERTENCIA_SOLO_ERP));
+        String html = html("gerente", "GERENTE");
+        assertThat(html).contains("id=\"regimen-tope\"").contains("Tope de 2027 sin configurar")
+                .contains(TopeComprasRtsService.ADVERTENCIA_SOLO_ERP).doesNotContain("id=\"regimen-verificacion-aviso\"");
+    }
+
+    @Test
+    @DisplayName("T-056: aviso de verificación y tope en AVISO se muestran con texto escapado")
+    void regimen_avisos() throws Exception {
+        EstadoTope tope = new EstadoTope(2026, true, new BigDecimal("85969200.00"), new BigDecimal("70000000.00"),
+                new BigDecimal("81.43"), NivelTope.AVISO, new BigDecimal("80.00"), new BigDecimal("100.00"),
+                "Compras al 81,43 % del tope");
+        when(regimenPanelService.obtener()).thenReturn(new RegimenPanel("Hacienda <b>difiere</b>", tope,
+                TopeComprasRtsService.ADVERTENCIA_SOLO_ERP));
+        String html = html("gerente", "GERENTE");
+        assertThat(html).contains("id=\"regimen-verificacion-aviso\"").contains("Hacienda &lt;b&gt;difiere&lt;/b&gt;")
+                .doesNotContain("<b>difiere</b>").contains("alert-warning").contains("70.000.000,00").contains("81,43");
+    }
+
+    @Test
+    @DisplayName("T-056: si el bloque de régimen no está disponible (nulo) el panel igual responde 200")
+    void regimen_nulo() throws Exception {
+        when(regimenPanelService.obtener()).thenReturn(null);
+        assertThat(html("gerente", "GERENTE")).doesNotContain("id=\"regimen-tope\"");
     }
 }
