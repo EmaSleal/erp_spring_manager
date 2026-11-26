@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{shared/layout :: head}">
     <title>Proveedor</title>
 </head>
@@ -31,6 +31,21 @@
                                 <div class="col-md-3">
                                     <label class="form-label">Cédula / RUC <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="cedula" th:value="${proveedor.cedula}" required maxlength="20">
+                                </div>
+                                <!-- T-058 (ADR-074 §2): régimen del proveedor según /fe/ae; se consulta al crearlo y al cambiarle la cédula -->
+                                <div class="col-md-12" id="bloqueRegimen">
+                                    <span class="text-muted small">Régimen en Hacienda:</span>
+                                    <span class="badge bg-secondary" id="regimenProveedor"
+                                          th:text="${proveedor.regimenHacienda != null ? proveedor.regimenHacienda : 'SIN_VERIFICAR'}">SIN_VERIFICAR</span>
+                                    <span class="small text-muted" id="regimenVerificadoEn"
+                                          th:text="${proveedor.regimenVerificadoEn != null ? #temporals.format(proveedor.regimenVerificadoEn, 'dd/MM/yyyy HH:mm') : 'Sin verificar'}"></span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="btnVerificarRegimen"
+                                            th:unless="${esNuevo}"
+                                            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_EDITAR')">
+                                        Verificar régimen
+                                    </button>
+                                    <span class="small text-muted ms-2" th:if="${esNuevo}">Se consulta a Hacienda al guardar.</span>
+                                    <div id="regimenMensaje" class="small mt-1"></div>
                                 </div>
                                 <div class="col-md-5">
                                     <label class="form-label">Nombre <span class="text-danger">*</span></label>
@@ -276,6 +291,38 @@ function agregarChip(id, nombre) {
 function getSelectedItemIds() {
     return Array.from(document.querySelectorAll('#hiddenItemIds input'))
         .map(i => parseInt(i.value));
+}
+
+// ── Verificar régimen (T-058): solo textContent ──────────────────────────────────
+const btnVerificarRegimen = document.getElementById('btnVerificarRegimen');
+if (btnVerificarRegimen) {
+    btnVerificarRegimen.addEventListener('click', async () => {
+        const mensaje = document.getElementById('regimenMensaje');
+        mensaje.textContent = '';
+        btnVerificarRegimen.disabled = true;
+        try {
+            const res = await fetch(`/api/proveedores/${proveedorId}/verificar-regimen`, {
+                method: 'POST',
+                headers: { [APP_CONFIG.csrf.header]: APP_CONFIG.csrf.token }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success && data.data) {
+                document.getElementById('regimenProveedor').textContent = data.data.regimenHacienda || 'SIN_VERIFICAR';
+                document.getElementById('regimenVerificadoEn').textContent = data.data.regimenVerificadoEn
+                    ? String(data.data.regimenVerificadoEn).replace('T', ' ').substring(0, 16) : 'Sin verificar';
+                mensaje.className = 'small mt-1 text-success';
+                mensaje.textContent = data.message || 'Régimen verificado';
+            } else {
+                mensaje.className = 'small mt-1 text-danger';
+                mensaje.textContent = data.message || 'No se pudo verificar el régimen';
+            }
+        } catch (e) {
+            mensaje.className = 'small mt-1 text-danger';
+            mensaje.textContent = 'Error de conexión. Intente nuevamente.';
+        } finally {
+            btnVerificarRegimen.disabled = false;
+        }
+    });
 }
 
 // ── Form submit ───────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.contabilidad.model;
 
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante;
+import api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
@@ -143,6 +144,15 @@ public class CuentaPorPagar {
     @Column(name = "estado_aceptacion", nullable = false, length = 12)
     @Builder.Default
     private EstadoAceptacionComprobante estadoAceptacion = EstadoAceptacionComprobante.PENDIENTE;
+
+    /**
+     * Régimen del proveedor al registrar la CxP (T-058, ADR-074 §2): copia de {@code proveedores.regimen_hacienda} en ese
+     * momento; no cambia si el proveedor se vuelve a verificar.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "regimen_proveedor", nullable = false, length = 20)
+    @Builder.Default
+    private RegimenHacienda regimenProveedor = RegimenHacienda.SIN_VERIFICAR;
 
     /** Fecha del mensaje receptor; null mientras esté PENDIENTE. */
     @Column(name = "fecha_aceptacion")

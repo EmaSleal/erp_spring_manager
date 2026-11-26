@@ -541,3 +541,91 @@ test('las plantillas de CxP manual y de factura desde la OC proponen el vencimie
     assert.match(t('contabilidad/cuentas-pagar.html'), /CxpLineas\.calcularVencimiento/);
     assert.match(t('proveedores/ordenes-compra.html'), /CxpLineas\.calcularVencimiento/);
 });
+
+// ── T-058 (ADR-074 §1, §5): política de IVA por fecha; el JS solo aplica lo que dice el endpoint ──────────────────────
+
+const REGLA_FIJA = {
+    regimen: 'SIMPLIFICADO', tratamientosAdmitidos: ['NO_ACREDITABLE'], tratamientoFijo: 'NO_ACREDITABLE',
+    ivaTrasladadoCero: false, mensaje: 'Régimen simplificado: el IVA de la compra no es acreditable'
+};
+const REGLA_LIBRE = {
+    regimen: 'GENERAL', tratamientosAdmitidos: ['PLENO', 'USO_COMUN', 'LIMITADO', 'NO_ACREDITABLE'], tratamientoFijo: null,
+    ivaTrasladadoCero: false, mensaje: ''
+};
+
+test('T-058 renderLinea con una regla de tratamiento fijo: el select queda preseleccionado y deshabilitado', () => {
+    const d = cargar();
+    const fila = d.renderLinea(documento(), LINEA({ cuentaId: '7', tratamiento: 'PLENO' }), 0, CUENTAS,
+        { cambio() {}, quitar() {} }, REGLA_FIJA);
+    const c = controlesDe(fila);
+    assert.equal(c.tratamiento.value, 'NO_ACREDITABLE');
+    assert.equal(c.tratamiento.disabled, true);
+    const libre = controlesDe(d.renderLinea(documento(), LINEA({ cuentaId: '7' }), 0, CUENTAS, { cambio() {}, quitar() {} }, REGLA_LIBRE));
+    assert.equal(libre.tratamiento.disabled, false);
+    assert.equal(libre.tratamiento.value, 'PLENO');
+});
+
+test('T-058 aplicarPolitica fija el tratamiento solo cuando la regla lo fija; sin regla no cambia nada', () => {
+    const d = cargar();
+    const lineas = [LINEA({ tratamiento: 'PLENO' }), LINEA({ tratamiento: 'USO_COMUN' })];
+    assert.deepEqual([...d.aplicarPolitica(lineas, REGLA_FIJA).map((l) => l.tratamiento)], ['NO_ACREDITABLE', 'NO_ACREDITABLE']);
+    assert.deepEqual([...d.aplicarPolitica(lineas, REGLA_LIBRE).map((l) => l.tratamiento)], ['PLENO', 'USO_COMUN']);
+    assert.deepEqual([...d.aplicarPolitica(lineas, null).map((l) => l.tratamiento)], ['PLENO', 'USO_COMUN']);
+    assert.equal(lineas[0].tratamiento, 'PLENO');   // no muta la entrada
+    assert.equal(d.lineaPorDefecto(REGLA_FIJA).tratamiento, 'NO_ACREDITABLE');
+    assert.equal(d.lineaPorDefecto(null).tratamiento, 'PLENO');
+});
+
+test('T-058 renderPolitica pinta el mensaje con textContent; uno hostil queda como texto y sin mensaje se limpia', () => {
+    const d = cargar();
+    const cont = crear('div');
+    d.renderPolitica(documento(), cont, { ...REGLA_FIJA, mensaje: MAL });
+    assert.equal(cont.hijos.length, 1);
+    assert.equal(cont.hijos[0].textContent, MAL);
+    d.renderPolitica(documento(), cont, REGLA_LIBRE);
+    assert.equal(cont.hijos.length, 0);
+    d.renderPolitica(documento(), cont, { error: MAL });
+    assert.equal(cont.hijos[0].textContent, MAL);
+    assert.ok(cont.hijos[0].className.includes('alert-danger'));
+});
+
+test('T-058 consultarPolitica: arma la URL con fecha y proveedor, devuelve la regla o el mensaje del 409', async () => {
+    const d = cargar();
+    const urls = [];
+    const ok = async (u) => { urls.push(u); return { ok: true, status: 200, json: async () => ({ success: true, data: REGLA_FIJA }) }; };
+    assert.deepEqual(await d.consultarPolitica(ok, '2027-02-01', 5), REGLA_FIJA);
+    assert.equal(urls[0], '/api/cuentas-pagar/politica-iva?fecha=2027-02-01&proveedorId=5');
+    await d.consultarPolitica(ok, '2027-02-01', null);
+    assert.equal(urls[1], '/api/cuentas-pagar/politica-iva?fecha=2027-02-01');
+    const conflicto = async () => ({ ok: false, status: 409, json: async () => ({ success: false, message: MAL }) });
+    assert.equal((await d.consultarPolitica(conflicto, '1999-01-01', null)).error, MAL);
+    const caido = async () => { throw new Error('red'); };
+    assert.ok((await d.consultarPolitica(caido, '2027-02-01', 5)).error.length > 0);
+    assert.equal(await d.consultarPolitica(ok, '', 5), null);   // sin fecha no se consulta
+});
+
+test('T-058 validar: con proveedor SIMPLIFICADO (IVA trasladado 0) no avisa que el IVA difiere de base × tarifa', () => {
+    const d = cargar();
+    const datos = { numero: 'F-1', fecha: '2027-02-01', hoy: '2027-03-01',
+        lineas: [LINEA({ cuentaId: '7', base: '1000', iva: '0', codigoTarifa: '08', tratamiento: 'NO_ACREDITABLE' })] };
+    assert.equal(d.validar(datos).advertencias.length, 1);                       // hoy: avisa (IVA 0 ≠ 130)
+    const r = d.validar({ ...datos, regla: { ...REGLA_FIJA, ivaTrasladadoCero: true } });
+    assert.deepEqual([...r.errores], []);
+    assert.deepEqual([...r.advertencias], []);
+    assert.equal(d.validar({ ...datos, regla: REGLA_FIJA }).advertencias.length, 1);   // empresa SIMPLIFICADO sola no lo evita
+});
+
+test('T-058 cambiarLinea con regla de IVA trasladado 0: base y tarifa dejan el IVA en 0, sin tocar la tarifa del bien', () => {
+    const d = cargar();
+    const regla = { ...REGLA_FIJA, ivaTrasladadoCero: true };
+    const n = d.cambiarLinea(LINEA({ codigoTarifa: '08' }), 'base', '1000', regla);
+    assert.equal(n.iva, '0');
+    assert.equal(n.codigoTarifa, '08');
+    assert.equal(d.cambiarLinea(LINEA({ codigoTarifa: '08' }), 'base', '1000', null).iva, '130');
+});
+
+test('T-058 puedeRegistrarAceptacion: una CxP NO_APLICA (régimen simplificado) no se acepta ni se rechaza', () => {
+    const d = cargar();
+    assert.equal(d.puedeRegistrarAceptacion({ estado: 'PENDIENTE', estadoAceptacion: 'NO_APLICA' }, true), false);
+    assert.equal(d.puedeRegistrarAceptacion({ estado: 'PENDIENTE', estadoAceptacion: 'PENDIENTE' }, true), true);
+});

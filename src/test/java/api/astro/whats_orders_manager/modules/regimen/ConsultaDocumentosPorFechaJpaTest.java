@@ -64,8 +64,8 @@ class ConsultaDocumentosPorFechaJpaTest {
 
     private void cxp(String emision, String comprobante) {
         jdbc.update("INSERT INTO cuentas_por_pagar (numero, proveedor_id, descripcion, monto, saldo_pendiente, fecha_emision, "
-                + "fecha_comprobante, estado_aceptacion, estado) VALUES ('CP" + System.nanoTime() % 100000 + "', 1, 'c', 1, 1, "
-                + emision + ", " + comprobante + ", 'PENDIENTE', 'PENDIENTE')");
+                + "fecha_comprobante, estado_aceptacion, regimen_proveedor, estado) VALUES ('CP" + System.nanoTime() % 100000 + "', 1, 'c', 1, 1, "
+                + emision + ", " + comprobante + ", 'PENDIENTE', 'SIN_VERIFICAR', 'PENDIENTE')");
     }
 
     @Test

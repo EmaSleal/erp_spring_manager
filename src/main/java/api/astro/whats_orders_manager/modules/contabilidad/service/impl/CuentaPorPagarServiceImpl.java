@@ -25,7 +25,9 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Mone
 import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
 import api.astro.whats_orders_manager.modules.facturacion.service.TipoCambioService;
 import api.astro.whats_orders_manager.modules.facturacion.util.ConversionMoneda;
+import api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompra;
 import api.astro.whats_orders_manager.modules.proveedores.enums.EstadoPagoProveedor;
+import api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import api.astro.whats_orders_manager.modules.proveedores.repository.OrdenCompraRepository;
@@ -69,6 +71,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     private final Clock clock;
     /** T-056: evalúa el tope de compras del RTS tras registrar una CxP (nunca la bloquea). */
     private final TopeComprasRtsService topeComprasRtsService;
+    /** T-058: tratamiento de IVA de la compra según el régimen de la empresa en la fecha y el del proveedor. */
+    private final PoliticaIvaCompra politicaIvaCompra;
 
     private static final String NOMBRE_INDICE_COMPROBANTE = "uk_cpp_proveedor_comprobante";
 
@@ -140,6 +144,13 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
 
         // T-052/T-054: comprobante del proveedor y líneas con cuenta y tratamiento de IVA (ADR-066, ADR-067)
         comprobanteValidator.validar(dto);
+        // T-058 (ADR-074): el régimen de la empresa en la fecha del comprobante y el del proveedor deciden el tratamiento del
+        // IVA (en SIMPLIFICADO solo NO_ACREDITABLE; sin tramo, 409) y la aceptación inicial; se copia el régimen del proveedor
+        // bloqueado: aquí no hay consulta a Hacienda
+        RegimenHacienda regimenProveedor = proveedor.getRegimenHacienda() != null
+            ? proveedor.getRegimenHacienda() : RegimenHacienda.SIN_VERIFICAR;
+        politicaIvaCompra.aplicar(dto.getFechaComprobante(), regimenProveedor, dto.getLineas());
+        EstadoAceptacionComprobante aceptacionInicial = politicaIvaCompra.estadoAceptacionInicial(dto.getFechaComprobante());
         LocalDate fechaVencimiento = comprobanteValidator.resolverVencimiento(dto.getFechaComprobante(),
             dto.getFechaVencimiento(), proveedor.getDiasCredito());
         if (descripcion == null || descripcion.isBlank()) {
@@ -186,7 +197,7 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
             throw new ComprobanteProveedorDuplicadoException(numeroComprobante);
         }
 
-        List<String> advertencias = new ArrayList<>(comprobanteValidator.advertencias(dto));
+        List<String> advertencias = new ArrayList<>(comprobanteValidator.advertencias(dto, regimenProveedor));
         if (oc != null) {
             // lectura bloqueante: ve lo último confirmado de las CxP de la orden (las anuladas no cuentan)
             BigDecimal facturado = cuentaRepository.findByOrdenCompraAndEstadoNotForUpdate(oc, EstadoCuentaPorPagar.ANULADA)
@@ -233,6 +244,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
                 ? dto.getClaveComprobante().trim() : null)
             .fechaComprobante(dto.getFechaComprobante())
             .comprobanteNormalizado(comprobanteNormalizado)
+            .regimenProveedor(regimenProveedor)
+            .estadoAceptacion(aceptacionInicial)
             .build();
         for (CuentaPorPagarLinea linea : lineas) {
             linea.setCuentaPorPagar(cuenta);
@@ -382,7 +395,8 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
     @Override
     @Transactional
     public CuentaPorPagar registrarAceptacion(Long id, AceptacionComprobanteDTO dto, Usuario usuario) {
-        if (dto == null || dto.getEstado() == null || dto.getEstado() == EstadoAceptacionComprobante.PENDIENTE) {
+        if (dto == null || dto.getEstado() == null || dto.getEstado() == EstadoAceptacionComprobante.PENDIENTE
+            || dto.getEstado() == EstadoAceptacionComprobante.NO_APLICA) {
             throw new IllegalArgumentException(MSG_ACEPTACION_ESTADO);
         }
         if (dto.getFecha() == null) {
@@ -402,6 +416,10 @@ public class CuentaPorPagarServiceImpl implements CuentaPorPagarService {
         CuentaPorPagar cuenta = bloquear(id);
         if (cuenta.getEstado() == EstadoCuentaPorPagar.ANULADA) {
             throw new IllegalStateException(MSG_ACEPTACION_ANULADA);
+        }
+        if (cuenta.getEstadoAceptacion() == EstadoAceptacionComprobante.NO_APLICA) {
+            // T-058 (ADR-074 §3): en el régimen simplificado no hay mensaje receptor que registrar
+            throw new IllegalStateException(MSG_ACEPTACION_NO_APLICA);
         }
         LocalDate fechaComprobante = cuenta.getFechaComprobante() != null ? cuenta.getFechaComprobante() : cuenta.getFechaEmision();
         if (fechaComprobante != null && dto.getFecha().isBefore(fechaComprobante)) {

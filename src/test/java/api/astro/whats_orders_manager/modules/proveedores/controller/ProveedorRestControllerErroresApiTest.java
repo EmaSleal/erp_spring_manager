@@ -180,4 +180,32 @@ class ProveedorRestControllerErroresApiTest {
 
         crear(VALIDO).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
     }
+
+    // ── T-058: Verificar régimen ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("T-058: POST /{id}/verificar-regimen → 200 con el proveedor; 502 con mensaje fijo si Hacienda no responde; 404; 403 sin PROVEEDOR_EDITAR")
+    void verificarRegimen() throws Exception {
+        when(proveedorService.verificarRegimen(1L)).thenReturn(Proveedor.builder().id(1L)
+                .regimenHacienda(api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda.SIMPLIFICADO).build());
+        mockMvc.perform(post(URL + "/1/verificar-regimen").with(csrf()).with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.regimenHacienda").value("SIMPLIFICADO"));
+
+        when(proveedorService.verificarRegimen(2L)).thenThrow(
+                new api.astro.whats_orders_manager.modules.proveedores.exception.RegimenNoVerificableException());
+        String cuerpo = mockMvc.perform(post(URL + "/2/verificar-regimen").with(csrf()).with(user("admin").roles("ADMIN")))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.message").value(ProveedorRestController.MENSAJE_REGIMEN_NO_VERIFICABLE))
+                .andReturn().getResponse().getContentAsString();
+        sinFugas(cuerpo);
+
+        when(proveedorService.verificarRegimen(3L)).thenThrow(new NoSuchElementException("x"));
+        mockMvc.perform(post(URL + "/3/verificar-regimen").with(csrf()).with(user("admin").roles("ADMIN")))
+                .andExpect(status().isNotFound());
+
+        when(permisoService.tienePermisoPorCodigo(anyString(), org.mockito.ArgumentMatchers.eq("PROVEEDOR_EDITAR"))).thenReturn(false);
+        mockMvc.perform(post(URL + "/1/verificar-regimen").with(csrf()).with(user("admin").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+    }
 }

@@ -76,8 +76,45 @@
         return codigo || '—';
     }
 
-    function lineaPorDefecto() {
-        return { cuentaId: '', descripcion: '', codigoTarifa: CODIGO_GENERAL, base: '', iva: '', tratamiento: 'PLENO', tarifaLimite: '' };
+    /**
+     * Línea nueva. regla (opcional, la devuelve GET /api/cuentas-pagar/politica-iva, T-058): si fija un tratamiento, la línea
+     * nace con él; sin regla es PLENO. El JS no conoce las reglas, solo aplica lo que dice el servidor.
+     */
+    function lineaPorDefecto(regla) {
+        var trat = regla && regla.tratamientoFijo ? regla.tratamientoFijo : 'PLENO';
+        return { cuentaId: '', descripcion: '', codigoTarifa: CODIGO_GENERAL, base: '', iva: '', tratamiento: trat, tarifaLimite: '' };
+    }
+
+    /** Copia de las líneas con el tratamiento fijo de la regla (si lo hay); sin regla o sin tratamiento fijo, iguales. */
+    function aplicarPolitica(lineas, regla) {
+        return (lineas || []).map(function (l) {
+            var n = {};
+            Object.keys(l).forEach(function (k) { n[k] = l[k]; });
+            if (regla && regla.tratamientoFijo) {
+                n.tratamiento = regla.tratamientoFijo;
+                n.tarifaLimite = '';
+            }
+            return n;
+        });
+    }
+
+    var MSG_POLITICA_NO_DISPONIBLE = 'No se pudo consultar la política de IVA de la fecha; intente de nuevo';
+
+    /**
+     * Consulta la política de IVA de compra de una fecha (y proveedor). fetchFn(url) devuelve una promesa con
+     * { ok, status, json() } (fetch o su envoltura con CSRF). Devuelve la regla, { error: mensaje } si el servidor la
+     * rechaza (409 sin tramo) o falla, o null si no hay fecha.
+     */
+    function consultarPolitica(fetchFn, fecha, proveedorId) {
+        if (esVacio(fecha)) return Promise.resolve(null);
+        var url = '/api/cuentas-pagar/politica-iva?fecha=' + encodeURIComponent(String(fecha).trim());
+        if (!esVacio(proveedorId)) url += '&proveedorId=' + encodeURIComponent(String(proveedorId));
+        return Promise.resolve().then(function () { return fetchFn(url); }).then(function (resp) {
+            return resp.json().then(function (cuerpo) {
+                if (resp.ok && cuerpo && cuerpo.data) return cuerpo.data;
+                return { error: cuerpo && cuerpo.message ? String(cuerpo.message) : MSG_POLITICA_NO_DISPONIBLE };
+            });
+        }).catch(function () { return { error: MSG_POLITICA_NO_DISPONIBLE }; });
     }
 
     /**
@@ -151,15 +188,18 @@
      * Aplica el cambio de un campo a una línea y devuelve la línea nueva: base o tarifa recalculan el IVA (que luego se
      * puede corregir a mano) y un tratamiento distinto de LIMITADO limpia la tarifa límite.
      */
-    function cambiarLinea(linea, campo, valor) {
+    function cambiarLinea(linea, campo, valor, regla) {
         var n = {};
         Object.keys(linea).forEach(function (k) { n[k] = linea[k]; });
         n[campo] = valor;
         if (campo === 'base' || campo === 'codigoTarifa') {
             var pct = porcentajeDe(n.codigoTarifa);
             n.iva = pct === null || esVacio(n.base) ? '' : String(calcularFila(n.base, pct));
+            // T-058: el proveedor del régimen simplificado no traslada IVA; la tarifa del bien se conserva
+            if (regla && regla.ivaTrasladadoCero && n.iva !== '') n.iva = '0';
         }
-        if (campo === 'tratamiento' && valor !== 'LIMITADO') n.tarifaLimite = '';
+        if (regla && regla.tratamientoFijo) n.tratamiento = regla.tratamientoFijo;
+        if ((campo === 'tratamiento' || (regla && regla.tratamientoFijo)) && n.tratamiento !== 'LIMITADO') n.tarifaLimite = '';
         return n;
     }
 
@@ -180,7 +220,8 @@
 
     /**
      * Validaciones del formulario, con las mismas reglas que el servidor. datos: { numero, clave, fecha, hoy (AAAA-MM-DD),
-     * lineas, prorrata (porcentaje del año del comprobante o null), totalComprobante }.
+     * lineas, prorrata (porcentaje del año del comprobante o null), totalComprobante, regla (T-058, opcional: la política de
+     * IVA que devolvió el servidor) }.
      * Devuelve { errores, advertencias } (textos fijos).
      */
     function validar(datos) {
@@ -203,6 +244,7 @@
 
         var lineas = datos.lineas || [];
         if (!lineas.length) errores.push('La cuenta por pagar debe tener al menos una línea');
+        var ivaCero = !!(datos.regla && datos.regla.ivaTrasladadoCero);
         lineas.forEach(function (l, i) {
             var n = i + 1;
             if (esVacio(l.cuentaId)) {
@@ -230,7 +272,8 @@
                 }
             }
             var esperado = ivaEnCentavos(aCentavos(l.base), pct);
-            if (Math.abs(aCentavos(l.iva) - esperado) > TOLERANCIA_CENTAVOS) {
+            // T-058: con IVA trasladado 0 (proveedor SIMPLIFICADO) la diferencia con base × tarifa es lo correcto
+            if (!ivaCero && Math.abs(aCentavos(l.iva) - esperado) > TOLERANCIA_CENTAVOS) {
                 advertencias.push('La línea ' + n + ': el IVA ' + fmt(parseFloat(l.iva))
                     + ' difiere de la base por la tarifa (' + fmt(deCentavos(esperado)) + ')');
             }
@@ -290,7 +333,8 @@
     }
 
     function puedeRegistrarAceptacion(cuenta, tienePermiso) {
-        return !!tienePermiso && !!cuenta && cuenta.estado !== 'ANULADA';
+        // T-058: una CxP del régimen simplificado (NO_APLICA) no se acepta ni se rechaza
+        return !!tienePermiso && !!cuenta && cuenta.estado !== 'ANULADA' && cuenta.estadoAceptacion !== 'NO_APLICA';
     }
 
     function puedeAnular(cuenta, tienePermiso) {
@@ -374,7 +418,7 @@
      * (solo se ve con LIMITADO), acreditable y no acreditable (calculados) y quitar.
      * cuentas: [{ id, codigo, nombre }]. handlers: { cambio(i, campo, valor), quitar(i) }.
      */
-    function renderLinea(doc, linea, indice, cuentas, handlers) {
+    function renderLinea(doc, linea, indice, cuentas, handlers, regla) {
         var tr = doc.createElement('tr');
         tr.setAttribute('data-fila', String(indice));
 
@@ -437,7 +481,9 @@
             o.value = t.codigo;
             selTrat.appendChild(o);
         });
-        selTrat.value = linea.tratamiento || 'PLENO';
+        var fijo = regla && regla.tratamientoFijo ? regla.tratamientoFijo : null;
+        selTrat.value = fijo || linea.tratamiento || 'PLENO';
+        selTrat.disabled = !!fijo;
         selTrat.addEventListener('change', function () { handlers.cambio(indice, 'tratamiento', selTrat.value); });
         var limite = el(doc, 'input', 'form-control form-control-sm text-end mt-1');
         limite.setAttribute('type', 'number');
@@ -489,10 +535,10 @@
         });
     }
 
-    function renderLineas(doc, tbody, lineas, cuentas, handlers, prorrata) {
+    function renderLineas(doc, tbody, lineas, cuentas, handlers, prorrata, regla) {
         limpiar(tbody);
         lineas.forEach(function (l, i) {
-            var fila = renderLinea(doc, l, i, cuentas, handlers);
+            var fila = renderLinea(doc, l, i, cuentas, handlers, regla);
             actualizarLinea(fila, l, prorrata);
             tbody.appendChild(fila);
         });
@@ -526,7 +572,7 @@
         }
 
         contenedor.appendChild(el(doc, 'h6', 'mt-3', 'Aceptación del comprobante'));
-        contenedor.appendChild(fila2(doc, 'Estado', c.estadoAceptacion || 'PENDIENTE'));
+        contenedor.appendChild(fila2(doc, 'Estado', c.estadoAceptacion === 'NO_APLICA' ? 'No aplica (RTS)' : (c.estadoAceptacion || 'PENDIENTE')));
         contenedor.appendChild(fila2(doc, 'Fecha del mensaje receptor', c.fechaAceptacion));
         contenedor.appendChild(fila2(doc, 'Número del mensaje receptor', c.numeroMensajeReceptor));
         if (c.diasDesdeComprobante !== null && c.diasDesdeComprobante !== undefined) {
@@ -571,6 +617,22 @@
         });
         tabla.appendChild(tbody);
         contenedor.appendChild(tabla);
+    }
+
+    /**
+     * Pinta el texto de la política de IVA (o el error de consulta) en el contenedor, solo con textContent. Una regla sin
+     * mensaje deja el contenedor vacío.
+     */
+    function renderPolitica(doc, contenedor, regla) {
+        limpiar(contenedor);
+        if (!regla) return;
+        if (regla.error) {
+            contenedor.appendChild(el(doc, 'div', 'alert alert-danger py-1 px-2 mb-1 small', regla.error));
+            return;
+        }
+        if (!esVacio(regla.mensaje)) {
+            contenedor.appendChild(el(doc, 'div', 'alert alert-info py-1 px-2 mb-1 small', regla.mensaje));
+        }
     }
 
     /** Historial de pagos de una CxP (DTO de la API): una fila por pago, todo con textContent. */
@@ -619,6 +681,9 @@
         calcularLinea: calcularLinea,
         totales: totales,
         lineaPorDefecto: lineaPorDefecto,
+        aplicarPolitica: aplicarPolitica,
+        consultarPolitica: consultarPolitica,
+        renderPolitica: renderPolitica,
         cambiarLinea: cambiarLinea,
         usaProrrata: usaProrrata,
         anioDe: anioDe,

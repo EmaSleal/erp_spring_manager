@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarDTO
 import api.astro.whats_orders_manager.modules.contabilidad.dto.CuentaPorPagarLineaDTO;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.TratamientoIvaCompra;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.TarifaIva;
+import api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -120,9 +121,17 @@ public class ComprobanteProveedorValidator {
 
     /** Avisos (no errores): líneas cuyo IVA difiere de base × tarifa por más de 0,01. Vacío si todo cuadra. */
     public List<String> advertencias(CuentaPorPagarDTO dto) {
+        return advertencias(dto, null);
+    }
+
+    /**
+     * Como {@link #advertencias(CuentaPorPagarDTO)} pero, con un proveedor SIMPLIFICADO (T-058, ADR-074 §5-6), no avisa de la
+     * diferencia entre el IVA y base × tarifa: el proveedor no traslada IVA, así que IVA 0 con tarifa del bien 13 % es lo correcto.
+     */
+    public List<String> advertencias(CuentaPorPagarDTO dto, RegimenHacienda regimenProveedor) {
         List<String> avisos = new ArrayList<>();
         List<CuentaPorPagarLineaDTO> lineas = dto.getLineas();
-        if (lineas == null) {
+        if (lineas == null || regimenProveedor == RegimenHacienda.SIMPLIFICADO) {
             return avisos;
         }
         for (int i = 0; i < lineas.size(); i++) {

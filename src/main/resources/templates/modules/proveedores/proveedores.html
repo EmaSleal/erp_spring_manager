@@ -63,6 +63,7 @@
                                 <th>Categoría</th>
                                 <th>Teléfono</th>
                                 <th>Email</th>
+                                <th>Régimen</th>
                                 <th>Saldo Pendiente</th>
                                 <th>Estado</th>
                                 <th class="text-center">Acciones</th>
@@ -85,6 +86,12 @@
                                 </td>
                                 <td th:text="${p.telefono}"></td>
                                 <td th:text="${p.email}"></td>
+                                <!-- T-058: régimen según /fe/ae y cuándo se verificó -->
+                                <td>
+                                    <span th:text="${p.regimenHacienda}" class="badge bg-secondary">SIN_VERIFICAR</span>
+                                    <div class="small text-muted" th:if="${p.regimenVerificadoEn != null}"
+                                         th:text="${#temporals.format(p.regimenVerificadoEn, 'dd/MM/yyyy')}"></div>
+                                </td>
                                 <td class="text-end">
                                     <span th:if="${p.saldoPendiente != null and p.saldoPendiente.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
                                           class="text-danger fw-bold"

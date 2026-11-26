@@ -95,7 +95,7 @@ class AsientoCompraCxpManualTest {
                 ordenCompraRepository, service, new TipoCambioService(tipoCambioRepository),
                 new ComprobanteProveedorValidator(RELOJ_PRUEBA), mock(api.astro.whats_orders_manager.modules.contabilidad.repository.ProrrataIvaRepository.class),
                 mock(PagoProveedorRepository.class),
-                mock(UsuarioActividadService.class), RELOJ_PRUEBA, tope);
+                mock(UsuarioActividadService.class), RELOJ_PRUEBA, tope, api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompraGeneral.politica());
         long id = 1;
         List<ParametroContable> parametros = new ArrayList<>();
         for (String clave : List.of("CPP_CUENTA_COMPRAS", "CPP_IVA_CREDITO_FISCAL", "CPP_CUENTA_POR_PAGAR")) {
