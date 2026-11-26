@@ -51,7 +51,8 @@ public record CuentaPorPagarVistaDTO(
         Integer anuladaPorId,
         LocalDateTime fechaAnulacion,
         String motivoAnulacion,
-        String notas) {
+        String notas,
+        String adjuntoNombre) {
 
     /**
      * Línea de la CxP: cuenta (código y nombre), tarifa ({@code codigoTarifa} y {@code porcentaje} son null cuando es «sin
@@ -95,6 +96,7 @@ public record CuentaPorPagarVistaDTO(
             c.getLineas().stream().map(Linea::de).toList(),
             aceptacion != null ? aceptacion.name() : EstadoAceptacionComprobante.PENDIENTE.name(),
             c.getFechaAceptacion(), c.getNumeroMensajeReceptor(), dias,
-            c.getAnuladaPorId(), c.getFechaAnulacion(), c.getMotivoAnulacion(), c.getNotas());
+            c.getAnuladaPorId(), c.getFechaAnulacion(), c.getMotivoAnulacion(), c.getNotas(),
+            c.getAdjuntoRuta() != null ? c.getAdjuntoNombreOriginal() : null);
     }
 }

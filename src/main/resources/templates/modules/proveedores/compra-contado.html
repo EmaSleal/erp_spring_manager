@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head th:replace="~{shared/layout :: head}">
+    <title>Compra de contado</title>
+</head>
+<body>
+
+    <div th:replace="~{shared/components/navbar :: navbar}"></div>
+    <div th:replace="~{shared/components/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div class="container-fluid py-4">
+
+            <div th:replace="~{shared/fragments/page-header :: breadcrumbNested('/proveedores', 'fas fa-truck', 'Proveedores', 'fas fa-cash-register', 'Compra de contado')}"></div>
+
+            <div class="page-header mb-4">
+                <div th:replace="~{shared/fragments/page-header :: pageHeaderContent('fas fa-cash-register', 'text-primary', 'Registro rápido de', 'Compra de contado', 'Registra el comprobante del proveedor y su pago desde caja en un solo paso')}"></div>
+            </div>
+
+            <!-- T-058 (ADR-077 §1-2): un solo envío crea la cuenta por pagar y su pago; todo se pinta con textContent -->
+            <form id="formCompraContado" novalidate th:data-hoy="${hoy}" th:data-adjunto-max="${tamanoMaximoAdjunto}" autocomplete="off">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-3">Proveedor</h6>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label" for="ccBuscarProveedor">Buscar por nombre o cédula</label>
+                                <input type="search" class="form-control" id="ccBuscarProveedor" maxlength="100"
+                                       placeholder="Nombre o cédula del proveedor">
+                            </div>
+                        </div>
+                        <div id="ccResultadosProveedor" class="list-group mt-2"></div>
+                        <div id="ccNuevoProveedor" class="row g-2 align-items-end mt-2" style="display: none;">
+                            <div class="col-md-4">
+                                <label class="form-label" for="ccNuevoNombre">Nombre del proveedor nuevo</label>
+                                <input type="text" class="form-control" id="ccNuevoNombre" maxlength="200">
+                            </div>
+                            <div class="col-md-auto">
+                                <button type="button" class="btn btn-primary" id="ccBtnCrearProveedor">
+                                    <i class="fas fa-user-plus me-1"></i>Crear con la cédula y consultar régimen
+                                </button>
+                            </div>
+                            <div class="col-12 small text-muted" id="ccNuevoCedula"></div>
+                        </div>
+                        <div id="ccMensajeProveedor" class="mt-2"></div>
+                        <div id="ccProveedorElegido" class="mt-3"></div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-3">Comprobante del proveedor</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label" for="ccNumero">Número del comprobante <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="ccNumero" maxlength="50">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" for="ccFecha">Fecha del comprobante <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="ccFecha">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label" for="ccClave">Clave (50 dígitos, opcional)</label>
+                                <input type="text" class="form-control" id="ccClave" maxlength="50" inputmode="numeric">
+                            </div>
+                        </div>
+                        <div id="ccPoliticaMensaje" class="mt-2"></div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Líneas <span class="text-danger">*</span></h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="ccBtnAgregarLinea">
+                                <i class="fas fa-plus me-1"></i>Agregar línea
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-1">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 15rem;">Cuenta</th>
+                                        <th style="min-width: 10rem;">Descripción</th>
+                                        <th style="min-width: 9rem;">Tarifa del bien</th>
+                                        <th class="text-end" style="min-width: 7rem;">Monto (base)</th>
+                                        <th class="text-end" style="min-width: 6rem;">IVA trasladado</th>
+                                        <th style="min-width: 11rem;">Tratamiento</th>
+                                        <th class="text-end">Acreditable</th>
+                                        <th class="text-end">No acreditable</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ccLineas"></tbody>
+                            </table>
+                        </div>
+                        <div id="ccTotal" class="text-end fw-semibold"></div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-3">Pago</h6>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label" for="ccMetodo">Método de pago</label>
+                                <select class="form-select" id="ccMetodo"></select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label" for="ccOrigen">Origen del pago</label>
+                                <select class="form-select" id="ccOrigen"></select>
+                                <div class="form-text" id="ccOrigenAyuda"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="ccReferencia">Referencia (opcional)</label>
+                                <input type="text" class="form-control" id="ccReferencia" maxlength="100">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-3">Adjunto del comprobante (opcional)</h6>
+                        <input type="file" class="form-control" id="ccAdjunto" accept=".xml,.pdf,.jpg,.jpeg,.png">
+                        <div class="form-text">XML, PDF, JPG o PNG. Tamaño máximo configurable (5 MB por defecto).</div>
+                    </div>
+                </div>
+
+                <div id="ccMensajes" class="mb-2"></div>
+                <div id="ccConfirmacion" class="mb-2" role="status"></div>
+                <button type="submit" class="btn btn-primary" id="ccBtnRegistrar">
+                    <i class="fas fa-check me-1"></i>Registrar compra de contado
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <th:block th:replace="~{shared/layout :: scripts}"></th:block>
+
+    <script th:src="@{/modules/contabilidad/js/cxp-lineas.js}"></script>
+    <script th:src="@{/modules/proveedores/js/compra-contado.js}"></script>
+    <script th:src="@{/modules/proveedores/js/compra-contado-pagina.js}"></script>
+</body>
+</html>

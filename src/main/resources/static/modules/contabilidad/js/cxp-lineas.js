@@ -562,6 +562,18 @@
         contenedor.appendChild(fila2(doc, 'Clave', c.claveComprobante));
         contenedor.appendChild(fila2(doc, 'Estado', c.estado));
         contenedor.appendChild(fila2(doc, 'Orden de compra', c.ordenCompraNumero));
+        if (c.adjuntoNombre) {
+            // T-058 (ADR-077 §7): comprobante adjunto de la compra de contado; el enlace se arma con setAttribute, el nombre es texto
+            var filaAdjunto = el(doc, 'div', 'row mb-1');
+            filaAdjunto.appendChild(el(doc, 'div', 'col-sm-4 text-muted', 'Comprobante adjunto'));
+            var celdaAdjunto = el(doc, 'div', 'col-sm-8 fw-semibold');
+            var enlace = el(doc, 'a', '', c.adjuntoNombre);
+            enlace.setAttribute('href', '/api/cuentas-pagar/' + encodeURIComponent(String(c.id)) + '/adjunto');
+            enlace.setAttribute('rel', 'noopener');
+            celdaAdjunto.appendChild(enlace);
+            filaAdjunto.appendChild(celdaAdjunto);
+            contenedor.appendChild(filaAdjunto);
+        }
         contenedor.appendChild(fila2(doc, 'Subtotal', c.subtotal === null || c.subtotal === undefined ? null : moneda + ' ' + fmt(c.subtotal)));
         contenedor.appendChild(fila2(doc, 'IVA', c.impuesto === null || c.impuesto === undefined ? null : moneda + ' ' + fmt(c.impuesto)));
         contenedor.appendChild(fila2(doc, 'Monto', moneda + ' ' + fmt(c.monto)));
