@@ -278,7 +278,7 @@
                                                     </a>
                                                 </li>
                                                 <!-- T-057: una venta del régimen simplificado no se emite a Hacienda -->
-                                                <li th:if="${factura.comprobanteElectronico == null and factura.regimenEmisor?.name() != 'SIMPLIFICADO'}"
+                                                <li th:if="${factura.comprobanteElectronico == null and factura.regimenEmisor?.name() != 'SIMPLIFICADO' and factura.comprobanteExternoClave == null}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
                                                     <button type="button" class="dropdown-item"
                                                             th:attr="data-id=${factura.idFactura}"
