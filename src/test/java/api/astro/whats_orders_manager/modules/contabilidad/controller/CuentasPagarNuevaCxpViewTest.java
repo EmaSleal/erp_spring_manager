@@ -122,7 +122,9 @@ class CuentasPagarNuevaCxpViewTest {
         CuentaPorPagarRestController cuentaPorPagarRestController(CuentaPorPagarService cxp,
                                                                   AsientoContableService asientos) {
             return new CuentaPorPagarRestController(cxp, mock(PagoProveedorService.class),
-                    mock(UsuarioService.class), asientos);
+                    mock(UsuarioService.class), asientos,
+                    mock(api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompra.class),
+                    mock(api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService.class));
         }
 
         @Bean
@@ -381,6 +383,23 @@ class CuentasPagarNuevaCxpViewTest {
                 .andExpect(content().string(containsString("CPP-2026-00002")))
                 .andExpect(content().string(not(containsString("CPP-2026-00001"))))
                 .andExpect(content().string(not(containsString("2 días"))));
+    }
+
+    @Test
+    @DisplayName("T-058 una CxP NO_APLICA (régimen simplificado) muestra «No aplica (RTS)», no cuenta días pendientes y el filtro la ofrece")
+    void listado_noAplicaNoEsPendiente() throws Exception {
+        var noAplica = cpp(3L, "CPP-2026-00003", "FE-0003",
+                api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante.NO_APLICA);
+        when(cuentaPorPagarService.findAll()).thenReturn(List.of(noAplica));
+
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("No aplica (RTS)")))
+                .andExpect(content().string(containsString("<option value=\"NO_APLICA\"")))
+                .andExpect(content().string(not(containsString("2 días"))));
+        mockMvc.perform(get("/contabilidad/cuentas-pagar").param("aceptacion", "PENDIENTE").with(user("lector")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("CPP-2026-00003"))));
     }
 
     @Test

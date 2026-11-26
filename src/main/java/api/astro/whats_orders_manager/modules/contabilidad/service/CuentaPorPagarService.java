@@ -26,6 +26,7 @@ public interface CuentaPorPagarService {
     String MSG_ACEPTACION_FECHA_ANTERIOR = "La fecha de aceptación no puede ser anterior a la fecha del comprobante";
     String MSG_ACEPTACION_NUMERO = "El número del mensaje receptor es obligatorio";
     String MSG_ACEPTACION_NUMERO_LARGO = "El número del mensaje receptor no puede exceder 50 caracteres";
+    String MSG_ACEPTACION_NO_APLICA = "Una cuenta por pagar del régimen simplificado no lleva aceptación del comprobante";
     String MSG_ACEPTACION_ANULADA = "No se puede registrar la aceptación de una cuenta por pagar anulada";
 
     CuentaPorPagar crear(CuentaPorPagarDTO dto);

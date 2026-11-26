@@ -176,8 +176,8 @@ class AvisosCriticosSinPreferenciaJpaTest {
 
     private void cxp(String monto, String comprobante) {
         jdbc.update("INSERT INTO cuentas_por_pagar (numero, proveedor_id, descripcion, monto, saldo_pendiente, moneda, tipo_cambio, "
-                + "fecha_emision, fecha_comprobante, estado_aceptacion, estado) VALUES (?, 1, 'c', ?, ?, 'CRC', NULL, DATE '"
-                + comprobante + "', DATE '" + comprobante + "', 'PENDIENTE', 'PENDIENTE')",
+                + "fecha_emision, fecha_comprobante, estado_aceptacion, regimen_proveedor, estado) VALUES (?, 1, 'c', ?, ?, 'CRC', NULL, DATE '"
+                + comprobante + "', DATE '" + comprobante + "', 'PENDIENTE', 'SIN_VERIFICAR', 'PENDIENTE')",
                 "CP" + (++secuencia), new BigDecimal(monto), new BigDecimal(monto));
     }
 

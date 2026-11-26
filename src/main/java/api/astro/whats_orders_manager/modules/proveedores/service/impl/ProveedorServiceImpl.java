@@ -2,7 +2,10 @@ package api.astro.whats_orders_manager.modules.proveedores.service.impl;
 
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import api.astro.whats_orders_manager.modules.producto.repository.ProductoRepository;
+import api.astro.whats_orders_manager.modules.configuracion.service.HaciendaApiService;
 import api.astro.whats_orders_manager.modules.proveedores.dto.ProveedorDTO;
+import api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda;
+import api.astro.whats_orders_manager.modules.proveedores.exception.RegimenNoVerificableException;
 import api.astro.whats_orders_manager.modules.proveedores.exception.CedulaProveedorDuplicadaException;
 import api.astro.whats_orders_manager.modules.proveedores.enums.CategoriaProveedor;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
@@ -10,50 +13,134 @@ import api.astro.whats_orders_manager.modules.proveedores.model.ProveedorItem;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorItemRepository;
 import api.astro.whats_orders_manager.modules.proveedores.repository.ProveedorRepository;
 import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * T-058 (ADR-074 §2): crear, editar la cédula y «Verificar régimen» consultan el régimen del proveedor en /fe/ae. Esa
+ * consulta es una llamada HTTP lenta y nunca corre dentro de una transacción de base de datos: estos métodos no son
+ * transaccionales; consultan a Hacienda primero y guardan después en una transacción corta ({@link TransactionTemplate}).
+ * Si la consulta falla o no responde se guarda SIN_VERIFICAR y el proveedor se crea igual.
+ */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProveedorServiceImpl implements ProveedorService {
 
     private final ProveedorRepository proveedorRepository;
     private final ProveedorItemRepository proveedorItemRepository;
     private final ProductoRepository productoRepository;
+    private final HaciendaApiService haciendaApiService;
+    private final Clock clock;
+    private final TransactionTemplate tx;
+
+    public ProveedorServiceImpl(ProveedorRepository proveedorRepository, ProveedorItemRepository proveedorItemRepository,
+                                ProductoRepository productoRepository, HaciendaApiService haciendaApiService, Clock clock,
+                                PlatformTransactionManager transactionManager) {
+        this.proveedorRepository = proveedorRepository;
+        this.proveedorItemRepository = proveedorItemRepository;
+        this.productoRepository = productoRepository;
+        this.haciendaApiService = haciendaApiService;
+        this.clock = clock;
+        this.tx = new TransactionTemplate(transactionManager);
+    }
+
+    /** Régimen obtenido de /fe/ae y el momento de la consulta (null si no se obtuvo). */
+    private record RegimenConsultado(RegimenHacienda regimen, LocalDateTime verificadoEn) {
+        static RegimenConsultado sinVerificar() {
+            return new RegimenConsultado(RegimenHacienda.SIN_VERIFICAR, null);
+        }
+
+        boolean obtenido() {
+            return regimen != RegimenHacienda.SIN_VERIFICAR;
+        }
+    }
+
+    /** Consulta /fe/ae sin transacción abierta; nunca lanza: cualquier fallo es SIN_VERIFICAR. */
+    private RegimenConsultado consultarRegimen(String cedula) {
+        try {
+            RegimenHacienda regimen = RegimenHacienda.deConsulta(haciendaApiService.consultarContribuyente(cedula));
+            return regimen == RegimenHacienda.SIN_VERIFICAR ? RegimenConsultado.sinVerificar()
+                : new RegimenConsultado(regimen, LocalDateTime.now(clock));
+        } catch (RuntimeException e) {
+            log.warn("No se pudo consultar el régimen del proveedor en Hacienda: {}", e.getClass().getSimpleName());
+            return RegimenConsultado.sinVerificar();
+        }
+    }
+
+    private static void aplicarRegimen(Proveedor p, RegimenConsultado r) {
+        p.setRegimenHacienda(r.regimen());
+        p.setRegimenVerificadoEn(r.verificadoEn());
+    }
 
     @Override
-    @Transactional
     public Proveedor crear(ProveedorDTO dto) {
         if (proveedorRepository.existsByCedula(dto.getCedula())) {
             throw new CedulaProveedorDuplicadaException(dto.getCedula());
         }
-        Proveedor p = toEntity(dto);
-        Proveedor guardado = proveedorRepository.save(p);
-        sincronizarItems(guardado, dto);
-        log.info("Proveedor {} creado: {}", guardado.getCedula(), guardado.getNombre());
-        return guardado;
+        RegimenConsultado regimen = consultarRegimen(dto.getCedula());
+        return tx.execute(status -> {
+            if (proveedorRepository.existsByCedula(dto.getCedula())) {
+                throw new CedulaProveedorDuplicadaException(dto.getCedula());
+            }
+            Proveedor p = toEntity(dto);
+            aplicarRegimen(p, regimen);
+            Proveedor guardado = proveedorRepository.save(p);
+            sincronizarItems(guardado, dto);
+            log.info("Proveedor {} creado: {}", guardado.getCedula(), guardado.getNombre());
+            return guardado;
+        });
     }
 
     @Override
-    @Transactional
     public Proveedor actualizar(Long id, ProveedorDTO dto) {
-        Proveedor p = findById(id);
-        if (!p.getCedula().equals(dto.getCedula()) && proveedorRepository.existsByCedula(dto.getCedula())) {
-            throw new CedulaProveedorDuplicadaException(dto.getCedula());
+        // solo un cambio de cédula vuelve a consultar el régimen (la lectura previa es de su propia transacción corta)
+        String cedulaActual = findById(id).getCedula();
+        boolean cedulaCambio = !cedulaActual.equals(dto.getCedula());
+        RegimenConsultado regimen = cedulaCambio ? consultarRegimen(dto.getCedula()) : null;
+        return tx.execute(status -> {
+            Proveedor p = findById(id);
+            if (!p.getCedula().equals(dto.getCedula()) && proveedorRepository.existsByCedula(dto.getCedula())) {
+                throw new CedulaProveedorDuplicadaException(dto.getCedula());
+            }
+            boolean cambioEnTransaccion = !p.getCedula().equals(dto.getCedula());
+            mapFromDto(p, dto);
+            if (cambioEnTransaccion) {
+                // la cédula cambió: el régimen anterior ya no es del proveedor; si no se pudo consultar queda SIN_VERIFICAR
+                aplicarRegimen(p, regimen != null ? regimen : RegimenConsultado.sinVerificar());
+            }
+            Proveedor guardado = proveedorRepository.save(p);
+            sincronizarItems(guardado, dto);
+            return guardado;
+        });
+    }
+
+    @Override
+    public Proveedor verificarRegimen(Long id) {
+        String cedula = findById(id).getCedula();
+        RegimenConsultado regimen = consultarRegimen(cedula);
+        if (!regimen.obtenido()) {
+            throw new RegimenNoVerificableException();
         }
-        mapFromDto(p, dto);
-        Proveedor guardado = proveedorRepository.save(p);
-        sincronizarItems(guardado, dto);
-        return guardado;
+        return tx.execute(status -> {
+            Proveedor p = findById(id);
+            if (!p.getCedula().equals(cedula)) {
+                // la cédula cambió mientras se consultaba: el resultado no es de este proveedor
+                throw new RegimenNoVerificableException();
+            }
+            aplicarRegimen(p, regimen);
+            return proveedorRepository.save(p);
+        });
     }
 
     @Override

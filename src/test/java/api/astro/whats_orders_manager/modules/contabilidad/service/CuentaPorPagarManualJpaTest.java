@@ -61,7 +61,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
 })
 @Import({AsientoContableService.class, CuentaPorPagarServiceImpl.class, TipoCambioService.class,
-        ComprobanteProveedorValidator.class, api.astro.whats_orders_manager.config.ClockConfig.class})
+        ComprobanteProveedorValidator.class, api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompraGeneral.class, api.astro.whats_orders_manager.config.ClockConfig.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("CxP manual: asiento de compra en la misma transacción (H2)")
 class CuentaPorPagarManualJpaTest {

@@ -16,6 +16,15 @@ public interface ProveedorService {
 
     void desactivar(Long id);
 
+    /**
+     * Vuelve a consultar el régimen del proveedor en Hacienda (/fe/ae) y lo guarda con su fecha (T-058, ADR-074 §2).
+     *
+     * @throws java.util.NoSuchElementException el proveedor no existe
+     * @throws api.astro.whats_orders_manager.modules.proveedores.exception.RegimenNoVerificableException Hacienda no respondió o
+     *         no informó el régimen; lo guardado no cambia
+     */
+    Proveedor verificarRegimen(Long id);
+
     List<Proveedor> findAll();
 
     Proveedor findById(Long id);

@@ -1,6 +1,7 @@
 package api.astro.whats_orders_manager.modules.contabilidad.model;
 
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoAceptacionComprobante;
+import api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda;
 import api.astro.whats_orders_manager.modules.contabilidad.enums.EstadoCuentaPorPagar;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.proveedores.model.OrdenCompra;
@@ -143,6 +144,28 @@ public class CuentaPorPagar {
     @Column(name = "estado_aceptacion", nullable = false, length = 12)
     @Builder.Default
     private EstadoAceptacionComprobante estadoAceptacion = EstadoAceptacionComprobante.PENDIENTE;
+
+    /**
+     * Régimen del proveedor al registrar la CxP (T-058, ADR-074 §2): copia de {@code proveedores.regimen_hacienda} en ese
+     * momento; no cambia si el proveedor se vuelve a verificar.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "regimen_proveedor", nullable = false, length = 20)
+    @Builder.Default
+    private RegimenHacienda regimenProveedor = RegimenHacienda.SIN_VERIFICAR;
+
+    /**
+     * Adjunto del comprobante (T-058, ADR-077 §7): ruta relativa al directorio de uploads (cxp/<id>/<UUID>.<ext>, nombre no
+     * adivinable), nombre con que se subió y tipo de contenido derivado de la extensión permitida. Null si no hay adjunto.
+     */
+    @Column(name = "adjunto_ruta", length = 120)
+    private String adjuntoRuta;
+
+    @Column(name = "adjunto_nombre_original", length = 255)
+    private String adjuntoNombreOriginal;
+
+    @Column(name = "adjunto_tipo", length = 100)
+    private String adjuntoTipo;
 
     /** Fecha del mensaje receptor; null mientras esté PENDIENTE. */
     @Column(name = "fecha_aceptacion")

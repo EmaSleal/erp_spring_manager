@@ -134,6 +134,20 @@
             </a>
         </li>
 
+        <!-- Compra de contado (T-058): exige crear CxP y registrar pagos -->
+        <li class="menu-item"
+            sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR') and @permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_REGISTRAR_PAGO')">
+            <a th:href="@{/compras/contado}"
+               class="menu-link"
+               data-module="compras"
+               data-tooltip="Compra de contado">
+                <div class="menu-icon">
+                    <i class="fas fa-cash-register"></i>
+                </div>
+                <span class="menu-text">Compra de contado</span>
+            </a>
+        </li>
+
         <!-- RRHH -->
         <li class="menu-item"
             sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'RRHH_VER')">

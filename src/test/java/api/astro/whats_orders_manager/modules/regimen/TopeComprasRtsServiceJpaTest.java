@@ -120,8 +120,8 @@ class TopeComprasRtsServiceJpaTest {
 
     private void cxp(String monto, String moneda, String tc, String emision, String comprobante, String estado) {
         jdbc.update("INSERT INTO cuentas_por_pagar (numero, proveedor_id, descripcion, monto, saldo_pendiente, moneda, tipo_cambio, "
-                + "fecha_emision, fecha_comprobante, estado_aceptacion, estado) VALUES (?, 1, 'c', ?, ?, ?, ?, DATE '" + emision
-                + "', " + (comprobante == null ? "NULL" : "DATE '" + comprobante + "'") + ", 'PENDIENTE', ?)",
+                + "fecha_emision, fecha_comprobante, estado_aceptacion, regimen_proveedor, estado) VALUES (?, 1, 'c', ?, ?, ?, ?, DATE '" + emision
+                + "', " + (comprobante == null ? "NULL" : "DATE '" + comprobante + "'") + ", 'PENDIENTE', 'SIN_VERIFICAR', ?)",
                 "CP" + (++secuencia), new BigDecimal(monto), new BigDecimal(monto), moneda, tc == null ? null : new BigDecimal(tc), estado);
     }
 

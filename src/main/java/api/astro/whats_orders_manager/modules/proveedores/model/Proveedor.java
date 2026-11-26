@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.proveedores.model;
 
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.proveedores.enums.CategoriaProveedor;
+import api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda;
 import api.astro.whats_orders_manager.modules.proveedores.enums.TipoProveedor;
 import jakarta.persistence.*;
 import lombok.*;
@@ -114,6 +115,16 @@ public class Proveedor {
     @Column(nullable = false)
     @Builder.Default
     private Boolean activo = true;
+
+    /** Régimen del proveedor según /fe/ae (T-058, ADR-074 §2); SIN_VERIFICAR hasta que se consulte con éxito. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "regimen_hacienda", nullable = false, length = 20)
+    @Builder.Default
+    private RegimenHacienda regimenHacienda = RegimenHacienda.SIN_VERIFICAR;
+
+    /** Cuándo se obtuvo el régimen (reloj de la aplicación); null mientras esté SIN_VERIFICAR. */
+    @Column(name = "regimen_verificado_en")
+    private LocalDateTime regimenVerificadoEn;
 
     @Column(length = 1000)
     private String notas;

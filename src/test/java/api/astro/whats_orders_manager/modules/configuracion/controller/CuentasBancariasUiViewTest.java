@@ -127,7 +127,9 @@ class CuentasBancariasUiViewTest {
         @Bean
         CuentaPorPagarRestController cuentaPorPagarRestController(CuentaPorPagarService cxp, PagoProveedorService pagos,
                                                                   UsuarioService usuarios) {
-            return new CuentaPorPagarRestController(cxp, pagos, usuarios, mock(AsientoContableService.class));
+            return new CuentaPorPagarRestController(cxp, pagos, usuarios, mock(AsientoContableService.class),
+                    mock(api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompra.class),
+                    mock(api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService.class));
         }
 
         @Bean

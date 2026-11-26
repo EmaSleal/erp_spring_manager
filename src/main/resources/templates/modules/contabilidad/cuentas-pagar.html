@@ -168,6 +168,9 @@
                                         <span th:if="${cpp.estadoAceptacion.name() == 'PENDIENTE'}" class="badge bg-warning text-dark">PENDIENTE</span>
                                         <span th:if="${cpp.estadoAceptacion.name() == 'ACEPTADO'}" class="badge bg-success">ACEPTADO</span>
                                         <span th:if="${cpp.estadoAceptacion.name() == 'RECHAZADO'}" class="badge bg-danger">RECHAZADO</span>
+                                        <!-- T-058: en el régimen simplificado no hay aceptación; nunca cuenta como pendiente -->
+                                        <span th:if="${cpp.estadoAceptacion.name() == 'NO_APLICA'}" class="badge bg-secondary"
+                                              title="Régimen simplificado: la compra no lleva mensaje receptor">No aplica (RTS)</span>
                                         <div th:if="${diasPendientes[cpp.id] != null}" class="small text-muted"
                                              th:text="${diasPendientes[cpp.id]} + ' días'">2 días</div>
                                     </td>
@@ -302,6 +305,8 @@
                                     <tbody id="cppLineas"></tbody>
                                 </table>
                             </div>
+                            <!-- T-058: texto de la política de IVA de la fecha del comprobante (lo decide el servidor) -->
+                            <div id="cppPoliticaMensaje"></div>
                             <div id="cppAdvertenciaProrrata"></div>
                             <div id="cppLineasMensajes"></div>
                         </div>
@@ -622,16 +627,19 @@
             document.getElementById('cppFechaComprobante').value = hoyIso();
             vencimientoCppEditado = false;
             proponerVencimientoCpp();
+            reglaCpp = null;
             lineasCpp = [CxpLineas.lineaPorDefecto()]; // una línea por defecto al 13 %, sin cuenta preseleccionada
             prorrataAnio = { anio: null, porcentaje: null };
+            actualizarPoliticaCpp();
             actualizarTipoCambioCpp();
             cargarCuentasLineas().then(() => { repintarLineas(); consultarProrrata(); });
         });
         document.getElementById('cppMoneda').addEventListener('change', actualizarTipoCambioCpp);
         // T-053: vencimiento propuesto = fecha del comprobante + días de crédito del proveedor; deja de proponerse si el usuario lo edita
         document.getElementById('cppFechaVencimiento').addEventListener('input', () => { vencimientoCppEditado = true; revalidarCpp(); });
-        document.getElementById('cppProveedor').addEventListener('change', proponerVencimientoCpp);
+        document.getElementById('cppProveedor').addEventListener('change', () => { proponerVencimientoCpp(); actualizarPoliticaCpp(); });
         document.getElementById('cppFechaComprobante').addEventListener('change', () => {
+            actualizarPoliticaCpp();
             proponerVencimientoCpp();
             actualizarTipoCambioCpp();
             consultarProrrata();
@@ -641,9 +649,24 @@
         document.getElementById('cppFechaComprobante').addEventListener('input', revalidarCpp);
         document.getElementById('cppTotalComprobante').addEventListener('input', revalidarCpp);
         document.getElementById('btnAgregarLinea').addEventListener('click', () => {
-            lineasCpp.push(CxpLineas.lineaPorDefecto());
+            lineasCpp.push(CxpLineas.lineaPorDefecto(reglaCpp));
             repintarLineas();
         });
+    }
+
+    // ── Política de IVA de la fecha (T-058, ADR-074 §1): la decide el servidor; aquí solo se aplica ──
+    let reglaCpp = null;
+    let consultaPoliticaVigente = 0;
+    async function actualizarPoliticaCpp() {
+        const consulta = ++consultaPoliticaVigente;
+        const fecha = document.getElementById('cppFechaComprobante').value;
+        const proveedorId = document.getElementById('cppProveedor').value;
+        const regla = await CxpLineas.consultarPolitica(fetch, fecha, proveedorId);
+        if (consulta !== consultaPoliticaVigente) return; // llegó una consulta más nueva
+        reglaCpp = regla && !regla.error ? regla : null;
+        CxpLineas.renderPolitica(document, document.getElementById('cppPoliticaMensaje'), regla);
+        lineasCpp = CxpLineas.aplicarPolitica(lineasCpp, reglaCpp);
+        repintarLineas();
     }
 
     // ── Líneas (T-054, ADR-067): estado, cuentas elegibles, prorrata del año y recálculo en vivo ──
@@ -660,7 +683,7 @@
     const manejadoresLineas = {
         cambio(i, campo, valor) {
             const antes = lineasCpp[i];
-            const linea = CxpLineas.cambiarLinea(antes, campo, valor);
+            const linea = CxpLineas.cambiarLinea(antes, campo, valor, reglaCpp);
             // el IVA se recalcula solo con la base y la tarifa; una vez editado a mano no se pisa
             if ((campo === 'base' || campo === 'codigoTarifa') && antes.ivaManual) linea.iva = antes.iva;
             if (campo === 'iva') linea.ivaManual = true;
@@ -680,7 +703,7 @@
 
     function repintarLineas() {
         CxpLineas.renderLineas(document, document.getElementById('cppLineas'), lineasCpp, cuentasLineas, manejadoresLineas,
-            prorrataAnio.porcentaje);
+            prorrataAnio.porcentaje, reglaCpp);
         revalidarCpp();
     }
 
@@ -702,6 +725,7 @@
             vencimiento: document.getElementById('cppFechaVencimiento').value,
             hoy: hoyIso(),
             lineas: lineasCpp,
+            regla: reglaCpp,
             prorrata: prorrataAnio.porcentaje,
             totalComprobante: document.getElementById('cppTotalComprobante').value
         };

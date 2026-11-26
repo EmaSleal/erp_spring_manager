@@ -11,7 +11,11 @@ import api.astro.whats_orders_manager.modules.contabilidad.service.ComprobantePr
 import api.astro.whats_orders_manager.modules.contabilidad.service.OrdenCompraNoAdmiteFacturaException;
 import api.astro.whats_orders_manager.modules.contabilidad.service.CuentaPorPagarService;
 import api.astro.whats_orders_manager.modules.contabilidad.service.ProrrataNoConfiguradaException;
+import api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompra;
 import api.astro.whats_orders_manager.modules.proveedores.dto.PagoProveedorDTO;
+import api.astro.whats_orders_manager.modules.proveedores.enums.RegimenHacienda;
+import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
+import api.astro.whats_orders_manager.modules.regimen.service.RegimenNoDefinidoException;
 import api.astro.whats_orders_manager.modules.proveedores.service.PagoProveedorService;
 import api.astro.whats_orders_manager.modules.seguridad.model.Usuario;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
@@ -40,6 +44,8 @@ public class CuentaPorPagarRestController {
     private final PagoProveedorService pagoProveedorService;
     private final UsuarioService usuarioService;
     private final AsientoContableService asientoContableService;
+    private final PoliticaIvaCompra politicaIvaCompra;
+    private final ProveedorService proveedorService;
 
     @GetMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')")
@@ -108,6 +114,31 @@ public class CuentaPorPagarRestController {
         return ResponseEntity.ok(ResponseDTO.success("OK", pagoProveedorService.findByPeriodoVista(desde, hasta)));
     }
 
+    /**
+     * Política de IVA de compra para una fecha de comprobante y, opcionalmente, un proveedor (T-058, ADR-074 §1): régimen de la
+     * empresa en esa fecha, tratamientos admitidos y el tratamiento fijo si lo hay. Solo lectura: la pantalla de CxP y el
+     * formulario de compra de contado lo usan para bloquear el tratamiento sin conocer reglas. 409 si la fecha no tiene tramo.
+     */
+    @GetMapping("/politica-iva")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_VER')"
+        + " or @permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
+    public ResponseEntity<ResponseDTO> politicaIva(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(required = false) Long proveedorId,
+            Authentication authentication
+    ) {
+        try {
+            RegimenHacienda regimenProveedor = proveedorId == null ? null
+                : proveedorService.findById(proveedorId).getRegimenHacienda();
+            var regla = politicaIvaCompra.reglaPara(fecha, regimenProveedor);
+            return ResponseEntity.ok(ResponseDTO.success("OK", regla));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseDTO.error("Proveedor no encontrado"));
+        } catch (RegimenNoDefinidoException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
+        }
+    }
+
     @PostMapping
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'CUENTA_PAGAR_CREAR')")
     public ResponseEntity<ResponseDTO> crear(
@@ -122,8 +153,9 @@ public class CuentaPorPagarRestController {
                 resultado.advertencias());
             return ResponseEntity.ok(ResponseDTO.success("Cuenta por pagar creada: " + cpp.getNumero(), creada));
         } catch (ComprobanteProveedorDuplicadoException | ProrrataNoConfiguradaException
-                 | OrdenCompraNoAdmiteFacturaException e) {
-            // duplicado del comprobante, falta la prorrata del año (T-054) u orden que no admite facturas (T-053): 409
+                 | OrdenCompraNoAdmiteFacturaException | RegimenNoDefinidoException e) {
+            // duplicado del comprobante, falta la prorrata del año (T-054), orden que no admite facturas (T-053) o fecha sin
+            // tramo de régimen (T-058): 409
             return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDTO.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.error(e.getMessage()));

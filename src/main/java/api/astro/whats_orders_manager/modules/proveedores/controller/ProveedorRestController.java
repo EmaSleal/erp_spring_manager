@@ -2,6 +2,7 @@ package api.astro.whats_orders_manager.modules.proveedores.controller;
 
 import api.astro.whats_orders_manager.modules.proveedores.dto.ProveedorDTO;
 import api.astro.whats_orders_manager.modules.proveedores.exception.CedulaProveedorDuplicadaException;
+import api.astro.whats_orders_manager.modules.proveedores.exception.RegimenNoVerificableException;
 import api.astro.whats_orders_manager.modules.proveedores.model.Proveedor;
 import api.astro.whats_orders_manager.modules.proveedores.service.ProveedorService;
 import api.astro.whats_orders_manager.shared.dto.ResponseDTO;
@@ -39,6 +40,7 @@ public class ProveedorRestController {
     static final String MENSAJE_DUPLICADO = "Ya existe un proveedor con la cédula indicada";
     static final String MENSAJE_NO_ENCONTRADO = "Proveedor no encontrado";
     static final String MENSAJE_CONFLICTO = "Los datos del proveedor entran en conflicto con un registro existente";
+    static final String MENSAJE_REGIMEN_NO_VERIFICABLE = "No se pudo verificar el régimen en Hacienda; intente de nuevo más tarde";
     static final String MENSAJE_FORMATO = "Los datos enviados no tienen un formato válido";
     static final String MENSAJE_INESPERADO = "Error inesperado al procesar el proveedor; intente de nuevo";
 
@@ -95,6 +97,17 @@ public class ProveedorRestController {
         return ResponseEntity.ok(ResponseDTO.success("Proveedor actualizado exitosamente", p));
     }
 
+    /** Vuelve a consultar el régimen del proveedor en /fe/ae (T-058). 502 con mensaje fijo si Hacienda no responde. */
+    @PostMapping("/{id}/verificar-regimen")
+    @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_EDITAR')")
+    public ResponseEntity<ResponseDTO> verificarRegimen(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Proveedor p = proveedorService.verificarRegimen(id);
+        return ResponseEntity.ok(ResponseDTO.success("Régimen verificado: " + p.getRegimenHacienda(), p));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'PROVEEDOR_ELIMINAR')")
     public ResponseEntity<ResponseDTO> desactivar(
@@ -126,6 +139,11 @@ public class ProveedorRestController {
     @ExceptionHandler(CedulaProveedorDuplicadaException.class)
     public ResponseEntity<ResponseDTO> cedulaDuplicada(CedulaProveedorDuplicadaException e) {
         return ResponseEntity.badRequest().body(ResponseDTO.error(MENSAJE_DUPLICADO));
+    }
+
+    @ExceptionHandler(RegimenNoVerificableException.class)
+    public ResponseEntity<ResponseDTO> regimenNoVerificable(RegimenNoVerificableException e) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ResponseDTO.error(MENSAJE_REGIMEN_NO_VERIFICABLE));
     }
 
     @ExceptionHandler(NoSuchElementException.class)

@@ -74,7 +74,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
 })
 @Import({AsientoContableService.class, CuentaPorPagarServiceImpl.class, OrdenCompraFacturacionService.class,
-        TipoCambioService.class, ComprobanteProveedorValidator.class, ClockConfig.class})
+        TipoCambioService.class, ComprobanteProveedorValidator.class, api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompraGeneral.class, ClockConfig.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("T-053 — OC: CxP desde las facturas del proveedor, facturado y pendiente (H2)")
 class OrdenCompraFacturacionJpaTest {

@@ -90,7 +90,7 @@ import static org.mockito.Mockito.when;
 })
 @Import({AsientoContableService.class, TipoCambioService.class, CuentaBancariaService.class,
         PagoServiceImpl.class, NumeroPagoGeneratorService.class, PagoMapper.class, FacturaMapper.class,
-        PagoProveedorServiceImpl.class, CuentaPorPagarServiceImpl.class, ComprobanteProveedorValidator.class,
+        PagoProveedorServiceImpl.class, CuentaPorPagarServiceImpl.class, ComprobanteProveedorValidator.class, api.astro.whats_orders_manager.modules.politicas.PoliticaIvaCompraGeneral.class,
         NotaFacturaPrecondiciones.class,
         api.astro.whats_orders_manager.config.ClockConfig.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)

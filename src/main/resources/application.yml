@@ -5,6 +5,11 @@ server:
 spring:
   config:
     import: optional:file:.env[.properties]
+  # T-058: sin esto Spring limita cada archivo a 1 MB y rechazaría adjuntos válidos de hasta app.compras.adjunto.tamano-maximo
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 26MB
   mvc:
     hiddenmethod:
       filter:
@@ -116,6 +121,11 @@ app:
     directorio: ${SELLOS_DIR:/app/sellos}
   uploads:
     directorio: ${UPLOADS_DIR:/app/uploads}
+  # T-058 (ADR-077 §7): adjunto del comprobante de la compra de contado (XML, PDF, JPG o PNG). Se valida en el código con este
+  # límite (5 MB por defecto); el tope de Spring Multipart de más abajo (25 MB) es solo la cota dura del transporte.
+  compras:
+    adjunto:
+      tamano-maximo: ${COMPRAS_ADJUNTO_TAMANO_MAXIMO:5MB}
   # T-036: false apaga todos los métodos @Scheduled (SchedulingConfig). Verificaciones locales: APP_SCHEDULING_ENABLED=false
   scheduling:
     enabled: ${APP_SCHEDULING_ENABLED:true}

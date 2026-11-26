@@ -91,6 +91,7 @@ class OrdenCompraFacturacionIT {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private api.astro.whats_orders_manager.modules.regimen.service.RegimenTributarioService regimenServicio;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private ProveedorRepository proveedorRepository;
     @Autowired private OrdenCompraRepository ocRepository;
@@ -102,6 +103,8 @@ class OrdenCompraFacturacionIT {
 
     @BeforeEach
     void setUp() {
+        // T-058: toda CxP consulta el régimen de la empresa en la fecha del comprobante; con esquema de Hibernate no hay tramos
+        api.astro.whats_orders_manager.modules.regimen.RegimenSembrado.generalSiVacia(jdbc, regimenServicio);
         tx = new TransactionTemplate(transactionManager);
         when(permisoService.tienePermisoPorCodigo(any(), anyString())).thenReturn(false);
         when(permisoService.tienePermisoPorCodigo(eq("lector"), eq("ORDEN_COMPRA_VER"))).thenReturn(true);

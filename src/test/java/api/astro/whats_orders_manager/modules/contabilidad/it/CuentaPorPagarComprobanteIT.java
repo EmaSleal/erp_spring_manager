@@ -102,6 +102,7 @@ class CuentaPorPagarComprobanteIT {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private api.astro.whats_orders_manager.modules.regimen.service.RegimenTributarioService regimenServicio;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private ProveedorRepository proveedorRepository;
     @Autowired private CuentaContableRepository cuentaRepository;
@@ -114,6 +115,8 @@ class CuentaPorPagarComprobanteIT {
 
     @BeforeEach
     void setUp() {
+        // T-058: toda CxP consulta el régimen de la empresa en la fecha del comprobante; con esquema de Hibernate no hay tramos
+        api.astro.whats_orders_manager.modules.regimen.RegimenSembrado.generalSiVacia(jdbc, regimenServicio);
         tx = new TransactionTemplate(transactionManager);
         // Permisos: el usuario «contador» crea y ve; «anulador» además anula; «lector» solo ve
         when(permisoService.tienePermisoPorCodigo(any(), anyString())).thenReturn(false);
