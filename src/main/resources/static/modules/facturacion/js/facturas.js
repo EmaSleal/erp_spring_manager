@@ -93,7 +93,7 @@ function openModal(button) {
             // Estado FE del comprobante vigente (ADR-031): badge con el color e ícono de EstadoComprobante
             feContainer.style.display = 'block';
             // T-040: la acción del botón depende del comprobante vigente (emitir / reenviar / ninguno)
-            const accionEnvio = window.AccionEnvioHacienda.accionEnvioHacienda(data.estadoComprobante);
+            const accionEnvio = window.AccionEnvioHacienda.accionEnvioHacienda(data.estadoComprobante, data.regimenEmisor);
             if (accionEnvio === 'reenviar' && !data.idComprobante) {
                 console.warn('Comprobante vigente sin id: no se puede reenviar desde el modal');
             }
@@ -141,13 +141,15 @@ function openModal(button) {
             } else {
                 // Sin comprobante electrónico: badge «Sin comprobante» y botón para enviarla
                 feEstado.style.display = 'block';
+                // T-057: una venta del régimen simplificado no se emite a Hacienda: sin botón y con su etiqueta
+                const esRts = data.regimenEmisor === 'SIMPLIFICADO';
                 feEstado.innerHTML = `
                     <p class="mb-2"><strong>Estado:</strong>
                         <span class="badge bg-light text-dark border" id="modal-fe-badge">
-                            <i class="bi bi-file-earmark me-1"></i>Sin comprobante
+                            <i class="bi bi-file-earmark me-1"></i>${esRts ? 'Venta del régimen simplificado (no se emite a Hacienda)' : 'Sin comprobante'}
                         </span>
                     </p>`;
-                feBotonEnviar.style.display = 'block';
+                feBotonEnviar.style.display = accionEnvio ? 'block' : 'none';
                 feBotonEnviar.setAttribute('data-id', data.idFactura);
             }
 

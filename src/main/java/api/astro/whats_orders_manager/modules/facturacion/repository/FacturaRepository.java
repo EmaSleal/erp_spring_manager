@@ -145,8 +145,12 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
         + "AND cr.claveNumerica IS NOT NULL AND TRIM(cr.claveNumerica) <> '' AND cr.fechaEmision IS NOT NULL "
         + "AND (:ambiente IS NULL OR cr.ambiente = :ambiente))";
 
-    /** Facturas no anuladas y sin ningún comprobante (de cualquier ambiente), las que se pueden emitir (T-043). */
-    String PREDICADO_SIN_COMPROBANTE = "f.anulada = false AND NOT EXISTS "
+    /**
+     * Facturas no anuladas y sin ningún comprobante (de cualquier ambiente), las que se pueden emitir (T-043). T-057: las del
+     * régimen simplificado no se emiten a Hacienda y no cuentan como pendientes de emitir.
+     */
+    String PREDICADO_SIN_COMPROBANTE = "f.anulada = false "
+        + "AND f.regimenEmisor <> api.astro.whats_orders_manager.modules.regimen.enums.Regimen.SIMPLIFICADO AND NOT EXISTS "
         + "(SELECT 1 FROM ComprobanteElectronico x WHERE x.factura = f)";
 
     /**

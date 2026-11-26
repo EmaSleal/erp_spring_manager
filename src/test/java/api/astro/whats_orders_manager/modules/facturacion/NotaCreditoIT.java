@@ -161,6 +161,7 @@ class NotaCreditoIT {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private api.astro.whats_orders_manager.modules.regimen.service.RegimenTributarioService regimenService;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private FacturaRepository facturaRepository;
     @Autowired private AsientoContableService asientoContableService;
@@ -226,6 +227,8 @@ class NotaCreditoIT {
 
     @BeforeEach
     void setUp() {
+        // T-057: toda factura creada por el servicio exige un tramo de régimen para su fecha
+        api.astro.whats_orders_manager.modules.regimen.RegimenSembrado.generalSiVacia(jdbc, regimenService);
         tx = new TransactionTemplate(transactionManager);
         tx.executeWithoutResult(s -> {
             if (parametroRepository.findByClave(AsientoContableService.CLAVE_VENTA_CXC_CLIENTES).isEmpty()) {

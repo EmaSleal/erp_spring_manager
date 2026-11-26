@@ -2,9 +2,12 @@ package api.astro.whats_orders_manager.modules.facturacion.service;
 
 import api.astro.whats_orders_manager.modules.configuracion.service.ParametroSistemaService;
 import api.astro.whats_orders_manager.modules.facturacion.dto.DesgloseImpuesto;
+import api.astro.whats_orders_manager.modules.facturacion.model.Factura;
+import api.astro.whats_orders_manager.modules.politicas.PoliticaImpuestoVenta;
 import api.astro.whats_orders_manager.modules.producto.model.ArticuloMaestro;
 import api.astro.whats_orders_manager.modules.producto.model.Producto;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,6 +32,10 @@ import java.util.Optional;
  * Tarifa por producto: gravado y porcentaje se resuelven desde el ArticuloMaestro con
  * respaldo en los campos (deprecados) del Producto. Si el producto es gravado y no define
  * porcentaje, se usa la tarifa general del parámetro de sistema {@value #CLAVE_TARIFA_GENERAL}.
+ *
+ * Régimen (T-057, ADR-073 §1, ADR-076 §3): el cálculo de una línea recibe la factura de origen y PoliticaImpuestoVenta decide
+ * por su régimen sellado. En el régimen simplificado la tarifa de cada línea es 0 (impuesto 0, total = importe al precio del
+ * cliente, con o sin precioIncluyeIva); en el general nada cambia.
  */
 @Slf4j
 @Service
@@ -44,9 +51,18 @@ public class CalculadoraImpuestoService {
     private static final int DECIMALES = 2;
 
     private final ParametroSistemaService parametroSistemaService;
+    private final PoliticaImpuestoVenta politicaImpuestoVenta;
 
-    public CalculadoraImpuestoService(ParametroSistemaService parametroSistemaService) {
+    @Autowired
+    public CalculadoraImpuestoService(ParametroSistemaService parametroSistemaService,
+                                      PoliticaImpuestoVenta politicaImpuestoVenta) {
         this.parametroSistemaService = parametroSistemaService;
+        this.politicaImpuestoVenta = politicaImpuestoVenta;
+    }
+
+    /** Para pruebas unitarias sin Spring: la política de impuesto de venta no tiene dependencias. */
+    public CalculadoraImpuestoService(ParametroSistemaService parametroSistemaService) {
+        this(parametroSistemaService, new PoliticaImpuestoVenta());
     }
 
     /**
@@ -71,12 +87,18 @@ public class CalculadoraImpuestoService {
     }
 
     /**
-     * Desglosa el importe de una línea de venta según el producto: tarifa resuelta por
-     * producto y su indicador precioIncluyeIva (null se trata como true, valor por defecto ADR-009).
+     * Desglosa el importe de una línea de venta de la factura según el producto: tarifa resuelta por producto y su indicador
+     * precioIncluyeIva (null se trata como true, valor por defecto ADR-009), y la política del régimen de la factura
+     * (SIMPLIFICADO → tarifa 0).
      */
-    public DesgloseImpuesto desglosarLinea(Producto producto, BigDecimal importe) {
+    public DesgloseImpuesto desglosarLinea(Factura factura, Producto producto, BigDecimal importe) {
         boolean incluyeIva = producto == null || !Boolean.FALSE.equals(producto.getPrecioIncluyeIva());
-        return desglosar(importe, resolverTarifa(producto), incluyeIva);
+        return desglosar(importe, tarifaDe(factura, producto), incluyeIva);
+    }
+
+    /** Tarifa de IVA de una línea de la factura: la del producto, o 0 si el régimen de la factura no cobra IVA. */
+    public BigDecimal tarifaDe(Factura factura, Producto producto) {
+        return politicaImpuestoVenta.tarifaAplicable(factura, resolverTarifa(producto));
     }
 
     /**

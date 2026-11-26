@@ -61,6 +61,7 @@ public class FacturaMapper {
                 .fechaEntrega(factura.getFechaEntrega())
                 .fechaVencimiento(factura.getFechaVencimiento())
                 .fechaEmision(factura.getFechaEmision())
+                .regimenEmisor(factura.getRegimenEmisor())
                 .entregado(factura.getEntregado())
                 .estadoPago(factura.getEstadoPago())
                 .descripcion(factura.getDescripcion())

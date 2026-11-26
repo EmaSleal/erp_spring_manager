@@ -118,6 +118,16 @@ public class RegimenTributarioService {
     }
 
     /**
+     * Si empieza algún tramo de {@code regimen} con inicio posterior a {@code despuesDe} y no posterior a {@code hasta}
+     * (T-057, ADR-076 §2: «desde el primer tramo SIMPLIFICADO posterior al régimen de la factura»). Mira el inicio de los
+     * tramos, no los días que cubren: un tramo que ya regía en {@code despuesDe} no cuenta.
+     */
+    public boolean empiezaTramo(Regimen regimen, LocalDate despuesDe, LocalDate hasta) {
+        return tramos().stream().anyMatch(t -> t.getRegimen() == regimen && t.getVigenteDesde().isAfter(despuesDe)
+            && !t.getVigenteDesde().isAfter(hasta));
+    }
+
+    /**
      * Los días de {@code [desde, hasta]} en que rige {@code regimen}, como rangos cerrados disjuntos y en orden. Cada tramo
      * rige hasta el día anterior al inicio del siguiente; un rango anterior al primer tramo no devuelve nada.
      */

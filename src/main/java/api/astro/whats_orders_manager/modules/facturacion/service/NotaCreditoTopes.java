@@ -63,7 +63,7 @@ public class NotaCreditoTopes {
             BigDecimal precio = linea.getPrecioUnitario() != null ? linea.getPrecioUnitario() : BigDecimal.ZERO;
             importe = precio.multiply(cantidad(linea));
         }
-        return calculadoraImpuestoService.desglosarLinea(linea.getProducto(), importe);
+        return calculadoraImpuestoService.desglosarLinea(linea.getFactura(), linea.getProducto(), importe);
     }
 
     public static BigDecimal cantidad(LineaFactura linea) {

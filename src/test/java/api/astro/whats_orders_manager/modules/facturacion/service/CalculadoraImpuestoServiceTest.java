@@ -115,7 +115,7 @@ class CalculadoraImpuestoServiceTest {
             Producto p = producto(true, TRECE);
             p.setPrecioIncluyeIva(false);
 
-            DesgloseImpuesto d = calculadora.desglosarLinea(p, new BigDecimal("500.00"));
+            DesgloseImpuesto d = calculadora.desglosarLinea(new api.astro.whats_orders_manager.modules.facturacion.model.Factura(), p, new BigDecimal("500.00"));
 
             assertThat(d.base()).isEqualByComparingTo("500.00");
             assertThat(d.impuesto()).isEqualByComparingTo("65.00");
@@ -145,7 +145,7 @@ class CalculadoraImpuestoServiceTest {
             Producto p = producto(true, TRECE);
             p.setArticuloMaestro(maestro);
 
-            DesgloseImpuesto d = calculadora.desglosarLinea(p, new BigDecimal("1130.00"));
+            DesgloseImpuesto d = calculadora.desglosarLinea(new api.astro.whats_orders_manager.modules.facturacion.model.Factura(), p, new BigDecimal("1130.00"));
 
             assertThat(d.base()).isEqualByComparingTo("1130.00");
             assertThat(d.impuesto()).isEqualByComparingTo("0");

@@ -90,8 +90,8 @@ class RegimenCrearEnElPasadoJpaTest {
     }
 
     private void facturaDeHoy() {
-        jdbc.update("INSERT INTO factura (id_cliente, anulada, monto_acreditado, acreditada_totalmente, create_date, fecha_contable) "
-                + "VALUES (1, TRUE, 0, FALSE, TIMESTAMP '2026-11-25 09:00:00', NULL)");
+        jdbc.update("INSERT INTO factura (id_cliente, anulada, monto_acreditado, acreditada_totalmente, create_date, fecha_contable, regimen_emisor) "
+                + "VALUES (1, TRUE, 0, FALSE, TIMESTAMP '2026-11-25 09:00:00', NULL, 'GENERAL')");
     }
 
     private void cxp(String comprobante) {

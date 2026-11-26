@@ -49,3 +49,22 @@ test('texto del botón según la acción', () => {
     assert.equal(a.textoBotonEnvio('reenviar'), 'Reenviar a Hacienda');
     assert.equal(a.textoBotonEnvio(null), null);
 });
+
+// T-057 criterio 11: una factura del régimen simplificado no se emite a Hacienda: el botón se oculta (acción null)
+// sea cual sea el estado del comprobante vigente.
+test('T-057: régimen SIMPLIFICADO → sin botón de envío en ningún estado', () => {
+    const a = cargar();
+    for (const e of [null, undefined, '', 'RECHAZADO', 'NO_TRANSMITIDO', 'ERROR', 'GENERADO', 'ACEPTADO']) {
+        assert.equal(a.accionEnvioHacienda(e, 'SIMPLIFICADO'), null, String(e));
+    }
+});
+
+test('T-057: régimen GENERAL o sin régimen en el DTO → misma acción que antes', () => {
+    const a = cargar();
+    for (const regimen of ['GENERAL', null, undefined]) {
+        assert.equal(a.accionEnvioHacienda(null, regimen), 'emitir');
+        assert.equal(a.accionEnvioHacienda('RECHAZADO', regimen), 'emitir');
+        assert.equal(a.accionEnvioHacienda('ERROR', regimen), 'reenviar');
+        assert.equal(a.accionEnvioHacienda('ACEPTADO', regimen), null);
+    }
+});

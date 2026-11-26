@@ -67,7 +67,7 @@ public class TotalesFacturaService {
         for (LineaFactura linea : lineas) {
             linea.setSubtotal(importeLinea(linea.getCantidad(), linea.getPrecioUnitario()));
             Producto producto = resolverProducto(linea.getProducto());
-            desglose = desglose.sumar(calculadoraImpuestoService.desglosarLinea(producto, linea.getSubtotal()));
+            desglose = desglose.sumar(calculadoraImpuestoService.desglosarLinea(factura, producto, linea.getSubtotal()));
         }
         factura.setSubtotal(desglose.base());
         factura.setIgv(desglose.impuesto());

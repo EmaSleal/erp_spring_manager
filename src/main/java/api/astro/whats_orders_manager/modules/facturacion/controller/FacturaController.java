@@ -269,6 +269,9 @@ public class FacturaController {
             
         } catch (FacturaBloqueadaException e) {
             throw e; // 409 (FacturaBloqueadaAdvice)
+        } catch (api.astro.whats_orders_manager.modules.facturacion.exception.FacturaRegimenConflictoException
+                 | api.astro.whats_orders_manager.modules.regimen.service.RegimenNoDefinidoException e) {
+            throw e; // 409 (FacturaRegimenAdvice)
         } catch (Exception e) {
             log.error("Error al guardar factura: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();

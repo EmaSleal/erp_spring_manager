@@ -52,6 +52,7 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
+import api.astro.whats_orders_manager.modules.regimen.enums.Regimen;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -78,6 +79,10 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
     @Value("${app.sellos.directorio:/app/sellos}")
     private String sellosDir;
 
+    /** T-057: título del comprobante de venta del RTS; configurable mientras P-127 no fije el texto definitivo. */
+    @Value("${facturacion.pdf.titulo-rts:" + PdfFiscalDecision.TITULO_RTS + "}")
+    private String tituloRts = PdfFiscalDecision.TITULO_RTS;
+
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     @Override
@@ -86,9 +91,12 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                 .orElseThrow(() -> new NoSuchElementException("Factura no encontrada: " + facturaId));
 
         ComprobanteElectronico vigente = factura.getComprobanteElectronico();
-        PdfFiscalDecision decision = PdfFiscalDecision.de(
-                vigente != null ? vigente.getEstado() : null,
-                vigente != null ? vigente.getTipoComprobante() : null);
+        // T-057 (ADR-073 §1): la venta del régimen simplificado es un comprobante de venta del RTS, sin datos de Hacienda ni IVA
+        PdfFiscalDecision decision = factura.getRegimenEmisor() == Regimen.SIMPLIFICADO
+                ? PdfFiscalDecision.deSimplificado(tituloRts)
+                : PdfFiscalDecision.de(
+                        vigente != null ? vigente.getEstado() : null,
+                        vigente != null ? vigente.getTipoComprobante() : null);
 
         try {
             return renderizar(documentoDe(factura, vigente), decision, null);
@@ -225,7 +233,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             doc.add(separator());
 
-            addLineasTable(doc, d.lineas());
+            addLineasTable(doc, d.lineas(), decision.mostrarIva());
 
             doc.add(separator());
 
@@ -233,7 +241,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             doc.add(separator());
 
-            addFooter(doc, empresa, d);
+            addFooter(doc, empresa, d, decision.mostrarIva());
 
             if (empresa.tieneTextoLegal()) {
                 doc.add(separator());
@@ -417,11 +425,16 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     // ─── Lines table ──────────────────────────────────────────────────────────
 
-    private void addLineasTable(Document doc, List<LineaPdf> lineas) {
-        float[] cols = {0.4f, 0.8f, 1.6f, 3.5f, 0.8f, 0.7f, 1.2f, 0.7f, 1.2f};
+    private void addLineasTable(Document doc, List<LineaPdf> lineas, boolean mostrarIva) {
+        // T-057: el comprobante de venta del RTS no lleva la columna %IVA
+        float[] cols = mostrarIva
+                ? new float[] {0.4f, 0.8f, 1.6f, 3.5f, 0.8f, 0.7f, 1.2f, 0.7f, 1.2f}
+                : new float[] {0.4f, 0.8f, 1.6f, 3.5f, 0.8f, 0.7f, 1.2f, 1.2f};
         Table table = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
 
-        String[] headers = {"Lin", "Código", "Cod Cabys", "Detalle", "Cantidad", "UM", "Precio", "%IVA", "Total"};
+        String[] headers = mostrarIva
+                ? new String[] {"Lin", "Código", "Cod Cabys", "Detalle", "Cantidad", "UM", "Precio", "%IVA", "Total"}
+                : new String[] {"Lin", "Código", "Cod Cabys", "Detalle", "Cantidad", "UM", "Precio", "Total"};
         for (String h : headers) {
             table.addHeaderCell(new Cell()
                     .add(new Paragraph(h).setBold().setFontSize(8))
@@ -440,7 +453,9 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
             table.addCell(lineCell(l.cantidad(), TextAlignment.RIGHT));
             table.addCell(lineCell(l.um(), TextAlignment.LEFT));
             table.addCell(lineCell(l.precio(), TextAlignment.RIGHT));
-            table.addCell(lineCell(l.pctIva(), TextAlignment.LEFT));
+            if (mostrarIva) {
+                table.addCell(lineCell(l.pctIva(), TextAlignment.LEFT));
+            }
             table.addCell(lineCell(l.total(), TextAlignment.RIGHT));
         }
 
@@ -458,7 +473,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
     // ─── Footer ───────────────────────────────────────────────────────────────
 
-    private void addFooter(Document doc, Empresa empresa, DocumentoPdf d) {
+    private void addFooter(Document doc, Empresa empresa, DocumentoPdf d, boolean mostrarIva) {
         float[] cols = {60f, 40f};
         Table footer = new Table(UnitValue.createPercentArray(cols)).useAllAvailableWidth();
 
@@ -501,7 +516,9 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         addTotalRow(totTable, "Sub Total", prefix + String.format("%,.2f", subtotal), false);
         addTotalRow(totTable, "Descuento", prefix + String.format("%,.2f", descuento), false);
         addTotalRow(totTable, "Neto", prefix + String.format("%,.2f", neto), false);
-        addTotalRow(totTable, "IVA:", prefix + String.format("%,.2f", iva), false);
+        if (mostrarIva) {
+            addTotalRow(totTable, "IVA:", prefix + String.format("%,.2f", iva), false);
+        }
         addTotalRow(totTable, "Total", prefix + String.format("%,.2f", total), true);
         addTotalRow(totTable, "Moneda:", monedaLabel, false);
         rightCell.add(totTable);

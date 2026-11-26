@@ -690,7 +690,7 @@ public class XmlGeneratorServiceImpl implements XmlGeneratorService {
             BigDecimal cantidad = linea.getCantidad() != null ? BigDecimal.valueOf(linea.getCantidad()) : BigDecimal.ONE;
             importe = precio.multiply(cantidad);
         }
-        return calculadoraImpuestoService.desglosarLinea(linea.getProducto(), importe);
+        return calculadoraImpuestoService.desglosarLinea(linea.getFactura(), linea.getProducto(), importe);
     }
 
     /**

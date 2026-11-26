@@ -50,8 +50,8 @@ class ConsultaDocumentosPorFechaJpaTest {
     }
 
     private void factura(String creada, String contable) {
-        jdbc.update("INSERT INTO factura (id_cliente, anulada, monto_acreditado, acreditada_totalmente, create_date, fecha_contable) "
-                + "VALUES (1, FALSE, 0, FALSE, " + creada + ", " + contable + ")");
+        jdbc.update("INSERT INTO factura (id_cliente, anulada, monto_acreditado, acreditada_totalmente, create_date, fecha_contable, regimen_emisor) "
+                + "VALUES (1, FALSE, 0, FALSE, " + creada + ", " + contable + ", 'GENERAL')");
     }
 
     private void nota(String emision, String contable) {

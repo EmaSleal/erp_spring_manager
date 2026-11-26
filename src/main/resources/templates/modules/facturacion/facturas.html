@@ -276,7 +276,8 @@
                                                         <i class="fas fa-dollar-sign me-2"></i>Registrar Pago
                                                     </a>
                                                 </li>
-                                                <li th:unless="${factura.comprobanteElectronico}"
+                                                <!-- T-057: una venta del régimen simplificado no se emite a Hacienda -->
+                                                <li th:if="${factura.comprobanteElectronico == null and factura.regimenEmisor?.name() != 'SIMPLIFICADO'}"
                                                     sec:authorize="@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_CREAR')">
                                                     <button type="button" class="dropdown-item"
                                                             th:attr="data-id=${factura.idFactura}"

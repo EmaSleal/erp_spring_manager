@@ -4,7 +4,9 @@ import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPagoFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
+import api.astro.whats_orders_manager.modules.regimen.enums.Regimen;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
@@ -114,6 +116,17 @@ public class Factura {
     @Column(name = "periodo_fiscal_atribucion", length = 7, columnDefinition = "CHAR(7)")
     @JsonIgnore
     private String periodoFiscalAtribucion;
+
+    /**
+     * Régimen tributario sellado al crear la factura (T-057, ADR-073): el vigente en su fecha de documento. Nunca se
+     * recalcula ni se recibe del cliente (solo lectura en JSON). El valor inicial GENERAL solo cubre a las entidades que se
+     * arman fuera del servicio (pruebas, importaciones): FacturaServiceImpl.save lo reemplaza siempre al crear con el
+     * régimen del tramo, y al editar conserva el de la base.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "regimen_emisor", nullable = false, updatable = false, length = 12)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Regimen regimenEmisor = Regimen.GENERAL;
 
     /** Razón de la InformacionReferencia 07/15 de la sustituta (3 a 180 caracteres). */
     @Column(name = "razon_sustitucion", length = 180)
