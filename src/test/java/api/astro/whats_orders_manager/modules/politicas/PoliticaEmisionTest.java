@@ -89,7 +89,7 @@ class PoliticaEmisionTest {
     }
 
     @Test
-    @DisplayName("GENERAL sin ningún tramo SIMPLIFICADO posterior (semilla de producción: julio-agosto sellados GENERAL) → se emite como hoy")
+    @DisplayName("GENERAL sin ningún tramo SIMPLIFICADO posterior (ningún tramo SIMPLIFICADO empieza después de hoy) → se emite como hoy")
     void general_sinTramoSimplificadoPosterior_seEmite() {
         PoliticaEmision politica = politica("2026-11-25", tramo(Regimen.SIMPLIFICADO, "2000-01-01"),
                 tramo(Regimen.GENERAL, "2026-09-01"));
