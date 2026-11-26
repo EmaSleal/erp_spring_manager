@@ -21,7 +21,7 @@ PoliticaRegimenDocumentoTest.java:[41,20] cannot find symbol class PoliticaRegim
 
 javac se detiene en los símbolos de políticas; el resto de las clases nuevas dependen además de `Factura.setRegimenEmisor`,
 `CalculadoraImpuestoService.desglosarLinea(Factura, Producto, BigDecimal)`, `NotaFacturaService.MENSAJE_REGIMEN_SIMPLIFICADO`,
-`PdfFiscalDecision.deSimplificado/mostrarIva` y el archivo `V60__factura_regimen_emisor.sql`, que tampoco existían.
+`PdfFiscalDecision.deSimplificado/mostrarIva` y la migración V60 (`V60__factura_regimen_emisor`), que tampoco existían.
 
 | Clase de prueba | Criterios | Rojo |
 |---|---|---|
@@ -123,3 +123,22 @@ ComprobanteExternoIT#avisoElVeinte, #listaFiltradaDelAviso  fallo: con un RECHAZ
 ```
 Verde: ver el resultado de la corrida completa en el informe (PoliticaEmision: origen raíz con protección de ciclos;
 PREDICADO_PENDIENTE_CIERRE: sin comprobante vigente distinto de RECHAZADO; PREDICADO_SIN_COMPROBANTE sin cambios).
+
+## Revisión 1: criterios 19 y 20 (relleno de V60 según el tramo vigente)
+
+Se editó V60 (no desplegada en producción) y se reemplazó el SQL por una migración Java de la misma versión,
+`db/migration/V60__factura_regimen_emisor.java` (como V51 y V54: un abort con mensaje legible no se puede hacer en SQL sin rutinas, ADR-028).
+
+Primero se reescribió `MigracionFacturaRegimenEmisorIT` (7 pruebas: tramo SIMPLIFICADO, tramo GENERAL, frontera exacta con las
+fechas leídas de las filas sembradas de `regimen_tributario`, tramo futuro, factura sin tramo → falla sin dejar la columna,
+idempotencia y restricciones). Contra el V60 anterior (relleno fijo GENERAL):
+
+```
+Tests run: 6, Failures: 4
+  enTramoSimplificado  expected SIMPLIFICADO but was "GENERAL"
+  frontera             expected SIMPLIFICADO but was "GENERAL"
+  variosTramos         expected SIMPLIFICADO but was "GENERAL"
+  sinTramoFalla        Expecting code to raise a throwable
+```
+
+Verde con la nueva V60: `Tests run: 7, Failures: 0, Errors: 0` (`./mvnw verify -Dit.test=MigracionFacturaRegimenEmisorIT ...`).

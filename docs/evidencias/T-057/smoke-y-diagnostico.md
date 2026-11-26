@@ -42,14 +42,7 @@ Ejemplo medido en el smoke (producto gravado 13 %, 2 × 500,00): general 884,96 
 
 ### 1.4 Hallazgo del criterio 2 (relleno de las facturas existentes)
 
-La migración V60 selló las 12 facturas del volcado como GENERAL. El tramo histórico (semilla de T-056) dice SIMPLIFICADO antes del 2026-09-01:
-
-| Facturas | Fechas | IGV | Régimen sellado | Régimen según el tramo |
-|---|---|---|---|---|
-| 1, 2, 3 | 2026-07-04, 07-25, 07-31 | 0,00 / 0,00 / sin totales | GENERAL | SIMPLIFICADO |
-| 4 a 12 | 2026-11-13 a 11-18 | con IVA | GENERAL | GENERAL |
-
-Las tres facturas de julio se calcularon sin IVA (como RTS) pero quedan selladas GENERAL, como pide el criterio 2 («como se calcularon» no se cumple para ellas). Efecto: son GENERAL emisibles hasta el cierre y cuentan hoy en «Facturas sin comprobante» del panel; el aviso de cierre cuenta solo desde 2026-09-01 (ver 3.8), de modo que no las incluye. No se probó editarlas; una edición recalcularía con IVA por ser GENERAL. Decisión pendiente para Emanuel.
+**Corregido en la revisión 1.** La primera versión de V60 selló las 12 facturas como GENERAL, incluidas las de julio (calculadas sin IVA dentro del tramo histórico SIMPLIFICADO). V60 ahora rellena cada factura con el régimen del tramo de `regimen_tributario` con el mayor `vigente_desde` <= `DATE(create_date)`; ver la sección 4. Resultado sobre el volcado: las facturas 1, 2 y 3 (julio) quedan SIMPLIFICADO y las 4 a 12 (noviembre) GENERAL.
 
 ## 2. Preparación del smoke (declaración)
 
@@ -76,7 +69,7 @@ Started WhatsOrdersManagerApplication in 10.9 seconds
 ```
 
 Con `APP_SCHEDULING_ENABLED=false`: el volcado de hilos de la JVM no tiene ningún hilo `tareas-*` (el `TaskScheduler` no existe, `SchedulingConfig`) y el log no registra ningún job. `flyway_schema_history` queda con V60 y V61 en `success = 1`; el segundo arranque dice «Schema is up to date. No migration necessary».
-Tras V60: las 12 facturas del volcado tienen `regimen_emisor = GENERAL`.
+Tras la V60 original: las 12 facturas del volcado tenían `regimen_emisor = GENERAL` (reemplazado, sección 4).
 
 ## 3. Pasos y resultados
 
@@ -94,7 +87,7 @@ Línea base del panel `/facturas/inicio` (Clock real, antes de crear nada): «Fa
 | 3.8 | 18 (aviso de cierre) | Panel con el Clock en 12-19, 12-20, 12-22, 12-31 y 01-01 | 12-19: ausente. 12-20, 12-22 y 12-31: visible. 01-01: ausente. Con el Clock en 12-22: cantidad 3 antes de crear las facturas 14 y 15 (la 13 y las facturas 4, 5 y 10 del volcado, cuyo comprobante vigente está RECHAZADO; una RECHAZADO no es comprobante válido) y 5 después; enlace `/facturas?estadoFE=pendiente_cierre&desdeCierre=2026-09-01&hastaCierre=2026-12-22` | Pasa |
 | 3.9 | 18 (clave externa) | `PUT /api/facturas/15/comprobante-externo` con una clave ficticia de 50 dígitos y fecha 2026-12-22 | 200 «Clave del comprobante externo registrada»; el aviso baja de 5 a 4 y «Facturas sin comprobante» de 6 a 5; el log registra «Clave de comprobante externo registrada en la factura FA-00038» (auditoría); el PDF de la factura 15 muestra «Comprobante emitido fuera del ERP — Clave:» seguido de la clave completa de 50 dígitos. `procesar/15` con el Clock en enero: **409** «Esta venta ya tiene un comprobante emitido fuera del ERP; no se emite otro desde el sistema» | Pasa |
 
-Panel con el Clock en 2027-01-05 tras todo lo anterior: «Facturas sin comprobante» = 5: las facturas 1, 2 y 3 del volcado (julio) más la 13 y la 14; no cuenta la 15 (clave externa) ni la 16 (SIMPLIFICADO).
+Panel con el Clock en 2027-01-05 tras todo lo anterior (corrida original, con V60 que sellaba GENERAL las de julio; con la V60 de la revisión 1 las facturas 1, 2 y 3 son SIMPLIFICADO y no cuentan): «Facturas sin comprobante» = 5: las facturas 1, 2 y 3 del volcado (julio) más la 13 y la 14; no cuenta la 15 (clave externa) ni la 16 (SIMPLIFICADO).
 
 ### Asientos del smoke (cuenta contable, debe / haber)
 
@@ -106,8 +99,47 @@ Panel con el Clock en 2027-01-05 tras todo lo anterior: «Facturas sin comproban
 ## 4. Fuera de lo probado
 
 - Emisión exitosa de una factura GENERAL antes del cierre contra Hacienda: la salida a Hacienda está cortada por el protocolo (solo se comprobó que la regla de frontera no la bloquea antes del cierre).
-- Editar las facturas de julio selladas GENERAL (ver 1.4).
+- Editar las facturas de julio: resuelto en la revisión 1 (sección 4); ya no se sellan GENERAL.
 
 ## 5. Limpieza
 
 Contenedor `t057-mysql` eliminado por su nombre exacto, procesos de la aplicación detenidos y directorio temporal del smoke borrado; el estado de Docker queda igual al inicial.
+
+## 4. Revisión 1: relleno de V60 según el tramo vigente (criterios 19 a 21)
+
+**V60.** Se edita V60 porque no está desplegada en producción, y se reemplaza el SQL por la migración Java `V60__factura_regimen_emisor`
+(patrón de V51 y V54, para abortar con un mensaje claro). Rellena `factura.regimen_emisor` con el régimen del tramo con el mayor
+`vigente_desde` <= `DATE(factura.create_date)` (la misma regla que `RegimenTributarioService.vigenteEn`; `create_date` es DATETIME en
+America/Costa_Rica desde V51, así que `DATE()` es la fecha que usa el sello). Sin ids, fechas ni regímenes literales. Si una factura
+no tiene tramo para su fecha (o no tiene fecha), la migración aborta antes de tocar el esquema nombrando cuántas y cuáles. Es idempotente
+(agrega la columna solo si falta, rellena solo los nulos, completa NOT NULL y el CHECK) y no deja valor por defecto. El texto anterior sobre julio y agosto quedó reemplazado por esta regla.
+
+**Smoke sobre el volcado** (protocolo de CLAUDE.md: copia sin `.env`, MySQL `t057-mysql` con tmpfs y zona America/Costa_Rica,
+`APP_SCHEDULING_ENABLED=false`, hosts solo localhost, `TZ=America/Costa_Rica`; historial Flyway hasta V44, V45..V61 aplicadas). Datos ficticios
+declarados: al usuario 1 de la base aislada se le puso un correo `.invalid` y una contraseña de prueba para iniciar sesión por HTTP.
+
+Log de la migración:
+
+```
+Migrating schema `smoke` to version "60 - factura regimen emisor"
+V60: regimen_emisor rellenado según regimen_tributario en 12 factura(s)
+V60: 3 factura(s) con regimen_emisor = SIMPLIFICADO
+V60: 9 factura(s) con regimen_emisor = GENERAL
+Successfully applied 17 migrations to schema `smoke`, now at version v61
+```
+
+| Régimen | Facturas | Fechas (create_date) |
+|---|---|---|
+| SIMPLIFICADO | 3 (ids 1, 2, 3) | 2026-07-04 a 2026-07-31 |
+| GENERAL | 9 (ids 4 a 12) | 2026-11-13 a 2026-11-18 |
+
+Las tres de julio de 2026 quedan SIMPLIFICADO. Pruebas por HTTP sobre la factura 1 (julio):
+
+| Paso | Resultado |
+|---|---|
+| Antes: `igv`, `subtotal`, `total` | 0,00 / 35.500,00 / 35.500,00 |
+| `PUT /lineas-factura/actualizar` cambiando la cantidad de la línea 1 de 2 a 3 | 200 `{"subtotal":36500.00,"igv":0.00,"total":36500.00,"lineas":5}`; en la base `igv = 0.00`, `regimen_emisor = SIMPLIFICADO` |
+| `POST /api/facturas/electronica/comprobantes/procesar/1` (y 2 y 3) | 409 `Las ventas del régimen simplificado no se emiten a Hacienda`; log `Factura 1 no se puede emitir: ...`; `comprobante_electronico` sigue en 12 filas y `max(consecutivo)` = 1003, 0 comprobantes de la factura 1 |
+
+Editar una factura de julio ya no les agrega IVA y su emisión responde 409 por la regla de SIMPLIFICADO. Al terminar: aplicación detenida,
+`docker rm -f t057-mysql` y directorios temporales borrados.
