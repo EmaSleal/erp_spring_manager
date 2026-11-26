@@ -68,3 +68,33 @@ test('T-057: régimen GENERAL o sin régimen en el DTO → misma acción que ant
         assert.equal(a.accionEnvioHacienda('ACEPTADO', regimen), null);
     }
 });
+
+// T-057 criterio 15: una factura con la clave de un comprobante emitido fuera del ERP no habilita el botón de emisión
+// (tercer argumento: la clave externa; vacío = sin clave).
+test('T-057: con clave externa → sin botón de envío en ningún estado', () => {
+    const a = cargar();
+    const clave = '50628122600310123456700100001010000000011100000001';
+    for (const e of [null, undefined, '', 'RECHAZADO', 'NO_TRANSMITIDO', 'ERROR']) {
+        assert.equal(a.accionEnvioHacienda(e, 'GENERAL', clave), null, String(e));
+    }
+});
+
+test('T-057: sin clave externa (null, undefined o vacía) → misma acción que antes', () => {
+    const a = cargar();
+    for (const clave of [null, undefined, '']) {
+        assert.equal(a.accionEnvioHacienda(null, 'GENERAL', clave), 'emitir');
+        assert.equal(a.accionEnvioHacienda('ERROR', 'GENERAL', clave), 'reenviar');
+    }
+});
+
+test('T-057: el formulario de la clave externa solo en GENERAL, no anulada y sin comprobante del ERP distinto de RECHAZADO', () => {
+    const a = cargar();
+    assert.equal(a.puedeRegistrarClaveExterna(null, 'GENERAL', false), true);
+    assert.equal(a.puedeRegistrarClaveExterna(undefined, undefined, undefined), true);
+    assert.equal(a.puedeRegistrarClaveExterna('RECHAZADO', 'GENERAL', false), true);
+    for (const e of ['ACEPTADO', 'ENVIADO', 'PROCESANDO', 'ERROR', 'NO_TRANSMITIDO', 'GENERADO']) {
+        assert.equal(a.puedeRegistrarClaveExterna(e, 'GENERAL', false), false, e);
+    }
+    assert.equal(a.puedeRegistrarClaveExterna(null, 'SIMPLIFICADO', false), false);
+    assert.equal(a.puedeRegistrarClaveExterna(null, 'GENERAL', true), false);
+});

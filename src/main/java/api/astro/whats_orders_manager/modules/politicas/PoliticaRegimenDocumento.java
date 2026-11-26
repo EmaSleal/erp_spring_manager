@@ -33,6 +33,14 @@ public class PoliticaRegimenDocumento {
     }
 
     /**
+     * ADR-076 §1: un documento derivado (la factura sustituta) hereda el régimen de su origen en lugar de sellarse por su
+     * propia fecha: la sustituta de una factura GENERAL de diciembre creada en enero sigue siendo GENERAL.
+     */
+    public Regimen heredar(api.astro.whats_orders_manager.modules.facturacion.model.Factura origen) {
+        return origen.getRegimenEmisor();
+    }
+
+    /**
      * Una edición que mueve la fecha del documento no puede dejarla en un tramo de otro régimen que el sellado.
      *
      * @throws FacturaRegimenConflictoException la nueva fecha cae en un tramo de otro régimen (409)

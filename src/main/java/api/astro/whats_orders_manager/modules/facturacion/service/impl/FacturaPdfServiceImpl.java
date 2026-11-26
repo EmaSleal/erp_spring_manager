@@ -132,7 +132,8 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                                 String vencimiento, String plazo, String vendedor, String tipoCambio,
                                 String observacion, MonedaFE moneda, BigDecimal subtotal, BigDecimal impuesto,
                                 BigDecimal total, ComprobanteElectronico vigente, String marcaAnulada,
-                                String sustituyeA, List<LineaPdf> lineas) {
+                                String sustituyeA, String comprobanteExternoClave, String comprobanteExternoFecha,
+                                List<LineaPdf> lineas) {
     }
 
     private DocumentoPdf documentoDe(Factura factura, ComprobanteElectronico vigente) {
@@ -179,6 +180,8 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                 safe(factura.getDescripcion()), factura.getMonedaFE(), factura.getSubtotal(), factura.getImpuesto(),
                 factura.getTotal(), vigente, marcaAnulada(factura),
                 factura.getFacturaSustituida() != null ? safe(factura.getFacturaSustituida().getNumeroFactura()) : null,
+                factura.getComprobanteExternoClave(),
+                factura.getComprobanteExternoFecha() != null ? factura.getComprobanteExternoFecha().format(DATE_FMT) : null,
                 lineas);
     }
 
@@ -204,7 +207,7 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
                 safe(nota.getUsuarioCreador()),
                 nota.getTipoCambio() != null ? nota.getTipoCambio().toPlainString() : "",
                 safe(nota.getRazon()), MonedaFE.fromCodigo(nota.getMoneda()), nota.getSubtotal(), nota.getImpuesto(),
-                nota.getTotal(), vigente, null, null, lineas);
+                nota.getTotal(), vigente, null, null, null, null, lineas);
     }
 
     private byte[] renderizar(DocumentoPdf d, PdfFiscalDecision decision, NotaFactura nota) throws Exception {
@@ -339,6 +342,14 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
         if (d.sustituyeA() != null) {
             col3.add(new Paragraph("Sustituye a " + d.sustituyeA())
                     .setFontSize(8));
+        }
+        // T-057 (ADR-076 §4): factura GENERAL cuyo comprobante se emitió fuera del ERP; se identifica por su clave
+        if (d.comprobanteExternoClave() != null) {
+            col3.add(new Paragraph("Comprobante emitido fuera del ERP — Clave:").setBold().setFontSize(8));
+            col3.add(new Paragraph(d.comprobanteExternoClave()).setFontSize(7));
+            if (d.comprobanteExternoFecha() != null) {
+                col3.add(new Paragraph("Emitido el " + d.comprobanteExternoFecha()).setFontSize(8));
+            }
         }
         if (decision.mostrarClaveYConsecutivo()) {
             ComprobanteElectronico vigente = d.vigente();

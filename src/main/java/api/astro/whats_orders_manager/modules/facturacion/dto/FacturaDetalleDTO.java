@@ -56,6 +56,13 @@ public class FacturaDetalleDTO {
     /** T-057: régimen sellado al crear la factura; la UI oculta «Enviar a Hacienda» si es SIMPLIFICADO. */
     private Regimen regimenEmisor;
 
+    /** T-057: la factura está anulada (no admite clave de comprobante externo). */
+    private Boolean anulada;
+
+    /** T-057 (ADR-076 §4): clave y fecha del comprobante emitido fuera del ERP; null si no hay. */
+    private String comprobanteExternoClave;
+    private LocalDate comprobanteExternoFecha;
+
     // Estado y entregas
     private Boolean entregado;
     private EstadoPagoFactura estadoPago;

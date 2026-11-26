@@ -88,7 +88,7 @@ Convertir el sistema de permisos de **código estático** a **base de datos din�
 |--------|--------|-------------|-----------|
 | `FACTURA_VER` | Ver facturas | Visualizar listado y detalle de facturas | ❌ |
 | `FACTURA_CREAR` | Crear facturas | Generar nuevas facturas de venta | ❌ |
-| `FACTURA_EDITAR` | Editar facturas | Modificar facturas existentes (solo PENDIENTE) | ❌ |
+| `FACTURA_EDITAR` | Editar facturas | Modificar facturas existentes (solo PENDIENTE). T-057 (ADR-076 §4): también registrar, corregir y quitar la clave de un comprobante emitido fuera del ERP (`PUT`/`DELETE /api/facturas/{id}/comprobante-externo`) | ❌ |
 | `FACTURA_ELIMINAR` | Eliminar facturas | Eliminar facturas del sistema | ✅ |
 | `FACTURA_ANULAR` | Anular facturas | Anular facturas pagadas/completadas | ✅ |
 | `FACTURA_EXPORTAR` | Exportar facturas | Exportar facturas a PDF/Excel | ❌ |

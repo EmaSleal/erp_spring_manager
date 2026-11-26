@@ -223,6 +223,20 @@
             </div>
         </div>
 
+        <!-- T-057 (ADR-076 §4): aviso de cierre del régimen general (20-12 al 31-12, tramo SIMPLIFICADO siguiente); todo con th:text -->
+        <div class="row mb-4" th:if="${avisoCierre != null}">
+            <div class="col-12">
+                <div class="alert alert-warning mb-0" id="aviso-cierre" role="alert">
+                    <i class="fas fa-calendar-times me-2"></i>
+                    El régimen general termina con este año: desde el 1 de enero el sistema ya no emite sus comprobantes.
+                    Facturas del régimen general sin comprobante ni clave externa:
+                    <strong id="aviso-cierre-cantidad" th:text="${avisoCierre.cantidad()}">0</strong>.
+                    <a class="alert-link ms-1" id="aviso-cierre-enlace" th:if="${avisoCierre.cantidad() > 0}"
+                       th:href="@{/facturas(estadoFE='pendiente_cierre',desdeCierre=${avisoCierre.desde()},hastaCierre=${avisoCierre.hasta()})}">Ver la lista</a>
+                </div>
+            </div>
+        </div>
+
         <!-- T-056: régimen tributario (verificación con Hacienda) y tope de compras del RTS; todo con th:text -->
         <div th:if="${regimenPanel != null}">
             <div class="row mb-3">

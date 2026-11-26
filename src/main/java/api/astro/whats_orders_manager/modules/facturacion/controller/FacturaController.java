@@ -91,6 +91,8 @@ public class FacturaController {
             @RequestParam(required = false) Boolean isPaid,
             @RequestParam(required = false) String estadoFE,
             @RequestParam(required = false) Boolean sustitutaPendiente,
+            @RequestParam(required = false) LocalDate desdeCierre,
+            @RequestParam(required = false) LocalDate hastaCierre,
             Model model,
             Authentication authentication
     ) {
@@ -110,9 +112,13 @@ public class FacturaController {
             // comprobante electrónico; cualquier otro valor es un nombre de EstadoComprobante
             Boolean sinFE = null;
             EstadoComprobante estadoFEFiltro = null;
+            // T-057: «pendiente_cierre» es el conjunto del aviso de cierre del panel (GENERAL sin comprobante ni clave externa)
+            boolean pendienteCierre = "pendiente_cierre".equals(estadoFE);
             if (estadoFE != null && !estadoFE.isBlank()) {
                 if ("sin_fe".equals(estadoFE)) {
                     sinFE = Boolean.TRUE;
+                } else if (pendienteCierre) {
+                    log.debug("Filtro pendiente_cierre desde {} hasta {}", desdeCierre, hastaCierre);
                 } else {
                     try {
                         estadoFEFiltro = EstadoComprobante.valueOf(estadoFE);
@@ -134,7 +140,9 @@ public class FacturaController {
                     && (estadoFE == null || estadoFE.isBlank());
 
             // Obtener página de facturas (con o sin filtros)
-            Page<Factura> facturasPage = sinFiltros
+            Page<Factura> facturasPage = pendienteCierre
+                    ? facturaService.buscarPendientesCierre(pageable, desdeCierre, hastaCierre)
+                    : sinFiltros
                     ? facturaService.findAll(pageable)
                     : facturaService.buscarConFiltros(pageable, startDate, endDate, entregado, isPaid, sinFE, estadoFEFiltro,
                             sustitutaFiltro, ambienteSustituta);
@@ -149,6 +157,8 @@ public class FacturaController {
             model.addAttribute("status", status);
             model.addAttribute("isPaid", isPaid);
             model.addAttribute("estadoFE", estadoFE);
+            model.addAttribute("desdeCierre", pendienteCierre ? desdeCierre : null);
+            model.addAttribute("hastaCierre", pendienteCierre ? hastaCierre : null);
             model.addAttribute("sustitutaPendiente", sustitutaFiltro);
             model.addAttribute("ambienteSustituta", ambienteSustituta != null ? ambienteSustituta.name() : null);
 

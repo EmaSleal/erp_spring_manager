@@ -150,8 +150,33 @@ public interface FacturaRepository extends JpaRepository<Factura, Integer> {
      * régimen simplificado no se emiten a Hacienda y no cuentan como pendientes de emitir.
      */
     String PREDICADO_SIN_COMPROBANTE = "f.anulada = false "
-        + "AND f.regimenEmisor <> api.astro.whats_orders_manager.modules.regimen.enums.Regimen.SIMPLIFICADO AND NOT EXISTS "
+        + "AND f.regimenEmisor <> api.astro.whats_orders_manager.modules.regimen.enums.Regimen.SIMPLIFICADO "
+        + "AND f.comprobanteExternoClave IS NULL AND NOT EXISTS "
         + "(SELECT 1 FROM ComprobanteElectronico x WHERE x.factura = f)";
+
+    /**
+     * T-057 (ADR-076 §4, aviso de cierre): facturas del régimen general del período {@code [:desdeCierre, :hastaCierre]}
+     * (por fecha de emisión, createDate; un límite null no acota) que no están anuladas, no tienen un comprobante vigente del ERP
+     * que no sea RECHAZADO (un RECHAZADO no es un comprobante válido) ni la clave de uno emitido fuera. Es el conjunto que cuenta el aviso y que lista {@code /facturas?estadoFE=pendiente_cierre}.
+     */
+    String PREDICADO_PENDIENTE_CIERRE = "f.anulada = false "
+        + "AND f.regimenEmisor = api.astro.whats_orders_manager.modules.regimen.enums.Regimen.GENERAL "
+        + "AND f.comprobanteExternoClave IS NULL "
+        + "AND NOT EXISTS (SELECT 1 FROM ComprobanteElectronico x WHERE x.factura = f AND x.vigente = true "
+        + "AND x.estado <> api.astro.whats_orders_manager.modules.facturacion.electronica.enums.EstadoComprobante.RECHAZADO) "
+        + "AND (:desdeCierre IS NULL OR CAST(f.createDate AS date) >= :desdeCierre) "
+        + "AND (:hastaCierre IS NULL OR CAST(f.createDate AS date) <= :hastaCierre)";
+
+    @Query(value = "SELECT f FROM Factura f WHERE " + PREDICADO_PENDIENTE_CIERRE,
+           countQuery = "SELECT COUNT(f) FROM Factura f WHERE " + PREDICADO_PENDIENTE_CIERRE)
+    Page<Factura> buscarPendientesCierre(@Param("desdeCierre") LocalDate desdeCierre,
+                                         @Param("hastaCierre") LocalDate hastaCierre, Pageable pageable);
+
+    @Query("SELECT COUNT(f) FROM Factura f WHERE " + PREDICADO_PENDIENTE_CIERRE)
+    long contarPendientesCierre(@Param("desdeCierre") LocalDate desdeCierre, @Param("hastaCierre") LocalDate hastaCierre);
+
+    /** Otra factura (no {@code idFactura}) que ya registró esa clave de comprobante externo. */
+    boolean existsByComprobanteExternoClaveAndIdFacturaNot(String clave, Integer idFactura);
 
     /**
      * Busca facturas paginadas aplicando filtros opcionales del listado.

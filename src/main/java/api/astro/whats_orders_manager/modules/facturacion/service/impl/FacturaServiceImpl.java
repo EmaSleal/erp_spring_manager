@@ -126,6 +126,12 @@ public class FacturaServiceImpl implements FacturaService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<Factura> buscarPendientesCierre(Pageable pageable, LocalDate desdeCierre, LocalDate hastaCierre) {
+        return facturaRepository.buscarPendientesCierre(desdeCierre, hastaCierre, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Factura> findById(Integer id) {
         log.debug("Buscando factura por ID: {}", id);
         return facturaRepository.findById(id); 
@@ -171,7 +177,10 @@ public class FacturaServiceImpl implements FacturaService {
         // régimen, 409 con un mensaje fijo, antes de tocar nada.
         if (factura.getIdFactura() == null) {
             factura.setCreateDate(null);
-            factura.setRegimenEmisor(politicaRegimen.sellar(HoraFiscal.ahora(clock).toLocalDate()));
+            // ADR-076 §1: la sustituta hereda el régimen de la factura que sustituye; el resto se sella por su fecha
+            factura.setRegimenEmisor(factura.getFacturaSustituida() != null
+                    ? politicaRegimen.heredar(factura.getFacturaSustituida())
+                    : politicaRegimen.sellar(HoraFiscal.ahora(clock).toLocalDate()));
         } else {
             facturaRepository.findById(factura.getIdFactura()).ifPresent(existente -> {
                 LocalDateTime recibida = factura.getCreateDate();
@@ -181,6 +190,9 @@ public class FacturaServiceImpl implements FacturaService {
                 }
                 factura.setCreateDate(existente.getCreateDate());
                 factura.setRegimenEmisor(existente.getRegimenEmisor());
+                // T-057: la clave de un comprobante externo se registra solo por su endpoint, nunca con la edición de la factura
+                factura.setComprobanteExternoClave(existente.getComprobanteExternoClave());
+                factura.setComprobanteExternoFecha(existente.getComprobanteExternoFecha());
             });
         }
 

@@ -140,6 +140,7 @@
                         <select id="estadoFEFilter" class="form-select">
                             <option value="" th:selected="${estadoFE == null or estadoFE == ''}">Todos</option>
                             <option value="sin_fe" th:selected="${estadoFE == 'sin_fe'}">Sin FE</option>
+                            <option value="pendiente_cierre" th:selected="${estadoFE == 'pendiente_cierre'}">Pendientes de cierre (general)</option>
                             <option value="ACEPTADO" th:selected="${estadoFE == 'ACEPTADO'}">Aceptado</option>
                             <option value="RECHAZADO" th:selected="${estadoFE == 'RECHAZADO'}">Rechazado</option>
                             <option value="ENVIADO" th:selected="${estadoFE == 'ENVIADO'}">Enviado</option>
@@ -462,7 +463,7 @@
                 <!-- Fin contenedor responsive -->
 
                     <!-- Paginación -->
-                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'facturas', '/facturas', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir} + (${startDate} != null ? '&amp;startDate=' + ${startDate} : '') + (${endDate} != null ? '&amp;endDate=' + ${endDate} : '') + (${status} != null ? '&amp;status=' + ${status} : '') + (${isPaid} != null ? '&amp;isPaid=' + ${isPaid} : '') + (${estadoFE} != null ? '&amp;estadoFE=' + ${estadoFE} : '') + (${sustitutaPendiente} != null ? '&amp;sustitutaPendiente=true' : ''))}"></div>
+                    <div th:replace="~{shared/fragments/pagination :: pagination(${currentPage}, ${totalPages}, ${totalItems}, ${pageSize}, 'facturas', '/facturas', '&amp;size=' + ${pageSize} + '&amp;sortBy=' + ${sortBy} + '&amp;sortDir=' + ${sortDir} + (${startDate} != null ? '&amp;startDate=' + ${startDate} : '') + (${endDate} != null ? '&amp;endDate=' + ${endDate} : '') + (${status} != null ? '&amp;status=' + ${status} : '') + (${isPaid} != null ? '&amp;isPaid=' + ${isPaid} : '') + (${estadoFE} != null ? '&amp;estadoFE=' + ${estadoFE} : '') + (${desdeCierre} != null ? '&amp;desdeCierre=' + ${desdeCierre} : '') + (${hastaCierre} != null ? '&amp;hastaCierre=' + ${hastaCierre} : '') + (${sustitutaPendiente} != null ? '&amp;sustitutaPendiente=true' : ''))}"></div>
                 </div>
             </div>
         </div>

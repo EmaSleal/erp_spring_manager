@@ -115,4 +115,44 @@ class PoliticaEmisionTest {
         assertThatThrownBy(() -> politica.exigirEmisible(factura(Regimen.GENERAL, "2026-12-31")))
                 .isInstanceOf(EmisionNoPermitidaException.class);
     }
+
+    @Test
+    @DisplayName("T-057 criterio 15: GENERAL con clave externa → 409 con el mensaje fijo, aunque hoy aún sea diciembre")
+    void general_conClaveExterna_409() {
+        PoliticaEmision politica = politica("2026-12-20", GENERAL_2000, SIMPLIFICADO_2027);
+        Factura f = factura(Regimen.GENERAL, "2026-12-10");
+        f.setComprobanteExternoClave("50628122600310123456700100001010000000011100000001");
+
+        assertThatThrownBy(() -> politica.exigirEmisible(f))
+                .isInstanceOf(EmisionNoPermitidaException.class)
+                .hasMessage("Esta venta ya tiene un comprobante emitido fuera del ERP; no se emite otro desde el sistema");
+    }
+
+    @Test
+    @DisplayName("ADR-076 §1-2: sustituta creada en enero de una GENERAL de diciembre → 409 por la fecha del origen raíz; con el Clock en diciembre se emite")
+    void sustituta_usaLaFechaDelOrigenRaiz() {
+        Factura origen = factura(Regimen.GENERAL, "2026-12-10");
+        Factura intermedia = factura(Regimen.GENERAL, "2027-01-05");
+        intermedia.setFacturaSustituida(origen);
+        Factura sustituta = factura(Regimen.GENERAL, "2027-01-10");
+        sustituta.setFacturaSustituida(intermedia);
+
+        PoliticaEmision enero = politica("2027-01-12", GENERAL_2000, SIMPLIFICADO_2027);
+        assertThatThrownBy(() -> enero.exigirEmisible(sustituta)).isInstanceOf(EmisionNoPermitidaException.class)
+                .hasMessage(PoliticaEmision.MENSAJE_GENERAL_FUERA_DEL_ERP);
+        PoliticaEmision diciembre = politica("2026-12-20", GENERAL_2000, SIMPLIFICADO_2027);
+        assertThatCode(() -> diciembre.exigirEmisible(factura(Regimen.GENERAL, "2026-12-15"))).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("una cadena de sustitutas con ciclo no cuelga la política")
+    void sustituta_cicloProtegido() {
+        Factura a = factura(Regimen.GENERAL, "2026-12-10");
+        Factura b = factura(Regimen.GENERAL, "2026-12-11");
+        a.setFacturaSustituida(b);
+        b.setFacturaSustituida(a);
+
+        PoliticaEmision enero = politica("2027-01-12", GENERAL_2000, SIMPLIFICADO_2027);
+        assertThatThrownBy(() -> enero.exigirEmisible(a)).isInstanceOf(EmisionNoPermitidaException.class);
+    }
 }

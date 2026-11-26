@@ -97,6 +97,20 @@ class FacturaPdfRegimenSimplificadoTest {
         assertThat(t).contains("Factura electrónica").contains(CLAVE).contains(CONSECUTIVO).contains("%IVA").contains("IVA:");
     }
 
+    @Test
+    @DisplayName("T-057 criterio 15: PDF GENERAL con clave externa → línea «Comprobante emitido fuera del ERP — Clave:» y la clave; sin clave no la lleva")
+    void pdfGeneralConClaveExterna() throws Exception {
+        Factura f = factura(Regimen.GENERAL, null);
+        f.setComprobanteExternoClave(CLAVE);
+        f.setComprobanteExternoFecha(java.time.LocalDate.of(2026, 12, 28));
+
+        String t = pdf(f, null);
+
+        assertThat(t).contains("Comprobante emitido fuera del ERP").contains(CLAVE).contains("28-12-2026")
+                .contains("%IVA").contains("IVA:");
+        assertThat(pdf(factura(Regimen.GENERAL, null), null)).doesNotContain("fuera del ERP");
+    }
+
     private static Factura factura(Regimen regimen, ComprobanteElectronico vigente) {
         Cliente cliente = new Cliente();
         cliente.setIdCliente(1);

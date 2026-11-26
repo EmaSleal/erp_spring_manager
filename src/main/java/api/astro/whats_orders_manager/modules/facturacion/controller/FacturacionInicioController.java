@@ -22,6 +22,9 @@ public class FacturacionInicioController {
     private final PanelFacturacionService panelService;
     /** T-056: aviso de verificación del régimen y tope de compras del RTS. */
     private final RegimenPanelService regimenPanelService;
+    /** T-057: aviso de cierre del régimen general (20-12 al 31-12 con un tramo SIMPLIFICADO siguiente). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private api.astro.whats_orders_manager.modules.regimen.panel.AvisoCierreService avisoCierreService;
 
     @GetMapping("/inicio")
     @PreAuthorize("@permisoService.tienePermisoPorCodigo(#authentication.name, 'FACTURA_VER')")
@@ -36,6 +39,7 @@ public class FacturacionInicioController {
         model.addAttribute("sufijoAmbiente", ambiente != null ? "&ambiente=" + ambiente : "");
         model.addAttribute("leyendaSinAmbiente", PanelFacturacionService.LEYENDA_SIN_AMBIENTE);
         model.addAttribute("regimenPanel", regimenPanelService.obtener());
+        model.addAttribute("avisoCierre", avisoCierreService != null ? avisoCierreService.obtener().orElse(null) : null);
         return "modules/facturacion/inicio";
     }
 }

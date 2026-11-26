@@ -128,6 +128,19 @@ public class Factura {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Regimen regimenEmisor = Regimen.GENERAL;
 
+    /**
+     * Clave de 50 dígitos del comprobante que se emitió fuera del ERP para esta factura GENERAL (T-057, ADR-076 §3-4), y la
+     * fecha de ese comprobante. Solo las escribe ComprobanteExternoService; nunca vienen del cuerpo de una edición de la
+     * factura (FacturaServiceImpl.save conserva las de la base).
+     */
+    @Column(name = "comprobante_externo_clave", length = 50, unique = true)
+    @JsonIgnore
+    private String comprobanteExternoClave;
+
+    @Column(name = "comprobante_externo_fecha")
+    @JsonIgnore
+    private LocalDate comprobanteExternoFecha;
+
     /** Razón de la InformacionReferencia 07/15 de la sustituta (3 a 180 caracteres). */
     @Column(name = "razon_sustitucion", length = 180)
     @JsonIgnore

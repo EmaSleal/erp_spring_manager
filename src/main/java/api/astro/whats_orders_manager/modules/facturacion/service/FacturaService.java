@@ -26,6 +26,11 @@ public interface FacturaService {
                                     Boolean entregado, Boolean pagada, Boolean sinFE, EstadoComprobante estadoFE,
                                     Boolean sustitutaPendiente,
                                     api.astro.whats_orders_manager.modules.facturacion.electronica.enums.AmbienteHacienda ambiente);
+    /**
+     * T-057 (ADR-076 §4): facturas GENERAL del período {@code [desdeCierre, hastaCierre]} sin comprobante del ERP ni clave
+     * externa (el conjunto del aviso de cierre del panel); un límite null no acota.
+     */
+    Page<Factura> buscarPendientesCierre(Pageable pageable, LocalDate desdeCierre, LocalDate hastaCierre);
     Optional<Factura> findById(Integer id);
     Factura save(Factura factura);
     void deleteById(Integer id);

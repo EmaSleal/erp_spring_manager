@@ -330,6 +330,50 @@ class VentaRegimenFronteraIT {
         assertThat(fechaAsientoVigente(id)).isEqualTo(LocalDate.of(2026, 12, 31));
     }
 
+    // ── Sustituta (ADR-076 §1: cada documento hereda el régimen de su origen) ─
+
+    @Test
+    @DisplayName("ADR-076 §1: la sustituta creada en enero de una GENERAL de diciembre hereda GENERAL, no se sella por su fecha")
+    void sustituta_heredaGeneralDelOrigen() throws Exception {
+        int origen = crearFactura(LocalDateTime.of(2026, 12, 31, 10, 0));
+        reloj.fijar(LocalDateTime.of(2027, 1, 10, 10, 0));
+
+        Factura sustituta = facturaNueva();
+        sustituta.setSerie("T057SUS"); // no la cuenta sinTramo_error (serie T057SOLO)
+        sustituta.setFacturaSustituida(facturaService.findById(origen).orElseThrow());
+        Factura guardada = facturaService.save(sustituta);
+
+        assertThat(regimen(guardada.getIdFactura())).isEqualTo("GENERAL");
+        assertThat(regimen(origen)).isEqualTo("GENERAL");
+        // ADR-076 §2: para la frontera de emisión cuenta la fecha del origen (diciembre), no la de la sustituta (enero)
+        // la auditoría JPA le puso la hora del sistema; se fija la del Clock (como en producción)
+        jdbc.update("UPDATE factura SET create_date = ? WHERE id_factura = ?", LocalDateTime.of(2027, 1, 10, 10, 0),
+                guardada.getIdFactura());
+        Factura recargada = facturaService.findById(guardada.getIdFactura()).orElseThrow();
+        assertThatThrownBy(() -> tx.executeWithoutResult(s -> politicaEmision.exigirEmisible(
+                facturaService.findById(recargada.getIdFactura()).orElseThrow())))
+                .isInstanceOf(EmisionNoPermitidaException.class).hasMessage(MSG_GENERAL_FUERA_DEL_ERP);
+    }
+
+    @Test
+    @DisplayName("ADR-076 §1: la sustituta creada en julio de una SIMPLIFICADO de enero hereda SIMPLIFICADO aunque ya rija el tramo GENERAL")
+    void sustituta_heredaSimplificadoDelOrigen() throws Exception {
+        tramos(Regimen.GENERAL, "2000-01-01", Regimen.SIMPLIFICADO, "2027-01-01", Regimen.GENERAL, "2027-07-01");
+        int origen = crearFactura(LocalDateTime.of(2027, 1, 20, 10, 0));
+        reloj.fijar(LocalDateTime.of(2027, 7, 5, 10, 0));
+
+        Factura sustituta = facturaNueva();
+        sustituta.setSerie("T057SUS"); // no la cuenta sinTramo_error (serie T057SOLO)
+        sustituta.setFacturaSustituida(facturaService.findById(origen).orElseThrow());
+        Factura guardada = facturaService.save(sustituta);
+
+        assertThat(regimen(guardada.getIdFactura())).isEqualTo("SIMPLIFICADO");
+        // una factura nueva (sin origen) de la misma fecha sí se sella GENERAL
+        Factura control = facturaNueva();
+        control.setSerie("T057SUS");
+        assertThat(regimen(facturaService.save(control).getIdFactura())).isEqualTo("GENERAL");
+    }
+
     @Test
     @DisplayName("el régimen no se recibe del cliente: una edición con regimenEmisor GENERAL no cambia una SIMPLIFICADO")
     void edicion_ignoraElRegimenDelCuerpo() throws Exception {
