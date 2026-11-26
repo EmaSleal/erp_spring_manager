@@ -93,7 +93,7 @@ function openModal(button) {
             // Estado FE del comprobante vigente (ADR-031): badge con el color e ícono de EstadoComprobante
             feContainer.style.display = 'block';
             // T-040: la acción del botón depende del comprobante vigente (emitir / reenviar / ninguno)
-            const accionEnvio = window.AccionEnvioHacienda.accionEnvioHacienda(data.estadoComprobante);
+            const accionEnvio = window.AccionEnvioHacienda.accionEnvioHacienda(data.estadoComprobante, data.regimenEmisor, data.comprobanteExternoClave);
             if (accionEnvio === 'reenviar' && !data.idComprobante) {
                 console.warn('Comprobante vigente sin id: no se puede reenviar desde el modal');
             }
@@ -141,15 +141,20 @@ function openModal(button) {
             } else {
                 // Sin comprobante electrónico: badge «Sin comprobante» y botón para enviarla
                 feEstado.style.display = 'block';
+                // T-057: una venta del régimen simplificado no se emite a Hacienda: sin botón y con su etiqueta
+                const esRts = data.regimenEmisor === 'SIMPLIFICADO';
                 feEstado.innerHTML = `
                     <p class="mb-2"><strong>Estado:</strong>
                         <span class="badge bg-light text-dark border" id="modal-fe-badge">
-                            <i class="bi bi-file-earmark me-1"></i>Sin comprobante
+                            <i class="bi bi-file-earmark me-1"></i>${esRts ? 'Venta del régimen simplificado (no se emite a Hacienda)' : (data.comprobanteExternoClave ? 'Comprobante emitido fuera del ERP' : 'Sin comprobante')}
                         </span>
                     </p>`;
-                feBotonEnviar.style.display = 'block';
+                feBotonEnviar.style.display = accionEnvio ? 'block' : 'none';
                 feBotonEnviar.setAttribute('data-id', data.idFactura);
             }
+
+            // T-057 (ADR-076 §4): clave del comprobante emitido fuera del ERP (ver, registrar, corregir, quitar)
+            pintarComprobanteExterno(document.getElementById('modal-comprobante-externo'), data);
 
             // T-055 (ADR-070): reenvío por correo e historial de entregas del comprobante vigente
             const contenedorCorreo = document.getElementById('modal-correo');
@@ -671,6 +676,111 @@ function enviarFacturaPorWhatsApp(button) {
             showToast('success', `WhatsApp enviado exitosamente a: ${cliente} (${telefono})`);
         }
     });
+}
+
+/**
+ * T-057 (ADR-076 §4): muestra la clave del comprobante emitido fuera del ERP y, si la factura lo admite, el formulario para
+ * registrarla, corregirla o quitarla (PUT/DELETE /api/facturas/{id}/comprobante-externo). Todo con textContent; el
+ * servidor valida de nuevo y responde con mensajes fijos.
+ */
+function pintarComprobanteExterno(contenedor, data) {
+    if (!contenedor) return;
+    contenedor.innerHTML = '';
+    const clave = data.comprobanteExternoClave;
+    const puede = window.AccionEnvioHacienda.puedeRegistrarClaveExterna(data.estadoComprobante, data.regimenEmisor, data.anulada)
+        && USER_ROLE !== 'VISUALIZADOR';
+    if (!clave && !puede) return;
+
+    const caja = document.createElement('div');
+    caja.className = 'mt-3 p-2 border rounded';
+    caja.id = 'comprobante-externo-caja';
+    const titulo = document.createElement('p');
+    titulo.className = 'mb-1 fw-bold';
+    titulo.textContent = 'Comprobante emitido fuera del ERP';
+    caja.appendChild(titulo);
+    if (clave) {
+        const p = document.createElement('p');
+        p.className = 'mb-2';
+        p.id = 'comprobante-externo-clave';
+        p.append('Clave: ');
+        const code = document.createElement('code');
+        code.textContent = clave;
+        p.appendChild(code);
+        if (data.comprobanteExternoFecha) {
+            p.append(' (emitido el ' + data.comprobanteExternoFecha + ')');
+        }
+        caja.appendChild(p);
+    }
+    if (puede) {
+        const fila = document.createElement('div');
+        fila.className = 'row g-2 align-items-end';
+        const inputClave = document.createElement('input');
+        inputClave.type = 'text';
+        inputClave.className = 'form-control form-control-sm';
+        inputClave.id = 'comprobante-externo-input-clave';
+        inputClave.maxLength = 50;
+        inputClave.inputMode = 'numeric';
+        inputClave.placeholder = 'Clave de 50 dígitos';
+        inputClave.value = clave || '';
+        const inputFecha = document.createElement('input');
+        inputFecha.type = 'date';
+        inputFecha.className = 'form-control form-control-sm';
+        inputFecha.id = 'comprobante-externo-input-fecha';
+        inputFecha.value = data.comprobanteExternoFecha || '';
+        const colClave = document.createElement('div');
+        colClave.className = 'col-md-7';
+        colClave.appendChild(inputClave);
+        const colFecha = document.createElement('div');
+        colFecha.className = 'col-md-3';
+        colFecha.appendChild(inputFecha);
+        const colBotones = document.createElement('div');
+        colBotones.className = 'col-md-2 d-flex gap-1';
+        const guardar = document.createElement('button');
+        guardar.type = 'button';
+        guardar.className = 'btn btn-sm btn-primary';
+        guardar.id = 'comprobante-externo-guardar';
+        guardar.textContent = clave ? 'Corregir' : 'Registrar';
+        guardar.addEventListener('click', () => enviarComprobanteExterno('PUT', data.idFactura,
+            { clave: inputClave.value.trim(), fecha: inputFecha.value || null }));
+        colBotones.appendChild(guardar);
+        if (clave) {
+            const quitar = document.createElement('button');
+            quitar.type = 'button';
+            quitar.className = 'btn btn-sm btn-outline-danger';
+            quitar.id = 'comprobante-externo-quitar';
+            quitar.textContent = 'Quitar';
+            quitar.addEventListener('click', () => enviarComprobanteExterno('DELETE', data.idFactura, null));
+            colBotones.appendChild(quitar);
+        }
+        fila.append(colClave, colFecha, colBotones);
+        caja.appendChild(fila);
+        const ayuda = document.createElement('p');
+        ayuda.className = 'text-muted small mb-0 mt-1';
+        ayuda.textContent = 'Clave y fecha del comprobante que se emitió en la herramienta de Hacienda para esta factura.';
+        caja.appendChild(ayuda);
+    }
+    contenedor.appendChild(caja);
+}
+
+async function enviarComprobanteExterno(metodo, idFactura, cuerpo) {
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+    const headers = { 'Content-Type': 'application/json' };
+    if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+    try {
+        const response = await fetch(`/api/facturas/${Number(idFactura)}/comprobante-externo`, {
+            method: metodo, headers, body: cuerpo ? JSON.stringify(cuerpo) : undefined
+        });
+        const resultado = await response.json().catch(() => ({}));
+        if (response.ok) {
+            showToast('success', resultado.message || 'Listo');
+            window.location.reload();
+        } else {
+            showToast('error', resultado.message || 'No se pudo guardar la clave del comprobante');
+        }
+    } catch (e) {
+        showToast('error', 'No se pudo conectar con el servidor');
+    }
 }
 
 /**

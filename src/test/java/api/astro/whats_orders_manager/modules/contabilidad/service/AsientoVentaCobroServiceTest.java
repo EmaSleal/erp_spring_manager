@@ -709,6 +709,46 @@ class AsientoVentaCobroServiceTest {
         return p;
     }
 
+    // =========================================================================
+    // T-057 (ADR-073 §1, ADR-076; P-132 casos 7 y 11) — asientos según el régimen sellado
+    // =========================================================================
+
+    @Nested
+    @DisplayName("T-057 — régimen sellado: asiento de venta SIMPLIFICADO y cobro de una GENERAL")
+    class RegimenSellado {
+
+        @Test
+        @DisplayName("venta SIMPLIFICADO (igv 0): solo DR CxC por el total y CR ingresos por el total; sin VENTA_IVA_POR_PAGAR")
+        void ventaSimplificado_soloCxcEIngreso() {
+            Factura factura = factura(60, "1930.00", "0.00", "1930.00", MonedaFE.CRC, BigDecimal.ONE);
+            factura.setRegimenEmisor(api.astro.whats_orders_manager.modules.regimen.enums.Regimen.SIMPLIFICADO);
+
+            AsientoContable asiento = service.generarAsientoVenta(factura);
+
+            assertThat(asiento.getDetalles()).hasSize(2);
+            assertThat(debe(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("1930.00");
+            assertThat(haber(asiento, "VENTA_INGRESOS")).isEqualByComparingTo("1930.00");
+            assertThat(asiento.getDetalles()).noneMatch(d -> d.getCuenta() == cuentas.get("VENTA_IVA_POR_PAGAR"));
+            assertThat(asiento.estaCuadrado()).isTrue();
+        }
+
+        @Test
+        @DisplayName("caso 7: cobro el 15-01-2027 de una factura GENERAL de diciembre → DR caja / CR CxC, sin IVA, como hoy")
+        void cobroDeFacturaGeneral_sinIva() {
+            Factura factura = factura(61, "100000.00", "13000.00", "113000.00", MonedaFE.CRC, BigDecimal.ONE);
+            factura.setRegimenEmisor(api.astro.whats_orders_manager.modules.regimen.enums.Regimen.GENERAL);
+            Pago pago = pago(70L, "113000.00", MetodoPago.EFECTIVO, EstadoPago.CONFIRMADO, factura);
+            pago.setFechaPago(LocalDate.of(2027, 1, 15).atTime(10, 0));
+
+            AsientoContable asiento = service.generarAsientoPago(pago);
+
+            assertThat(debe(asiento, "COBRO_CAJA_EFECTIVO")).isEqualByComparingTo("113000.00");
+            assertThat(haber(asiento, "VENTA_CXC_CLIENTES")).isEqualByComparingTo("113000.00");
+            assertThat(asiento.getDetalles()).hasSize(2);
+            assertThat(asiento.getDetalles()).noneMatch(d -> d.getCuenta() == cuentas.get("VENTA_IVA_POR_PAGAR"));
+        }
+    }
+
     static Pago pagoMoneda(Long id, String monto, MonedaFE moneda, String tipoCambio, String montoAplicado,
                            Factura factura) {
         Pago p = pago(id, monto, MetodoPago.EFECTIVO, EstadoPago.CONFIRMADO, factura);

@@ -81,6 +81,10 @@ public class NotaFacturaService {
     public static final String MENSAJE_LINEA_AJENA = "La línea indicada no pertenece a la factura";
     public static final String MENSAJE_TOPE_LINEA = "El monto a acreditar supera el disponible de la línea";
     public static final String MENSAJE_TOPE_FACTURA = "La suma de las notas supera el total del comprobante aceptado";
+    /** T-057: las ventas del régimen simplificado no admiten nota de crédito; se corrigen anulando la factura. */
+    public static final String MENSAJE_REGIMEN_SIMPLIFICADO = "Una factura del régimen simplificado no admite nota de crédito: "
+        + "en ese régimen se corrige anulando la factura (y antes sus pagos) y creando una nueva";
+
     public static final String MENSAJE_ACREDITADA_TOTALMENTE = "La factura ya está acreditada totalmente";
     public static final String MENSAJE_PAGOS_SIN_ASIENTO = "La factura tiene pagos y no tiene asiento de venta vigente; "
         + "regularice su contabilidad antes de emitir la nota";
@@ -182,6 +186,11 @@ public class NotaFacturaService {
         // la primera. uk_nota_en_tramite_por_factura (V39) lo garantiza además en la BD.
         Factura factura = facturaRepository.findByIdParaActualizar(idFactura)
             .orElseThrow(() -> new NoSuchElementException("La factura no existe"));
+
+        // T-057 (ADR-073 §1): una venta del régimen simplificado no tiene comprobante ni nota; se corrige anulándola
+        if (factura.getRegimenEmisor() == api.astro.whats_orders_manager.modules.regimen.enums.Regimen.SIMPLIFICADO) {
+            throw new NotaFacturaConflictoException(MENSAJE_REGIMEN_SIMPLIFICADO);
+        }
 
         ComprobanteElectronico aceptado = comprobanteRepository
             .findFirstByFactura_IdFacturaAndVigenteTrue(idFactura)
@@ -368,7 +377,7 @@ public class NotaFacturaService {
             }
             BigDecimal cantidad = NotaCreditoTopes.cantidad(linea);
             DesgloseImpuesto desglose = calculadoraImpuestoService.desglosar(monto,
-                calculadoraImpuestoService.resolverTarifa(producto), true);
+                calculadoraImpuestoService.tarifaDe(factura, producto), true);
             BigDecimal precioSinIva = cantidad.signum() > 0
                 ? desglose.base().divide(cantidad, 5, RoundingMode.HALF_UP)
                 : desglose.base();

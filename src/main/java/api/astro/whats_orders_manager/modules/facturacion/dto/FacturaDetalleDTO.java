@@ -4,6 +4,7 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Esta
 import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.MonedaFE;
 import api.astro.whats_orders_manager.modules.facturacion.enums.EstadoPagoFactura;
 import api.astro.whats_orders_manager.modules.facturacion.enums.InvoiceType;
+import api.astro.whats_orders_manager.modules.regimen.enums.Regimen;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -52,6 +53,16 @@ public class FacturaDetalleDTO {
     private Date fechaVencimiento;
     private LocalDate fechaEmision;
     
+    /** T-057: régimen sellado al crear la factura; la UI oculta «Enviar a Hacienda» si es SIMPLIFICADO. */
+    private Regimen regimenEmisor;
+
+    /** T-057: la factura está anulada (no admite clave de comprobante externo). */
+    private Boolean anulada;
+
+    /** T-057 (ADR-076 §4): clave y fecha del comprobante emitido fuera del ERP; null si no hay. */
+    private String comprobanteExternoClave;
+    private LocalDate comprobanteExternoFecha;
+
     // Estado y entregas
     private Boolean entregado;
     private EstadoPagoFactura estadoPago;

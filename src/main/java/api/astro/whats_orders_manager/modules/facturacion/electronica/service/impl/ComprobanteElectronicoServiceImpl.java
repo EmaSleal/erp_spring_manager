@@ -111,6 +111,14 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
     private SustitucionElegibilidad sustitucionElegibilidad;
 
     /**
+     * T-057 (ADR-073 §2, ADR-076 §2): política de emisión; decide por el régimen sellado y el Clock si se puede crear el
+     * comprobante de una factura. Por campo, como el anterior: Spring siempre lo inyecta; sin él (pruebas unitarias que
+     * arman el servicio a mano) no se aplica.
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    private api.astro.whats_orders_manager.modules.politicas.PoliticaEmision politicaEmision;
+
+    /**
      * T-041: gestor de transacciones para leer la configuración de Hacienda en una transacción propia de solo lectura
      * (REQUIRES_NEW). Por campo, como el anterior; sin él (pruebas unitarias) se lee en la transacción del llamador.
      */
@@ -196,6 +204,9 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
         Factura factura = facturaRepository.findByIdFactura(facturaId.intValue())
             .orElseThrow(() -> new EntityNotFoundException("Factura no encontrada con ID: " + facturaId));
 
+        // T-057: régimen sellado y frontera del Clock; 409 antes de cualquier otra validación y sin consecutivo
+        exigirEmisible(factura);
+
         if (factura.getCliente() == null) {
             throw new EmisionNoPermitidaException("La factura no tiene cliente asignado");
         }
@@ -222,6 +233,10 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
 
         Factura factura = facturaRepository.findById(facturaId.intValue())
             .orElseThrow(() -> new IllegalArgumentException("Factura no encontrada"));
+
+        // T-057 (ADR-073 §2, ADR-076 §2): único punto por donde pasa la creación del comprobante de una factura (emitir,
+        // procesar, generar y reemitir); antes del vigente, del consecutivo y de la clave
+        exigirEmisible(factura);
 
         // T-033: sin CAByS por defecto. Antes de tocar el vigente, el consecutivo o la clave
         List<String> sinCabys = DatosFeProducto.productosSinCabys(factura.getLineas());
@@ -604,6 +619,12 @@ public class ComprobanteElectronicoServiceImpl implements ComprobanteElectronico
             firmarInterno(comprobante);
         }
         return comprobante.getEstado() != EstadoComprobante.ERROR;
+    }
+
+    private void exigirEmisible(Factura factura) {
+        if (politicaEmision != null) {
+            politicaEmision.exigirEmisible(factura);
+        }
     }
 
     @Override

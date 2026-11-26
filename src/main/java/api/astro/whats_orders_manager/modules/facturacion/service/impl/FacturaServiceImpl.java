@@ -24,6 +24,8 @@ import api.astro.whats_orders_manager.modules.facturacion.service.PoliticaMutabi
 import api.astro.whats_orders_manager.modules.facturacion.electronica.model.ComprobanteElectronico;
 import api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository;
 import api.astro.whats_orders_manager.modules.facturacion.service.LineaFacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.electronica.util.HoraFiscal;
+import api.astro.whats_orders_manager.modules.politicas.PoliticaRegimenDocumento;
 import api.astro.whats_orders_manager.modules.facturacion.service.PagoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -87,6 +90,13 @@ public class FacturaServiceImpl implements FacturaService {
     @Autowired
     private TipoCambioService tipoCambioService;
 
+    /** T-057 (ADR-073): sello del régimen al crear y frontera entre tramos al editar. */
+    @Autowired
+    private PoliticaRegimenDocumento politicaRegimen;
+
+    @Autowired
+    private Clock clock;
+
     @Override
     @Transactional(readOnly = true)
     public List<Factura> findAll() { 
@@ -112,6 +122,12 @@ public class FacturaServiceImpl implements FacturaService {
             startDate, endDate, entregado, pagada, sinFE, estadoFE);
         return facturaRepository.buscarConFiltros(startDate, endDate, entregado, pagada, sinFE, estadoFE,
             sustitutaPendiente, ambiente, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Factura> buscarPendientesCierre(Pageable pageable, LocalDate desdeCierre, LocalDate hastaCierre) {
+        return facturaRepository.buscarPendientesCierre(desdeCierre, hastaCierre, pageable);
     }
 
     @Override
@@ -155,11 +171,29 @@ public class FacturaServiceImpl implements FacturaService {
         
         // createDate es la fecha de emisión (ADR-014) y nunca proviene del cliente (ADR-031 §3): al crear la asigna la
         // auditoría JPA (@CreatedDate); al editar se conserva la de la BD aunque el cuerpo no la traiga o traiga otra
+        // T-057 (ADR-073 Opción A): el régimen se sella al crear con el vigente en la fecha de la factura (la de hoy en Costa
+        // Rica, la misma que le asigna la auditoría) y no se recalcula nunca; nada del cliente lo fija. Al editar se
+        // conserva el de la base; si la edición traía otra fecha (createDate nunca se aplica) que cae en un tramo de otro
+        // régimen, 409 con un mensaje fijo, antes de tocar nada.
         if (factura.getIdFactura() == null) {
             factura.setCreateDate(null);
+            // ADR-076 §1: la sustituta hereda el régimen de la factura que sustituye; el resto se sella por su fecha
+            factura.setRegimenEmisor(factura.getFacturaSustituida() != null
+                    ? politicaRegimen.heredar(factura.getFacturaSustituida())
+                    : politicaRegimen.sellar(HoraFiscal.ahora(clock).toLocalDate()));
         } else {
-            facturaRepository.findById(factura.getIdFactura())
-                .ifPresent(existente -> factura.setCreateDate(existente.getCreateDate()));
+            facturaRepository.findById(factura.getIdFactura()).ifPresent(existente -> {
+                LocalDateTime recibida = factura.getCreateDate();
+                if (recibida != null && existente.getCreateDate() != null
+                        && !recibida.toLocalDate().equals(existente.getCreateDate().toLocalDate())) {
+                    politicaRegimen.exigirMismoRegimen(existente.getRegimenEmisor(), recibida.toLocalDate());
+                }
+                factura.setCreateDate(existente.getCreateDate());
+                factura.setRegimenEmisor(existente.getRegimenEmisor());
+                // T-057: la clave de un comprobante externo se registra solo por su endpoint, nunca con la edición de la factura
+                factura.setComprobanteExternoClave(existente.getComprobanteExternoClave());
+                factura.setComprobanteExternoFecha(existente.getComprobanteExternoFecha());
+            });
         }
 
         // Ensure monedaFE defaults to CRC and tipoCambio is consistent

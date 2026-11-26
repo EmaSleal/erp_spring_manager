@@ -507,6 +507,26 @@ class SaldoFavorIT {
     }
 
     @Test
+    @DisplayName("T-057 P-132 caso 8: un saldo a favor de diciembre se aplica a una factura SIMPLIFICADO; el asiento no mueve IVA por pagar")
+    void aplicarASimplificado_sinMovimientoEnIvaPorPagar() throws Exception {
+        Saldo s = saldoCrc(null);
+        int destino = facturaAceptada(s.idCliente(), MonedaFE.CRC, "1");
+        jdbc.update("UPDATE factura SET regimen_emisor = 'SIMPLIFICADO' WHERE id_factura = ?", destino);
+
+        MvcResult r = aplicar(s.id(), destino, "300.00");
+
+        assertThat(r.getResponse().getStatus()).as(r.getResponse().getContentAsString()).isEqualTo(201);
+        long idAplicacion = objectMapper.readTree(r.getResponse().getContentAsString()).get("data").get("id").asLong();
+        long asiento = jdbc.queryForObject("SELECT asiento_id FROM aplicaciones_saldo_favor WHERE id = ?", Long.class,
+                idAplicacion);
+        assertThat(debeEn(asiento, "9.2.05.001")).isEqualByComparingTo("300.00");
+        assertThat(haberEn(asiento, "9.1.02.001")).isEqualByComparingTo("300.00");
+        assertThat(debeEn(asiento, "9.2.01.002")).isZero();
+        assertThat(haberEn(asiento, "9.2.01.002")).isZero();
+        assertThat(saldoVivo(s.id())).isEqualByComparingTo("200.00");
+    }
+
+    @Test
     @DisplayName("un pago NOTA_CREDITO no se puede registrar, rechazar ni anular por el módulo de pagos: solo se reversa desde la aplicación")
     void pagoNotaCredito_protegido() throws Exception {
         Saldo s = saldoCrc(null);

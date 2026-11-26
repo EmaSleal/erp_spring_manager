@@ -321,4 +321,7 @@ public interface ComprobanteElectronicoRepository extends JpaRepository<Comproba
         @Param("estado") EstadoComprobante estado,
         @Param("fechaLimite") LocalDateTime fechaLimite
     );
+
+    /** T-057: la factura tiene algún comprobante del ERP en un estado distinto de {@code estado} (p. ej. no RECHAZADO). */
+    boolean existsByFactura_IdFacturaAndEstadoNot(Integer idFactura, EstadoComprobante estado);
 }

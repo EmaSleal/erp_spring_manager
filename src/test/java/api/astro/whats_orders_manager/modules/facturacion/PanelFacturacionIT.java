@@ -331,6 +331,29 @@ class PanelFacturacionIT {
     }
 
     @Test
+    @DisplayName("T-057 criterio 7: las facturas SIMPLIFICADO no cuentan como «sin comprobante» ni salen en el listado sin_fe")
+    void simplificadoNoCuentaComoSinComprobante() throws Exception {
+        factura(false);                                           // GENERAL sin comprobante: cuenta
+        for (int i = 0; i < 2; i++) {
+            Factura rts = new Factura();                          // SIMPLIFICADO sin comprobante: no cuenta
+            rts.setCliente(cliente);
+            rts.setNumeroFactura("F-T057-" + (++secuencia));
+            rts.setAnulada(false);
+            rts.setRegimenEmisor(api.astro.whats_orders_manager.modules.regimen.enums.Regimen.SIMPLIFICADO);
+            facturaRepository.save(rts);
+        }
+
+        for (AmbienteHacienda activo : new AmbienteHacienda[]{AmbienteHacienda.SANDBOX, AmbienteHacienda.PRODUCCION, null}) {
+            activar(activo);
+            long contador = panelService.obtener().contadores().sinComprobante();
+            var modelo = mockMvc.perform(get("/facturas").param("estadoFE", "sin_fe").with(user("gerente").roles("USER")))
+                    .andExpect(status().isOk()).andReturn().getModelAndView().getModel();
+            assertThat(contador).as("contador con %s", activo).isEqualTo(1);
+            assertThat(((Number) modelo.get("totalItems")).longValue()).as("listado con %s", activo).isEqualTo(1);
+        }
+    }
+
+    @Test
     @DisplayName("el listado de comprobantes filtra en el servidor: con más de 100 en un estado, el total y las páginas coinciden con el contador")
     void listadoDeComprobantesFiltradoEnElServidor() throws Exception {
         comprobantes(130, EstadoComprobante.RECHAZADO, true, AmbienteHacienda.SANDBOX);

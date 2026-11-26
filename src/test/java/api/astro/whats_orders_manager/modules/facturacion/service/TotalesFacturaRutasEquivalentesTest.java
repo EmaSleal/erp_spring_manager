@@ -97,6 +97,12 @@ class TotalesFacturaRutasEquivalentesTest {
         ReflectionTestUtils.setField(facturaService, "tipoCambioService", tipoCambioService);
         ReflectionTestUtils.setField(facturaService, "totalesFacturaService", totales);
         ReflectionTestUtils.setField(facturaService, "politicaMutabilidad", mock(PoliticaMutabilidadFactura.class));
+        // T-057: en estas pruebas la factura se sella GENERAL (régimen sellado de siempre) y el reloj es el del sistema
+        api.astro.whats_orders_manager.modules.politicas.PoliticaRegimenDocumento politicaRegimen =
+                mock(api.astro.whats_orders_manager.modules.politicas.PoliticaRegimenDocumento.class);
+        when(politicaRegimen.sellar(any())).thenReturn(api.astro.whats_orders_manager.modules.regimen.enums.Regimen.GENERAL);
+        ReflectionTestUtils.setField(facturaService, "politicaRegimen", politicaRegimen);
+        ReflectionTestUtils.setField(facturaService, "clock", java.time.Clock.systemDefaultZone());
 
         when(configuracionFacturacionService.getOrCreateConfiguracion()).thenReturn(new ConfiguracionFacturacion());
         when(facturaRepository.save(any(Factura.class))).thenAnswer(inv -> {
