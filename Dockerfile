@@ -29,10 +29,12 @@ USER spring:spring
 # Copiar el JAR compilado desde la etapa de build
 COPY --from=build /app/target/*.jar app.jar
 
-# Asegurar directorio de logs y permisos (se crea como root antes de cambiar a usuario no-root)
+# Asegurar los directorios montados como volumen y sus permisos (se crean como root antes de cambiar a usuario no-root).
+# Docker crea como root:root un punto de montaje que no existe en la imagen, y el usuario spring no podría escribir en él;
+# si existe con dueño spring, el volumen vacío hereda ese dueño al montarse por primera vez.
 USER root
-RUN mkdir -p /app/logs /app/certificados /app/comprobantes \
-    && chown -R spring:spring /app/logs /app/certificados /app/comprobantes
+RUN mkdir -p /app/logs /app/certificados /app/comprobantes /app/sellos /app/uploads \
+    && chown -R spring:spring /app/logs /app/certificados /app/comprobantes /app/sellos /app/uploads
 USER spring:spring
 
 # Exponer puerto interno (real puerto lo define SERVER_PORT en runtime)
