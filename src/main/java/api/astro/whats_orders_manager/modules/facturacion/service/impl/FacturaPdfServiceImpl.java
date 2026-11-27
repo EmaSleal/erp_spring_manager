@@ -24,6 +24,7 @@ import api.astro.whats_orders_manager.modules.facturacion.service.SustitucionEle
 import api.astro.whats_orders_manager.modules.facturacion.model.LineaFactura;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaPdfService;
 import api.astro.whats_orders_manager.modules.facturacion.service.FacturaService;
+import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.facturacion.util.MontoEnLetras;
 import api.astro.whats_orders_manager.modules.seguridad.service.UsuarioService;
 import com.itextpdf.io.image.ImageDataFactory;
@@ -72,16 +73,14 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
     private final UsuarioService usuarioService;
     private final NotaFacturaRepository notaFacturaRepository;
     private final ComprobanteElectronicoRepository comprobanteRepository;
+    private final ConfiguracionFacturacionService configuracionFacturacionService;
+    private final LugarVentaResolver lugarVentaResolver;
 
     @Value("${app.uploads.directorio:/app/uploads}")
     private String uploadsDir;
 
     @Value("${app.sellos.directorio:/app/sellos}")
     private String sellosDir;
-
-    /** T-057: título del comprobante de venta del RTS; configurable mientras P-127 no fije el texto definitivo. */
-    @Value("${facturacion.pdf.titulo-rts:" + PdfFiscalDecision.TITULO_RTS + "}")
-    private String tituloRts = PdfFiscalDecision.TITULO_RTS;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
@@ -92,8 +91,11 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
         ComprobanteElectronico vigente = factura.getComprobanteElectronico();
         // T-057 (ADR-073 §1): la venta del régimen simplificado es un comprobante de venta del RTS, sin datos de Hacienda ni IVA
+        // T-059 (ADR-078): el título y la leyenda salen de la configuración de facturación; sin configuración no se inventa texto
         PdfFiscalDecision decision = factura.getRegimenEmisor() == Regimen.SIMPLIFICADO
-                ? PdfFiscalDecision.deSimplificado(tituloRts)
+                ? configuracionFacturacionService.getConfiguracionActiva()
+                        .map(c -> PdfFiscalDecision.deSimplificado(c.getPdfRtsTitulo(), c.getPdfRtsLeyenda()))
+                        .orElseGet(() -> PdfFiscalDecision.deSimplificado(null, null))
                 : PdfFiscalDecision.de(
                         vigente != null ? vigente.getEstado() : null,
                         vigente != null ? vigente.getTipoComprobante() : null);
@@ -228,6 +230,11 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             addClienteBlock(doc, d, configuracion);
 
+            // T-059 criterio 6: el comprobante del RTS lleva el lugar de la venta (cantón y provincia del emisor)
+            if (decision.esComprobanteRts()) {
+                addLugarVenta(doc, lugarVentaResolver.lugarDe(configuracion));
+            }
+
             if (nota != null) {
                 doc.add(separator());
 
@@ -246,6 +253,11 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
 
             addFooter(doc, empresa, d, decision.mostrarIva());
 
+            // T-059: leyenda del RTS junto al total; texto plano de iText (nunca HTML interpretado)
+            if (decision.leyendaRts() != null) {
+                doc.add(new Paragraph(decision.leyendaRts()).setBold().setFontSize(9).setMarginTop(4));
+            }
+
             if (empresa.tieneTextoLegal()) {
                 doc.add(separator());
                 doc.add(new Paragraph(empresa.getTextoLegal())
@@ -262,6 +274,18 @@ public class FacturaPdfServiceImpl implements FacturaPdfService {
             }
         }
         return baos.toByteArray();
+    }
+
+    /** Línea «Lugar» del comprobante del RTS; sin lugar resoluble no se imprime. */
+    private void addLugarVenta(Document doc, String lugar) {
+        if (lugar == null || lugar.isBlank()) {
+            return;
+        }
+        doc.add(new Paragraph()
+                .add(new com.itextpdf.layout.element.Text("Lugar de la venta:").setBold())
+                .add("  " + lugar)
+                .setFontSize(9)
+                .setMarginTop(2));
     }
 
     /** Bloque «Referencia» de la nota: factura, clave, código y nombre, razón y fecha de la factura. */

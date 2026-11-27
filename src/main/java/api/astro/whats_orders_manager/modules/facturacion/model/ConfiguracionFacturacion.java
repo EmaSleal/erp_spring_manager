@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicInsert;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
  * @since Sprint 2 - Fase 2
  */
 @Entity
+@DynamicInsert
 @Table(name = "configuracion_facturacion")
 @Data
 @NoArgsConstructor
@@ -118,6 +120,18 @@ public class ConfiguracionFacturacion implements Serializable {
      */
     @Column(name = "decimales")
     private Integer decimales = 2;
+
+    /**
+     * T-059 (ADR-078): título del PDF de la venta del régimen simplificado. Vive solo en la base (V64): la columna es
+     * NOT NULL con el texto inicial como DEFAULT, y @DynamicInsert no envía el null para que una fila nueva lo reciba de
+     * la base. El guardado exige la palabra «Factura» (ConfiguracionFacturacionServiceImpl.validarConfiguracion).
+     */
+    @Column(name = "pdf_rts_titulo", length = 120, nullable = false)
+    private String pdfRtsTitulo;
+
+    /** T-059 (ADR-078): leyenda opcional del PDF del régimen simplificado, junto al total. NULL = sin leyenda. */
+    @Column(name = "pdf_rts_leyenda", length = 300)
+    private String pdfRtsLeyenda;
 
     /**
      * Indica si esta configuración está activa

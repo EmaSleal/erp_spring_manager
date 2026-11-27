@@ -44,7 +44,8 @@ class FacturaPdfUnidadMedidaTest {
         FacturaPdfServiceImpl service = new FacturaPdfServiceImpl(facturaService, empresaService, configuracionService,
                 cuentas, mock(UsuarioService.class),
                 mock(api.astro.whats_orders_manager.modules.facturacion.repository.NotaFacturaRepository.class),
-                mock(api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository.class));
+                mock(api.astro.whats_orders_manager.modules.facturacion.electronica.repository.ComprobanteElectronicoRepository.class),
+                mock(api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService.class), mock(api.astro.whats_orders_manager.modules.facturacion.service.impl.LugarVentaResolver.class));
 
         Cliente cliente = new Cliente();
         cliente.setIdCliente(1);

@@ -29,6 +29,11 @@ const ConfiguracionFacturacion = {
             });
         }
         
+        // T-059: vista previa y aviso del título/leyenda del PDF del RTS
+        if (window.PdfRtsTextos) {
+            window.PdfRtsTextos.enlazar(document);
+        }
+
         const btnCancelar = document.getElementById('btn-cancelar-facturacion');
         if (btnCancelar) {
             btnCancelar.addEventListener('click', () => {
@@ -61,6 +66,11 @@ const ConfiguracionFacturacion = {
                 document.getElementById('terminosCondiciones').value = datos.terminosCondiciones || '';
                 document.getElementById('notaPiePagina').value = datos.notaPiePagina || '';
                 document.getElementById('activoFacturacion').checked = datos.activo !== false;
+                document.getElementById('pdfRtsTitulo').value = datos.pdfRtsTitulo || '';
+                document.getElementById('pdfRtsLeyenda').value = datos.pdfRtsLeyenda || '';
+                if (window.PdfRtsTextos) {
+                    window.PdfRtsTextos.actualizar(document);
+                }
                 
                 console.log('✅ Configuración de facturación cargada');
             } else if (response.message) {
@@ -84,6 +94,16 @@ const ConfiguracionFacturacion = {
             return;
         }
         
+        // T-059: el servidor es la autoridad (400 con mensaje fijo); esto solo avisa antes de enviar
+        if (window.PdfRtsTextos) {
+            const errorRts = window.PdfRtsTextos.validarTitulo(document.getElementById('pdfRtsTitulo').value)
+                || window.PdfRtsTextos.validarLeyenda(document.getElementById('pdfRtsLeyenda').value);
+            if (errorRts) {
+                Configuracion.mostrarAlertaEn('alert-facturacion-container', 'warning', errorRts);
+                return;
+            }
+        }
+
         try {
             // Obtener datos del formulario
             const datos = {
@@ -98,7 +118,9 @@ const ConfiguracionFacturacion = {
                 decimales: parseInt(document.getElementById('decimales').value) || 2,
                 terminosCondiciones: document.getElementById('terminosCondiciones').value || null,
                 notaPiePagina: document.getElementById('notaPiePagina').value || null,
-                activo: document.getElementById('activoFacturacion').checked
+                activo: document.getElementById('activoFacturacion').checked,
+                pdfRtsTitulo: document.getElementById('pdfRtsTitulo').value.trim(),
+                pdfRtsLeyenda: document.getElementById('pdfRtsLeyenda').value.trim() || null
             };
             
             const idConfiguracion = document.getElementById('idConfiguracionFacturacion').value;
