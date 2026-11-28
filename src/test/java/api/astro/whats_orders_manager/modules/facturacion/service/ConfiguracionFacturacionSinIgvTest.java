@@ -35,6 +35,7 @@ class ConfiguracionFacturacionSinIgvTest {
         configuracion.setSimboloMoneda("₡");
         configuracion.setDecimales(2);
         configuracion.setFormatoNumero("{serie}-{numero}");
+        configuracion.setPdfRtsTitulo("Factura — Régimen de Tributación Simplificada");
 
         assertThatCode(() -> new ConfiguracionFacturacionServiceImpl().validarConfiguracion(configuracion))
                 .doesNotThrowAnyException();

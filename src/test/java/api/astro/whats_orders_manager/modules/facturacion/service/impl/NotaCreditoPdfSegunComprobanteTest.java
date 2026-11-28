@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
@@ -174,7 +175,8 @@ class NotaCreditoPdfSegunComprobanteTest {
     private FacturaPdfServiceImpl servicio() {
         return new FacturaPdfServiceImpl(mock(FacturaService.class), mock(EmpresaService.class),
                 mock(ConfiguracionEmpresaService.class), mock(CuentaBancariaRepository.class),
-                mock(UsuarioService.class), notas, comprobantes);
+                mock(UsuarioService.class), notas, comprobantes,
+                mock(ConfiguracionFacturacionService.class), mock(LugarVentaResolver.class));
     }
 
     private String pdf(NotaFactura nota, ComprobanteElectronico vigente) throws Exception {
@@ -182,7 +184,8 @@ class NotaCreditoPdfSegunComprobanteTest {
         ConfiguracionEmpresaService configuracionService = mock(ConfiguracionEmpresaService.class);
         CuentaBancariaRepository cuentas = mock(CuentaBancariaRepository.class);
         FacturaPdfServiceImpl service = new FacturaPdfServiceImpl(mock(FacturaService.class), empresaService,
-                configuracionService, cuentas, mock(UsuarioService.class), notas, comprobantes);
+                configuracionService, cuentas, mock(UsuarioService.class), notas, comprobantes,
+                mock(ConfiguracionFacturacionService.class), mock(LugarVentaResolver.class));
         when(notas.findById(nota.getId())).thenReturn(Optional.of(nota));
         when(comprobantes.findFirstByNotaFactura_IdAndVigenteTrue(nota.getId())).thenReturn(Optional.ofNullable(vigente));
         Empresa empresa = new Empresa();

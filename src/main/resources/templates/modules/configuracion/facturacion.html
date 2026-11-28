@@ -262,6 +262,58 @@
                         </div>
                     </div>
 
+                    <!-- Sección: Comprobante de venta del régimen simplificado (T-059, ADR-078) -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-file-pdf text-secondary me-2"></i>
+                                Comprobante de venta del régimen simplificado
+                            </h5>
+                            <div class="alert alert-info py-2 small" role="note">
+                                Estos textos se usan solo en el PDF de las ventas del régimen simplificado (RTS).
+                                No cambian el PDF de las facturas del régimen general.
+                            </div>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label for="pdfRtsTitulo" class="form-label">
+                                <i class="fas fa-heading me-1"></i> Título del comprobante
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="pdfRtsTitulo"
+                                   name="pdfRtsTitulo"
+                                   maxlength="120"
+                                   required>
+                            <div class="form-text">
+                                Obligatorio, hasta 120 caracteres. Debe contener la palabra «Factura»
+                                (sin distinguir mayúsculas ni tildes).
+                            </div>
+                            <div class="text-danger small" id="pdf-rts-titulo-error" role="alert"></div>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label for="pdfRtsLeyenda" class="form-label">
+                                <i class="fas fa-align-left me-1"></i> Leyenda del régimen (Opcional)
+                            </label>
+                            <textarea class="form-control"
+                                      id="pdfRtsLeyenda"
+                                      name="pdfRtsLeyenda"
+                                      rows="2"
+                                      maxlength="300"></textarea>
+                            <div class="form-text">Se imprime junto al total. Hasta 300 caracteres; vacía = sin leyenda.</div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-label">Vista previa</div>
+                            <div class="border rounded p-3 bg-light">
+                                <div class="fw-bold" id="pdf-rts-prev-titulo"></div>
+                                <div class="small mt-2" id="pdf-rts-prev-leyenda" hidden></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Sección: Estado -->
                     <div class="row mb-4">
                         <div class="col-12">

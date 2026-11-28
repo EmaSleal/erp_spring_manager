@@ -1,5 +1,6 @@
 package api.astro.whats_orders_manager.modules.facturacion.service.impl;
 
+import api.astro.whats_orders_manager.modules.facturacion.service.ConfiguracionFacturacionService;
 import api.astro.whats_orders_manager.modules.cliente.model.Cliente;
 import api.astro.whats_orders_manager.modules.configuracion.model.ConfiguracionEmpresa;
 import api.astro.whats_orders_manager.modules.configuracion.model.Empresa;
@@ -213,7 +214,8 @@ class FacturaPdfSegunComprobanteTest {
         ConfiguracionEmpresaService configuracionService = mock(ConfiguracionEmpresaService.class);
         CuentaBancariaRepository cuentas = mock(CuentaBancariaRepository.class);
         FacturaPdfServiceImpl service = new FacturaPdfServiceImpl(facturaService, empresaService, configuracionService,
-                cuentas, mock(UsuarioService.class), notas, comprobantes);
+                cuentas, mock(UsuarioService.class), notas, comprobantes,
+                mock(ConfiguracionFacturacionService.class), mock(LugarVentaResolver.class));
         when(facturaService.findById(factura.getIdFactura())).thenReturn(Optional.of(factura));
         Empresa empresa = new Empresa();
         empresa.setIdEmpresa(1);

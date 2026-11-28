@@ -10,15 +10,18 @@ import api.astro.whats_orders_manager.modules.facturacion.electronica.enums.Tipo
  * Decisión pura, sin acceso a datos.
  */
 record PdfFiscalDecision(String titulo, boolean mostrarClaveYConsecutivo, boolean enTramite, boolean leyendaResolucion,
-                         boolean mostrarIva) {
+                         boolean mostrarIva, boolean esComprobanteRts, String leyendaRts) {
+
+    /** Documento sin leyenda del RTS (todo salvo el comprobante de venta del régimen simplificado). */
+    PdfFiscalDecision(String titulo, boolean mostrarClaveYConsecutivo, boolean enTramite, boolean leyendaResolucion,
+                      boolean mostrarIva) {
+        this(titulo, mostrarClaveYConsecutivo, enTramite, leyendaResolucion, mostrarIva, false, null);
+    }
 
     /** Documento con IVA (todo salvo el comprobante de venta del régimen simplificado). */
     PdfFiscalDecision(String titulo, boolean mostrarClaveYConsecutivo, boolean enTramite, boolean leyendaResolucion) {
         this(titulo, mostrarClaveYConsecutivo, enTramite, leyendaResolucion, true);
     }
-
-    /** Título por defecto del comprobante de venta del RTS (configurable; pendiente de P-127). */
-    static final String TITULO_RTS = "Comprobante de venta — Régimen de Tributación Simplificada";
 
     static final String TITULO_PROFORMA = "Documento no fiscal (proforma)";
     static final String TITULO_RECHAZADO = "Documento no fiscal (rechazado por Hacienda)";
@@ -63,9 +66,14 @@ record PdfFiscalDecision(String titulo, boolean mostrarClaveYConsecutivo, boolea
         };
     }
 
-    /** Comprobante de venta del régimen simplificado: título configurable, sin clave ni consecutivo, sin leyendas ni IVA. */
-    static PdfFiscalDecision deSimplificado(String titulo) {
-        return new PdfFiscalDecision(titulo, false, false, false, false);
+    /**
+     * Comprobante de venta del régimen simplificado (T-059, ADR-078): título y leyenda salen de la configuración de
+     * facturación; sin clave ni consecutivo, sin leyendas de Hacienda ni IVA. La lectura no inventa texto: un título nulo
+     * queda vacío y una leyenda en blanco no se imprime.
+     */
+    static PdfFiscalDecision deSimplificado(String titulo, String leyenda) {
+        String leyendaLimpia = leyenda == null || leyenda.isBlank() ? null : leyenda.strip();
+        return new PdfFiscalDecision(titulo == null ? "" : titulo.strip(), false, false, false, false, true, leyendaLimpia);
     }
 
     private static PdfFiscalDecision proforma() {

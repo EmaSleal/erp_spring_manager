@@ -10,7 +10,12 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Implementación del servicio de configuración de facturación.
@@ -27,8 +32,27 @@ import java.util.Optional;
 @Transactional
 public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFacturacionService {
 
+    /** T-059: mensajes fijos del guardado del título y la leyenda del PDF del régimen simplificado (ADR-078). */
+    static final String MSG_PDF_RTS_TITULO_OBLIGATORIO = "El título del comprobante del régimen simplificado es obligatorio";
+    static final String MSG_PDF_RTS_TITULO_LARGO =
+            "El título del comprobante del régimen simplificado no puede exceder 120 caracteres";
+    static final String MSG_PDF_RTS_TITULO_SIN_FACTURA =
+            "El título del comprobante del régimen simplificado debe contener la palabra «Factura»";
+    static final String MSG_PDF_RTS_LEYENDA_LARGA =
+            "La leyenda del comprobante del régimen simplificado no puede exceder 300 caracteres";
+
+    static final int PDF_RTS_TITULO_MAX = 120;
+    static final int PDF_RTS_LEYENDA_MAX = 300;
+
+    /** La palabra «factura» completa (no «facturación», «facturas» ni «prefactura»), ya sin tildes y en minúsculas. */
+    private static final Pattern PALABRA_FACTURA =
+            Pattern.compile("(?<![\\p{L}\\p{N}])factura(?![\\p{L}\\p{N}])");
+
     @Autowired
     private ConfiguracionFacturacionRepository configuracionRepository;
+
+    @Autowired(required = false)
+    private EntityManager entityManager;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,7 +88,11 @@ public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFactura
         // Los valores por defecto ya están definidos en el modelo
         // serieFactura="F001", numeroInicial=1, igv=18.00, etc.
         
-        ConfiguracionFacturacion guardada = configuracionRepository.save(nuevaConfiguracion);
+        // T-059: el título del RTS no se envía en el INSERT (@DynamicInsert): lo pone el DEFAULT de V64; se relee de la base
+        ConfiguracionFacturacion guardada = configuracionRepository.saveAndFlush(nuevaConfiguracion);
+        if (entityManager != null) {
+            entityManager.refresh(guardada);
+        }
         log.info("Configuración de facturación creada con ID: {}", guardada.getId());
         
         return guardada;
@@ -283,7 +311,44 @@ public class ConfiguracionFacturacionServiceImpl implements ConfiguracionFactura
             throw new IllegalArgumentException("La nota de pie de página no puede exceder 500 caracteres");
         }
         
+        validarTextosPdfRts(configuracion);
+
         log.debug("Configuración validada exitosamente");
+    }
+
+    /**
+     * T-059 (ADR-078): título obligatorio de 1 a 120 caracteres recortados con la palabra «Factura» (sin distinguir
+     * mayúsculas ni tildes, como palabra completa: «Facturación» no cuenta) y leyenda opcional de hasta 300. Guarda los
+     * valores recortados y la leyenda en blanco como NULL. Está aquí para que cualquier ruta de guardado la aplique.
+     */
+    private void validarTextosPdfRts(ConfiguracionFacturacion configuracion) {
+        String titulo = configuracion.getPdfRtsTitulo() == null ? "" : configuracion.getPdfRtsTitulo().strip();
+        if (titulo.isEmpty()) {
+            log.error("Título del PDF del RTS vacío");
+            throw new IllegalArgumentException(MSG_PDF_RTS_TITULO_OBLIGATORIO);
+        }
+        if (titulo.length() > PDF_RTS_TITULO_MAX) {
+            log.error("Título del PDF del RTS excede {} caracteres: {}", PDF_RTS_TITULO_MAX, titulo.length());
+            throw new IllegalArgumentException(MSG_PDF_RTS_TITULO_LARGO);
+        }
+        if (!contienePalabraFactura(titulo)) {
+            log.error("Título del PDF del RTS sin la palabra Factura");
+            throw new IllegalArgumentException(MSG_PDF_RTS_TITULO_SIN_FACTURA);
+        }
+        String leyenda = configuracion.getPdfRtsLeyenda() == null ? "" : configuracion.getPdfRtsLeyenda().strip();
+        if (leyenda.length() > PDF_RTS_LEYENDA_MAX) {
+            log.error("Leyenda del PDF del RTS excede {} caracteres: {}", PDF_RTS_LEYENDA_MAX, leyenda.length());
+            throw new IllegalArgumentException(MSG_PDF_RTS_LEYENDA_LARGA);
+        }
+        configuracion.setPdfRtsTitulo(titulo);
+        configuracion.setPdfRtsLeyenda(leyenda.isEmpty() ? null : leyenda);
+    }
+
+    private static boolean contienePalabraFactura(String titulo) {
+        String normalizado = Normalizer.normalize(titulo, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT);
+        return PALABRA_FACTURA.matcher(normalizado).find();
     }
 
     @Override
